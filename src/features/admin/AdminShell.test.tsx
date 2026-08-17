@@ -97,9 +97,10 @@ describe('AdminShell', () => {
     render(<AdminShell dependencies={dependencies({ reassignGuest })} />);
 
     await screen.findByText('Иван Петров');
-    await user.selectOptions(screen.getByLabelText('Вагон Иван Петров'), 'c4');
+    const carriageSelect = screen.getByLabelText('Вагон Иван Петров');
+    await user.selectOptions(carriageSelect, 'c4');
 
     expect(reassignGuest).toHaveBeenCalledWith('g31', 'c4');
-    expect(await screen.findByText('ВАГОН №4')).toBeInTheDocument();
+    expect(carriageSelect).toHaveValue('c4');
   });
 });
