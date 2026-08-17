@@ -43,7 +43,7 @@ select ok(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname = 'register_guest'
-      and pg_get_function_arguments(p.oid) like 'p_event_slug text, p_device_key text, p_first_name text, p_last_name text, p_affiliation_type text, p_affiliation_detail text, p_confirm_duplicate boolean%'
+      and pg_get_function_identity_arguments(p.oid) = 'p_event_slug text, p_device_key text, p_first_name text, p_last_name text, p_affiliation_type text, p_affiliation_detail text, p_confirm_duplicate boolean'
   ),
   'register_guest uses public slug contract with duplicate confirmation'
 );
@@ -55,7 +55,7 @@ select ok(
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname = 'restore_guest'
-      and pg_get_function_arguments(p.oid) like 'p_event_slug text, p_device_key text%'
+      and pg_get_function_identity_arguments(p.oid) = 'p_event_slug text, p_device_key text'
   ),
   'restore_guest uses public slug contract'
 );
