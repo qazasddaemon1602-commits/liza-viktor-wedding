@@ -81,4 +81,26 @@ describe('AdminGuestsPage', () => {
     await user.selectOptions(screen.getByLabelText('Вагон Иван Петров'), 'c4');
     expect(onReassign).toHaveBeenCalledWith('guest-31', 'c4');
   });
+
+  it('issues a one-time recovery code for a lost or replaced phone', async () => {
+    const user = userEvent.setup();
+    const onIssueRecovery = vi.fn().mockResolvedValue({
+      code: 'AB12-CD34',
+      expiresAt: '2026-08-30T15:30:00+05:00',
+    });
+    render(
+      <AdminGuestsPage
+        guests={guests}
+        onDelete={vi.fn()}
+        onReassign={vi.fn()}
+        onIssueRecovery={onIssueRecovery}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'ВЫДАТЬ ДОСТУП ЗАНОВО Иван Петров' }));
+
+    expect(onIssueRecovery).toHaveBeenCalledWith('guest-31');
+    expect(await screen.findByText('AB12-CD34')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toHaveTextContent('Код одноразовый');
+  });
 });
