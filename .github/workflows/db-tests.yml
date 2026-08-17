@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/db-tests.yml'
 
 jobs:
   database:
