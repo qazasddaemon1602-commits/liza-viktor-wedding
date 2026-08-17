@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(16);
+select plan(17);
 
 select has_table('public', 'events', 'events table exists');
 select has_table('public', 'event_state', 'event_state table exists');
@@ -58,6 +58,17 @@ select ok(
       and pg_get_function_identity_arguments(p.oid) = 'p_event_slug text, p_device_key text'
   ),
   'restore_guest uses public slug contract'
+);
+
+select ok(
+  exists(
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'guests'
+  ),
+  'guests table is published to Supabase Realtime'
 );
 
 select * from finish();
