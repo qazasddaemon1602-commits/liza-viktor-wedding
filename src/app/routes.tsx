@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { GuestJoinPage } from '../features/registration/GuestJoinPage';
 
 export const routePaths = [
   '/',
@@ -28,7 +29,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<PlaceholderPage eyebrow="30 · 08 · 2026" title="ЛИЗА × ВИКТОР" description="Второй день. Один состав. Много историй." />} />
-      <Route path="/join" element={<PlaceholderPage eyebrow="ПОЕЗД ВИКТОРА" title="ПОЛУЧИТЬ БИЛЕТ" description="Регистрация гостей и распределение по вагонам." />} />
+      <Route path="/join" element={<GuestJoinPage />} />
       <Route path="/play" element={<PlaceholderPage eyebrow="СЕЙЧАС В ИГРЕ" title="ЛИЗА ИЛИ ВИКТОР?" description="Здесь появится активный вопрос." />} />
       <Route path="/admin" element={<PlaceholderPage eyebrow="OWNER ONLY" title="ПАНЕЛЬ УПРАВЛЕНИЯ" description="Гости, экраны, викторина, турнир и премьера." />} />
       <Route path="/screen" element={<PlaceholderPage eyebrow="ЭКРАН СОБЫТИЯ" title="ЛИЗА × ВИКТОР" description="Презентационный режим без управляющих элементов." />} />
