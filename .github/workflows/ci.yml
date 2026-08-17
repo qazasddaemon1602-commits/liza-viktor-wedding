@@ -6,6 +6,7 @@ on:
       - feat/wedding-live-hub-mvp
   pull_request:
     branches:
+      - ci/wedding-hub-checks
       - main
 
 jobs:
