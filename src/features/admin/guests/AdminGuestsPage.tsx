@@ -12,11 +12,17 @@ export type AdminGuest = {
   carriage: CarriageSummary;
 };
 
+type RecoveryCodeResult = {
+  code: string;
+  expiresAt: string;
+};
+
 type AdminGuestsPageProps = {
   guests: AdminGuest[];
   carriages?: CarriageSummary[];
   onDelete: (guestId: string) => Promise<void> | void;
   onReassign: (guestId: string, carriageId: string) => Promise<void> | void;
+  onIssueRecovery?: (guestId: string) => Promise<RecoveryCodeResult>;
 };
 
 const affiliationLabels: Record<string, string> = {
@@ -39,10 +45,19 @@ function searchableGuest(guest: AdminGuest) {
   ].join(' ').toLocaleLowerCase('ru-RU');
 }
 
-export function AdminGuestsPage({ guests, carriages, onDelete, onReassign }: AdminGuestsPageProps) {
+export function AdminGuestsPage({
+  guests,
+  carriages,
+  onDelete,
+  onReassign,
+  onIssueRecovery,
+}: AdminGuestsPageProps) {
   const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<AdminGuest | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [recoveryGuest, setRecoveryGuest] = useState<AdminGuest | null>(null);
+  const [recoveryCode, setRecoveryCode] = useState<RecoveryCodeResult | null>(null);
+  const [issuingRecovery, setIssuingRecovery] = useState(false);
 
   const filteredGuests = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('ru-RU');
@@ -58,6 +73,19 @@ export function AdminGuestsPage({ guests, carriages, onDelete, onReassign }: Adm
       setPendingDelete(null);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const issueRecovery = async (guest: AdminGuest) => {
+    if (!onIssueRecovery) return;
+    setRecoveryGuest(guest);
+    setRecoveryCode(null);
+    setIssuingRecovery(true);
+    try {
+      const result = await onIssueRecovery(guest.id);
+      setRecoveryCode(result);
+    } finally {
+      setIssuingRecovery(false);
     }
   };
 
@@ -115,14 +143,26 @@ export function AdminGuestsPage({ guests, carriages, onDelete, onReassign }: Adm
               )}
             </div>
 
-            <button
-              className="admin-danger-link"
-              type="button"
-              aria-label={`УДАЛИТЬ ${guest.firstName} ${guest.lastName}`}
-              onClick={() => setPendingDelete(guest)}
-            >
-              УДАЛИТЬ
-            </button>
+            <div className="admin-guest-card__actions">
+              {onIssueRecovery && (
+                <button
+                  className="registration-secondary"
+                  type="button"
+                  aria-label={`ВЫДАТЬ ДОСТУП ЗАНОВО ${guest.firstName} ${guest.lastName}`}
+                  onClick={() => void issueRecovery(guest)}
+                >
+                  ДОСТУП ЗАНОВО
+                </button>
+              )}
+              <button
+                className="admin-danger-link"
+                type="button"
+                aria-label={`УДАЛИТЬ ${guest.firstName} ${guest.lastName}`}
+                onClick={() => setPendingDelete(guest)}
+              >
+                УДАЛИТЬ
+              </button>
+            </div>
           </article>
         ))}
         {filteredGuests.length === 0 && (
@@ -142,6 +182,28 @@ export function AdminGuestsPage({ guests, carriages, onDelete, onReassign }: Adm
               </button>
               <button className="registration-secondary" type="button" disabled={deleting} onClick={() => setPendingDelete(null)}>
                 ОТМЕНА
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {recoveryGuest && (
+        <div className="admin-confirm-backdrop" role="presentation">
+          <section className="admin-confirm" role="dialog" aria-modal="true" aria-labelledby="recovery-code-title">
+            <p className="eyebrow">ВОССТАНОВЛЕНИЕ БИЛЕТА</p>
+            <h3 id="recovery-code-title">{recoveryGuest.firstName} {recoveryGuest.lastName}</h3>
+            {issuingRecovery && <p>Создаём одноразовый код…</p>}
+            {recoveryCode && (
+              <>
+                <strong className="admin-recovery-code">{recoveryCode.code}</strong>
+                <p>Код одноразовый и действует ограниченное время. Передайте его только этому гостю.</p>
+                <small>Истекает: {recoveryCode.expiresAt}</small>
+              </>
+            )}
+            <div className="admin-confirm__actions">
+              <button className="registration-secondary" type="button" onClick={() => { setRecoveryGuest(null); setRecoveryCode(null); }}>
+                ЗАКРЫТЬ
               </button>
             </div>
           </section>
