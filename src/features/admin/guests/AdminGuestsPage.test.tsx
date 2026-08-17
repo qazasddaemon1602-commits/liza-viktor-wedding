@@ -26,6 +26,12 @@ const guests: AdminGuest[] = [
   },
 ];
 
+const carriages = [
+  { id: 'c1', number: 1, label: 'ВАГОН №1', accentHex: '#31483A', visualMark: '01' },
+  { id: 'c3', number: 3, label: 'ВАГОН №3', accentHex: '#7E3F3C', visualMark: '03' },
+  { id: 'c4', number: 4, label: 'ВАГОН №4', accentHex: '#78806A', visualMark: '04' },
+];
+
 describe('AdminGuestsPage', () => {
   it('shows owner-only registration details and carriage identity', () => {
     render(<AdminGuestsPage guests={guests} onDelete={vi.fn()} onReassign={vi.fn()} />);
@@ -58,5 +64,21 @@ describe('AdminGuestsPage', () => {
     expect(screen.getByText('Анна Смирнова')).toBeInTheDocument();
     expect(screen.queryByText('Иван Петров')).not.toBeInTheDocument();
     expect(screen.getByText(/зарегистрировано: 2/i)).toBeInTheDocument();
+  });
+
+  it('lets the owner explicitly move a guest to another carriage', async () => {
+    const user = userEvent.setup();
+    const onReassign = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AdminGuestsPage
+        guests={guests}
+        carriages={carriages}
+        onDelete={vi.fn()}
+        onReassign={onReassign}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText('Вагон Иван Петров'), 'c4');
+    expect(onReassign).toHaveBeenCalledWith('guest-31', 'c4');
   });
 });
