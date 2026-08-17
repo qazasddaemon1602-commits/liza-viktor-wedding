@@ -9,6 +9,7 @@ export type AdminShellDependencies = {
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  issueGuestRecovery?: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   subscribeToRegistrations?: (callback: (guestId: string) => void) => () => void;
 };
 
@@ -203,6 +204,7 @@ export function AdminShell({ dependencies }: AdminShellProps) {
         carriages={dashboard.carriages.filter((carriage) => carriage.enabled)}
         onDelete={handleDelete}
         onReassign={handleReassign}
+        onIssueRecovery={dependencies.issueGuestRecovery}
       />
     </main>
   );
