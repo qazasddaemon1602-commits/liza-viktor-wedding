@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(19);
+select plan(22);
 
 select has_table('public', 'events', 'events table exists');
 select has_table('public', 'event_state', 'event_state table exists');
@@ -42,6 +42,18 @@ select ok(
 select ok(
   exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'recover_guest'),
   'public one-time guest recovery RPC exists'
+);
+select ok(
+  exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'owner_send_carriage_call'),
+  'owner-only carriage call RPC exists'
+);
+select ok(
+  exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'owner_clear_carriage_call'),
+  'owner-only carriage call clear RPC exists'
+);
+select ok(
+  exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'get_guest_active_carriage_calls'),
+  'guest-targeted active carriage call RPC exists'
 );
 
 select ok(
