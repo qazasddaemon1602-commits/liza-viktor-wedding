@@ -1,28 +1,47 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AdminDashboard } from './admin.service';
 import { AdminGuestsPage } from './guests/AdminGuestsPage';
+import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
+import { enqueueNotices, type RegistrationNotice } from './notifications/notificationQueue';
 
 export type AdminShellDependencies = {
   load: () => Promise<AdminDashboard>;
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  subscribeToRegistrations?: (callback: (guestId: string) => void) => () => void;
 };
 
 type AdminShellProps = {
   dependencies: AdminShellDependencies;
 };
 
+const affiliationLabels: Record<string, string> = {
+  liza: 'Со стороны Лизы',
+  viktor: 'Со стороны Виктора',
+  common: 'Общие друзья',
+  family: 'Семья / родственники',
+  colleagues: 'Коллеги',
+  other: 'Другое',
+};
+
 export function AdminShell({ dependencies }: AdminShellProps) {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const dashboardRef = useRef<AdminDashboard | null>(null);
   const [error, setError] = useState('');
   const [locking, setLocking] = useState(false);
+  const [notices, setNotices] = useState<RegistrationNotice[]>([]);
+
+  const storeDashboard = (next: AdminDashboard) => {
+    dashboardRef.current = next;
+    setDashboard(next);
+  };
 
   useEffect(() => {
     let cancelled = false;
     void dependencies.load()
       .then((next) => {
-        if (!cancelled) setDashboard(next);
+        if (!cancelled) storeDashboard(next);
       })
       .catch(() => {
         if (!cancelled) setError('Не удалось загрузить админку. Проверьте связь и доступ владельца.');
@@ -32,6 +51,36 @@ export function AdminShell({ dependencies }: AdminShellProps) {
       cancelled = true;
     };
   }, [dependencies]);
+
+  useEffect(() => {
+    if (!dashboard?.event.id || !dependencies.subscribeToRegistrations) return;
+    let active = true;
+
+    return dependencies.subscribeToRegistrations(() => {
+      void dependencies.load()
+        .then((fresh) => {
+          if (!active) return;
+          const previousIds = new Set((dashboardRef.current?.guests ?? []).map((guest) => guest.id));
+          const newlyRegistered = fresh.guests.filter((guest) => !previousIds.has(guest.id));
+          storeDashboard(fresh);
+
+          if (newlyRegistered.length > 0) {
+            const nextNotices = newlyRegistered.map<RegistrationNotice>((guest) => ({
+              guestId: guest.id,
+              fullName: `${guest.firstName} ${guest.lastName}`,
+              carriageLabel: guest.carriage.label,
+              carriageAccent: guest.carriage.accentHex,
+              affiliationLabel: affiliationLabels[guest.affiliationType] ?? guest.affiliationType,
+              createdAt: guest.registeredAt,
+            }));
+            setNotices((current) => enqueueNotices(current, nextNotices));
+          }
+        })
+        .catch(() => {
+          if (active) setError('Связь с регистрациями прервалась. Обновите админку или проверьте интернет.');
+        });
+    });
+  }, [dashboard?.event.id, dependencies]);
 
   if (error) {
     return (
@@ -58,10 +107,15 @@ export function AdminShell({ dependencies }: AdminShellProps) {
 
   const handleDelete = async (guestId: string) => {
     await dependencies.deleteGuest(guestId);
-    setDashboard((current) => current ? {
-      ...current,
-      guests: current.guests.filter((guest) => guest.id !== guestId),
-    } : current);
+    setDashboard((current) => {
+      if (!current) return current;
+      const next = {
+        ...current,
+        guests: current.guests.filter((guest) => guest.id !== guestId),
+      };
+      dashboardRef.current = next;
+      return next;
+    });
   };
 
   const handleReassign = async (guestId: string, carriageId: string) => {
@@ -70,7 +124,7 @@ export function AdminShell({ dependencies }: AdminShellProps) {
       if (!current) return current;
       const carriage = current.carriages.find((item) => item.id === carriageId);
       if (!carriage) return current;
-      return {
+      const next = {
         ...current,
         guests: current.guests.map((guest) => guest.id === guestId ? {
           ...guest,
@@ -83,6 +137,8 @@ export function AdminShell({ dependencies }: AdminShellProps) {
           },
         } : guest),
       };
+      dashboardRef.current = next;
+      return next;
     });
   };
 
@@ -90,14 +146,19 @@ export function AdminShell({ dependencies }: AdminShellProps) {
     setLocking(true);
     try {
       const result = await dependencies.lockComposition(dashboard.event.id);
-      setDashboard((current) => current ? {
-        ...current,
-        event: {
-          ...current.event,
-          compositionLocked: true,
-          registrationOpen: result.registrationOpen,
-        },
-      } : current);
+      setDashboard((current) => {
+        if (!current) return current;
+        const next = {
+          ...current,
+          event: {
+            ...current.event,
+            compositionLocked: true,
+            registrationOpen: result.registrationOpen,
+          },
+        };
+        dashboardRef.current = next;
+        return next;
+      });
     } finally {
       setLocking(false);
     }
@@ -105,6 +166,11 @@ export function AdminShell({ dependencies }: AdminShellProps) {
 
   return (
     <main className="admin-shell">
+      <AdminRegistrationToasts
+        notices={notices}
+        onDismiss={(guestId) => setNotices((current) => current.filter((notice) => notice.guestId !== guestId))}
+      />
+
       <header className="admin-hero">
         <div>
           <p className="eyebrow">30.08.2026 · OWNER CONTROL</p>
