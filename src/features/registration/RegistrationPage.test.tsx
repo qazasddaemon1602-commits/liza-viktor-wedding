@@ -65,4 +65,29 @@ describe('RegistrationPage', () => {
     expect(screen.getByText('LV-031')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
   });
+
+  it('asks for confirmation when the same name is already registered on another device', async () => {
+    const user = userEvent.setup();
+    const onRegister = vi.fn()
+      .mockResolvedValueOnce({ status: 'duplicate_warning', publicName: 'Иван П.' })
+      .mockResolvedValueOnce(registeredGuest);
+
+    render(<RegistrationPage onRegister={onRegister} revealDelayMs={0} />);
+
+    await user.type(screen.getByLabelText('Имя'), 'Иван');
+    await user.type(screen.getByLabelText('Фамилия'), 'Петров');
+    await user.selectOptions(screen.getByLabelText('С кем вы сегодня?'), 'common');
+    await user.click(screen.getByRole('button', { name: /получить билет/i }));
+
+    expect(await screen.findByText(/Иван П\. уже зарегистрирован/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'ЭТО ДРУГОЙ ЧЕЛОВЕК' }));
+
+    expect(onRegister).toHaveBeenLastCalledWith({
+      firstName: 'Иван',
+      lastName: 'Петров',
+      affiliationType: 'common',
+      affiliationDetail: '',
+    }, true);
+    expect(await screen.findByText('LV-031')).toBeInTheDocument();
+  });
 });
