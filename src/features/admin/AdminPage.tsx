@@ -7,6 +7,10 @@ import {
   reassignGuest as reassignGuestRpc,
   type AdminDashboard,
 } from './admin.service';
+import {
+  subscribeToGuestRegistrations,
+  type AdminRealtimeClient,
+} from './admin.realtime';
 import { AdminShell } from './AdminShell';
 
 const EVENT_SLUG = 'liza-viktor';
@@ -21,6 +25,7 @@ export type AdminPageDependencies = {
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  subscribeToRegistrations: (callback: (guestId: string) => void) => () => void;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -30,6 +35,14 @@ function errorCode(error: unknown): string | undefined {
 
 export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
+  let currentEventId = '';
+
+  const loadDashboard = async () => {
+    const dashboard = await loadOwnerDashboard(client, EVENT_SLUG);
+    currentEventId = dashboard.event.id;
+    return dashboard;
+  };
+
   return {
     getSession: async () => {
       const { data, error } = await client.auth.getSession();
@@ -44,10 +57,18 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       const { error } = await client.auth.signOut();
       if (error) throw error;
     },
-    loadDashboard: () => loadOwnerDashboard(client, EVENT_SLUG),
+    loadDashboard,
     deleteGuest: (guestId) => deleteGuestRpc(client, guestId),
     reassignGuest: (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
     lockComposition: (eventId) => lockCompositionRpc(client, eventId),
+    subscribeToRegistrations: (callback) => {
+      if (!currentEventId) return () => undefined;
+      return subscribeToGuestRegistrations(
+        client as unknown as AdminRealtimeClient,
+        currentEventId,
+        callback,
+      );
+    },
   };
 }
 
@@ -184,10 +205,11 @@ export function AdminPage({ dependencies }: AdminPageProps) {
   return (
     <AdminShell
       dependencies={{
-        load: async () => state.dashboard,
+        load: deps.loadDashboard,
         deleteGuest: deps.deleteGuest,
         reassignGuest: deps.reassignGuest,
         lockComposition: deps.lockComposition,
+        subscribeToRegistrations: deps.subscribeToRegistrations,
       }}
     />
   );
