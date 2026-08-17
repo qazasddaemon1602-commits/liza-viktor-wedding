@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
   deleteGuest as deleteGuestRpc,
+  issueGuestRecovery as issueGuestRecoveryRpc,
   loadOwnerDashboard,
   lockComposition as lockCompositionRpc,
   reassignGuest as reassignGuestRpc,
@@ -25,6 +26,7 @@ export type AdminPageDependencies = {
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  issueGuestRecovery: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   subscribeToRegistrations: (callback: (guestId: string) => void) => () => void;
 };
 
@@ -61,6 +63,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     deleteGuest: (guestId) => deleteGuestRpc(client, guestId),
     reassignGuest: (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
     lockComposition: (eventId) => lockCompositionRpc(client, eventId),
+    issueGuestRecovery: (guestId) => issueGuestRecoveryRpc(client, guestId),
     subscribeToRegistrations: (callback) => {
       if (!currentEventId) return () => undefined;
       return subscribeToGuestRegistrations(
@@ -209,6 +212,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         deleteGuest: deps.deleteGuest,
         reassignGuest: deps.reassignGuest,
         lockComposition: deps.lockComposition,
+        issueGuestRecovery: deps.issueGuestRecovery,
         subscribeToRegistrations: deps.subscribeToRegistrations,
       }}
     />
