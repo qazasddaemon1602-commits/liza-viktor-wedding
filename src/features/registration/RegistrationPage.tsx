@@ -24,11 +24,22 @@ const initialDraft: RegistrationDraft = {
   affiliationDetail: '',
 };
 
+type DuplicateWarning = {
+  status: 'duplicate_warning';
+  publicName: string;
+};
+
+type RegistrationSubmitResult = RegisteredGuest | DuplicateWarning;
+
 type RegistrationPageProps = {
-  onRegister: (draft: RegistrationDraft) => Promise<RegisteredGuest>;
+  onRegister: (draft: RegistrationDraft, confirmDuplicate?: boolean) => Promise<RegistrationSubmitResult>;
   initialGuest?: RegisteredGuest | null;
   revealDelayMs?: number;
 };
+
+function isDuplicateWarning(result: RegistrationSubmitResult): result is DuplicateWarning {
+  return 'status' in result && result.status === 'duplicate_warning';
+}
 
 export function RegistrationPage({
   onRegister,
@@ -37,10 +48,12 @@ export function RegistrationPage({
 }: RegistrationPageProps) {
   const [draft, setDraft] = useState<RegistrationDraft>(initialDraft);
   const [errors, setErrors] = useState<RegistrationErrors>({});
-  const [status, setStatus] = useState<'form' | 'registering' | 'routing' | 'ticket'>(
+  const [status, setStatus] = useState<'form' | 'registering' | 'duplicate' | 'routing' | 'ticket'>(
     initialGuest ? 'ticket' : 'form',
   );
   const [registeredGuest, setRegisteredGuest] = useState<RegisteredGuest | null>(initialGuest);
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
+  const [pendingDraft, setPendingDraft] = useState<RegistrationDraft | null>(null);
   const [submitError, setSubmitError] = useState('');
 
   const update = (field: keyof RegistrationDraft, value: string) => {
@@ -51,6 +64,8 @@ export function RegistrationPage({
 
   const revealTicket = (guest: RegisteredGuest) => {
     setRegisteredGuest(guest);
+    setDuplicateWarning(null);
+    setPendingDraft(null);
     if (revealDelayMs <= 0) {
       setStatus('ticket');
       return;
@@ -60,20 +75,49 @@ export function RegistrationPage({
     window.setTimeout(() => setStatus('ticket'), revealDelayMs);
   };
 
+  const handleResult = (result: RegistrationSubmitResult, normalizedDraft: RegistrationDraft) => {
+    if (isDuplicateWarning(result)) {
+      setDuplicateWarning(result);
+      setPendingDraft(normalizedDraft);
+      setStatus('duplicate');
+      return;
+    }
+    revealTicket(result);
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors = validateRegistration(draft);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    const normalizedDraft = normalizeRegistration(draft);
     setStatus('registering');
     setSubmitError('');
     try {
-      const guest = await onRegister(normalizeRegistration(draft));
-      revealTicket(guest);
+      const result = await onRegister(normalizedDraft);
+      handleResult(result, normalizedDraft);
     } catch {
       setStatus('form');
       setSubmitError('Не получилось зарегистрироваться. Проверьте связь и попробуйте ещё раз.');
+    }
+  };
+
+  const confirmDuplicate = async () => {
+    if (!pendingDraft) return;
+    setStatus('registering');
+    setSubmitError('');
+    try {
+      const result = await onRegister(pendingDraft, true);
+      if (isDuplicateWarning(result)) {
+        setDuplicateWarning(result);
+        setStatus('duplicate');
+        return;
+      }
+      revealTicket(result);
+    } catch {
+      setStatus('duplicate');
+      setSubmitError('Не получилось подтвердить регистрацию. Попробуйте ещё раз.');
     }
   };
 
@@ -96,6 +140,23 @@ export function RegistrationPage({
           <p className="eyebrow">РЕГИСТРАЦИЯ ЗАВЕРШЕНА</p>
           <h1>ФОРМИРУЕМ МАРШРУТ…</h1>
           <div className="registration-route-line" aria-hidden="true"><span /></div>
+        </section>
+      </main>
+    );
+  }
+
+  if (status === 'duplicate' && duplicateWarning) {
+    return (
+      <main className="registration-shell">
+        <section className="registration-card registration-duplicate" aria-live="polite">
+          <p className="eyebrow">ПРОВЕРИМ ПАССАЖИРА</p>
+          <h1>{duplicateWarning.publicName} уже зарегистрирован</h1>
+          <p>Если это вы — откройте сайт с телефона, на котором регистрировались. Если это другой человек с таким же именем, подтвердите регистрацию.</p>
+          {submitError && <p className="registration-error" role="alert">{submitError}</p>}
+          <div className="registration-duplicate__actions">
+            <button className="registration-submit" type="button" onClick={confirmDuplicate}>ЭТО ДРУГОЙ ЧЕЛОВЕК</button>
+            <button className="registration-secondary" type="button" onClick={() => setStatus('form')}>ВЕРНУТЬСЯ</button>
+          </div>
         </section>
       </main>
     );
