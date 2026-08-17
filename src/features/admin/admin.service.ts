@@ -6,7 +6,7 @@ export type AdminRpcClient = {
   rpc: (
     name: string,
     args: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: AdminRpcError }>;
+  ) => PromiseLike<{ data: unknown; error: AdminRpcError }>;
 };
 
 export type AdminDashboardGuest = {
