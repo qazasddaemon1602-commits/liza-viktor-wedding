@@ -26,14 +26,21 @@ const initialDraft: RegistrationDraft = {
 
 type RegistrationPageProps = {
   onRegister: (draft: RegistrationDraft) => Promise<RegisteredGuest>;
+  initialGuest?: RegisteredGuest | null;
   revealDelayMs?: number;
 };
 
-export function RegistrationPage({ onRegister, revealDelayMs = 900 }: RegistrationPageProps) {
+export function RegistrationPage({
+  onRegister,
+  initialGuest = null,
+  revealDelayMs = 900,
+}: RegistrationPageProps) {
   const [draft, setDraft] = useState<RegistrationDraft>(initialDraft);
   const [errors, setErrors] = useState<RegistrationErrors>({});
-  const [status, setStatus] = useState<'form' | 'registering' | 'routing' | 'ticket'>('form');
-  const [registeredGuest, setRegisteredGuest] = useState<RegisteredGuest | null>(null);
+  const [status, setStatus] = useState<'form' | 'registering' | 'routing' | 'ticket'>(
+    initialGuest ? 'ticket' : 'form',
+  );
+  const [registeredGuest, setRegisteredGuest] = useState<RegisteredGuest | null>(initialGuest);
   const [submitError, setSubmitError] = useState('');
 
   const update = (field: keyof RegistrationDraft, value: string) => {
