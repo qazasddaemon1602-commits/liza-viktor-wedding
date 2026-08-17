@@ -51,4 +51,18 @@ describe('RegistrationPage', () => {
     expect(await screen.findByText('ВАГОН №3')).toBeInTheDocument();
     expect(screen.getByText('LV-031')).toBeInTheDocument();
   });
+
+  it('opens the existing ticket immediately for a restored guest', () => {
+    render(
+      <RegistrationPage
+        onRegister={vi.fn()}
+        initialGuest={registeredGuest}
+        revealDelayMs={0}
+      />,
+    );
+
+    expect(screen.getByText('Иван Петров')).toBeInTheDocument();
+    expect(screen.getByText('LV-031')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
+  });
 });
