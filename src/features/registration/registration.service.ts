@@ -20,6 +20,10 @@ export type RestoreResult =
   | { status: 'restored'; guest: RegisteredGuest }
   | { status: 'not_found' };
 
+export type RecoveryResult =
+  | { status: 'recovered'; guest: RegisteredGuest }
+  | { status: 'invalid_or_expired' | 'device_already_bound' };
+
 function throwRpcError(error: Exclude<RpcError, null>): never {
   if (error instanceof Error) throw error;
   throw new Error(error.message || 'Registration request failed');
@@ -90,4 +94,31 @@ export async function restoreGuest(
   }
 
   throw new Error('Unexpected restore response');
+}
+
+export async function recoverGuest(
+  client: RegistrationRpcClient,
+  eventSlug: string,
+  deviceKey: string,
+  recoveryCode: string,
+): Promise<RecoveryResult> {
+  const { data, error } = await client.rpc('recover_guest', {
+    p_event_slug: eventSlug,
+    p_recovery_code: recoveryCode,
+    p_device_key: deviceKey,
+  });
+
+  if (error) throwRpcError(error);
+  if (!isRecord(data) || typeof data.status !== 'string') {
+    throw new Error('Unexpected recovery response');
+  }
+
+  if (data.status === 'recovered' && isRecord(data.guest)) {
+    return { status: 'recovered', guest: data.guest as RegisteredGuest };
+  }
+  if (data.status === 'invalid_or_expired' || data.status === 'device_already_bound') {
+    return { status: data.status };
+  }
+
+  throw new Error('Unexpected recovery response');
 }
