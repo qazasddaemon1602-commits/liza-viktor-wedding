@@ -1,0 +1,23 @@
+name: database-tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.111.0
+          github-token: ${{ github.token }}
+      - name: Start local Supabase database
+        run: supabase db start
+      - name: Run pgTAP database tests
+        run: supabase test db
+      - name: Stop local Supabase database
+        if: always()
+        run: supabase stop --no-backup
