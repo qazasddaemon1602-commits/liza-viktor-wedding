@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(16);
 
 select has_table('public', 'events', 'events table exists');
 select has_table('public', 'event_state', 'event_state table exists');
@@ -26,6 +26,14 @@ select ok(
 select ok(
   exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'owner_reassign_guest'),
   'owner-only reassign RPC exists'
+);
+select ok(
+  exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'owner_delete_guest'),
+  'owner-only guest deletion RPC exists'
+);
+select ok(
+  exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'owner_get_dashboard'),
+  'owner-only dashboard bootstrap RPC exists'
 );
 
 select ok(
