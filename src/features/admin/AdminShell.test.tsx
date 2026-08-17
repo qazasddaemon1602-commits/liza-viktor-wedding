@@ -61,6 +61,7 @@ function dependencies(overrides: Partial<AdminShellDependencies> = {}): AdminShe
     deleteGuest: vi.fn().mockResolvedValue(undefined),
     reassignGuest: vi.fn().mockResolvedValue(undefined),
     lockComposition: vi.fn().mockResolvedValue({ registrationOpen: true }),
+    issueGuestRecovery: vi.fn().mockResolvedValue({ code: 'AB12-CD34', expiresAt: '2026-08-30T12:15:00+05:00' }),
     ...overrides,
   };
 }
@@ -114,6 +115,21 @@ describe('AdminShell', () => {
 
     expect(reassignGuest).toHaveBeenCalledWith('g31', 'c4');
     expect(carriageSelect).toHaveValue('c4');
+  });
+
+  it('issues a recovery code from the real owner guest list', async () => {
+    const user = userEvent.setup();
+    const issueGuestRecovery = vi.fn().mockResolvedValue({
+      code: 'AB12-CD34',
+      expiresAt: '2026-08-30T12:15:00+05:00',
+    });
+    render(<AdminShell dependencies={dependencies({ issueGuestRecovery })} />);
+
+    await screen.findByText('Иван Петров');
+    await user.click(screen.getByRole('button', { name: 'ВЫДАТЬ ДОСТУП ЗАНОВО Иван Петров' }));
+
+    expect(issueGuestRecovery).toHaveBeenCalledWith('g31');
+    expect(await screen.findByText('AB12-CD34')).toBeInTheDocument();
   });
 
   it('refreshes the guest list and shows an owner toast after realtime registration', async () => {
