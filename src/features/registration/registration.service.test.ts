@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { registerGuest, restoreGuest } from './registration.service';
+import { recoverGuest, registerGuest, restoreGuest } from './registration.service';
 
 const guestPayload = {
   id: 'guest-31',
@@ -57,6 +57,27 @@ describe('registration service', () => {
     expect(rpc).toHaveBeenCalledWith('restore_guest', {
       p_event_slug: 'liza-viktor',
       p_device_key: 'lvw_device_1',
+    });
+  });
+
+  it('uses an owner-issued code to rebind a new device to the existing guest', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { status: 'recovered', guest: guestPayload }, error: null });
+
+    const result = await recoverGuest({ rpc }, 'liza-viktor', 'lvw_new_device', 'AB12-CD34');
+
+    expect(rpc).toHaveBeenCalledWith('recover_guest', {
+      p_event_slug: 'liza-viktor',
+      p_recovery_code: 'AB12-CD34',
+      p_device_key: 'lvw_new_device',
+    });
+    expect(result).toEqual({ status: 'recovered', guest: guestPayload });
+  });
+
+  it('returns invalid-or-expired instead of creating a duplicate guest', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { status: 'invalid_or_expired' }, error: null });
+
+    expect(await recoverGuest({ rpc }, 'liza-viktor', 'lvw_new_device', 'BAD-CODE')).toEqual({
+      status: 'invalid_or_expired',
     });
   });
 
