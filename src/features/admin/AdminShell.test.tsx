@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminShell, type AdminShellDependencies } from './AdminShell';
@@ -41,6 +41,18 @@ const dashboard: AdminDashboard = {
     },
   ],
   recentActions: [],
+};
+
+const newGuest = {
+  id: 'g32',
+  firstName: 'Анна',
+  lastName: 'Смирнова',
+  affiliationType: 'liza',
+  affiliationDetail: 'подруга Лизы',
+  ticketNumber: 'LV-032',
+  registeredAt: '2026-08-30T12:06:00+05:00',
+  lastSeenAt: '2026-08-30T12:06:00+05:00',
+  carriage: { id: 'c4', number: 4, label: 'ВАГОН №4', accentHex: '#78806A', visualMark: '04' },
 };
 
 function dependencies(overrides: Partial<AdminShellDependencies> = {}): AdminShellDependencies {
@@ -102,5 +114,36 @@ describe('AdminShell', () => {
 
     expect(reassignGuest).toHaveBeenCalledWith('g31', 'c4');
     expect(carriageSelect).toHaveValue('c4');
+  });
+
+  it('refreshes the guest list and shows an owner toast after realtime registration', async () => {
+    let realtimeCallback: ((guestId: string) => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce(structuredClone(dashboard))
+      .mockResolvedValueOnce({ ...structuredClone(dashboard), guests: [...dashboard.guests, newGuest] });
+    const subscribeToRegistrations = vi.fn((callback: (guestId: string) => void) => {
+      realtimeCallback = callback;
+      return vi.fn();
+    });
+
+    render(
+      <AdminShell
+        dependencies={dependencies({
+          load,
+          subscribeToRegistrations,
+        })}
+      />,
+    );
+
+    await screen.findByText('Иван Петров');
+    await act(async () => {
+      realtimeCallback?.('g32');
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByText('Анна Смирнова')).toBeInTheDocument();
+    expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
+    expect(screen.getAllByText('ВАГОН №4').length).toBeGreaterThan(0);
+    expect(screen.getByText('Со стороны Лизы')).toBeInTheDocument();
   });
 });
