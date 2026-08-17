@@ -14,6 +14,7 @@ export type AdminGuest = {
 
 type AdminGuestsPageProps = {
   guests: AdminGuest[];
+  carriages?: CarriageSummary[];
   onDelete: (guestId: string) => Promise<void> | void;
   onReassign: (guestId: string, carriageId: string) => Promise<void> | void;
 };
@@ -38,7 +39,7 @@ function searchableGuest(guest: AdminGuest) {
   ].join(' ').toLocaleLowerCase('ru-RU');
 }
 
-export function AdminGuestsPage({ guests, onDelete }: AdminGuestsPageProps) {
+export function AdminGuestsPage({ guests, carriages, onDelete, onReassign }: AdminGuestsPageProps) {
   const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<AdminGuest | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -98,6 +99,20 @@ export function AdminGuestsPage({ guests, onDelete }: AdminGuestsPageProps) {
               <strong>{guest.carriage.label}</strong>
               <span>{guest.ticketNumber}</span>
               <time dateTime={guest.registeredAt}>{guest.registeredAt}</time>
+              {carriages && carriages.length > 0 && (
+                <label className="admin-carriage-select">
+                  <span className="sr-only">Вагон {guest.firstName} {guest.lastName}</span>
+                  <select
+                    aria-label={`Вагон ${guest.firstName} ${guest.lastName}`}
+                    value={guest.carriage.id}
+                    onChange={(event) => void onReassign(guest.id, event.target.value)}
+                  >
+                    {carriages.map((carriage) => (
+                      <option key={carriage.id} value={carriage.id}>{carriage.label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
 
             <button
