@@ -1,9 +1,6 @@
 name: ci
 
 on:
-  push:
-    branches:
-      - feat/wedding-live-hub-mvp
   pull_request:
     branches:
       - ci/wedding-hub-checks
