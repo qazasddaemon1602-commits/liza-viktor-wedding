@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { AdminPage } from '../features/admin/AdminPage';
 import { GuestJoinPage } from '../features/registration/GuestJoinPage';
 
 export const routePaths = [
@@ -31,7 +32,7 @@ export function AppRoutes() {
       <Route path="/" element={<PlaceholderPage eyebrow="30 · 08 · 2026" title="ЛИЗА × ВИКТОР" description="Второй день. Один состав. Много историй." />} />
       <Route path="/join" element={<GuestJoinPage />} />
       <Route path="/play" element={<PlaceholderPage eyebrow="СЕЙЧАС В ИГРЕ" title="ЛИЗА ИЛИ ВИКТОР?" description="Здесь появится активный вопрос." />} />
-      <Route path="/admin" element={<PlaceholderPage eyebrow="OWNER ONLY" title="ПАНЕЛЬ УПРАВЛЕНИЯ" description="Гости, экраны, викторина, турнир и премьера." />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="/screen" element={<PlaceholderPage eyebrow="ЭКРАН СОБЫТИЯ" title="ЛИЗА × ВИКТОР" description="Презентационный режим без управляющих элементов." />} />
       <Route path="/screen/connect" element={<PlaceholderPage eyebrow="ПОДКЛЮЧЕНИЕ ЭКРАНА" title="PAIRING" description="Безопасное подключение телевизора к событию." />} />
       <Route path="/premiere" element={<PlaceholderPage eyebrow="ПРЕМЬЕРА" title="КОЛЬЦО" description="Видео будет подготовлено до запуска обратного отсчёта." />} />
