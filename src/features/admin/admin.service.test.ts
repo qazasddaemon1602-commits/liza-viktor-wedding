@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   deleteGuest,
+  issueGuestRecovery,
   loadOwnerDashboard,
   lockComposition,
   reassignGuest,
@@ -95,5 +96,24 @@ describe('admin service', () => {
       p_event_id: 'event-1',
     });
     expect(result.registrationOpen).toBe(true);
+  });
+
+  it('issues a short-lived recovery code only through the owner RPC', async () => {
+    const client = clientWith({
+      status: 'issued',
+      guestId: 'g31',
+      code: 'AB12-CD34',
+      expiresAt: '2026-08-30T12:15:00+05:00',
+    });
+
+    const result = await issueGuestRecovery(client, 'g31');
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_issue_guest_recovery', {
+      p_guest_id: 'g31',
+    });
+    expect(result).toEqual({
+      code: 'AB12-CD34',
+      expiresAt: '2026-08-30T12:15:00+05:00',
+    });
   });
 });
