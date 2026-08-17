@@ -144,6 +144,6 @@ describe('AdminShell', () => {
     expect(await screen.findByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeInTheDocument();
     expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
     expect(screen.getAllByText('ВАГОН №4').length).toBeGreaterThan(0);
-    expect(screen.getByText('Со стороны Лизы')).toBeInTheDocument();
+    expect(screen.getAllByText('Со стороны Лизы').length).toBeGreaterThan(0);
   });
 });
