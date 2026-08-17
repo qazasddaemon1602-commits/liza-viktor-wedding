@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { RegistrationPage } from './RegistrationPage';
 import type { RegistrationDraft } from './registrationModel';
 import type { RegisteredGuest } from './registration.types';
-import type { RegistrationResult, RestoreResult } from './registration.service';
+import type { RecoveryResult, RegistrationResult, RestoreResult } from './registration.service';
 
 export type JoinPageDependencies = {
   getDeviceKey: () => string;
   restore: (deviceKey: string) => Promise<RestoreResult>;
   register: (draft: RegistrationDraft, confirmDuplicate?: boolean) => Promise<RegistrationResult>;
+  recover: (deviceKey: string, recoveryCode: string) => Promise<RecoveryResult>;
 };
 
 type JoinPageProps = {
@@ -18,6 +19,10 @@ type JoinPageProps = {
 export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   const [guest, setGuest] = useState<RegisteredGuest | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [recoveryError, setRecoveryError] = useState('');
+  const [recovering, setRecovering] = useState(false);
 
   const restore = useCallback(async () => {
     setState('loading');
@@ -45,6 +50,34 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
     return result.guest;
   };
 
+  const recover = async () => {
+    const normalizedCode = recoveryCode.trim().toUpperCase();
+    if (!normalizedCode) {
+      setRecoveryError('Введите код восстановления.');
+      return;
+    }
+
+    setRecovering(true);
+    setRecoveryError('');
+    try {
+      const result = await dependencies.recover(dependencies.getDeviceKey(), normalizedCode);
+      if (result.status === 'recovered') {
+        setGuest(result.guest);
+        setRecoveryOpen(false);
+        return;
+      }
+      if (result.status === 'device_already_bound') {
+        setRecoveryError('Этот телефон уже привязан к другому билету. Обратитесь к организатору.');
+        return;
+      }
+      setRecoveryError('Код недействителен или уже истёк. Попросите организатора выдать новый.');
+    } catch {
+      setRecoveryError('Не удалось проверить код. Проверьте интернет и попробуйте снова.');
+    } finally {
+      setRecovering(false);
+    }
+  };
+
   if (state === 'loading') {
     return (
       <main className="registration-shell">
@@ -70,11 +103,53 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
     );
   }
 
+  if (recoveryOpen && !guest) {
+    return (
+      <main className="registration-shell">
+        <section className="registration-card">
+          <header className="registration-heading">
+            <p className="eyebrow">ВОССТАНОВЛЕНИЕ БИЛЕТА</p>
+            <h1>БИЛЕТ УЖЕ БЫЛ?</h1>
+            <p>Попросите организатора выдать одноразовый код и введите его здесь.</p>
+          </header>
+          <div className="registration-form">
+            <label>
+              <span>Код восстановления</span>
+              <input
+                autoCapitalize="characters"
+                autoComplete="one-time-code"
+                value={recoveryCode}
+                onChange={(event) => { setRecoveryCode(event.target.value); setRecoveryError(''); }}
+                placeholder="AB12-CD34"
+              />
+            </label>
+            {recoveryError && <p className="registration-error" role="alert">{recoveryError}</p>}
+            <button className="registration-submit" type="button" disabled={recovering} onClick={() => void recover()}>
+              {recovering ? 'ПРОВЕРЯЕМ…' : 'ВОССТАНОВИТЬ БИЛЕТ'}
+            </button>
+            <button className="registration-secondary" type="button" onClick={() => { setRecoveryOpen(false); setRecoveryError(''); }}>
+              ВЕРНУТЬСЯ К РЕГИСТРАЦИИ
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <RegistrationPage
-      onRegister={register}
-      initialGuest={guest}
-      revealDelayMs={revealDelayMs}
-    />
+    <>
+      <RegistrationPage
+        onRegister={register}
+        initialGuest={guest}
+        revealDelayMs={revealDelayMs}
+      />
+      {!guest && (
+        <div className="registration-recovery-entry">
+          <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>
+            У МЕНЯ УЖЕ БЫЛ БИЛЕТ
+          </button>
+        </div>
+      )}
+    </>
   );
 }
