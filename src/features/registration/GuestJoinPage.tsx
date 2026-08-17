@@ -3,6 +3,7 @@ import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { JoinPage, type JoinPageDependencies } from './JoinPage';
 import {
+  recoverGuest,
   registerGuest,
   restoreGuest,
   type RegistrationRpcClient,
@@ -50,6 +51,12 @@ export function GuestJoinPage({
         getDeviceKey(),
         draft,
         confirmDuplicate,
+      ),
+      recover: (key, recoveryCode) => recoverGuest(
+        registrationClient,
+        eventSlug,
+        key,
+        recoveryCode,
       ),
     };
   }, [client, deviceKey, eventSlug]);
