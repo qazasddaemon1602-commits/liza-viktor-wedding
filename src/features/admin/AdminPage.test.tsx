@@ -51,6 +51,7 @@ function dependencies(overrides: Partial<AdminPageDependencies> = {}): AdminPage
     deleteGuest: vi.fn().mockResolvedValue(undefined),
     reassignGuest: vi.fn().mockResolvedValue(undefined),
     lockComposition: vi.fn().mockResolvedValue({ registrationOpen: true }),
+    issueGuestRecovery: vi.fn().mockResolvedValue({ code: 'AB12-CD34', expiresAt: '2026-08-30T12:15:00+05:00' }),
     subscribeToRegistrations: vi.fn(() => vi.fn()),
     ...overrides,
   };
@@ -128,5 +129,29 @@ describe('AdminPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeInTheDocument();
     expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
+  });
+
+  it('passes the protected recovery-code action through to the owner shell', async () => {
+    const user = userEvent.setup();
+    const issueGuestRecovery = vi.fn().mockResolvedValue({
+      code: 'AB12-CD34',
+      expiresAt: '2026-08-30T12:15:00+05:00',
+    });
+
+    render(
+      <AdminPage
+        dependencies={dependencies({
+          getSession: vi.fn().mockResolvedValue({ userId: 'owner-1' }),
+          loadDashboard: vi.fn().mockResolvedValue(dashboardWithGuest),
+          issueGuestRecovery,
+        })}
+      />,
+    );
+
+    await screen.findByText('Анна Смирнова');
+    await user.click(screen.getByRole('button', { name: 'ВЫДАТЬ ДОСТУП ЗАНОВО Анна Смирнова' }));
+
+    expect(issueGuestRecovery).toHaveBeenCalledWith('g32');
+    expect(await screen.findByText('AB12-CD34')).toBeInTheDocument();
   });
 });
