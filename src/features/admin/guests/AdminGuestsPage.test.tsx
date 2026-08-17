@@ -49,7 +49,7 @@ describe('AdminGuestsPage', () => {
     render(<AdminGuestsPage guests={guests} onDelete={onDelete} onReassign={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: 'УДАЛИТЬ Иван Петров' }));
-    expect(screen.getByText(/удалить регистрацию ивана петрова/i)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toHaveTextContent('Удалить регистрацию Иван Петров?');
     expect(onDelete).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'ДА, УДАЛИТЬ' }));
