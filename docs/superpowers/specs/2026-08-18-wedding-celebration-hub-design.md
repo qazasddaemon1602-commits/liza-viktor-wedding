@@ -154,32 +154,88 @@ The site should support both digital reveal and the physical-card version where 
 
 ## 9. Module 3 — Video premiere
 
-The user's wedding track video will be uploaded later and used as a deliberate premiere moment rather than ordinary embedded media.
+The supplied wedding-track video `КОЛЬЦО.mp4` is the initial premiere asset. Inspected source properties:
+
+- duration: 10:23 (623 seconds)
+- resolution: 1920×1080
+- frame rate: 30 fps
+- video codec: H.264
+- audio codec: AAC
+- source size: approximately 263 MB
+
+The video is used as a deliberate premiere moment rather than ordinary embedded media.
+
+### Premiere sequence
+
+The normal premiere sequence is host-controlled:
+
+1. Host opens/arms Premiere mode.
+2. Projector switches to a clean black cinematic state and preloads/buffers the video.
+3. Projector audio/fullscreen capability must already be armed by a one-time local interaction before the public moment, so browser autoplay restrictions cannot ruin the start.
+4. Host presses `НАЧАТЬ ПРЕМЬЕРУ`.
+5. A synchronized 10-second countdown starts on the projector: `10 → 9 → 8 → ... → 1`.
+6. At the end of `1`, the countdown disappears and `КОЛЬЦО` starts immediately with no extra title card or dead pause.
+7. After the video ends, projector moves to a configurable dark final state and stays there until the host chooses what comes next.
+
+Do not render `0`; playback begins directly after `1`.
+
+### Countdown visual treatment
+
+The countdown should feel cinematic and appropriate to the premium dark visual language rather than like a sports timer or game-show graphic.
+
+Recommended initial treatment:
+
+- nearly black background
+- very large centered number
+- warm ivory/soft white typography
+- subtle scale/fade pulse on each second
+- restrained thin progress ring or line is allowed
+- optional small caption `ПРЕМЬЕРА ЧЕРЕЗ`
+- final three seconds may gain slightly more visual/audio tension, but no aggressive flashing
+- no confetti, hearts, neon arcade styling, alarm sound, or cheesy countdown effects
+
+Countdown sound should be configurable. Default MVP may use a restrained low pulse/tick, with a mute option. The wedding video audio begins cleanly at playback start.
+
+### Synchronization model
+
+Do not send ten separate realtime commands. The host writes a future `premiere_start_at` timestamp approximately 10 seconds ahead. The projector receives that timestamp through realtime state and renders the remaining countdown from the authoritative start time. At `premiere_start_at`, the preloaded media starts.
+
+This avoids visible drift from network latency and makes projector refresh/reconnect behavior recoverable.
 
 ### Host controls
 
 - choose/load premiere video
-- arm premiere mode
-- start playback
+- run preflight check
+- arm projector/audio
+- enter black standby state
+- `НАЧАТЬ ПРЕМЬЕРУ` with 10-second countdown
+- cancel countdown before playback if something goes wrong
 - pause/resume
 - restart
 - seek if necessary
 - enter/exit fullscreen presentation state
-- optionally black out projector before start
+- return projector to hub only by explicit host action
+
+The host screen should visibly report `Видео готово`, `Звук разрешён`, and projector connection status before enabling the main premiere button.
 
 ### Projector experience
 
-Before playback:
+Before countdown:
 
 - black/dark cinematic screen
-- optional title such as `ПРЕМЬЕРА`
-- no visible browser chrome or admin controls
+- optional minimal `ПРЕМЬЕРА` standby title
+- no browser chrome or admin controls
 
-On host start:
+During countdown:
 
-- video begins fullscreen
+- only the cinematic countdown layer
+- video remains preloaded underneath, not visibly playing
+
+At start:
+
+- video begins fullscreen immediately after `1`
 - audio plays through the connected room system/device
-- controls remain hidden on `/screen`/`/premiere`
+- playback controls remain hidden on `/screen`/`/premiere`
 
 After playback:
 
@@ -188,9 +244,11 @@ After playback:
 
 ### Media handling
 
-The actual video file is not committed to GitHub. Store it in Supabase Storage or another deploy-safe media store. Admin should be able to replace the file without code changes later.
+The actual 263 MB source video must not be committed to GitHub. Store it in Supabase Storage or another deploy-safe media/CDN location. Admin should be able to replace the file without code changes later.
 
-The video module must be independent from the quiz so it can be triggered at any point during the event.
+Before the event, verify real streaming behavior from the venue connection. If needed, create an optimized web delivery copy while keeping the supplied source file as the master.
+
+The video module is independent from the quiz and tournament so it can be triggered at any point during the event.
 
 ## 10. Module 4 — Mortal Kombat tournament
 
@@ -314,8 +372,11 @@ Admin sections:
 ### Premiere
 
 - set video source
-- test video
-- arm
+- test/preflight video
+- confirm projector/audio armed
+- black standby
+- launch 10-second countdown
+- cancel countdown
 - start/pause/restart
 - fullscreen screen state
 
@@ -340,6 +401,8 @@ Suggested tables/entities:
 - current_question_id
 - reveal_state
 - screen_state
+- premiere_state
+- premiere_start_at
 - updated_at
 
 ### `guests`
@@ -390,6 +453,7 @@ Unique constraint: one answer per role per question.
 - type (`premiere_video`)
 - storage_path
 - title
+- duration_seconds
 - enabled
 
 ### `tournament_players`
@@ -416,7 +480,8 @@ Unique constraint: one answer per role per question.
 - Votes update participation counts in realtime.
 - Couple answers send only answer-status information to host until reveal.
 - Tournament result updates propagate immediately to bracket views.
-- Premiere commands synchronize the presentation state; exact media playback remains controlled by the projector client receiving the host command.
+- Premiere start uses one authoritative future `premiere_start_at` timestamp; projector derives the visible 10-second countdown and playback boundary from that timestamp.
+- Exact media playback remains owned by the projector client after it has been preflighted/armed.
 
 ## 14. Security and access
 
@@ -461,7 +526,9 @@ Text must be readable from across the room. Projector routes prioritize one idea
 - If realtime connection drops, show a non-blocking reconnect state and resubscribe automatically.
 - Prevent duplicate guest votes at database level.
 - Tournament winner updates must be reversible from admin.
-- If premiere video fails to load, host gets a clear preflight error before public playback.
+- If premiere video fails to load or buffer, host gets a clear preflight error before public countdown can start.
+- Premiere cannot enter the public countdown unless projector/audio has been armed successfully.
+- Host can cancel countdown before playback begins.
 - Liza/Viktor answer submission should confirm locally after persistence succeeds.
 - Projector refresh must restore current event state from database.
 
@@ -477,6 +544,9 @@ Minimum automated coverage:
 - winner advancement maps to correct next-round slot
 - undo result restores bracket safely
 - projector state survives refresh
+- premiere preflight/armed state works
+- one future premiere timestamp yields the expected `10...1 → playback` transition
+- countdown cancellation prevents playback
 - premiere command/state transitions work
 
 Manual event QA:
@@ -486,7 +556,8 @@ Manual event QA:
 - test host + projector on separate devices
 - test ~40 concurrent simulated/real guest sessions
 - test projector at 16:9
-- test video with real venue audio path before the event
+- test `КОЛЬЦО` end-to-end with real venue internet and audio path before the event
+- test that browser autoplay restrictions cannot block the armed premiere flow
 
 ## 18. MVP scope
 
@@ -501,7 +572,7 @@ MVP must include:
 - projector screen
 - QR links
 - realtime persistence
-- video premiere module
+- video premiere module with preflight and cinematic 10-second countdown
 - 16-player Mortal Kombat bracket and host result entry
 
 Out of scope for first MVP:
@@ -539,7 +610,7 @@ The first implementation is successful when:
 4. Liza and Viktor can answer privately from separate QR routes.
 5. Hidden answers are not exposed before reveal.
 6. Final-five reveal works cleanly on projector.
-7. Host can trigger the wedding-track video premiere at any chosen moment.
+7. Host can preflight and trigger `КОЛЬЦО` with a synchronized cinematic 10-second countdown and immediate playback after `1`.
 8. A 16-person Mortal Kombat bracket can be created, progressed, corrected, and completed to a champion.
 9. Projector state survives refresh/reconnect.
 10. The architecture can accept more contest modules later without replacing the core app structure.
