@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { RegisteredGuest } from './registration.types';
 
 type VirtualTicketProps = {
@@ -5,15 +6,21 @@ type VirtualTicketProps = {
 };
 
 export function VirtualTicket({ guest }: VirtualTicketProps) {
+  const ticketStyle = {
+    '--carriage-accent': guest.carriage.accentHex,
+    '--ticket-accent': guest.carriage.accentHex,
+  } as CSSProperties;
+
   return (
     <article
       className="virtual-ticket"
-      style={{ '--ticket-accent': guest.carriage.accentHex } as React.CSSProperties}
+      data-testid="virtual-ticket"
+      style={ticketStyle}
       aria-label={`Билет ${guest.firstName} ${guest.lastName}, ${guest.carriage.label}`}
     >
       <div className="virtual-ticket__topline">
         <span>ЛИЗА × ВИКТОР</span>
-        <span>30 · 08 · 2026</span>
+        <span>30.08.2026</span>
       </div>
       <div className="virtual-ticket__route" aria-hidden="true">
         <span>TYUMEN</span>
