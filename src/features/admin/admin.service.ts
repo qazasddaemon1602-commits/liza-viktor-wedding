@@ -118,3 +118,26 @@ export async function lockComposition(
   }
   return { registrationOpen: data.registrationOpen };
 }
+
+export async function issueGuestRecovery(
+  client: AdminRpcClient,
+  guestId: string,
+): Promise<{ code: string; expiresAt: string }> {
+  const { data, error } = await client.rpc('owner_issue_guest_recovery', {
+    p_guest_id: guestId,
+  });
+  if (error) throwRpcError(error);
+  if (
+    !isRecord(data)
+    || data.status !== 'issued'
+    || typeof data.code !== 'string'
+    || typeof data.expiresAt !== 'string'
+  ) {
+    throw new Error('Unexpected recovery-code response');
+  }
+
+  return {
+    code: data.code,
+    expiresAt: data.expiresAt,
+  };
+}
