@@ -126,7 +126,7 @@ describe('AdminPage', () => {
       await Promise.resolve();
     });
 
-    expect(await screen.findByText('Анна Смирнова')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeInTheDocument();
     expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
   });
 });
