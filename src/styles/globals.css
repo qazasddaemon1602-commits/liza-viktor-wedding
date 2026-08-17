@@ -1,0 +1,125 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #27332b;
+  background: #efe7d8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ivory: #f3ecdf;
+  --paper: #e8ddca;
+  --forest: #31483a;
+  --cinnamon: #9a6348;
+  --wine: #7e3f3c;
+  --sage: #78806a;
+  --sand: #b49b7e;
+  --ink: #27332b;
+  --night: #101210;
+  --line: rgba(49, 72, 58, 0.18);
+  --carriage-1: #31483a;
+  --carriage-2: #9a6348;
+  --carriage-3: #7e3f3c;
+  --carriage-4: #78806a;
+  --carriage-5: #b49b7e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 78% 14%, rgba(154, 99, 72, 0.15), transparent 30rem),
+    radial-gradient(circle at 8% 86%, rgba(49, 72, 58, 0.12), transparent 34rem),
+    var(--ivory);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.page-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.25rem, 4vw, 4rem);
+}
+
+.placeholder-card {
+  width: min(100%, 62rem);
+  min-height: min(72vh, 44rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: clamp(2rem, 7vw, 5.5rem);
+  border: 1px solid var(--line);
+  background: rgba(243, 236, 223, 0.72);
+  box-shadow: 0 2rem 6rem rgba(39, 51, 43, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.placeholder-card::before {
+  content: "";
+  width: 4.5rem;
+  height: 1px;
+  margin-bottom: auto;
+  background: var(--cinnamon);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--cinnamon);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+h1 {
+  max-width: 12ch;
+  color: var(--forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3rem, 10vw, 7rem);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+}
+
+.placeholder-card > p:last-child {
+  max-width: 36rem;
+  color: rgba(39, 51, 43, 0.72);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
