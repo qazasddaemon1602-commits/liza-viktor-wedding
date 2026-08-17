@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(14);
 
 select has_table('public', 'events', 'events table exists');
 select has_table('public', 'event_state', 'event_state table exists');
@@ -26,6 +26,30 @@ select ok(
 select ok(
   exists(select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'owner_reassign_guest'),
   'owner-only reassign RPC exists'
+);
+
+select ok(
+  exists(
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'register_guest'
+      and pg_get_function_arguments(p.oid) like 'p_event_slug text, p_device_key text, p_first_name text, p_last_name text, p_affiliation_type text, p_affiliation_detail text, p_confirm_duplicate boolean%'
+  ),
+  'register_guest uses public slug contract with duplicate confirmation'
+);
+
+select ok(
+  exists(
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'restore_guest'
+      and pg_get_function_arguments(p.oid) like 'p_event_slug text, p_device_key text%'
+  ),
+  'restore_guest uses public slug contract'
 );
 
 select * from finish();
