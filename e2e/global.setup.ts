@@ -2,6 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 
 const OWNER_EMAIL = 'owner@wedding.test';
 const OWNER_PASSWORD = 'WeddingTest!2026';
+const EVENT_SLUG = 'liza-viktor';
+
+function rpcCode(error: unknown): string {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return '';
+  return String((error as { code?: unknown }).code ?? '');
+}
 
 export default async function globalSetup() {
   const url = process.env.VITE_SUPABASE_URL;
@@ -36,9 +42,6 @@ export default async function globalSetup() {
     if (error) throw error;
   }
 
-  const { error: deleteError } = await admin.from('events').delete().eq('slug', 'liza-viktor');
-  if (deleteError) throw deleteError;
-
   const ownerClient = createClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -49,10 +52,35 @@ export default async function globalSetup() {
   if (signInError) throw signInError;
 
   const { error: createEventError } = await ownerClient.rpc('owner_create_event', {
-    p_slug: 'liza-viktor',
+    p_slug: EVENT_SLUG,
     p_name: 'Лиза × Виктор',
   });
-  if (createEventError) throw createEventError;
+
+  if (createEventError) {
+    if (rpcCode(createEventError) !== '23505') throw createEventError;
+
+    const { data: dashboard, error: dashboardError } = await ownerClient.rpc('owner_get_dashboard', {
+      p_event_slug: EVENT_SLUG,
+    });
+    if (dashboardError) throw dashboardError;
+
+    const eventId = typeof dashboard === 'object'
+      && dashboard !== null
+      && 'event' in dashboard
+      && typeof dashboard.event === 'object'
+      && dashboard.event !== null
+      && 'id' in dashboard.event
+      ? String(dashboard.event.id)
+      : '';
+
+    if (!eventId) throw new Error('Existing E2E event id is missing');
+
+    const { error: resetError } = await ownerClient.rpc('owner_reset_event_test_data', {
+      p_event_id: eventId,
+      p_confirmation: 'СБРОСИТЬ',
+    });
+    if (resetError) throw resetError;
+  }
 
   await ownerClient.auth.signOut();
 }
