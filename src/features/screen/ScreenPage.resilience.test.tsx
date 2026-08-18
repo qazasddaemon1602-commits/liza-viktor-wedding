@@ -92,4 +92,49 @@ describe('ScreenPage temporary network resilience', () => {
     expect(loadPremiere.mock.calls.length).toBeGreaterThan(initialPremiereCalls);
     expect(screen.queryByText('СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ')).not.toBeInTheDocument();
   });
+
+  it('does not hide reconnect warning when another source is still failed', async () => {
+    let resolveQuiz: ((value: QuizScreenState) => void) | undefined;
+    let refreshPremiere: (() => void) | undefined;
+    const loadQuiz = vi.fn()
+      .mockImplementationOnce(() => new Promise<QuizScreenState>((resolve) => {
+        resolveQuiz = resolve;
+      }))
+      .mockResolvedValue(results);
+    const loadPremiere = vi.fn()
+      .mockRejectedValueOnce(new Error('premiere connection lost'))
+      .mockResolvedValue(idlePremiere);
+    const dependencies: ScreenPageDependencies = {
+      subscribe: () => vi.fn(),
+      loadQuiz,
+      loadPremiere,
+      subscribeToQuizRefresh: () => vi.fn(),
+      subscribeToPremiereRefresh: (callback) => {
+        refreshPremiere = callback;
+        return vi.fn();
+      },
+    };
+
+    render(<ScreenPage joinUrl="https://wedding.example/join" dependencies={dependencies} />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText('СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveQuiz?.(results);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText('СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ')).toBeInTheDocument();
+
+    await act(async () => {
+      refreshPremiere?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.queryByText('СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ')).not.toBeInTheDocument();
+  });
 });
