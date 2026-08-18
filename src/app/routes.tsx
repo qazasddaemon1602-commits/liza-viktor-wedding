@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
 import { MortalKombatPage } from '../features/mortalKombat/MortalKombatPage';
+import { MkScreenPage } from '../features/mortalKombat/MkScreenPage';
 import { CouplePreanswersPage } from '../features/quiz/CouplePreanswersPage';
 import { FinalFiveRolePage } from '../features/quiz/FinalFiveRolePage';
 import { GuestQuizPage } from '../features/quiz/GuestQuizPage';
@@ -52,7 +53,7 @@ export function AppRoutes() {
       <Route path="/screen/connect" element={<PlaceholderPage eyebrow="ПОДКЛЮЧЕНИЕ ЭКРАНА" title="PAIRING" description="Безопасное подключение телевизора к событию." />} />
       <Route path="/premiere" element={<PlaceholderPage eyebrow="ПРЕМЬЕРА" title="КОЛЬЦО" description="Видео будет подготовлено до запуска обратного отсчёта." />} />
       <Route path="/mortal-kombat" element={<MortalKombatPage eventSlug="liza-viktor" />} />
-      <Route path="/mortal-kombat/screen" element={<PlaceholderPage eyebrow="ТУРНИР" title="MORTAL KOMBAT" description="Большой экран турнирной сетки." />} />
+      <Route path="/mortal-kombat/screen" element={<MkScreenPage eventSlug="liza-viktor" />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
