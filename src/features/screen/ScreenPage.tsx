@@ -203,7 +203,20 @@ export function ScreenPage({
   const currentPremiereMediaUrl = premiereMediaUrl(premiereState);
   presentationProtectedRef.current = presentationProtected;
 
-  useEffect(() => subscribeToBunkerPresentationProtection(setBunkerProtected), []);
+  useEffect(() => subscribeToBunkerPresentationProtection((active) => {
+    setBunkerProtected(active);
+    if (active) {
+      setQueue([]);
+      setActiveEvent(null);
+      setQuizState(null);
+      setCoupleAnswer({ status: 'hidden' });
+      setFinalFive({ status: 'hidden' });
+      setPremiereState(null);
+      setMkState(null);
+      return;
+    }
+    setReconnectEpoch((current) => current + 1);
+  }), []);
 
   useEffect(() => {
     const handleOffline = () => setConnectionDegraded(true);
@@ -434,7 +447,7 @@ export function ScreenPage({
 
   return (
     <div className={`screen-page${premiereProtected ? ' screen-page--premiere' : ''}${mortalKombatProtected ? ' screen-page--mk' : ''}`}>
-      {premiereProtected && premiereState ? (
+      {bunkerProtected ? null : premiereProtected && premiereState ? (
         <PremiereScreen
           state={premiereState}
           nowMs={premiereNowMs}
