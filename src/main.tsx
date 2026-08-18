@@ -6,6 +6,7 @@ import './styles/train-arrival.css';
 import './styles/screen-announcements.css';
 import './styles/screen-controls.css';
 import './styles/quiz.css';
+import './styles/premiere.css';
 
 const root = document.getElementById('root');
 
