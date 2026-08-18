@@ -179,7 +179,11 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
       />
       {guest && (
         <nav className="guest-event-actions" aria-label="Активности события">
-          <a className="guest-event-action guest-event-action--mk" href="/mortal-kombat">
+          <a
+            className="guest-event-action guest-event-action--mk"
+            href="/mortal-kombat"
+            aria-label="MORTAL KOMBAT · УЧАСТВОВАТЬ"
+          >
             <span>MORTAL KOMBAT</span>
             <strong>УЧАСТВОВАТЬ</strong>
           </a>
