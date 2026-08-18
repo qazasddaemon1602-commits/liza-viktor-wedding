@@ -11,6 +11,25 @@ import {
   type OwnerCarriageCall,
 } from '../carriages/carriageCalls.service';
 import {
+  broadcastPremiereRefresh,
+  type PremiereRealtimeClient,
+} from '../premiere/premiere.realtime';
+import {
+  cancelPremiere,
+  getOwnerPremiereControl,
+  pausePremiere,
+  restartPremiere,
+  resumePremiere,
+  returnMainScreen,
+  seekPremiere,
+  setPremiereBlack,
+  setPremiereCountdownSound,
+  setPremiereMedia,
+  setPremiereStandby,
+  startPremiere,
+  type PremiereRpcClient,
+} from '../premiere/premiere.service';
+import {
   activateOwnerQuizQuestion,
   getOwnerQuizControl,
   revealOwnerQuizResults,
@@ -53,6 +72,7 @@ import {
   type AdminRealtimeClient,
 } from './admin.realtime';
 import { AdminShell } from './AdminShell';
+import type { AdminPremiereControlDependencies } from './premiere/AdminPremiereControl';
 import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCouplePreanswersPanel';
 import type { AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import type { AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
@@ -78,6 +98,7 @@ export type AdminPageDependencies = {
   ) => Promise<OwnerCarriageCall>;
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
   couplePreanswers?: AdminCouplePreanswersPanelDependencies;
+  premiere?: AdminPremiereControlDependencies;
   quiz?: AdminQuizPanelDependencies;
   finalFive?: AdminFinalFivePanelDependencies;
 };
@@ -103,6 +124,8 @@ export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
+  const premiereRpcClient = client as unknown as PremiereRpcClient;
+  const premiereRealtimeClient = client as unknown as PremiereRealtimeClient;
   const quizRpcClient = client as unknown as AdminQuizRpcClient;
   const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
   const coupleRpcClient = client as unknown as OwnerCouplePreanswerRpcClient;
@@ -166,6 +189,38 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       load: (eventId) => getOwnerCouplePreanswerStatus(coupleRpcClient, eventId),
       issue: (eventId) => issueOwnerCouplePreanswerAccess(coupleRpcClient, eventId),
       buildAccessUrl: buildCoupleAccessUrl,
+    },
+    premiere: {
+      load: (eventId) => getOwnerPremiereControl(premiereRpcClient, eventId),
+      setMedia: (eventId, mediaUrl, durationSeconds) => setPremiereMedia(
+        premiereRpcClient,
+        eventId,
+        mediaUrl,
+        durationSeconds,
+      ),
+      standby: (eventId) => setPremiereStandby(premiereRpcClient, eventId),
+      start: (eventId, countdownSeconds) => startPremiere(
+        premiereRpcClient,
+        eventId,
+        countdownSeconds,
+      ),
+      cancel: (eventId) => cancelPremiere(premiereRpcClient, eventId),
+      pause: (eventId) => pausePremiere(premiereRpcClient, eventId),
+      resume: (eventId) => resumePremiere(premiereRpcClient, eventId),
+      seek: (eventId, positionSeconds) => seekPremiere(
+        premiereRpcClient,
+        eventId,
+        positionSeconds,
+      ),
+      restart: (eventId) => restartPremiere(premiereRpcClient, eventId),
+      black: (eventId) => setPremiereBlack(premiereRpcClient, eventId),
+      returnMain: (eventId) => returnMainScreen(premiereRpcClient, eventId),
+      setCountdownSound: (eventId, enabled) => setPremiereCountdownSound(
+        premiereRpcClient,
+        eventId,
+        enabled,
+      ),
+      broadcastRefresh: () => broadcastPremiereRefresh(premiereRealtimeClient, EVENT_SLUG),
     },
     quiz: {
       load: (eventId) => getOwnerQuizControl(quizRpcClient, eventId),
@@ -348,6 +403,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         sendCarriageCall: deps.sendCarriageCall,
         clearCarriageCall: deps.clearCarriageCall,
         couplePreanswers: deps.couplePreanswers,
+        premiere: deps.premiere,
         quiz: deps.quiz,
         finalFive: deps.finalFive,
       }}
