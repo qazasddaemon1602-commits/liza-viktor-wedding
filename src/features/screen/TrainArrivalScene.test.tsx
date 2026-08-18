@@ -26,7 +26,7 @@ describe('TrainArrivalScene', () => {
 
     expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
-    expect(screen.getByText('ВАГОН №4')).toBeInTheDocument();
+    expect(screen.getAllByText('ВАГОН №4')).toHaveLength(2);
     expect(screen.getByTestId('train-arrival-scene')).toHaveStyle({ '--arrival-accent': '#78806A' });
     expect(onSignal).toHaveBeenCalledTimes(1);
   });
