@@ -45,6 +45,7 @@ function dependencies(overrides: Partial<AdminMkControlDependencies> = {}): Admi
     finalize: vi.fn().mockResolvedValue(undefined),
     setCurrent: vi.fn().mockResolvedValue(undefined),
     showBracket: vi.fn().mockResolvedValue(undefined),
+    setMainScreen: vi.fn().mockResolvedValue(undefined),
     recordWinner: vi.fn().mockResolvedValue({ status: 'recorded', matchId: 'm1', affectedMatches: [] }),
     undo: vi.fn().mockResolvedValue({ status: 'undone', matchId: 'm1', affectedMatches: [] }),
     broadcastRefresh: vi.fn().mockResolvedValue(undefined),
@@ -62,17 +63,18 @@ describe('AdminMkControl', () => {
     expect(screen.getByText('16 / 16')).toBeInTheDocument();
   });
 
-  it('randomizes the draw and can atomically start the 16-player bracket', async () => {
+  it('randomizes the draw and starts the bracket on the shared projector', async () => {
     const user = userEvent.setup();
     const randomize = vi.fn().mockResolvedValue(undefined);
     const finalize = vi.fn().mockResolvedValue(undefined);
+    const setMainScreen = vi.fn().mockResolvedValue(undefined);
     const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
     const load = vi.fn().mockResolvedValue(ready);
 
     render(
       <AdminMkControl
         eventId="event-1"
-        dependencies={dependencies({ randomize, finalize, broadcastRefresh, load })}
+        dependencies={dependencies({ randomize, finalize, setMainScreen, broadcastRefresh, load })}
       />,
     );
 
@@ -83,6 +85,7 @@ describe('AdminMkControl', () => {
 
     await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР' }));
     expect(finalize).toHaveBeenCalledWith('event-1');
+    expect(setMainScreen).toHaveBeenCalledWith('event-1', true);
     expect(broadcastRefresh).toHaveBeenCalledTimes(2);
   });
 
@@ -131,7 +134,7 @@ describe('AdminMkControl', () => {
     expect(await screen.findByText('16 / 16')).toBeInTheDocument();
   });
 
-  it('can switch the live projector from a fight back to the full bracket', async () => {
+  it('switches the live projector to the full bracket and can return it to the main wedding screen', async () => {
     const user = userEvent.setup();
     const activeState: MkOwnerControl = {
       ...ready,
@@ -139,16 +142,21 @@ describe('AdminMkControl', () => {
       waitlistCount: 0,
     };
     const showBracket = vi.fn().mockResolvedValue(undefined);
+    const setMainScreen = vi.fn().mockResolvedValue(undefined);
     const load = vi.fn().mockResolvedValue(activeState);
 
     render(
       <AdminMkControl
         eventId="event-1"
-        dependencies={dependencies({ load, showBracket })}
+        dependencies={dependencies({ load, showBracket, setMainScreen })}
       />,
     );
 
     await user.click(await screen.findByRole('button', { name: 'ВЫВЕСТИ СЕТКУ НА ЭКРАНЫ' }));
     expect(showBracket).toHaveBeenCalledWith('event-1');
+    expect(setMainScreen).toHaveBeenCalledWith('event-1', true);
+
+    await user.click(screen.getByRole('button', { name: 'ВЕРНУТЬ ГЛАВНЫЙ ЭКРАН' }));
+    expect(setMainScreen).toHaveBeenLastCalledWith('event-1', false);
   });
 });
