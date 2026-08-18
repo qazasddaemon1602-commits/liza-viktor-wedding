@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(20);
+select plan(23);
 
 select has_table('public', 'couple_preanswer_access', 'one-time couple access table exists');
 select has_table('public', 'couple_preanswers', 'joint couple preanswers table exists');
@@ -24,6 +24,10 @@ select ok(
   'owner can issue one joint preanswer access token through RPC'
 );
 select ok(
+  exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='owner_get_couple_preanswer_status'),
+  'owner can read only completion status through RPC'
+);
+select ok(
   exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='get_couple_preanswer_form'),
   'token holder can load the joint preanswer form through RPC'
 );
@@ -38,6 +42,8 @@ select ok(
 
 select ok(not has_function_privilege('anon', 'public.owner_issue_couple_preanswer_access(uuid)', 'EXECUTE'), 'anonymous clients cannot issue couple access tokens');
 select ok(has_function_privilege('authenticated', 'public.owner_issue_couple_preanswer_access(uuid)', 'EXECUTE'), 'authenticated owner session can issue couple access token');
+select ok(not has_function_privilege('anon', 'public.owner_get_couple_preanswer_status(uuid)', 'EXECUTE'), 'anonymous clients cannot read couple completion status');
+select ok(has_function_privilege('authenticated', 'public.owner_get_couple_preanswer_status(uuid)', 'EXECUTE'), 'authenticated owner session can read couple completion status');
 select ok(has_function_privilege('anon', 'public.get_couple_preanswer_form(text,text)', 'EXECUTE'), 'public one-time token can load preanswer form');
 select ok(has_function_privilege('anon', 'public.finalize_couple_preanswers(text,text)', 'EXECUTE'), 'public one-time token can finalize preanswers');
 
