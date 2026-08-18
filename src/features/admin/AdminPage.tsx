@@ -166,7 +166,14 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     reassignGuest: (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
     lockComposition: (eventId) => lockCompositionRpc(client, eventId),
     issueGuestRecovery: (guestId) => issueGuestRecoveryRpc(client, guestId),
-    resetEventTestData: (eventId, confirmation) => resetEventTestDataRpc(client, eventId, confirmation),
+    resetEventTestData: async (eventId, confirmation) => {
+      const result = await resetEventTestDataRpc(client, eventId, confirmation);
+      await Promise.all([
+        broadcastPremiereRefresh(premiereRealtimeClient, EVENT_SLUG),
+        broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
+      ]);
+      return result;
+    },
     subscribeToRegistrations: (callback) => {
       if (!currentEventId) return () => undefined;
       return subscribeToGuestRegistrations(
