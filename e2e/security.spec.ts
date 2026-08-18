@@ -1,39 +1,62 @@
 import { createClient } from '@supabase/supabase-js';
 import { expect, test } from '@playwright/test';
 
-function clients() {
+const OWNER_EMAIL = 'owner@wedding.test';
+const OWNER_PASSWORD = 'WeddingTest!2026';
+
+function anonymousClient() {
   const url = process.env.VITE_SUPABASE_URL!;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY!;
-  const serviceRoleKey = process.env.E2E_SERVICE_ROLE_KEY!;
-  return {
-    anon: createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } }),
-    admin: createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } }),
-  };
+  return createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+async function eventId(): Promise<string> {
+  const owner = anonymousClient();
+  const { error: signInError } = await owner.auth.signInWithPassword({
+    email: OWNER_EMAIL,
+    password: OWNER_PASSWORD,
+  });
+  if (signInError) throw signInError;
+
+  const { data, error } = await owner.rpc('owner_get_dashboard', {
+    p_event_slug: 'liza-viktor',
+  });
+  if (error) throw error;
+
+  await owner.auth.signOut();
+
+  if (
+    typeof data !== 'object'
+    || data === null
+    || !('event' in data)
+    || typeof data.event !== 'object'
+    || data.event === null
+    || !('id' in data.event)
+  ) {
+    throw new Error('Security E2E event id is missing');
+  }
+
+  return String(data.event.id);
 }
 
 test('anonymous client cannot invoke owner mutations or enumerate private event data', async () => {
-  const { anon, admin } = clients();
-  const { data: event, error: eventError } = await admin
-    .from('events')
-    .select('id')
-    .eq('slug', 'liza-viktor')
-    .single();
-  if (eventError) throw eventError;
+  const anon = anonymousClient();
+  const id = await eventId();
 
   const { error: resetError } = await anon.rpc('owner_reset_event_test_data', {
-    p_event_id: event.id,
+    p_event_id: id,
     p_confirmation: 'СБРОСИТЬ',
   });
   expect(resetError).toBeTruthy();
 
   const { error: bunkerError } = await anon.rpc('owner_start_bunker', {
-    p_event_id: event.id,
+    p_event_id: id,
     p_duration_seconds: 1800,
   });
   expect(bunkerError).toBeTruthy();
 
   const { error: mkError } = await anon.rpc('owner_open_mk_registration', {
-    p_event_id: event.id,
+    p_event_id: id,
   });
   expect(mkError).toBeTruthy();
 
