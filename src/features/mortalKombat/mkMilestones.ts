@@ -52,6 +52,26 @@ export function deriveMkMilestone(
   }
 
   if (before && current.state === 'active') {
+    if (completedCount(before, 'sf') < 2 && completedCount(current, 'sf') === 2) {
+      return {
+        key: 'finalists',
+        eyebrow: 'MORTAL KOMBAT',
+        title: 'ФИНАЛИСТЫ ОПРЕДЕЛЕНЫ',
+        detail: 'ПОСЛЕДНИЙ БОЙ',
+        durationMs: 5200,
+      };
+    }
+
+    if (completedCount(before, 'qf') < 4 && completedCount(current, 'qf') === 4) {
+      return {
+        key: 'semifinalists',
+        eyebrow: 'MORTAL KOMBAT',
+        title: 'ПОЛУФИНАЛИСТЫ ОПРЕДЕЛЕНЫ',
+        detail: 'ОСТАЛОСЬ ЧЕТВЕРО',
+        durationMs: 4600,
+      };
+    }
+
     const previousCompleted = before.matches.filter((match) => match.status === 'complete').length;
     const currentCompleted = current.matches.filter((match) => match.status === 'complete').length;
     if (currentCompleted > previousCompleted) {
@@ -69,26 +89,6 @@ export function deriveMkMilestone(
           durationMs: 3600,
         };
       }
-    }
-
-    if (completedCount(before, 'qf') < 4 && completedCount(current, 'qf') === 4) {
-      return {
-        key: 'semifinalists',
-        eyebrow: 'MORTAL KOMBAT',
-        title: 'ПОЛУФИНАЛИСТЫ ОПРЕДЕЛЕНЫ',
-        detail: 'ОСТАЛОСЬ ЧЕТВЕРО',
-        durationMs: 4600,
-      };
-    }
-
-    if (completedCount(before, 'sf') < 2 && completedCount(current, 'sf') === 2) {
-      return {
-        key: 'finalists',
-        eyebrow: 'MORTAL KOMBAT',
-        title: 'ФИНАЛИСТЫ ОПРЕДЕЛЕНЫ',
-        detail: 'ПОСЛЕДНИЙ БОЙ',
-        durationMs: 5200,
-      };
     }
   }
 
