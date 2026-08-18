@@ -1,5 +1,9 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  broadcastBunkerRefresh,
+  type BunkerRealtimeClient,
+} from '../bunker/bunker.realtime';
+import {
   broadcastCarriageCallRefresh,
   type CarriageCallRealtimeClient,
 } from '../carriages/carriageCalls.realtime';
@@ -146,6 +150,7 @@ function buildFinalFiveRoleUrl(role: FinalFiveRole, token: string): string {
 
 export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
+  const bunkerRealtimeClient = client as unknown as BunkerRealtimeClient;
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
   const mkRpcClient = client as unknown as MkOwnerRpcClient;
@@ -191,6 +196,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
         broadcastPremiereRefresh(premiereRealtimeClient, EVENT_SLUG),
         broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
         broadcastMkRefresh(mkRealtimeClient, EVENT_SLUG),
+        broadcastBunkerRefresh(bunkerRealtimeClient, EVENT_SLUG),
       ]);
       return result;
     },
