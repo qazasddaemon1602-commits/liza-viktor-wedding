@@ -100,6 +100,7 @@ as $$
 declare
   v_event_id uuid;
   v_guest_id uuid;
+  v_question_id uuid;
   v_question public.questions%rowtype;
   v_phase text;
   v_choice text;
@@ -128,15 +129,22 @@ begin
     return jsonb_build_object('status', 'not_registered');
   end if;
 
-  select qs.phase, q.*
-  into v_phase, v_question
+  select qs.current_question_id, qs.phase
+  into v_question_id, v_phase
   from public.quiz_state qs
-  join public.questions q on q.id = qs.current_question_id
-  where qs.event_id = v_event_id
+  where qs.event_id = v_event_id;
+
+  if v_question_id is null or v_phase = 'idle' then
+    return jsonb_build_object('status', 'idle');
+  end if;
+
+  select q.* into v_question
+  from public.questions q
+  where q.id = v_question_id
     and q.event_id = v_event_id
     and q.enabled;
 
-  if v_question.id is null or v_phase = 'idle' then
+  if v_question.id is null then
     return jsonb_build_object('status', 'idle');
   end if;
 
