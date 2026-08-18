@@ -19,7 +19,13 @@ export function AdminRehearsalPanel() {
 
       <nav className="admin-rehearsal__links" aria-label="Ссылки для репетиции">
         {rehearsalLinks.map((link) => (
-          <a key={link.href} href={link.href} target="_blank" rel="noreferrer">
+          <a
+            key={link.href}
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={link.label}
+          >
             <span>{link.hint}</span>
             <strong>{link.label}</strong>
             <i aria-hidden="true">↗</i>
