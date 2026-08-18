@@ -172,6 +172,10 @@ export function FinalFiveRolePage({
     );
   }
 
+  if (state.status !== 'active') {
+    return null;
+  }
+
   const locked = state.phase === 'results';
 
   return (
