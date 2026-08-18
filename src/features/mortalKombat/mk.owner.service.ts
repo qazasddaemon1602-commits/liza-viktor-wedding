@@ -192,6 +192,17 @@ export async function showMkBracket(client: MkOwnerRpcClient, eventId: string): 
   await ownerCommand(client, 'owner_show_mk_bracket', { p_event_id: eventId });
 }
 
+export async function setMkMainScreen(
+  client: MkOwnerRpcClient,
+  eventId: string,
+  enabled: boolean,
+): Promise<void> {
+  await ownerCommand(client, 'owner_set_mk_main_screen', {
+    p_event_id: eventId,
+    p_enabled: enabled,
+  });
+}
+
 export async function recordMkWinner(
   client: MkOwnerRpcClient,
   matchId: string,
