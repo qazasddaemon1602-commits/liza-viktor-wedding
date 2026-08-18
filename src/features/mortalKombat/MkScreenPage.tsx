@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import { ChampionScene } from './ChampionScene';
 import { MkFightScene } from './MkFightScene';
+import { MkMilestoneScene } from './MkMilestoneScene';
+import { deriveMkMilestone, type MkMilestone } from './mkMilestones';
 import { subscribeToMkRefresh, type MkRealtimeClient } from './mk.realtime';
 import { getMkTournamentScreenState, type MkRpcClient } from './mk.service';
 import type { MkTournamentProjection } from './mk.types';
@@ -32,7 +34,9 @@ function browserDependencies(eventSlug: string): MkScreenPageDependencies {
 export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: MkScreenPageProps) {
   const deps = useMemo(() => dependencies ?? browserDependencies(eventSlug), [dependencies, eventSlug]);
   const [state, setState] = useState<MkTournamentProjection | null>(null);
+  const [milestone, setMilestone] = useState<MkMilestone | null>(null);
   const [degraded, setDegraded] = useState(false);
+  const previousStateRef = useRef<MkTournamentProjection | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -40,7 +44,10 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
       void deps.load()
         .then((next) => {
           if (!active) return;
+          const nextMilestone = deriveMkMilestone(previousStateRef.current, next);
+          previousStateRef.current = next;
           setState(next);
+          if (nextMilestone) setMilestone(nextMilestone);
           setDegraded(false);
         })
         .catch(() => {
@@ -55,6 +62,12 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
       unsubscribe?.();
     };
   }, [deps]);
+
+  useEffect(() => {
+    if (!milestone) return;
+    const timeout = window.setTimeout(() => setMilestone(null), milestone.durationMs);
+    return () => window.clearTimeout(timeout);
+  }, [milestone]);
 
   if (!state) {
     return (
@@ -82,7 +95,9 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
 
   return (
     <main className="mk-screen-page">
-      {state.state === 'complete' && state.championGuestId ? (
+      {milestone ? (
+        <MkMilestoneScene milestone={milestone} />
+      ) : state.state === 'complete' && state.championGuestId ? (
         <ChampionScene championGuestId={state.championGuestId} players={state.players} />
       ) : currentMatch ? (
         <MkFightScene match={currentMatch} players={state.players} />
