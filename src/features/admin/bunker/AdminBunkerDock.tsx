@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
-import { loadOwnerDashboard } from '../admin.service';
+import { loadOwnerDashboard, type AdminRpcClient } from '../admin.service';
 import { AdminBunkerControl } from './AdminBunkerControl';
 
 const EVENT_SLUG = 'liza-viktor';
@@ -10,10 +10,10 @@ export function AdminBunkerDock() {
 
   useEffect(() => {
     let active = true;
-    let client: ReturnType<typeof getSupabaseClient>;
+    let client: AdminRpcClient;
 
     try {
-      client = getSupabaseClient();
+      client = getSupabaseClient() as unknown as AdminRpcClient;
     } catch {
       return;
     }
