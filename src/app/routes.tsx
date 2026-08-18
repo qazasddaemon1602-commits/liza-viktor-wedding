@@ -26,17 +26,11 @@ export const routePaths = [
   '/mortal-kombat/screen',
 ] as const;
 
-function PlaceholderPage({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return (
-    <main className="page-shell">
-      <section className="placeholder-card">
-        <p className="eyebrow">{eyebrow}</p>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </section>
-    </main>
-  );
-}
+export const routeRedirects = {
+  '/': '/join',
+  '/screen/connect': '/screen',
+  '/premiere': '/screen',
+} as const;
 
 function currentJoinUrl(): string {
   return new URL('/join', window.location.origin).toString();
@@ -49,7 +43,7 @@ function projector(element: ReactNode) {
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<PlaceholderPage eyebrow="30 · 08 · 2026" title="ЛИЗА × ВИКТОР" description="Второй день. Один состав. Много историй." />} />
+      <Route path="/" element={<Navigate to={routeRedirects['/']} replace />} />
       <Route path="/join" element={<GuestJoinPage />} />
       <Route path="/play" element={<GuestQuizPage />} />
       <Route path="/couple-preanswers" element={<CouplePreanswersPage />} />
@@ -57,11 +51,11 @@ export function AppRoutes() {
       <Route path="/viktor" element={<FinalFiveRolePage role="viktor" />} />
       <Route path="/admin" element={<><AdminPage /><AdminBunkerDock /></>} />
       <Route path="/screen" element={projector(<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />)} />
-      <Route path="/screen/connect" element={<PlaceholderPage eyebrow="ПОДКЛЮЧЕНИЕ ЭКРАНА" title="PAIRING" description="Безопасное подключение телевизора к событию." />} />
-      <Route path="/premiere" element={<PlaceholderPage eyebrow="ПРЕМЬЕРА" title="КОЛЬЦО" description="Видео будет подготовлено до запуска обратного отсчёта." />} />
+      <Route path="/screen/connect" element={<Navigate to={routeRedirects['/screen/connect']} replace />} />
+      <Route path="/premiere" element={<Navigate to={routeRedirects['/premiere']} replace />} />
       <Route path="/mortal-kombat" element={<MortalKombatPage eventSlug="liza-viktor" />} />
       <Route path="/mortal-kombat/screen" element={projector(<MkScreenPage eventSlug="liza-viktor" />)} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/join" replace />} />
     </Routes>
   );
 }
