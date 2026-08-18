@@ -9,10 +9,17 @@ type PremiereScreenProps = {
   state: PremiereScreenState;
   nowMs: number;
   onCountdownTick?: (second: number) => void;
+  onVideoReady?: () => void;
   onEnded?: () => void;
 };
 
-export function PremiereScreen({ state, nowMs, onCountdownTick, onEnded }: PremiereScreenProps) {
+export function PremiereScreen({
+  state,
+  nowMs,
+  onCountdownTick,
+  onVideoReady,
+  onEnded,
+}: PremiereScreenProps) {
   const lastCueRef = useRef<number | null>(null);
   const [endedLocally, setEndedLocally] = useState(false);
 
@@ -85,6 +92,7 @@ export function PremiereScreen({ state, nowMs, onCountdownTick, onEnded }: Premi
         src={state.mediaUrl}
         shouldPlay={shouldPlay || state.status === 'playing'}
         positionSeconds={state.positionSeconds}
+        onReady={onVideoReady}
         onEnded={handleEnded}
       />
 
