@@ -75,7 +75,9 @@ describe('final five service', () => {
       status: 'ok', current: true, phase: 'results', answeredCount: 31,
       lizaAnswered: true, viktorAnswered: true, revealed: false,
     });
-    expect(JSON.stringify(result)).not.toMatch(/lizaAnswer|viktorAnswer|choice/i);
+    expect(result).not.toHaveProperty('lizaAnswer');
+    expect(result).not.toHaveProperty('viktorAnswer');
+    expect(result).not.toHaveProperty('choice');
   });
 
   it('reveals through an owner action that still does not return the private values', async () => {
