@@ -9,6 +9,7 @@ type OscillatorLike = {
   connect: (destination: unknown) => unknown;
   start: (when?: number) => unknown;
   stop: (when?: number) => unknown;
+  onended?: (() => void) | null;
 };
 
 type GainLike = {
@@ -29,6 +30,7 @@ type AudioContextLike = {
 export type ScreenAudioController = {
   arm: () => Promise<boolean>;
   playArrival: () => void;
+  stopArrival: () => void;
   dispose: () => void;
 };
 
@@ -45,6 +47,7 @@ export function createScreenAudioController(
   factory: AudioContextFactory = browserAudioContextFactory,
 ): ScreenAudioController {
   let context: AudioContextLike | null = null;
+  const activeOscillators = new Set<OscillatorLike>();
 
   const arm = async (): Promise<boolean> => {
     try {
@@ -70,6 +73,8 @@ export function createScreenAudioController(
 
     oscillator.connect(gain);
     gain.connect(context.destination);
+    oscillator.onended = () => activeOscillators.delete(oscillator);
+    activeOscillators.add(oscillator);
     oscillator.start(startAt);
     oscillator.stop(startAt + duration + 0.03);
   };
@@ -81,12 +86,25 @@ export function createScreenAudioController(
     playTone(659.25, now + 0.19, 0.2);
   };
 
+  const stopArrival = () => {
+    if (!context) return;
+    for (const oscillator of activeOscillators) {
+      try {
+        oscillator.stop(context.currentTime);
+      } catch {
+        // A naturally-ended oscillator is already silent; continue stopping the rest.
+      }
+    }
+    activeOscillators.clear();
+  };
+
   const dispose = () => {
     if (!context) return;
+    stopArrival();
     const current = context;
     context = null;
     void current.close().catch(() => undefined);
   };
 
-  return { arm, playArrival, dispose };
+  return { arm, playArrival, stopArrival, dispose };
 }
