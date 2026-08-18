@@ -82,4 +82,36 @@ describe('AdminBunkerControl', () => {
     expect(broadcastRefresh).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' })).toBeInTheDocument();
   });
+
+  it('keeps the authoritative bunker state when realtime broadcast fails after a successful command', async () => {
+    const user = userEvent.setup();
+    const start = vi.fn().mockResolvedValue({ status: 'active' });
+    const broadcastRefresh = vi.fn().mockRejectedValue(new Error('realtime offline'));
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'idle', durationSeconds: 1800, soundEnabled: true,
+        serverNow: '2026-08-30T12:00:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+        remainingSeconds: 1800, soundEnabled: true, serverNow: '2026-08-30T12:00:00.000Z',
+      });
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({ start, broadcastRefresh, load })}
+      />,
+    );
+
+    await screen.findByRole('heading', { name: 'БУНКЕР' });
+    await user.click(screen.getByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
+    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
+
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/команда выполнена/i);
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/не выполнена/i);
+  });
 });
