@@ -25,13 +25,23 @@
   opacity: 1;
 }
 
-.premiere-standby {
+.premiere-standby,
+.premiere-ended-black {
   position: absolute;
   inset: 0;
+  background: #050605;
+}
+
+.premiere-standby {
   z-index: 2;
   background:
     radial-gradient(circle at 50% 48%, rgba(180, 155, 126, 0.035), transparent 26rem),
     #070807;
+}
+
+.premiere-ended-black {
+  z-index: 6;
+  background: #000;
 }
 
 .premiere-paused-indicator {
