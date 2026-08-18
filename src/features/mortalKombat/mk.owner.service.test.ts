@@ -6,6 +6,7 @@ import {
   randomizeMkSeeds,
   recordMkWinner,
   setCurrentMkMatch,
+  showMkBracket,
   swapMkSeeds,
   undoMkResult,
   type MkOwnerRpcClient,
@@ -82,14 +83,16 @@ describe('owner MK service', () => {
     }
   });
 
-  it('wires current-match selection and explicit undo confirmation flag', async () => {
+  it('wires fight/bracket projector selection and explicit undo confirmation flag', async () => {
     const client = clientWith({ status: 'undone', matchId: 'm1', affectedMatches: [] });
 
     await setCurrentMkMatch(client, 'm1');
+    await showMkBracket(client, 'event-1');
     await undoMkResult(client, 'm1', true);
 
     expect(client.rpc).toHaveBeenNthCalledWith(1, 'owner_set_current_mk_match', { p_match_id: 'm1' });
-    expect(client.rpc).toHaveBeenNthCalledWith(2, 'owner_undo_mk_result', {
+    expect(client.rpc).toHaveBeenNthCalledWith(2, 'owner_show_mk_bracket', { p_event_id: 'event-1' });
+    expect(client.rpc).toHaveBeenNthCalledWith(3, 'owner_undo_mk_result', {
       p_match_id: 'm1',
       clear_completed_downstream: true,
     });
