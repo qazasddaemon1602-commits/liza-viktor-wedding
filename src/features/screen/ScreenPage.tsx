@@ -73,6 +73,7 @@ export type ScreenPageDependencies = {
   broadcastPremierePresence?: (presence: PremiereScreenPresence) => Promise<void>;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
+  stopArrivalAudio?: () => void;
   armPremiereAudio?: () => Promise<boolean>;
   playPremiereCountdownTick?: (second: number) => void;
   disposeAudio?: () => void;
@@ -131,6 +132,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
     ),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
+    stopArrivalAudio: audio.stopArrival,
     armPremiereAudio: premiereAudio.arm,
     playPremiereCountdownTick: premiereAudio.playCountdownTick,
     disposeAudio: audio.dispose,
@@ -214,6 +216,8 @@ export function ScreenPage({
   useEffect(() => subscribeToBunkerPresentationProtection((active) => {
     setBunkerProtected(active);
     if (active) {
+      presentationProtectedRef.current = true;
+      deps.stopArrivalAudio?.();
       setQueue([]);
       setActiveEvent(null);
       setQuizState(null);
@@ -224,7 +228,7 @@ export function ScreenPage({
       return;
     }
     setReconnectEpoch((current) => current + 1);
-  }), []);
+  }), [deps]);
 
   useEffect(() => {
     const handleOffline = () => markConnection('browser', false);
