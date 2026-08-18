@@ -15,8 +15,8 @@ begin
     raise exception 'owner authentication required' using errcode = '42501';
   end if;
 
-  select cc.*, e.slug
-  into v_call, v_event_slug
+  select cc.*
+  into v_call
   from public.carriage_calls cc
   join public.events e on e.id = cc.event_id
   where cc.id = p_call_id
@@ -28,6 +28,16 @@ begin
 
   if not v_call.show_on_screen then
     raise exception 'call is not approved for projector' using errcode = '22023';
+  end if;
+
+  select e.slug
+  into v_event_slug
+  from public.events e
+  where e.id = v_call.event_id
+    and e.owner_user_id = v_owner;
+
+  if v_event_slug is null then
+    raise exception 'owner access required' using errcode = '42501';
   end if;
 
   select coalesce(
