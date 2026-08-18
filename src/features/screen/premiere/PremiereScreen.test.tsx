@@ -94,6 +94,18 @@ describe('PremiereScreen', () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
+  it('starts a late or reconnected screen at the authoritative playback position', () => {
+    const { container } = render(
+      <PremiereScreen
+        state={state('playing', { positionSeconds: 152.4 })}
+        nowMs={Date.parse(base.serverNow)}
+      />,
+    );
+
+    expect(container.querySelector('video')?.currentTime).toBeCloseTo(152.4);
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
   it('pauses the same player when server state changes from playing to paused', () => {
     const { rerender, container } = render(
       <PremiereScreen state={state('playing')} nowMs={Date.parse(base.serverNow)} />,
