@@ -34,3 +34,20 @@
   cursor: progress;
   opacity: 0.68;
 }
+
+.screen-connection-indicator {
+  position: fixed;
+  z-index: 90;
+  left: clamp(0.7rem, 1.4vw, 1.25rem);
+  bottom: clamp(0.7rem, 1.4vw, 1.25rem);
+  padding: 0.42rem 0.58rem;
+  border: 1px solid rgba(243, 236, 223, 0.18);
+  color: rgba(243, 236, 223, 0.72);
+  background: rgba(20, 22, 20, 0.68);
+  backdrop-filter: blur(10px);
+  font-size: clamp(0.48rem, 0.58vw, 0.62rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
