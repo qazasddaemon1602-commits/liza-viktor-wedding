@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
+import {
+  getBunkerPresentationProtected,
+  subscribeToBunkerPresentationProtection,
+} from '../bunker/bunkerProtection';
 import { ChampionScene } from '../mortalKombat/ChampionScene';
 import { MkFightScene } from '../mortalKombat/MkFightScene';
 import { subscribeToMkRefresh, type MkRealtimeClient } from '../mortalKombat/mk.realtime';
@@ -188,15 +192,18 @@ export function ScreenPage({
   const [videoReady, setVideoReady] = useState(false);
   const [connectionDegraded, setConnectionDegraded] = useState(() => !browserLooksOnline());
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
+  const [bunkerProtected, setBunkerProtected] = useState(getBunkerPresentationProtected);
   const seenIds = useRef(new Set<string>());
   const presentationProtectedRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
 
   const premiereProtected = isPremiereProtected(premiereState);
   const mortalKombatProtected = isMortalKombatProtected(mkState);
-  const presentationProtected = premiereProtected || mortalKombatProtected;
+  const presentationProtected = premiereProtected || mortalKombatProtected || bunkerProtected;
   const currentPremiereMediaUrl = premiereMediaUrl(premiereState);
   presentationProtectedRef.current = presentationProtected;
+
+  useEffect(() => subscribeToBunkerPresentationProtection(setBunkerProtected), []);
 
   useEffect(() => {
     const handleOffline = () => setConnectionDegraded(true);
