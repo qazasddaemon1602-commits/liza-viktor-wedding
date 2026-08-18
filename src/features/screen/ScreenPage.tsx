@@ -46,6 +46,7 @@ import {
   type QuizRealtimeClient,
 } from '../quiz/quiz.realtime';
 import { CarriageCallScene } from './CarriageCallScene';
+import { hasConnectionFailures, updateConnectionHealth, type ConnectionSource } from './connectionHealth';
 import { CoupleAnswerRevealScene } from './CoupleAnswerRevealScene';
 import { FinalFiveRevealScene } from './FinalFiveRevealScene';
 import { IdleRegistrationScreen } from './IdleRegistrationScreen';
@@ -190,7 +191,9 @@ export function ScreenPage({
   const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
   const [armingAudio, setArmingAudio] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
-  const [connectionDegraded, setConnectionDegraded] = useState(() => !browserLooksOnline());
+  const [connectionFailures, setConnectionFailures] = useState<ReadonlySet<ConnectionSource>>(
+    () => browserLooksOnline() ? new Set<ConnectionSource>() : new Set<ConnectionSource>(['browser']),
+  );
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [bunkerProtected, setBunkerProtected] = useState(getBunkerPresentationProtected);
   const seenIds = useRef(new Set<string>());
@@ -201,7 +204,12 @@ export function ScreenPage({
   const mortalKombatProtected = isMortalKombatProtected(mkState);
   const presentationProtected = premiereProtected || mortalKombatProtected || bunkerProtected;
   const currentPremiereMediaUrl = premiereMediaUrl(premiereState);
+  const connectionDegraded = hasConnectionFailures(connectionFailures);
   presentationProtectedRef.current = presentationProtected;
+
+  const markConnection = useCallback((source: ConnectionSource, healthy: boolean) => {
+    setConnectionFailures((current) => updateConnectionHealth(current, source, healthy));
+  }, []);
 
   useEffect(() => subscribeToBunkerPresentationProtection((active) => {
     setBunkerProtected(active);
@@ -219,9 +227,9 @@ export function ScreenPage({
   }), []);
 
   useEffect(() => {
-    const handleOffline = () => setConnectionDegraded(true);
+    const handleOffline = () => markConnection('browser', false);
     const handleOnline = () => {
-      setConnectionDegraded(false);
+      markConnection('browser', true);
       setReconnectEpoch((current) => current + 1);
     };
 
@@ -231,7 +239,7 @@ export function ScreenPage({
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, []);
+  }, [markConnection]);
 
   useEffect(() => deps.subscribe((event) => {
     if (presentationProtectedRef.current) return;
@@ -244,22 +252,17 @@ export function ScreenPage({
     if (!deps.loadQuiz && !deps.loadCoupleAnswer && !deps.loadFinalFive) return;
     let active = true;
 
-    const markHealthy = () => {
-      if (active && browserLooksOnline()) setConnectionDegraded(false);
-    };
-    const markDegraded = () => {
-      if (active) setConnectionDegraded(true);
-    };
-
     const reload = () => {
       if (deps.loadQuiz) {
         void deps.loadQuiz()
           .then((next) => {
             if (!active) return;
             setQuizState(next);
-            markHealthy();
+            markConnection('quiz', true);
           })
-          .catch(markDegraded);
+          .catch(() => {
+            if (active) markConnection('quiz', false);
+          });
       }
 
       if (deps.loadCoupleAnswer) {
@@ -267,9 +270,11 @@ export function ScreenPage({
           .then((next) => {
             if (!active) return;
             setCoupleAnswer(next);
-            markHealthy();
+            markConnection('couple', true);
           })
-          .catch(markDegraded);
+          .catch(() => {
+            if (active) markConnection('couple', false);
+          });
       }
 
       if (deps.loadFinalFive) {
@@ -277,9 +282,11 @@ export function ScreenPage({
           .then((next) => {
             if (!active) return;
             setFinalFive(next);
-            markHealthy();
+            markConnection('finalFive', true);
           })
-          .catch(markDegraded);
+          .catch(() => {
+            if (active) markConnection('finalFive', false);
+          });
       }
     };
 
@@ -290,7 +297,7 @@ export function ScreenPage({
       active = false;
       unsubscribe?.();
     };
-  }, [deps, reconnectEpoch]);
+  }, [deps, reconnectEpoch, markConnection]);
 
   useEffect(() => {
     if (!deps.loadPremiere) return;
@@ -305,10 +312,10 @@ export function ScreenPage({
           premiereClockOffsetRef.current = offset;
           setPremiereNowMs(Date.now() + offset);
           setPremiereState(next);
-          if (browserLooksOnline()) setConnectionDegraded(false);
+          markConnection('premiere', true);
         })
         .catch(() => {
-          if (active) setConnectionDegraded(true);
+          if (active) markConnection('premiere', false);
           // Keep the last valid projector state during a temporary network/realtime failure.
         });
     };
@@ -320,7 +327,7 @@ export function ScreenPage({
       active = false;
       unsubscribe?.();
     };
-  }, [deps, reconnectEpoch]);
+  }, [deps, reconnectEpoch, markConnection]);
 
   useEffect(() => {
     if (!deps.loadMortalKombat) return;
@@ -331,10 +338,10 @@ export function ScreenPage({
         .then((next) => {
           if (!active) return;
           setMkState(next);
-          if (browserLooksOnline()) setConnectionDegraded(false);
+          markConnection('mortalKombat', true);
         })
         .catch(() => {
-          if (active) setConnectionDegraded(true);
+          if (active) markConnection('mortalKombat', false);
           // Keep the last valid fight/bracket during a temporary network failure.
         });
     };
@@ -345,14 +352,15 @@ export function ScreenPage({
       active = false;
       unsubscribe?.();
     };
-  }, [deps, reconnectEpoch]);
+  }, [deps, reconnectEpoch, markConnection]);
 
   useEffect(() => {
     setVideoReady(false);
   }, [currentPremiereMediaUrl]);
 
   useEffect(() => {
-    if (!deps.broadcastPremierePresence) return;
+    const broadcastPresence = deps.broadcastPremierePresence;
+    if (!broadcastPresence) return;
     let active = true;
     const heartbeat: PremiereScreenPresence = {
       screenId: resolvedScreenId,
@@ -361,7 +369,13 @@ export function ScreenPage({
     };
     const report = () => {
       if (!active) return;
-      void deps.broadcastPremierePresence?.(heartbeat).catch(() => setConnectionDegraded(true));
+      void broadcastPresence(heartbeat)
+        .then(() => {
+          if (active) markConnection('presence', true);
+        })
+        .catch(() => {
+          if (active) markConnection('presence', false);
+        });
     };
 
     report();
@@ -370,7 +384,7 @@ export function ScreenPage({
       active = false;
       window.clearInterval(interval);
     };
-  }, [audioArmed, deps, resolvedScreenId, videoReady]);
+  }, [audioArmed, deps, markConnection, resolvedScreenId, videoReady]);
 
   useEffect(() => {
     if (premiereState?.status !== 'countdown') return;
