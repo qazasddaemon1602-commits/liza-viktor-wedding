@@ -1,0 +1,12 @@
+{
+  "name": "Лиза × Виктор — Wedding Live",
+  "short_name": "Лиза × Виктор",
+  "description": "Живой свадебный экран, регистрация гостей и интерактивы второго дня.",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3ecdf",
+  "theme_color": "#31483a"
+}

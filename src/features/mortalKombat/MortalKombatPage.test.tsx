@@ -1,0 +1,100 @@
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import type { MkTournamentProjection } from './mk.types';
+import { MortalKombatPage, type MortalKombatPageDependencies } from './MortalKombatPage';
+
+const openState: MkTournamentProjection = {
+  status: 'active',
+  tournamentId: 't1',
+  state: 'registration',
+  activeCount: 9,
+  maxPlayers: 16,
+  ownRegistrationStatus: null,
+  waitlistPosition: null,
+  players: Array.from({ length: 9 }, (_, index) => ({
+    registrationId: `r${index + 1}`,
+    guestId: `g${index + 1}`,
+    displayName: `Игрок ${index + 1}`,
+    seed: null,
+  })),
+  matches: [],
+  championGuestId: null,
+};
+
+const joinedState: MkTournamentProjection = {
+  ...openState,
+  activeCount: 10,
+  ownRegistrationStatus: 'active',
+};
+
+function dependencies(overrides: Partial<MortalKombatPageDependencies> = {}): MortalKombatPageDependencies {
+  return {
+    load: vi.fn().mockResolvedValue(openState),
+    join: vi.fn().mockResolvedValue({
+      status: 'joined',
+      registrationStatus: 'active',
+      activeCount: 10,
+      maxPlayers: 16,
+      waitlistPosition: null,
+    }),
+    subscribeToRefresh: () => vi.fn(),
+    ...overrides,
+  };
+}
+
+describe('MortalKombatPage', () => {
+  it('lets an already registered wedding guest join without entering their name again', async () => {
+    const user = userEvent.setup();
+    const load = vi.fn()
+      .mockResolvedValueOnce(openState)
+      .mockResolvedValueOnce(joinedState);
+    const join = vi.fn().mockResolvedValue({
+      status: 'joined',
+      registrationStatus: 'active',
+      activeCount: 10,
+      maxPlayers: 16,
+      waitlistPosition: null,
+    });
+
+    render(<MortalKombatPage dependencies={dependencies({ load, join })} />);
+
+    expect(await screen.findByRole('button', { name: 'УЧАСТВОВАТЬ В MORTAL KOMBAT' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getByText('9 / 16')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'УЧАСТВОВАТЬ В MORTAL KOMBAT' }));
+
+    expect(join).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
+  });
+
+  it('reloads the public bracket when a safe realtime refresh arrives', async () => {
+    let refresh: (() => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce(openState)
+      .mockResolvedValueOnce(joinedState);
+
+    render(
+      <MortalKombatPage
+        dependencies={dependencies({
+          load,
+          subscribeToRefresh: (callback) => {
+            refresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    await screen.findByText('9 / 16');
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
+  });
+});

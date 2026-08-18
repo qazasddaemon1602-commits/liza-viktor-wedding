@@ -1,0 +1,68 @@
+.mk-milestone-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 36;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: clamp(2rem, 5vw, 5rem);
+  overflow: hidden;
+  color: #f3ecdf;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(126, 63, 60, 0.32), transparent 34%),
+    linear-gradient(145deg, #0b0d0c 0%, #121713 52%, #090a09 100%);
+}
+
+.mk-milestone-scene::before {
+  content: '';
+  position: absolute;
+  inset: 5%;
+  border: 1px solid rgba(243, 236, 223, 0.12);
+  pointer-events: none;
+}
+
+.mk-milestone-scene__frame {
+  position: relative;
+  z-index: 1;
+  width: min(90vw, 90rem);
+  text-align: center;
+}
+
+.mk-milestone-scene .eyebrow {
+  margin: 0 0 clamp(1.3rem, 2vw, 2rem);
+  color: rgba(243, 236, 223, 0.66);
+  font-size: clamp(0.72rem, 1vw, 1.05rem);
+  letter-spacing: 0.32em;
+}
+
+.mk-milestone-scene h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4.4rem, 10vw, 11rem);
+  font-weight: 400;
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.mk-milestone-scene__frame > p:last-of-type {
+  margin: clamp(1.5rem, 3vw, 2.8rem) 0 0;
+  color: rgba(243, 236, 223, 0.78);
+  font-size: clamp(0.85rem, 1.25vw, 1.25rem);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+}
+
+.mk-milestone-scene__line {
+  width: min(28rem, 56vw);
+  height: 1px;
+  margin: clamp(1.5rem, 3vw, 2.8rem) auto 0;
+  background: linear-gradient(90deg, transparent, rgba(174, 101, 94, 0.9), transparent);
+  transform-origin: center;
+  animation: mk-milestone-line 900ms ease both;
+}
+
+@keyframes mk-milestone-line {
+  from { transform: scaleX(0); opacity: 0; }
+  to { transform: scaleX(1); opacity: 1; }
+}
