@@ -11,7 +11,7 @@ function clients() {
   };
 }
 
-test('anonymous client cannot invoke owner reset or enumerate the private guest list', async () => {
+test('anonymous client cannot invoke owner mutations or enumerate private event data', async () => {
   const { anon, admin } = clients();
   const { data: event, error: eventError } = await admin
     .from('events')
@@ -26,8 +26,22 @@ test('anonymous client cannot invoke owner reset or enumerate the private guest 
   });
   expect(resetError).toBeTruthy();
 
+  const { error: bunkerError } = await anon.rpc('owner_start_bunker', {
+    p_event_id: event.id,
+    p_duration_seconds: 1800,
+  });
+  expect(bunkerError).toBeTruthy();
+
+  const { error: mkError } = await anon.rpc('owner_open_mk_registration', {
+    p_event_id: event.id,
+  });
+  expect(mkError).toBeTruthy();
+
   const { data: guests, error: guestError } = await anon.from('guests').select('*');
   expect(guestError === null ? guests : []).toEqual([]);
+
+  const { data: coupleAnswers, error: coupleError } = await anon.from('couple_preanswers').select('*');
+  expect(coupleError === null ? coupleAnswers : []).toEqual([]);
 });
 
 test('/admin stays behind owner login and /screen exposes no owner mutation controls', async ({ browser }) => {
@@ -43,6 +57,7 @@ test('/admin stays behind owner login and /screen exposes no owner mutation cont
   await expect(page.getByRole('button', { name: /сбросить тестовые данные/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /запустить турнир/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /начать премьеру/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /экстренное сообщение|бункер/i })).toHaveCount(0);
 
   await anonymousContext.close();
 });
