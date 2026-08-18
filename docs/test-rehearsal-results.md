@@ -1,6 +1,6 @@
 # Лиза × Виктор — результаты генеральной репетиции
 
-Статус: **НЕ ПРОВЕДЕНА**
+Статус: **НЕ ПРОВЕДЕНА НА РЕАЛЬНОМ ЖЕЛЕЗЕ**
 
 > Заполнять только фактическими результатами. Не ставить PASS, пока проверка реально не выполнена на соответствующем устройстве/сценарии.
 
@@ -18,15 +18,27 @@
 - Телефон/ссылка Виктора: —
 - Сеть/Wi‑Fi: —
 
-## Автоматические проверки
+## Полный автоматический прогон
 
 | Проверка | Результат | Примечание |
 |---|---|---|
-| `npm run typecheck` | NOT RUN | |
-| `npm test` | NOT RUN | |
-| `supabase test db` | NOT RUN | |
-| `npm run build` | NOT RUN | |
-| `npm run e2e` | NOT RUN | |
+| `npm run typecheck` | NOT RUN | Hosted GitHub Actions run не наблюдается через доступный connector; локальное окружение не имеет npm network install. |
+| `npm test` | NOT RUN | Не подменять targeted harness полным Vitest suite. |
+| `supabase test db` | NOT RUN | Локальный Supabase/Postgres CLI отсутствует в текущем execution container. |
+| `npm run build` | NOT RUN | Требует полного dependency install. |
+| `npm run e2e` | NOT RUN | Playwright CI workflow подготовлен, но hosted run не наблюдается. |
+
+## Выполненные targeted-проверки текущего Bunker-блока
+
+| Проверка | Результат | Примечание |
+|---|---|---|
+| Bunker isolated strict TypeScript compile | PASS | Текущие Bunker service/realtime/audio/screen/admin/dock модули собраны `tsc --strict` в изолированном harness. |
+| `/admin` + `/screen` + MK screen route integration compile | PASS | Проверена типовая интеграция Bunker dock/guard в маршруты. |
+| Bunker service RPC/parser executable suite | PASS | 5/5: public state, owner state, exact start/sound/stop RPC, invalid timestamp rejection. |
+| Bunker realtime executable suite | PASS | 6/6: channel, refresh callback, subscribe/send/unsubscribe. |
+| Bunker audio executable suite | PASS | 6/6: arm/resume, single alarm loop, pulse, stop, dispose. |
+| Bunker server-clock timer executable suite | PASS | 4/4: 30:00, 29:59, skewed TV clock + server offset, clamp at zero. |
+| Frontend reset-service contract | PASS | 6/6: explicit `СБРОСИТЬ`, MK/Bunker acknowledgements, couple-preservation acknowledgement, malformed response rejection. |
 
 ## Ручная репетиция
 
@@ -68,20 +80,28 @@
 | Natural end → black | NOT RUN | |
 | Return main screen | NOT RUN | |
 | Late guest after premiere | NOT RUN | |
+| Bunker two-step owner launch | NOT RUN | Targeted component test PASS, реальный браузер/owner session ещё не проверен. |
+| Bunker 30:00 synchronized on 2 TVs | NOT RUN | Таймерная формула PASS; реальное железо ещё не проверено. |
+| Bunker alarm/autoplay fallback | NOT RUN | Audio controller targeted suite PASS; браузерная политика autoplay ещё не проверена на ТВ. |
+| Bunker stop returns both screens | NOT RUN | Poll/realtime logic покрыта targeted tests; реальный multi-TV прогон ещё не проведён. |
 | Wi‑Fi disconnect 10–20 sec | NOT RUN | |
 | Automatic reconnect | NOT RUN | |
 | Heartbeat TTL | NOT RUN | |
-| Reset clears runtime test data | NOT RUN | |
-| Reset preserves couple preanswers | NOT RUN | |
+| Reset clears runtime test data | NOT RUN | Frontend contract PASS; pgTAP/full DB execution ещё не проведён. |
+| Reset preserves couple preanswers | NOT RUN | Миграция и pgTAP контракт это требуют; полный DB execution ещё не проведён. |
 
 ## Найденные проблемы
 
-Пока не заполнено.
+- Во время targeted-проверки найден потенциальный строгий TypeScript-стык в `AdminBunkerDock`: raw Supabase client был приведён к явному `AdminRpcClient`. Исправлено.
+- Найден флейк-risk в Bunker fake-timer test (`findBy*` при fake timers). Переведён на детерминированный `act + advanceTimersByTimeAsync`.
+- Frontend reset parser не сохранял `mortalKombatReset` / `bunkerReset` из серверного ответа. Контракт обновлён.
+- GitHub Actions runs/check statuses не возвращаются доступным connector даже для ранее известных CI commit SHA, поэтому hosted GREEN пока не подтверждён.
 
 ## Решения перед мероприятием
 
-Пока не заполнено.
+- Получить один полный автоматический прогон `typecheck + Vitest + build + pgTAP + Playwright` в окружении с работающим runner/dependency install.
+- После автоматического GREEN провести реальную репетицию минимум на двух ТВ/экранах и двух телефонах по `docs/event-day-checklist.md`.
 
 ## Финальное решение
 
-**GO / NO-GO: НЕ ОПРЕДЕЛЕНО**
+**GO / NO-GO: НЕ ОПРЕДЕЛЕНО — targeted Bunker verification PASS, полный suite и real-hardware rehearsal ещё обязательны.**
