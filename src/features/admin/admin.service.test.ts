@@ -5,6 +5,7 @@ import {
   loadOwnerDashboard,
   lockComposition,
   reassignGuest,
+  resetEventTestData,
   type AdminRpcClient,
 } from './admin.service';
 
@@ -114,6 +115,31 @@ describe('admin service', () => {
     expect(result).toEqual({
       code: 'AB12-CD34',
       expiresAt: '2026-08-30T12:15:00+05:00',
+    });
+  });
+
+  it('resets rehearsal runtime data only through the explicit owner reset RPC', async () => {
+    const client = clientWith({
+      status: 'reset',
+      deletedGuests: 32,
+      preservedCoupleAnswers: 30,
+      premiereConfigured: true,
+      registrationOpen: true,
+      nextTicketSequence: 1,
+    });
+
+    const result = await resetEventTestData(client, 'event-1', 'СБРОСИТЬ');
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_reset_event_test_data', {
+      p_event_id: 'event-1',
+      p_confirmation: 'СБРОСИТЬ',
+    });
+    expect(result).toEqual({
+      deletedGuests: 32,
+      preservedCoupleAnswers: 30,
+      premiereConfigured: true,
+      registrationOpen: true,
+      nextTicketSequence: 1,
     });
   });
 });
