@@ -50,6 +50,14 @@ export type AdminDashboard = {
   }>;
 };
 
+export type EventTestResetResult = {
+  deletedGuests: number;
+  preservedCoupleAnswers: number;
+  premiereConfigured: boolean;
+  registrationOpen: boolean;
+  nextTicketSequence: number;
+};
+
 function throwRpcError(error: Exclude<AdminRpcError, null>): never {
   if (error instanceof Error) throw error;
   const next = new Error(error.message || 'Owner request failed');
@@ -139,5 +147,36 @@ export async function issueGuestRecovery(
   return {
     code: data.code,
     expiresAt: data.expiresAt,
+  };
+}
+
+export async function resetEventTestData(
+  client: AdminRpcClient,
+  eventId: string,
+  confirmation: string,
+): Promise<EventTestResetResult> {
+  const { data, error } = await client.rpc('owner_reset_event_test_data', {
+    p_event_id: eventId,
+    p_confirmation: confirmation,
+  });
+  if (error) throwRpcError(error);
+  if (
+    !isRecord(data)
+    || data.status !== 'reset'
+    || typeof data.deletedGuests !== 'number'
+    || typeof data.preservedCoupleAnswers !== 'number'
+    || typeof data.premiereConfigured !== 'boolean'
+    || typeof data.registrationOpen !== 'boolean'
+    || typeof data.nextTicketSequence !== 'number'
+  ) {
+    throw new Error('Unexpected event reset response');
+  }
+
+  return {
+    deletedGuests: data.deletedGuests,
+    preservedCoupleAnswers: data.preservedCoupleAnswers,
+    premiereConfigured: data.premiereConfigured,
+    registrationOpen: data.registrationOpen,
+    nextTicketSequence: data.nextTicketSequence,
   };
 }
