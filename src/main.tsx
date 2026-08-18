@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
+import { registerWeddingServiceWorker } from './pwa/registerServiceWorker';
 import './styles/globals.css';
 import './styles/train-arrival.css';
 import './styles/screen-announcements.css';
@@ -20,3 +21,7 @@ createRoot(root).render(
     <App />
   </StrictMode>,
 );
+
+if (import.meta.env.PROD) {
+  void registerWeddingServiceWorker();
+}
