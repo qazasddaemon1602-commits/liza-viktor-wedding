@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
 import {
+  setMkMainScreen,
   showMkBracket,
   type MkOwnerRpcClient,
   type MkResultResponse,
@@ -20,6 +21,7 @@ export type AdminMkControlDependencies = {
   finalize: (eventId: string) => Promise<void>;
   setCurrent: (matchId: string) => Promise<void>;
   showBracket?: (eventId: string) => Promise<void>;
+  setMainScreen?: (eventId: string, enabled: boolean) => Promise<void>;
   recordWinner: (matchId: string, winnerGuestId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   undo: (matchId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   broadcastRefresh: () => Promise<void>;
@@ -45,13 +47,33 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     await reload();
   };
 
-  const showBracketOnProjector = async () => {
-    if (dependencies.showBracket) {
-      await dependencies.showBracket(eventId);
+  const setSharedProjector = async (enabled: boolean) => {
+    if (dependencies.setMainScreen) {
+      await dependencies.setMainScreen(eventId, enabled);
       return;
     }
     const client = getSupabaseClient() as unknown as MkOwnerRpcClient;
-    await showMkBracket(client, eventId);
+    await setMkMainScreen(client, eventId, enabled);
+  };
+
+  const showBracketOnProjector = async () => {
+    if (dependencies.showBracket) {
+      await dependencies.showBracket(eventId);
+    } else {
+      const client = getSupabaseClient() as unknown as MkOwnerRpcClient;
+      await showMkBracket(client, eventId);
+    }
+    await setSharedProjector(true);
+  };
+
+  const startTournament = async () => {
+    await dependencies.finalize(eventId);
+    await setSharedProjector(true);
+  };
+
+  const setCurrentOnProjector = async (matchId: string) => {
+    await dependencies.setCurrent(matchId);
+    await setSharedProjector(true);
   };
 
   useEffect(() => {
@@ -204,14 +226,14 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
             <div className="admin-mk-launch">
               <p>
                 {allSeeded
-                  ? '16 игроков расставлены. Старт создаст 15 серверных матчей и зафиксирует сетку.'
+                  ? '16 игроков расставлены. Старт создаст 15 серверных матчей и выведет сетку на главный ТВ.'
                   : 'Для старта нужны ровно 16 игроков и позиции #1–#16.'}
               </p>
               <button
                 type="button"
                 className="registration-submit"
                 disabled={busy || !allSeeded}
-                onClick={() => void run(() => dependencies.finalize(eventId))}
+                onClick={() => void run(startTournament)}
               >
                 ЗАПУСТИТЬ ТУРНИР
               </button>
@@ -224,8 +246,8 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
         <>
           <div className="admin-mk-live-note">
             <strong>{state.state === 'complete' ? 'ТУРНИР ЗАВЕРШЁН' : 'СЕТКА ЗАФИКСИРОВАНА'}</strong>
-            <p>Выберите текущий бой, затем отметьте победителя. Исправления защищены проверкой downstream-матчей.</p>
-            {state.state === 'active' && (
+            <p>MK можно показывать на общем ТВ только в нужный момент. Отдельный MK-экран продолжает работать независимо.</p>
+            <div className="admin-mk-actions">
               <button
                 type="button"
                 className="registration-secondary"
@@ -234,12 +256,20 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               >
                 ВЫВЕСТИ СЕТКУ НА ЭКРАНЫ
               </button>
-            )}
+              <button
+                type="button"
+                className="registration-secondary"
+                disabled={busy}
+                onClick={() => void run(() => setSharedProjector(false))}
+              >
+                ВЕРНУТЬ ГЛАВНЫЙ ЭКРАН
+              </button>
+            </div>
           </div>
           <MatchEditor
             matches={state.matches}
             registrations={state.registrations}
-            onSetCurrent={dependencies.setCurrent}
+            onSetCurrent={setCurrentOnProjector}
             onRecordWinner={dependencies.recordWinner}
             onUndo={dependencies.undo}
             onChanged={refreshAll}
