@@ -18,6 +18,7 @@ describe('Mortal Kombat service', () => {
       players: [{ registrationId: 'r1', guestId: 'g1', displayName: 'Иван Петров', seed: null }],
       matches: [],
       championGuestId: null,
+      presentOnMainScreen: false,
     });
 
     const state = await getMkTournamentState(client, 'liza-viktor', 'device-123456');
@@ -26,7 +27,12 @@ describe('Mortal Kombat service', () => {
       p_event_slug: 'liza-viktor',
       p_device_key: 'device-123456',
     });
-    expect(state).toMatchObject({ status: 'active', state: 'registration', activeCount: 9 });
+    expect(state).toMatchObject({
+      status: 'active',
+      state: 'registration',
+      activeCount: 9,
+      presentOnMainScreen: false,
+    });
   });
 
   it('loads the same safe projection for a projector without a guest identity', async () => {
@@ -38,6 +44,24 @@ describe('Mortal Kombat service', () => {
       p_event_slug: 'liza-viktor',
       p_device_key: null,
     });
+  });
+
+  it('rejects active tournament payloads that omit the main-screen presentation flag', async () => {
+    const client = clientWith({
+      status: 'active',
+      tournamentId: 't1',
+      state: 'active',
+      activeCount: 16,
+      maxPlayers: 16,
+      ownRegistrationStatus: null,
+      waitlistPosition: null,
+      players: [],
+      matches: [],
+      championGuestId: null,
+    });
+
+    await expect(getMkTournamentScreenState(client, 'liza-viktor'))
+      .rejects.toThrow('Unexpected MK tournament payload');
   });
 
   it('joins with event/device identity instead of accepting a caller-supplied guest id', async () => {
