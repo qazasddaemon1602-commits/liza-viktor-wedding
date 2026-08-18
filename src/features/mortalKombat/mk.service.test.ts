@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getMkTournamentState, joinMkTournament, type MkRpcClient } from './mk.service';
+import { getMkTournamentScreenState, getMkTournamentState, joinMkTournament, type MkRpcClient } from './mk.service';
 
 function clientWith(data: unknown): MkRpcClient {
   return { rpc: vi.fn().mockResolvedValue({ data, error: null }) };
@@ -27,6 +27,17 @@ describe('Mortal Kombat service', () => {
       p_device_key: 'device-123456',
     });
     expect(state).toMatchObject({ status: 'active', state: 'registration', activeCount: 9 });
+  });
+
+  it('loads the same safe projection for a projector without a guest identity', async () => {
+    const client = clientWith({ status: 'idle' });
+
+    await getMkTournamentScreenState(client, 'liza-viktor');
+
+    expect(client.rpc).toHaveBeenCalledWith('get_mk_tournament_state', {
+      p_event_slug: 'liza-viktor',
+      p_device_key: null,
+    });
   });
 
   it('joins with event/device identity instead of accepting a caller-supplied guest id', async () => {
