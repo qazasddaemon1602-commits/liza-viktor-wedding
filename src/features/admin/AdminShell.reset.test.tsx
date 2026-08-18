@@ -79,6 +79,8 @@ describe('AdminShell rehearsal reset', () => {
       deletedGuests: 1,
       preservedCoupleAnswers: 30,
       premiereConfigured: true,
+      mortalKombatReset: true,
+      bunkerReset: true,
       registrationOpen: true,
       nextTicketSequence: 1,
     });
