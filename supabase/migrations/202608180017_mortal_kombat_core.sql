@@ -18,9 +18,12 @@ create table public.mk_registrations (
   seed integer check (seed is null or seed between 1 and 16),
   registered_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (tournament_id, guest_id),
-  unique nulls not distinct (tournament_id, seed)
+  unique (tournament_id, guest_id)
 );
+
+create unique index mk_registrations_tournament_seed_unique
+  on public.mk_registrations(tournament_id, seed)
+  where seed is not null;
 
 create table public.mk_matches (
   id uuid primary key default gen_random_uuid(),
@@ -349,16 +352,19 @@ declare
   v_event_id uuid;
   v_active_count integer := 0;
 begin
-  select r.*, t.event_id
-  into v_registration, v_event_id
+  select r into v_registration
   from public.mk_registrations r
-  join public.mk_tournaments t on t.id = r.tournament_id
   where r.id = p_registration_id
-  for update of r;
+  for update;
 
   if v_registration.id is null then
     raise exception 'MK registration not found' using errcode = 'P0002';
   end if;
+
+  select t.event_id into v_event_id
+  from public.mk_tournaments t
+  where t.id = v_registration.tournament_id;
+
   perform public._require_mk_owner(v_event_id);
 
   if v_registration.status <> 'waitlist' then
@@ -392,16 +398,20 @@ declare
   v_event_id uuid;
   v_tournament_state text;
 begin
-  select r.*, t.event_id, t.state
-  into v_registration, v_event_id, v_tournament_state
+  select r into v_registration
   from public.mk_registrations r
-  join public.mk_tournaments t on t.id = r.tournament_id
   where r.id = p_registration_id
-  for update of r;
+  for update;
 
   if v_registration.id is null then
     raise exception 'MK registration not found' using errcode = 'P0002';
   end if;
+
+  select t.event_id, t.state
+  into v_event_id, v_tournament_state
+  from public.mk_tournaments t
+  where t.id = v_registration.tournament_id;
+
   perform public._require_mk_owner(v_event_id);
 
   if v_tournament_state in ('active', 'complete') then
