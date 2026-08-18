@@ -104,7 +104,7 @@ test('guest registration updates owner and queues the train moment on an idle pr
 
   await registerGuest(guest, 'Анна', 'Смирнова');
 
-  await expect(owner.getByText('Анна Смирнова')).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeVisible();
   await expect(projector.getByTestId('train-arrival-scene')).toBeVisible();
   await expect(projector.getByTestId('arrival-locomotive')).toBeVisible();
   await expect(projector.getByText('Анна Смирнова')).toBeVisible();
@@ -130,7 +130,7 @@ test('composition lock keeps registration open for a late guest', async ({ brows
 
   await registerGuest(lateGuest, 'Поздний', 'Гость');
 
-  await expect(owner.getByText('Поздний Гость')).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Поздний Гость', level: 3 })).toBeVisible();
   await expect(lateGuest.getByText('Поздний Гость')).toBeVisible();
 
   await ownerContext.close();
