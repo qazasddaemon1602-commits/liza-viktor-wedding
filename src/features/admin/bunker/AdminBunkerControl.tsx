@@ -107,12 +107,29 @@ export function AdminBunkerControl({ eventId, dependencies }: AdminBunkerControl
     if (busy) return;
     setBusy(true);
     setError('');
+
     try {
-      await command();
-      await deps.broadcastRefresh();
-      await reload();
-    } catch {
-      setError('Команда Бункера не выполнена. Проверьте связь и owner-доступ.');
+      try {
+        await command();
+      } catch {
+        setError('Команда Бункера не выполнена. Проверьте связь и owner-доступ.');
+        return;
+      }
+
+      let warning = '';
+      try {
+        await deps.broadcastRefresh();
+      } catch {
+        warning = 'Команда выполнена. Realtime-сигнал не отправлен — ТВ подхватят состояние автоматически.';
+      }
+
+      try {
+        await reload();
+      } catch {
+        warning = warning || 'Команда выполнена, но не удалось перечитать статус. Не нажимайте повторно — проверьте связь.';
+      }
+
+      setError(warning);
     } finally {
       setBusy(false);
     }
