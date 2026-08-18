@@ -9,6 +9,7 @@ import {
   AdminCouplePreanswersPanel,
   type AdminCouplePreanswersPanelDependencies,
 } from './quiz/AdminCouplePreanswersPanel';
+import { AdminFinalFivePanel, type AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import { AdminQuizPanel, type AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
 
 export type AdminShellDependencies = {
@@ -26,6 +27,7 @@ export type AdminShellDependencies = {
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
   couplePreanswers?: AdminCouplePreanswersPanelDependencies;
   quiz?: AdminQuizPanelDependencies;
+  finalFive?: AdminFinalFivePanelDependencies;
 };
 
 type AdminShellProps = {
@@ -223,6 +225,10 @@ export function AdminShell({ dependencies }: AdminShellProps) {
 
       {dependencies.quiz && (
         <AdminQuizPanel eventId={dashboard.event.id} dependencies={dependencies.quiz} />
+      )}
+
+      {dependencies.finalFive && (
+        <AdminFinalFivePanel eventId={dashboard.event.id} dependencies={dependencies.finalFive} />
       )}
 
       {dependencies.sendCarriageCall && dependencies.clearCarriageCall && (
