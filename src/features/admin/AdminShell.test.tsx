@@ -72,6 +72,12 @@ describe('AdminShell', () => {
     render(<AdminShell dependencies={deps} />);
 
     expect(await screen.findByText('Лиза × Виктор')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'РЕПЕТИЦИЯ' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ОТКРЫТЬ ТВ' })).toHaveAttribute('href', '/screen');
+    expect(screen.getByRole('link', { name: 'РЕГИСТРАЦИЯ ГОСТЯ' })).toHaveAttribute('href', '/join');
+    expect(screen.getByRole('link', { name: 'КВИЗ' })).toHaveAttribute('href', '/play');
+    expect(screen.getByRole('link', { name: 'MK' })).toHaveAttribute('href', '/mortal-kombat');
+    expect(screen.getByRole('link', { name: 'MK НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
     expect(screen.getByText('Иван Петров')).toBeInTheDocument();
     expect(screen.getByText(/зарегистрировано: 1/i)).toBeInTheDocument();
     expect(screen.getByText(/регистрация открыта/i)).toBeInTheDocument();
