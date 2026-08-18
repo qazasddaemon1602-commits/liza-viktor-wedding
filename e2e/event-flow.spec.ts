@@ -148,6 +148,75 @@ test('registration during premiere countdown never interrupts the protected proj
   await guestContext.close();
 });
 
+test('late guest after premiere gets a normal ticket without changing earlier carriage assignment', async ({ browser }) => {
+  const firstContext = await browser.newContext();
+  const lateContext = await browser.newContext();
+  const screenContext = await browser.newContext();
+  const firstGuest = await firstContext.newPage();
+  const lateGuest = await lateContext.newPage();
+  const projector = await screenContext.newPage();
+
+  await registerGuest(firstGuest, 'До', 'Премьеры');
+
+  const client = await ownerClient();
+  const id = await eventId(client);
+  const { data: firstBefore, error: firstBeforeError } = await client
+    .from('guests')
+    .select('id, carriage_id, ticket_number')
+    .eq('event_id', id)
+    .eq('first_name', 'До')
+    .eq('last_name', 'Премьеры')
+    .single();
+  if (firstBeforeError) throw firstBeforeError;
+
+  const { error: mediaError } = await client.rpc('owner_set_premiere_media', {
+    p_event_id: id,
+    p_media_url: 'https://example.invalid/e2e-late-after-premiere.mp4',
+    p_duration_seconds: 30,
+  });
+  if (mediaError) throw mediaError;
+  const { error: startError } = await client.rpc('owner_start_premiere', {
+    p_event_id: id,
+    p_countdown_seconds: 1,
+  });
+  if (startError) throw startError;
+
+  await projector.goto('/screen');
+  await expect(projector.getByText(/ПРЕМЬЕРА|1/)).toBeVisible();
+  await new Promise((resolve) => setTimeout(resolve, 1_250));
+
+  const { error: returnError } = await client.rpc('owner_return_main_screen', { p_event_id: id });
+  if (returnError) throw returnError;
+  await projector.reload();
+  await expect(projector.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
+
+  await registerGuest(lateGuest, 'После', 'Премьеры');
+
+  const { data: firstAfter, error: firstAfterError } = await client
+    .from('guests')
+    .select('id, carriage_id, ticket_number')
+    .eq('id', firstBefore.id)
+    .single();
+  if (firstAfterError) throw firstAfterError;
+  expect(firstAfter.carriage_id).toBe(firstBefore.carriage_id);
+  expect(firstAfter.ticket_number).toBe(firstBefore.ticket_number);
+
+  const { data: lateRow, error: lateError } = await client
+    .from('guests')
+    .select('ticket_number')
+    .eq('event_id', id)
+    .eq('first_name', 'После')
+    .eq('last_name', 'Премьеры')
+    .single();
+  if (lateError) throw lateError;
+  expect(lateRow.ticket_number).toBe('LV-002');
+
+  await client.auth.signOut();
+  await firstContext.close();
+  await lateContext.close();
+  await screenContext.close();
+});
+
 test('bunker takes over two projectors, stays synchronized, and drops ordinary events', async ({ browser }) => {
   const ownerContext = await browser.newContext();
   const screenAContext = await browser.newContext();
