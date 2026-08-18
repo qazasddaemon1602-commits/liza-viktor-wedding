@@ -14,6 +14,7 @@ function state(activeCount: number): Extract<MkTournamentProjection, { status: '
     players: [],
     matches: [],
     championGuestId: null,
+    presentOnMainScreen: false,
   };
 }
 
