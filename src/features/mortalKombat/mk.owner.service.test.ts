@@ -6,6 +6,7 @@ import {
   randomizeMkSeeds,
   recordMkWinner,
   setCurrentMkMatch,
+  setMkMainScreen,
   showMkBracket,
   swapMkSeeds,
   undoMkResult,
@@ -95,6 +96,22 @@ describe('owner MK service', () => {
     expect(client.rpc).toHaveBeenNthCalledWith(3, 'owner_undo_mk_result', {
       p_match_id: 'm1',
       clear_completed_downstream: true,
+    });
+  });
+
+  it('explicitly shows and hides Mortal Kombat on the shared main projector', async () => {
+    const client = clientWith({ status: 'ok' });
+
+    await setMkMainScreen(client, 'event-1', true);
+    await setMkMainScreen(client, 'event-1', false);
+
+    expect(client.rpc).toHaveBeenNthCalledWith(1, 'owner_set_mk_main_screen', {
+      p_event_id: 'event-1',
+      p_enabled: true,
+    });
+    expect(client.rpc).toHaveBeenNthCalledWith(2, 'owner_set_mk_main_screen', {
+      p_event_id: 'event-1',
+      p_enabled: false,
     });
   });
 });
