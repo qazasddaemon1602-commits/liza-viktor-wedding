@@ -194,3 +194,45 @@ test('bunker takes over two projectors, stays synchronized, and drops ordinary e
   await screenBContext.close();
   await guestContext.close();
 });
+
+test('bunker unmounts an active premiere and restores authoritative premiere state after stop', async ({ browser }) => {
+  const client = await ownerClient();
+  const id = await eventId(client);
+  const { error: mediaError } = await client.rpc('owner_set_premiere_media', {
+    p_event_id: id,
+    p_media_url: 'https://example.invalid/e2e-bunker-takeover.mp4',
+    p_duration_seconds: 120,
+  });
+  if (mediaError) throw mediaError;
+  const { error: startError } = await client.rpc('owner_start_premiere', {
+    p_event_id: id,
+    p_countdown_seconds: 1,
+  });
+  if (startError) throw startError;
+
+  await new Promise((resolve) => setTimeout(resolve, 1_250));
+
+  const ownerContext = await browser.newContext();
+  const screenContext = await browser.newContext();
+  const owner = await ownerContext.newPage();
+  const projector = await screenContext.newPage();
+
+  await loginOwner(owner);
+  await projector.goto('/screen');
+  await expect(projector.locator('video.premiere-player')).toHaveCount(1);
+
+  await expect(owner.getByRole('heading', { name: 'БУНКЕР' })).toBeVisible({ timeout: 10_000 });
+  await owner.getByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }).click();
+  await owner.getByRole('button', { name: /ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ/ }).click();
+
+  await expect(projector.getByTestId('bunker-emergency-scene')).toBeVisible();
+  await expect(projector.locator('video.premiere-player')).toHaveCount(0);
+
+  await owner.getByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' }).click();
+  await expect(projector.getByTestId('bunker-emergency-scene')).toHaveCount(0);
+  await expect(projector.locator('video.premiere-player')).toHaveCount(1, { timeout: 10_000 });
+
+  await client.auth.signOut();
+  await ownerContext.close();
+  await screenContext.close();
+});
