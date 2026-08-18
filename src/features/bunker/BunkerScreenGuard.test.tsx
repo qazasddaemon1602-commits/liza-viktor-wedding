@@ -6,6 +6,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+async function flushLoadedState() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 describe('BunkerScreenGuard', () => {
   it('overlays the projector with the synchronized emergency message and 30 minute timer', async () => {
     vi.useFakeTimers();
@@ -27,15 +34,16 @@ describe('BunkerScreenGuard', () => {
         <div>ОБЫЧНЫЙ ЭКРАН</div>
       </BunkerScreenGuard>,
     );
+    await flushLoadedState();
 
-    expect(await screen.findByTestId('bunker-emergency-scene')).toBeInTheDocument();
+    expect(screen.getByTestId('bunker-emergency-scene')).toBeInTheDocument();
     expect(screen.getByText('ЭКСТРЕННОЕ СООБЩЕНИЕ')).toBeInTheDocument();
     expect(screen.getByText('ПОЕЗД ИЗМЕНИЛ МАРШРУТ.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'БУНКЕР' })).toBeInTheDocument();
     expect(screen.getByTestId('bunker-timer')).toHaveTextContent('30:00');
 
-    act(() => {
-      vi.advanceTimersByTime(1_000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
     });
     expect(screen.getByTestId('bunker-timer')).toHaveTextContent('29:59');
   });
@@ -63,12 +71,12 @@ describe('BunkerScreenGuard', () => {
         <div>ОБЫЧНЫЙ ЭКРАН</div>
       </BunkerScreenGuard>,
     );
+    await flushLoadedState();
 
-    expect(await screen.findByTestId('bunker-emergency-scene')).toBeInTheDocument();
+    expect(screen.getByTestId('bunker-emergency-scene')).toBeInTheDocument();
 
     await act(async () => {
-      vi.advanceTimersByTime(2_100);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(2_100);
     });
 
     expect(load).toHaveBeenCalledTimes(2);
