@@ -13,16 +13,21 @@ async function ownerClient() {
   return client;
 }
 
-async function resetRuntime() {
-  const client = await ownerClient();
-  const { data: event, error: eventError } = await client
+async function eventId(client: Awaited<ReturnType<typeof ownerClient>>): Promise<string> {
+  const { data: event, error } = await client
     .from('events')
     .select('id')
     .eq('slug', 'liza-viktor')
     .single();
-  if (eventError) throw eventError;
+  if (error) throw error;
+  return event.id;
+}
+
+async function resetRuntime() {
+  const client = await ownerClient();
+  const id = await eventId(client);
   const { error } = await client.rpc('owner_reset_event_test_data', {
-    p_event_id: event.id,
+    p_event_id: id,
     p_confirmation: 'СБРОСИТЬ',
   });
   if (error) throw error;
@@ -98,4 +103,41 @@ test('composition lock keeps registration open for a late guest', async ({ brows
   await ownerContext.close();
   await firstGuestContext.close();
   await lateGuestContext.close();
+});
+
+test('registration during premiere countdown never interrupts the protected projector scene', async ({ browser }) => {
+  const client = await ownerClient();
+  const id = await eventId(client);
+  const { error: mediaError } = await client.rpc('owner_set_premiere_media', {
+    p_event_id: id,
+    p_media_url: 'https://example.invalid/e2e-premiere.mp4',
+    p_duration_seconds: 30,
+  });
+  if (mediaError) throw mediaError;
+  const { error: startError } = await client.rpc('owner_start_premiere', {
+    p_event_id: id,
+    p_countdown_seconds: 10,
+  });
+  if (startError) throw startError;
+
+  const screenContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const projector = await screenContext.newPage();
+  const guest = await guestContext.newPage();
+
+  await projector.goto('/screen');
+  await expect(projector.getByText(/ПРЕМЬЕРА|10|9|8/)).toBeVisible();
+
+  await registerGuest(guest, 'Во Время', 'Премьеры');
+  await expect(projector.getByText('Во Время Премьеры')).toHaveCount(0);
+  await expect(projector.getByTestId('train-arrival-scene')).toHaveCount(0);
+
+  const { error: returnError } = await client.rpc('owner_return_main_screen', { p_event_id: id });
+  if (returnError) throw returnError;
+  await projector.reload();
+  await expect(projector.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
+
+  await client.auth.signOut();
+  await screenContext.close();
+  await guestContext.close();
 });
