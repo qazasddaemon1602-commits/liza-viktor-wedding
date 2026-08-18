@@ -89,7 +89,7 @@ export async function issueOwnerCouplePreanswerAccess(
     !isRecord(data)
     || data.status !== 'issued'
     || typeof data.token !== 'string'
-    || data.token.length < 16
+    || data.token.length === 0
   ) {
     fail();
   }
