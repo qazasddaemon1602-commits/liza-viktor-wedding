@@ -6,6 +6,10 @@ import { AdminGuestsPage } from './guests/AdminGuestsPage';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
 import { enqueueNotices, type RegistrationNotice } from './notifications/notificationQueue';
 import {
+  AdminPremiereControl,
+  type AdminPremiereControlDependencies,
+} from './premiere/AdminPremiereControl';
+import {
   AdminCouplePreanswersPanel,
   type AdminCouplePreanswersPanelDependencies,
 } from './quiz/AdminCouplePreanswersPanel';
@@ -26,6 +30,7 @@ export type AdminShellDependencies = {
   ) => Promise<OwnerCarriageCall>;
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
   couplePreanswers?: AdminCouplePreanswersPanelDependencies;
+  premiere?: AdminPremiereControlDependencies;
   quiz?: AdminQuizPanelDependencies;
   finalFive?: AdminFinalFivePanelDependencies;
 };
@@ -42,6 +47,20 @@ const affiliationLabels: Record<string, string> = {
   colleagues: 'Коллеги',
   other: 'Другое',
 };
+
+function latestRegistrationAt(dashboard: AdminDashboard): string | null {
+  let latest: string | null = null;
+  let latestMs = Number.NEGATIVE_INFINITY;
+
+  for (const guest of dashboard.guests) {
+    const ms = Date.parse(guest.registeredAt);
+    if (!Number.isFinite(ms) || ms <= latestMs) continue;
+    latestMs = ms;
+    latest = guest.registeredAt;
+  }
+
+  return latest;
+}
 
 export function AdminShell({ dependencies }: AdminShellProps) {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
@@ -220,6 +239,16 @@ export function AdminShell({ dependencies }: AdminShellProps) {
         <AdminCouplePreanswersPanel
           eventId={dashboard.event.id}
           dependencies={dependencies.couplePreanswers}
+        />
+      )}
+
+      {dependencies.premiere && (
+        <AdminPremiereControl
+          eventId={dashboard.event.id}
+          registeredCount={dashboard.guests.length}
+          expectedGuestCount={dashboard.event.expectedGuestCount}
+          lastRegisteredAt={latestRegistrationAt(dashboard)}
+          dependencies={dependencies.premiere}
         />
       )}
 
