@@ -101,10 +101,10 @@ function parseJoin(data: unknown): MkJoinResult {
   };
 }
 
-export async function getMkTournamentState(
+async function loadMkProjection(
   client: MkRpcClient,
   eventSlug: string,
-  deviceKey: string,
+  deviceKey: string | null,
 ): Promise<MkTournamentProjection> {
   const { data, error } = await client.rpc('get_mk_tournament_state', {
     p_event_slug: eventSlug,
@@ -112,6 +112,21 @@ export async function getMkTournamentState(
   });
   if (error) throwRpcError(error);
   return parseTournament(data);
+}
+
+export async function getMkTournamentState(
+  client: MkRpcClient,
+  eventSlug: string,
+  deviceKey: string,
+): Promise<MkTournamentProjection> {
+  return loadMkProjection(client, eventSlug, deviceKey);
+}
+
+export async function getMkTournamentScreenState(
+  client: MkRpcClient,
+  eventSlug: string,
+): Promise<MkTournamentProjection> {
+  return loadMkProjection(client, eventSlug, null);
 }
 
 export async function joinMkTournament(
