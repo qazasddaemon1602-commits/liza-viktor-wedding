@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(12);
+select plan(14);
 
 select ok(
   exists(
@@ -50,6 +50,16 @@ select ok(
 select ok(
   position('delete from public.mk_tournaments' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) = 0,
   'reset preserves the MK tournament configuration row'
+);
+
+select ok(
+  position('update public.bunker_state' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) > 0,
+  'reset explicitly clears active bunker runtime state'
+);
+
+select ok(
+  position('started_at = null' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) > 0,
+  'reset clears bunker timer anchor so no projector can resume the rehearsal countdown'
 );
 
 select ok(
