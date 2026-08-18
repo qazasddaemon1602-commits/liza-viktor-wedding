@@ -11,6 +11,7 @@ import './styles/premiere.css';
 import './styles/admin-premiere.css';
 import './styles/admin-reset.css';
 import './styles/mortal-kombat.css';
+import './styles/mk-milestones.css';
 
 const root = document.getElementById('root');
 
