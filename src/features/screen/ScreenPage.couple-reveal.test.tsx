@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ScreenPage, type ScreenPageDependencies } from './ScreenPage';
 
@@ -14,6 +14,14 @@ function quizResults() {
     answeredCount: 12,
     results: { liza: 7, viktor: 5, total: 12 },
   };
+}
+
+async function expectGuestResultsVisible() {
+  const results = await screen.findByLabelText('Результаты голосования');
+  expect(within(results).getByText('ЛИЗА')).toBeInTheDocument();
+  expect(within(results).getByText('58%')).toBeInTheDocument();
+  expect(within(results).getByText('ВИКТОР')).toBeInTheDocument();
+  expect(within(results).getByText('42%')).toBeInTheDocument();
 }
 
 describe('ScreenPage joint answer reveal', () => {
@@ -33,7 +41,7 @@ describe('ScreenPage joint answer reveal', () => {
       />,
     );
 
-    expect(await screen.findByText('ЛИЗА 58%')).toBeInTheDocument();
+    await expectGuestResultsVisible();
     expect(screen.queryByText('ОТВЕТ ЛИЗЫ И ВИКТОРА')).not.toBeInTheDocument();
   });
 
@@ -60,7 +68,7 @@ describe('ScreenPage joint answer reveal', () => {
       />,
     );
 
-    expect(await screen.findByText('ЛИЗА 58%')).toBeInTheDocument();
+    await expectGuestResultsVisible();
     expect(screen.queryByText('ОТВЕТ ЛИЗЫ И ВИКТОРА')).not.toBeInTheDocument();
 
     act(() => refresh?.());
@@ -91,7 +99,7 @@ describe('ScreenPage joint answer reveal', () => {
       />,
     );
 
-    expect(await screen.findByText('ЛИЗА 58%')).toBeInTheDocument();
+    await expectGuestResultsVisible();
     expect(screen.queryByText('ОТВЕТ ЛИЗЫ И ВИКТОРА')).not.toBeInTheDocument();
   });
 });
