@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { MkResultResponse } from '../../mortalKombat/mk.owner.service';
+import { getSupabaseClient } from '../../../lib/supabase';
+import {
+  showMkBracket,
+  type MkOwnerRpcClient,
+  type MkResultResponse,
+} from '../../mortalKombat/mk.owner.service';
 import type { MkOwnerControl } from '../../mortalKombat/mk.types';
 import { MatchEditor } from './MatchEditor';
 import { PlayerPoolEditor } from './PlayerPoolEditor';
@@ -14,6 +19,7 @@ export type AdminMkControlDependencies = {
   promote: (registrationId: string) => Promise<void>;
   finalize: (eventId: string) => Promise<void>;
   setCurrent: (matchId: string) => Promise<void>;
+  showBracket?: (eventId: string) => Promise<void>;
   recordWinner: (matchId: string, winnerGuestId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   undo: (matchId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   broadcastRefresh: () => Promise<void>;
@@ -37,6 +43,15 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   const refreshAll = async () => {
     await dependencies.broadcastRefresh();
     await reload();
+  };
+
+  const showBracketOnProjector = async () => {
+    if (dependencies.showBracket) {
+      await dependencies.showBracket(eventId);
+      return;
+    }
+    const client = getSupabaseClient() as unknown as MkOwnerRpcClient;
+    await showMkBracket(client, eventId);
   };
 
   useEffect(() => {
@@ -210,6 +225,16 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
           <div className="admin-mk-live-note">
             <strong>{state.state === 'complete' ? 'ТУРНИР ЗАВЕРШЁН' : 'СЕТКА ЗАФИКСИРОВАНА'}</strong>
             <p>Выберите текущий бой, затем отметьте победителя. Исправления защищены проверкой downstream-матчей.</p>
+            {state.state === 'active' && (
+              <button
+                type="button"
+                className="registration-secondary"
+                disabled={busy}
+                onClick={() => void run(showBracketOnProjector)}
+              >
+                ВЫВЕСТИ СЕТКУ НА ЭКРАНЫ
+              </button>
+            )}
           </div>
           <MatchEditor
             matches={state.matches}
