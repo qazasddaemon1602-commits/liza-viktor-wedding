@@ -106,6 +106,7 @@ test('guest registration updates owner and queues the train moment on an idle pr
 
   await expect(owner.getByText('Анна Смирнова')).toBeVisible();
   await expect(projector.getByTestId('train-arrival-scene')).toBeVisible();
+  await expect(projector.getByTestId('arrival-locomotive')).toBeVisible();
   await expect(projector.getByText('Анна Смирнова')).toBeVisible();
 
   await ownerContext.close();
@@ -158,7 +159,7 @@ test('registration during premiere countdown never interrupts the protected proj
   const guest = await guestContext.newPage();
 
   await projector.goto('/screen');
-  await expect(projector.getByText(/ПРЕМЬЕРА|10|9|8/)).toBeVisible();
+  await expect(projector.getByRole('region', { name: /Премьера через \d+/i })).toBeVisible();
 
   await registerGuest(guest, 'Во Время', 'Премьеры');
   await expect(projector.getByText('Во Время Премьеры')).toHaveCount(0);
@@ -199,13 +200,13 @@ test('late guest after premiere gets a normal ticket without changing earlier ca
   if (mediaError) throw mediaError;
   const { error: startError } = await client.rpc('owner_start_premiere', {
     p_event_id: id,
-    p_countdown_seconds: 1,
+    p_countdown_seconds: 3,
   });
   if (startError) throw startError;
 
   await projector.goto('/screen');
-  await expect(projector.getByText(/ПРЕМЬЕРА|1/)).toBeVisible();
-  await new Promise((resolve) => setTimeout(resolve, 1_250));
+  await expect(projector.getByRole('region', { name: /Премьера через \d+/i })).toBeVisible();
+  await new Promise((resolve) => setTimeout(resolve, 3_250));
 
   const { error: returnError } = await client.rpc('owner_return_main_screen', { p_event_id: id });
   if (returnError) throw returnError;
