@@ -28,6 +28,14 @@ import {
   type OwnerCouplePreanswerRpcClient,
 } from '../quiz/ownerCouplePreanswers.service';
 import {
+  getOwnerFinalFiveStatus,
+  issueFinalFiveRoleAccess,
+  revealFinalFive,
+  seedFinalFiveQuestions,
+  type FinalFiveRole,
+  type FinalFiveRpcClient,
+} from '../quiz/finalFive.service';
+import {
   broadcastQuizRefresh,
   type QuizRealtimeClient,
 } from '../quiz/quiz.realtime';
@@ -46,6 +54,7 @@ import {
 } from './admin.realtime';
 import { AdminShell } from './AdminShell';
 import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCouplePreanswersPanel';
+import type { AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import type { AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
 
 const EVENT_SLUG = 'liza-viktor';
@@ -70,6 +79,7 @@ export type AdminPageDependencies = {
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
   couplePreanswers?: AdminCouplePreanswersPanelDependencies;
   quiz?: AdminQuizPanelDependencies;
+  finalFive?: AdminFinalFivePanelDependencies;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -83,6 +93,12 @@ function buildCoupleAccessUrl(token: string): string {
   return url.toString();
 }
 
+function buildFinalFiveRoleUrl(role: FinalFiveRole, token: string): string {
+  const url = new URL(role === 'liza' ? '/liza' : '/viktor', window.location.origin);
+  url.searchParams.set('token', token);
+  return url.toString();
+}
+
 export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
@@ -90,6 +106,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
   const quizRpcClient = client as unknown as AdminQuizRpcClient;
   const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
   const coupleRpcClient = client as unknown as OwnerCouplePreanswerRpcClient;
+  const finalFiveRpcClient = client as unknown as FinalFiveRpcClient;
   const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   let currentEventId = '';
 
@@ -173,6 +190,17 @@ export function createAdminPageDependencies(): AdminPageDependencies {
         eventId,
         questionId,
       ),
+      broadcastRefresh: () => broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
+    },
+    finalFive: {
+      loadQuiz: (eventId) => getOwnerQuizControl(quizRpcClient, eventId),
+      seed: (eventId) => seedFinalFiveQuestions(finalFiveRpcClient, eventId),
+      issueRole: (eventId, role) => issueFinalFiveRoleAccess(finalFiveRpcClient, eventId, role),
+      buildRoleUrl: buildFinalFiveRoleUrl,
+      activate: (eventId, questionId) => activateOwnerQuizQuestion(quizRpcClient, eventId, questionId),
+      revealGuestResults: (eventId, questionId) => revealOwnerQuizResults(quizRpcClient, eventId, questionId),
+      loadStatus: (eventId, questionId) => getOwnerFinalFiveStatus(finalFiveRpcClient, eventId, questionId),
+      revealFinal: (eventId, questionId) => revealFinalFive(finalFiveRpcClient, eventId, questionId),
       broadcastRefresh: () => broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
     },
   };
@@ -321,6 +349,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         clearCarriageCall: deps.clearCarriageCall,
         couplePreanswers: deps.couplePreanswers,
         quiz: deps.quiz,
+        finalFive: deps.finalFive,
       }}
     />
   );
