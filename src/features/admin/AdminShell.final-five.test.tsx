@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { AdminShell, type AdminShellDependencies } from './AdminShell';
 import type { AdminDashboard } from './admin.service';
 
@@ -41,7 +41,7 @@ it('renders the dedicated final-five owner panel for the current event', async (
 
   render(<AdminShell dependencies={dependencies} />);
 
-  expect(await screen.findByRole('heading', { name: 'ФИНАЛЬНАЯ ПЯТЁРКА' })).toBeInTheDocument();
-  expect(screen.getByText('Кто главный?')).toBeInTheDocument();
+  expect(await screen.findByText('Кто главный?')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'ФИНАЛЬНАЯ ПЯТЁРКА' })).toBeInTheDocument();
   expect(loadQuiz).toHaveBeenCalledWith('event-1');
 });
