@@ -103,6 +103,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   const waitlist = state.registrations.filter((registration) => registration.status === 'waitlist');
   const allSeeded = active.length === 16 && active.every((registration) => registration.seed !== null);
   const setupOpen = state.state === 'registration' || state.state === 'draw_ready';
+  const needsReseed = state.state === 'draw_ready' && active.length === 16 && !allSeeded;
 
   return (
     <section className="admin-mk-control">
@@ -142,6 +143,12 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               </button>
             )}
           </div>
+
+          {needsReseed && (
+            <p className="admin-mk-reseed-note" role="status">
+              СОСТАВ ИЗМЕНИЛСЯ · нажмите «ПЕРЕМЕШАТЬ 16 ИГРОКОВ» или расставьте позиции заново перед стартом.
+            </p>
+          )}
 
           <PlayerPoolEditor
             registrations={active}
