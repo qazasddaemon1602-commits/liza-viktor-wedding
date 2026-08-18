@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(8);
+select plan(10);
 
 select has_table('public', 'bunker_state', 'bunker state table exists');
 
@@ -54,6 +54,16 @@ select ok(
 select ok(
   position('1800' in pg_get_functiondef('public.owner_start_bunker(uuid,integer)'::regprocedure)) > 0,
   'bunker start contract carries the 30 minute default'
+);
+
+select ok(
+  position('v_remaining > 0' in lower(pg_get_functiondef('public.owner_get_bunker_control(uuid)'::regprocedure))) = 0,
+  'owner control keeps bunker active at 00:00 until explicit stop'
+);
+
+select ok(
+  position('if v_remaining = 0' in lower(pg_get_functiondef('public.get_bunker_screen_state(text)'::regprocedure))) = 0,
+  'projector keeps bunker emergency visible at 00:00 until explicit stop'
 );
 
 select * from finish();
