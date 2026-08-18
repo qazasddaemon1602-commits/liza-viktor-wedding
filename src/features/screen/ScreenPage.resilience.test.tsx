@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import type { PremiereScreenState } from '../premiere/premiere.service';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 import { ScreenPage, type ScreenPageDependencies } from './ScreenPage';
 
@@ -14,6 +15,11 @@ const results: QuizScreenState = {
   },
   answeredCount: 30,
   results: { liza: 12, viktor: 18, total: 30 },
+};
+
+const idlePremiere: PremiereScreenState = {
+  status: 'idle',
+  serverNow: '2026-08-30T12:00:00.000Z',
 };
 
 describe('ScreenPage temporary network resilience', () => {
@@ -54,10 +60,7 @@ describe('ScreenPage temporary network resilience', () => {
 
   it('shows a discreet reconnect state and refetches authoritative state when the browser comes back online', async () => {
     const loadQuiz = vi.fn().mockResolvedValue(results);
-    const loadPremiere = vi.fn().mockResolvedValue({
-      status: 'idle',
-      serverNow: '2026-08-30T12:00:00.000Z',
-    });
+    const loadPremiere = vi.fn().mockResolvedValue(idlePremiere);
     const dependencies: ScreenPageDependencies = {
       subscribe: () => vi.fn(),
       loadQuiz,
