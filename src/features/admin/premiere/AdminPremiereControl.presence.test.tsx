@@ -24,6 +24,30 @@ const standbyState: OwnerPremiereControl = {
   serverNow,
 };
 
+function liveDependencies() {
+  let emit: ((presence: PremiereScreenPresence) => void) | undefined;
+  const dependencies: AdminPremiereControlDependencies = {
+    load: vi.fn().mockResolvedValue(standbyState),
+    setMedia: vi.fn().mockResolvedValue({ status: 'configured' }),
+    standby: vi.fn().mockResolvedValue({ status: 'standby' }),
+    start: vi.fn().mockResolvedValue({ status: 'countdown' }),
+    cancel: vi.fn().mockResolvedValue({ status: 'standby' }),
+    pause: vi.fn().mockResolvedValue({ status: 'paused' }),
+    resume: vi.fn().mockResolvedValue({ status: 'playing' }),
+    seek: vi.fn().mockResolvedValue({ status: 'seeked' }),
+    restart: vi.fn().mockResolvedValue({ status: 'playing' }),
+    black: vi.fn().mockResolvedValue({ status: 'black' }),
+    returnMain: vi.fn().mockResolvedValue({ status: 'idle' }),
+    setCountdownSound: vi.fn().mockResolvedValue({ status: 'updated' }),
+    broadcastRefresh: vi.fn().mockResolvedValue(undefined),
+    subscribeScreenPresence: (callback) => {
+      emit = callback;
+      return vi.fn();
+    },
+  };
+  return { dependencies, emit: (presence: PremiereScreenPresence) => emit?.(presence) };
+}
+
 async function flushPromises() {
   await act(async () => {
     await Promise.resolve();
@@ -40,26 +64,7 @@ describe('AdminPremiereControl live projector preflight', () => {
   afterEach(() => vi.useRealTimers());
 
   it('shows two live TVs and their real video/audio readiness', async () => {
-    let emit: ((presence: PremiereScreenPresence) => void) | undefined;
-    const dependencies: AdminPremiereControlDependencies = {
-      load: vi.fn().mockResolvedValue(standbyState),
-      setMedia: vi.fn().mockResolvedValue({ status: 'configured' }),
-      standby: vi.fn().mockResolvedValue({ status: 'standby' }),
-      start: vi.fn().mockResolvedValue({ status: 'countdown' }),
-      cancel: vi.fn().mockResolvedValue({ status: 'standby' }),
-      pause: vi.fn().mockResolvedValue({ status: 'paused' }),
-      resume: vi.fn().mockResolvedValue({ status: 'playing' }),
-      seek: vi.fn().mockResolvedValue({ status: 'seeked' }),
-      restart: vi.fn().mockResolvedValue({ status: 'playing' }),
-      black: vi.fn().mockResolvedValue({ status: 'black' }),
-      returnMain: vi.fn().mockResolvedValue({ status: 'idle' }),
-      setCountdownSound: vi.fn().mockResolvedValue({ status: 'updated' }),
-      broadcastRefresh: vi.fn().mockResolvedValue(undefined),
-      subscribeScreenPresence: (callback) => {
-        emit = callback;
-        return vi.fn();
-      },
-    };
+    const live = liveDependencies();
 
     render(
       <AdminPremiereControl
@@ -68,7 +73,7 @@ describe('AdminPremiereControl live projector preflight', () => {
         expectedGuestCount={40}
         lastRegisteredAt="2026-08-30T11:53:00.000Z"
         nowMs={Date.parse(serverNow)}
-        dependencies={dependencies}
+        dependencies={live.dependencies}
       />,
     );
     await flushPromises();
@@ -76,37 +81,19 @@ describe('AdminPremiereControl live projector preflight', () => {
     expect(screen.getByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
 
     act(() => {
-      emit?.({ screenId: 'tv-room-1', videoReady: true, audioArmed: true });
-      emit?.({ screenId: 'tv-room-2', videoReady: true, audioArmed: true });
+      live.emit({ screenId: 'tv-room-1', videoReady: true, audioArmed: true });
+      live.emit({ screenId: 'tv-room-2', videoReady: true, audioArmed: true });
     });
 
     expect(screen.getByText('ЭКРАНЫ НА СВЯЗИ · 2')).toBeInTheDocument();
     expect(screen.getByText('ВИДЕО ГОТОВО · 2/2')).toBeInTheDocument();
     expect(screen.getByText('ЗВУК ГОТОВ · 2/2')).toBeInTheDocument();
     expect(screen.getByText('ПРЕМЬЕРА ГОТОВА')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeEnabled();
   });
 
-  it('marks a TV offline automatically after the heartbeat freshness window expires', async () => {
-    let emit: ((presence: PremiereScreenPresence) => void) | undefined;
-    const dependencies: AdminPremiereControlDependencies = {
-      load: vi.fn().mockResolvedValue(standbyState),
-      setMedia: vi.fn().mockResolvedValue({ status: 'configured' }),
-      standby: vi.fn().mockResolvedValue({ status: 'standby' }),
-      start: vi.fn().mockResolvedValue({ status: 'countdown' }),
-      cancel: vi.fn().mockResolvedValue({ status: 'standby' }),
-      pause: vi.fn().mockResolvedValue({ status: 'paused' }),
-      resume: vi.fn().mockResolvedValue({ status: 'playing' }),
-      seek: vi.fn().mockResolvedValue({ status: 'seeked' }),
-      restart: vi.fn().mockResolvedValue({ status: 'playing' }),
-      black: vi.fn().mockResolvedValue({ status: 'black' }),
-      returnMain: vi.fn().mockResolvedValue({ status: 'idle' }),
-      setCountdownSound: vi.fn().mockResolvedValue({ status: 'updated' }),
-      broadcastRefresh: vi.fn().mockResolvedValue(undefined),
-      subscribeScreenPresence: (callback) => {
-        emit = callback;
-        return vi.fn();
-      },
-    };
+  it('blocks manual start until every live projector is video-ready and audio-armed', async () => {
+    const live = liveDependencies();
 
     render(
       <AdminPremiereControl
@@ -115,14 +102,52 @@ describe('AdminPremiereControl live projector preflight', () => {
         expectedGuestCount={40}
         lastRegisteredAt="2026-08-30T11:53:00.000Z"
         nowMs={Date.parse(serverNow)}
-        dependencies={dependencies}
+        dependencies={live.dependencies}
+      />,
+    );
+    await flushPromises();
+
+    const startButton = screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' });
+    expect(startButton).toBeDisabled();
+    expect(screen.getByText(/СТАРТ ЗАБЛОКИРОВАН/i)).toBeInTheDocument();
+
+    act(() => {
+      live.emit({ screenId: 'tv-room-1', videoReady: true, audioArmed: true });
+      live.emit({ screenId: 'tv-room-2', videoReady: false, audioArmed: true });
+    });
+    expect(startButton).toBeDisabled();
+
+    act(() => {
+      live.emit({ screenId: 'tv-room-2', videoReady: true, audioArmed: false });
+    });
+    expect(startButton).toBeDisabled();
+
+    act(() => {
+      live.emit({ screenId: 'tv-room-2', videoReady: true, audioArmed: true });
+    });
+    expect(startButton).toBeEnabled();
+    expect(screen.queryByText(/СТАРТ ЗАБЛОКИРОВАН/i)).not.toBeInTheDocument();
+  });
+
+  it('marks a TV offline automatically after the heartbeat freshness window expires', async () => {
+    const live = liveDependencies();
+
+    render(
+      <AdminPremiereControl
+        eventId={eventId}
+        registeredCount={32}
+        expectedGuestCount={40}
+        lastRegisteredAt="2026-08-30T11:53:00.000Z"
+        nowMs={Date.parse(serverNow)}
+        dependencies={live.dependencies}
       />,
     );
     await flushPromises();
     expect(screen.getByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
 
-    act(() => emit?.({ screenId: 'tv-room-1', videoReady: true, audioArmed: true }));
+    act(() => live.emit({ screenId: 'tv-room-1', videoReady: true, audioArmed: true }));
     expect(screen.getByText('ЭКРАНЫ НА СВЯЗИ · 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeEnabled();
 
     await act(async () => {
       vi.advanceTimersByTime(16_000);
@@ -131,5 +156,6 @@ describe('AdminPremiereControl live projector preflight', () => {
 
     expect(screen.getByText('ЭКРАНЫ НА СВЯЗИ · 0')).toBeInTheDocument();
     expect(screen.getByText('ТЕХНИКА ЕЩЁ НЕ ГОТОВА')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeDisabled();
   });
 });
