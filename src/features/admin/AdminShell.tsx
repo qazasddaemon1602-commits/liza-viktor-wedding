@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import type { OwnerCarriageCall } from '../carriages/carriageCalls.service';
 import type { AdminDashboard } from './admin.service';
+import { AdminCarriageCalls } from './carriages/AdminCarriageCalls';
 import { AdminGuestsPage } from './guests/AdminGuestsPage';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
 import { enqueueNotices, type RegistrationNotice } from './notifications/notificationQueue';
@@ -11,6 +13,12 @@ export type AdminShellDependencies = {
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
   issueGuestRecovery?: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   subscribeToRegistrations?: (callback: (guestId: string) => void) => () => void;
+  sendCarriageCall?: (
+    carriageIds: string[],
+    message: string,
+    showOnScreen: boolean,
+  ) => Promise<OwnerCarriageCall>;
+  clearCarriageCall?: (callId: string) => Promise<void>;
 };
 
 type AdminShellProps = {
@@ -198,6 +206,14 @@ export function AdminShell({ dependencies }: AdminShellProps) {
         )}
         <p>Фиксация не закрывает регистрацию: опоздавшие гости продолжат получать свободный подходящий вагон.</p>
       </section>
+
+      {dependencies.sendCarriageCall && dependencies.clearCarriageCall && (
+        <AdminCarriageCalls
+          carriages={dashboard.carriages.filter((carriage) => carriage.enabled)}
+          onSend={dependencies.sendCarriageCall}
+          onClear={dependencies.clearCarriageCall}
+        />
+      )}
 
       <AdminGuestsPage
         guests={dashboard.guests}
