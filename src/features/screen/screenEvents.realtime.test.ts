@@ -69,6 +69,48 @@ describe('subscribeToScreenEvents', () => {
     expect(unsubscribe).toHaveBeenCalled();
   });
 
+  it('parses owner-published carriage call screen events', () => {
+    const callback = vi.fn();
+    const on = vi.fn().mockReturnThis();
+    const channel = { on, subscribe: vi.fn(), unsubscribe: vi.fn() };
+    const client: ScreenEventsRealtimeClient = {
+      channel: vi.fn().mockReturnValue(channel),
+    };
+
+    subscribeToScreenEvents(client, 'liza-viktor', callback);
+    const handler = on.mock.calls[0][2];
+
+    handler({
+      new: {
+        id: 'screen-call-1',
+        kind: 'carriage_call',
+        created_at: '2026-08-30T13:10:00+05:00',
+        payload: {
+          callId: 'call-1',
+          message: 'ВАГОНЫ 2 И 4 — ГОТОВИМСЯ К СЛЕДУЮЩЕМУ КОНКУРСУ',
+          carriages: [
+            { id: 'c2', number: 2, label: 'ВАГОН №2', accentHex: '#9A6348', visualMark: '02' },
+            { id: 'c4', number: 4, label: 'ВАГОН №4', accentHex: '#78806A', visualMark: '04' },
+          ],
+        },
+      },
+    });
+
+    expect(callback).toHaveBeenCalledWith({
+      id: 'screen-call-1',
+      kind: 'carriage_call',
+      createdAt: '2026-08-30T13:10:00+05:00',
+      payload: {
+        callId: 'call-1',
+        message: 'ВАГОНЫ 2 И 4 — ГОТОВИМСЯ К СЛЕДУЮЩЕМУ КОНКУРСУ',
+        carriages: [
+          { id: 'c2', number: 2, label: 'ВАГОН №2', accentHex: '#9A6348', visualMark: '02' },
+          { id: 'c4', number: 4, label: 'ВАГОН №4', accentHex: '#78806A', visualMark: '04' },
+        ],
+      },
+    });
+  });
+
   it('ignores malformed or unsupported screen events', () => {
     const callback = vi.fn();
     const on = vi.fn().mockReturnThis();
@@ -82,6 +124,7 @@ describe('subscribeToScreenEvents', () => {
 
     handler({ new: { id: 'x', kind: 'unknown', payload: {} } });
     handler({ new: { id: 'x2', kind: 'guest_registered', payload: { displayName: '' } } });
+    handler({ new: { id: 'x3', kind: 'carriage_call', payload: { message: 'Без вагонов', carriages: [] } } });
 
     expect(callback).not.toHaveBeenCalled();
   });
