@@ -10,6 +10,8 @@ describe('AdminTestResetPanel', () => {
       deletedGuests: 32,
       preservedCoupleAnswers: 30,
       premiereConfigured: true,
+      mortalKombatReset: true,
+      bunkerReset: true,
       registrationOpen: true,
       nextTicketSequence: 1,
     });
