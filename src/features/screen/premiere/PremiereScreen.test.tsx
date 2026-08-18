@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PremiereScreenState } from '../../premiere/premiere.service';
 import { PremiereScreen } from './PremiereScreen';
@@ -117,6 +117,43 @@ describe('PremiereScreen', () => {
 
     expect(container.querySelector('video')).toBe(videoBefore);
     expect(pause).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds a local black final frame when the media ends until the owner changes state', () => {
+    const ended = vi.fn();
+    const { container } = render(
+      <PremiereScreen
+        state={state('playing', { positionSeconds: 622.8 })}
+        nowMs={Date.parse(base.serverNow)}
+        onEnded={ended}
+      />,
+    );
+
+    fireEvent.ended(container.querySelector('video')!);
+
+    expect(ended).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('premiere-ended-black')).toBeInTheDocument();
+  });
+
+  it('clears the local final black frame when the owner restarts from an earlier position', () => {
+    const { container, rerender } = render(
+      <PremiereScreen
+        state={state('playing', { positionSeconds: 622.8 })}
+        nowMs={Date.parse(base.serverNow)}
+      />,
+    );
+
+    fireEvent.ended(container.querySelector('video')!);
+    expect(screen.getByTestId('premiere-ended-black')).toBeInTheDocument();
+
+    rerender(
+      <PremiereScreen
+        state={state('playing', { positionSeconds: 0 })}
+        nowMs={Date.parse(base.serverNow)}
+      />,
+    );
+
+    expect(screen.queryByTestId('premiere-ended-black')).not.toBeInTheDocument();
   });
 
   it('renders a protected black frame without exposing the media source', () => {
