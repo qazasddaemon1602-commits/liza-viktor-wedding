@@ -10,6 +10,17 @@ import {
   type CarriageCallRpcClient,
   type OwnerCarriageCall,
 } from '../carriages/carriageCalls.service';
+import {
+  activateOwnerQuizQuestion,
+  getOwnerQuizControl,
+  revealOwnerQuizResults,
+  seedDefaultQuizQuestions,
+  type AdminQuizRpcClient,
+} from '../quiz/adminQuiz.service';
+import {
+  broadcastQuizRefresh,
+  type QuizRealtimeClient,
+} from '../quiz/quiz.realtime';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
   deleteGuest as deleteGuestRpc,
@@ -24,6 +35,7 @@ import {
   type AdminRealtimeClient,
 } from './admin.realtime';
 import { AdminShell } from './AdminShell';
+import type { AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
 
 const EVENT_SLUG = 'liza-viktor';
 
@@ -45,6 +57,7 @@ export type AdminPageDependencies = {
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
+  quiz?: AdminQuizPanelDependencies;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -56,6 +69,8 @@ export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
+  const quizRpcClient = client as unknown as AdminQuizRpcClient;
+  const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   let currentEventId = '';
 
   const loadDashboard = async () => {
@@ -109,6 +124,21 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     clearCarriageCall: async (callId, carriageIds) => {
       await clearCarriageCallRpc(carriageRpcClient, callId);
       await broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds);
+    },
+    quiz: {
+      load: (eventId) => getOwnerQuizControl(quizRpcClient, eventId),
+      seed: (eventId) => seedDefaultQuizQuestions(quizRpcClient, eventId),
+      activate: (eventId, questionId) => activateOwnerQuizQuestion(
+        quizRpcClient,
+        eventId,
+        questionId,
+      ),
+      reveal: (eventId, questionId) => revealOwnerQuizResults(
+        quizRpcClient,
+        eventId,
+        questionId,
+      ),
+      broadcastRefresh: () => broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
     },
   };
 }
@@ -254,6 +284,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         subscribeToRegistrations: deps.subscribeToRegistrations,
         sendCarriageCall: deps.sendCarriageCall,
         clearCarriageCall: deps.clearCarriageCall,
+        quiz: deps.quiz,
       }}
     />
   );
