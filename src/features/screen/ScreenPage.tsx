@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { createPremiereAudioController } from '../premiere/premiereAudio';
+import {
+  broadcastPremiereScreenPresence,
+  type PremierePresenceRealtimeClient,
+  type PremiereScreenPresence,
+} from '../premiere/premierePresence.realtime';
 import {
   subscribeToPremiereRefresh,
   type PremiereRealtimeClient,
@@ -51,6 +57,7 @@ export type ScreenPageDependencies = {
   loadPremiere?: () => Promise<PremiereScreenState>;
   subscribeToQuizRefresh?: (callback: () => void) => () => void;
   subscribeToPremiereRefresh?: (callback: () => void) => () => void;
+  broadcastPremierePresence?: (presence: PremiereScreenPresence) => Promise<void>;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
   armPremiereAudio?: () => Promise<boolean>;
@@ -62,6 +69,7 @@ export type ScreenPageDependencies = {
 type ScreenPageProps = {
   joinUrl: string;
   eventSlug?: string;
+  screenId?: string;
   sceneDurationMs?: number;
   expectedGuestCount?: number;
   dependencies?: ScreenPageDependencies;
@@ -76,6 +84,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   const premiereRpcClient = client as unknown as PremiereRpcClient;
   const premiereRealtimeClient = client as unknown as PremiereRealtimeClient;
+  const premierePresenceClient = client as unknown as PremierePresenceRealtimeClient;
   const audio = createScreenAudioController();
   const premiereAudio = createPremiereAudioController();
   return {
@@ -94,6 +103,11 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
       eventSlug,
       callback,
     ),
+    broadcastPremierePresence: (presence) => broadcastPremiereScreenPresence(
+      premierePresenceClient,
+      eventSlug,
+      presence,
+    ),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
     armPremiereAudio: premiereAudio.arm,
@@ -111,9 +125,22 @@ function isPremiereProtected(state: PremiereScreenState | null): boolean {
     || state?.status === 'black';
 }
 
+function premiereMediaUrl(state: PremiereScreenState | null): string | null {
+  if (
+    state?.status === 'standby'
+    || state?.status === 'countdown'
+    || state?.status === 'playing'
+    || state?.status === 'paused'
+  ) {
+    return state.mediaUrl;
+  }
+  return null;
+}
+
 export function ScreenPage({
   joinUrl,
   eventSlug = 'liza-viktor',
+  screenId,
   sceneDurationMs = 5600,
   expectedGuestCount = 40,
   dependencies,
@@ -122,6 +149,7 @@ export function ScreenPage({
     () => dependencies ?? browserDependencies(eventSlug),
     [dependencies, eventSlug],
   );
+  const [resolvedScreenId] = useState(() => screenId?.trim() || `screen-${getOrCreateDeviceKey()}`);
   const hasAudioArm = Boolean(deps.armArrivalAudio || deps.armPremiereAudio);
   const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
   const [activeEvent, setActiveEvent] = useState<ScreenPresentationEvent | null>(null);
@@ -132,11 +160,13 @@ export function ScreenPage({
   const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
   const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
   const [armingAudio, setArmingAudio] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const seenIds = useRef(new Set<string>());
   const premiereProtectedRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
 
   const premiereProtected = isPremiereProtected(premiereState);
+  const currentPremiereMediaUrl = premiereMediaUrl(premiereState);
   premiereProtectedRef.current = premiereProtected;
 
   useEffect(() => deps.subscribe((event) => {
@@ -220,6 +250,31 @@ export function ScreenPage({
   }, [deps]);
 
   useEffect(() => {
+    setVideoReady(false);
+  }, [currentPremiereMediaUrl]);
+
+  useEffect(() => {
+    if (!deps.broadcastPremierePresence) return;
+    let active = true;
+    const heartbeat: PremiereScreenPresence = {
+      screenId: resolvedScreenId,
+      videoReady,
+      audioArmed,
+    };
+    const report = () => {
+      if (!active) return;
+      void deps.broadcastPremierePresence?.(heartbeat).catch(() => undefined);
+    };
+
+    report();
+    const interval = window.setInterval(report, 5_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [audioArmed, deps, resolvedScreenId, videoReady]);
+
+  useEffect(() => {
     if (premiereState?.status !== 'countdown') return;
     const updateClock = () => {
       setPremiereNowMs(Date.now() + premiereClockOffsetRef.current);
@@ -296,6 +351,7 @@ export function ScreenPage({
           state={premiereState}
           nowMs={premiereNowMs}
           onCountdownTick={playPremiereCountdownTick}
+          onVideoReady={() => setVideoReady(true)}
         />
       ) : activeQuiz ? (
         finalFiveForCurrentQuestion ? (
