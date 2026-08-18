@@ -9,6 +9,7 @@ import './styles/screen-controls.css';
 import './styles/quiz.css';
 import './styles/premiere.css';
 import './styles/admin-premiere.css';
+import './styles/admin-reset.css';
 
 const root = document.getElementById('root');
 
