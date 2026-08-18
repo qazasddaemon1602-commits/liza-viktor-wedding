@@ -5,6 +5,10 @@ import type {
   RevealQuizResultsResult,
   SeedQuizQuestionsResult,
 } from '../../quiz/adminQuiz.service';
+import type {
+  OwnerCoupleRevealStatus,
+  RevealOwnerCoupleAnswerResult,
+} from '../../quiz/coupleReveal.service';
 
 export type AdminQuizPanelDependencies = {
   load: (eventId: string) => Promise<AdminQuizControl>;
@@ -12,6 +16,8 @@ export type AdminQuizPanelDependencies = {
   activate: (eventId: string, questionId: string) => Promise<ActivateQuizQuestionResult>;
   reveal: (eventId: string, questionId: string) => Promise<RevealQuizResultsResult>;
   broadcastRefresh: () => Promise<void>;
+  loadCoupleRevealStatus?: (eventId: string, questionId: string) => Promise<OwnerCoupleRevealStatus>;
+  revealCoupleAnswer?: (eventId: string, questionId: string) => Promise<RevealOwnerCoupleAnswerResult>;
 };
 
 type AdminQuizPanelProps = {
@@ -27,6 +33,7 @@ function percentage(value: number, total: number): number {
 export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
   const deps = useMemo(() => dependencies, [dependencies]);
   const [control, setControl] = useState<AdminQuizControl | null>(null);
+  const [coupleRevealStatus, setCoupleRevealStatus] = useState<OwnerCoupleRevealStatus | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
 
@@ -51,6 +58,32 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
     };
   }, [deps, eventId]);
 
+  useEffect(() => {
+    let active = true;
+    if (
+      control?.phase !== 'results'
+      || !control.currentQuestionId
+      || !deps.loadCoupleRevealStatus
+    ) {
+      setCoupleRevealStatus(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    void deps.loadCoupleRevealStatus(eventId, control.currentQuestionId)
+      .then((next) => {
+        if (active) setCoupleRevealStatus(next);
+      })
+      .catch(() => {
+        if (active) setCoupleRevealStatus({ status: 'not_ready', revealed: false });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [control?.currentQuestionId, control?.phase, deps, eventId]);
+
   const seed = async () => {
     setBusy('seed');
     setError('');
@@ -67,6 +100,7 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
   const activate = async (questionId: string) => {
     setBusy(`activate:${questionId}`);
     setError('');
+    setCoupleRevealStatus(null);
     try {
       await deps.activate(eventId, questionId);
       await deps.broadcastRefresh();
@@ -88,6 +122,27 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
       await reload();
     } catch {
       setError('Не удалось показать результат.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const revealCoupleAnswer = async () => {
+    if (
+      !control?.currentQuestionId
+      || control.phase !== 'results'
+      || coupleRevealStatus?.status !== 'ready'
+      || !deps.revealCoupleAnswer
+    ) return;
+
+    setBusy('reveal-couple');
+    setError('');
+    try {
+      await deps.revealCoupleAnswer(eventId, control.currentQuestionId);
+      await deps.broadcastRefresh();
+      setCoupleRevealStatus({ status: 'revealed', revealed: true });
+    } catch {
+      setError('Не удалось показать ответ Лизы и Виктора.');
     } finally {
       setBusy('');
     }
@@ -171,10 +226,31 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
               )}
 
               {control.phase === 'results' && (
-                <div className="admin-quiz-results" aria-label="Результаты голосования">
-                  <strong>ЛИЗА {lizaPercent}%</strong>
-                  <strong>ВИКТОР {viktorPercent}%</strong>
-                </div>
+                <>
+                  <div className="admin-quiz-results" aria-label="Результаты голосования">
+                    <strong>ЛИЗА {lizaPercent}%</strong>
+                    <strong>ВИКТОР {viktorPercent}%</strong>
+                  </div>
+
+                  {coupleRevealStatus?.status === 'ready' && deps.revealCoupleAnswer && (
+                    <button
+                      type="button"
+                      className="registration-submit"
+                      disabled={busy === 'reveal-couple'}
+                      onClick={() => void revealCoupleAnswer()}
+                    >
+                      {busy === 'reveal-couple' ? 'ОТКРЫВАЕМ…' : 'ПОКАЗАТЬ ОТВЕТ ЛИЗЫ И ВИКТОРА'}
+                    </button>
+                  )}
+
+                  {coupleRevealStatus?.status === 'revealed' && (
+                    <strong className="admin-quiz-couple-revealed">ОТВЕТ ПАРЫ ПОКАЗАН</strong>
+                  )}
+
+                  {coupleRevealStatus?.status === 'not_ready' && (
+                    <p className="admin-quiz-couple-not-ready">Совместный ответ для этого вопроса ещё не готов к показу.</p>
+                  )}
+                </>
               )}
             </div>
           )}
