@@ -43,6 +43,9 @@ function dependencies(overrides: Partial<AdminMkControlDependencies> = {}): Admi
     remove: vi.fn().mockResolvedValue(undefined),
     promote: vi.fn().mockResolvedValue(undefined),
     finalize: vi.fn().mockResolvedValue(undefined),
+    setCurrent: vi.fn().mockResolvedValue(undefined),
+    recordWinner: vi.fn().mockResolvedValue({ status: 'recorded', matchId: 'm1', affectedMatches: [] }),
+    undo: vi.fn().mockResolvedValue({ status: 'undone', matchId: 'm1', affectedMatches: [] }),
     broadcastRefresh: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
