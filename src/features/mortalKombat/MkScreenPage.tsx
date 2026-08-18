@@ -5,7 +5,7 @@ import { MkFightScene } from './MkFightScene';
 import { MkMilestoneScene } from './MkMilestoneScene';
 import { deriveMkMilestone, type MkMilestone } from './mkMilestones';
 import { subscribeToMkRefresh, type MkRealtimeClient } from './mk.realtime';
-import { getMkTournamentScreenState, type MkRpcClient } from './mk.service';
+import { getMkTournamentDedicatedScreenState, type MkRpcClient } from './mk.service';
 import type { MkTournamentProjection } from './mk.types';
 import { PublicBracket } from './PublicBracket';
 
@@ -26,7 +26,7 @@ function browserDependencies(eventSlug: string): MkScreenPageDependencies {
   const rpcClient = client as unknown as MkRpcClient;
   const realtimeClient = client as unknown as MkRealtimeClient;
   return {
-    load: () => getMkTournamentScreenState(rpcClient, eventSlug),
+    load: () => getMkTournamentDedicatedScreenState(rpcClient, eventSlug),
     subscribeToRefresh: (callback) => subscribeToMkRefresh(realtimeClient, eventSlug, callback),
   };
 }
