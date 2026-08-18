@@ -10,7 +10,7 @@ type AdminCarriageCallsProps = {
     message: string,
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
-  onClear: (callId: string) => Promise<void>;
+  onClear: (callId: string, carriageIds: string[]) => Promise<void>;
 };
 
 export function AdminCarriageCalls({
@@ -59,8 +59,8 @@ export function AdminCarriageCalls({
 
   const clear = async () => {
     if (!activeCall) return;
-    const callId = activeCall.callId;
-    await onClear(callId);
+    const { callId, targetCarriageIds } = activeCall;
+    await onClear(callId, targetCarriageIds);
     setActiveCall(null);
   };
 
