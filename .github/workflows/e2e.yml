@@ -1,0 +1,65 @@
+name: e2e
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'e2e/**'
+      - 'supabase/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/e2e.yml'
+  push:
+    branches:
+      - feat/wedding-live-hub-mvp-ci
+    paths:
+      - 'src/**'
+      - 'e2e/**'
+      - 'supabase/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/e2e.yml'
+
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  event-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.111.0
+          github-token: ${{ github.token }}
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - name: Start local Supabase
+        run: supabase db start
+      - name: Export local Supabase environment
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          echo "VITE_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "E2E_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+      - name: Run multi-client event flow
+        run: npm run e2e
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
