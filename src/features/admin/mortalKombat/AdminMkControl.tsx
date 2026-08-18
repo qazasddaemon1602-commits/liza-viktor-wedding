@@ -147,6 +147,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
             registrations={active}
             disabled={busy}
             onSwap={(registrationA, registrationB) => run(() => dependencies.swap(registrationA, registrationB))}
+            onRemove={(registrationId) => run(() => dependencies.remove(registrationId))}
           />
 
           {waitlist.length > 0 && (
