@@ -21,6 +21,21 @@ type TrainArrivalSceneProps = {
   onSignal?: () => void;
 };
 
+function Coach({ mark, featured = false }: { mark?: string; featured?: boolean }) {
+  return (
+    <div className={`train-arrival__coach${featured ? ' train-arrival__coach--featured' : ''}`}>
+      <div className="train-arrival__coach-roof" />
+      <div className="train-arrival__coach-windows">
+        <i /><i /><i /><i /><i />
+      </div>
+      <span className="train-arrival__coach-door" />
+      {mark && <strong className="train-arrival__coach-mark">{mark}</strong>}
+      <div className="train-arrival__bogie train-arrival__bogie--left"><i /><i /></div>
+      <div className="train-arrival__bogie train-arrival__bogie--right"><i /><i /></div>
+    </div>
+  );
+}
+
 export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
   useEffect(() => {
     onSignal?.();
@@ -39,6 +54,7 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
       aria-atomic="true"
     >
       <div className="train-arrival__wash" aria-hidden="true" />
+      <div className="train-arrival__speed-lines" aria-hidden="true" />
 
       <div className="train-arrival__meta">
         <span>ПОЕЗД ВИКТОРА</span>
@@ -58,25 +74,40 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
       </div>
 
       <div className="train-arrival__stage" aria-hidden="true">
-        <div className="train-arrival__rail train-arrival__rail--far" />
-        <div className="train-arrival__rail train-arrival__rail--near" />
+        <div className="train-arrival__steam" data-testid="arrival-steam">
+          <i /><i /><i />
+        </div>
+
+        <div className="train-arrival__track" data-testid="arrival-track">
+          <div className="train-arrival__sleepers" />
+          <div className="train-arrival__rail train-arrival__rail--far" />
+          <div className="train-arrival__rail train-arrival__rail--near" />
+        </div>
+
         <div className="train-arrival__train">
-          <div className="train-arrival__engine">
-            <div className="train-arrival__cab">
-              <span className="train-arrival__window" />
-              <span className="train-arrival__window" />
+          <div className="train-arrival__locomotive" data-testid="arrival-locomotive">
+            <div className="train-arrival__pantograph"><i /><i /></div>
+            <div className="train-arrival__loco-roof" />
+            <div className="train-arrival__loco-body">
+              <div className="train-arrival__windshield"><i /><i /></div>
+              <span className="train-arrival__loco-side-window" />
+              <span className="train-arrival__loco-stripe" />
+              <strong className="train-arrival__loco-monogram">ЛВ</strong>
             </div>
-            <div className="train-arrival__nose" />
-            <span className="train-arrival__lamp" />
+            <div className="train-arrival__loco-nose">
+              <span className="train-arrival__headlight train-arrival__headlight--top" />
+              <span className="train-arrival__headlight train-arrival__headlight--bottom" />
+            </div>
+            <div className="train-arrival__bogie train-arrival__bogie--loco-left"><i /><i /></div>
+            <div className="train-arrival__bogie train-arrival__bogie--loco-right"><i /><i /></div>
           </div>
-          <div className="train-arrival__carriage">
-            <span className="train-arrival__carriage-number">{event.payload.carriage.visualMark}</span>
-            <span className="train-arrival__window" />
-            <span className="train-arrival__window" />
-            <span className="train-arrival__window" />
-          </div>
-          <div className="train-arrival__wheels">
-            <i /><i /><i /><i />
+
+          <span className="train-arrival__coupler" />
+
+          <div className="train-arrival__passenger-consist" data-testid="arrival-passenger-consist">
+            <Coach mark={event.payload.carriage.visualMark} featured />
+            <span className="train-arrival__coupler train-arrival__coupler--coach" />
+            <Coach />
           </div>
         </div>
       </div>
