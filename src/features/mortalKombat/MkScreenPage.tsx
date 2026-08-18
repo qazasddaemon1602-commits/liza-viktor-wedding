@@ -44,7 +44,8 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
       void deps.load()
         .then((next) => {
           if (!active) return;
-          const nextMilestone = deriveMkMilestone(previousStateRef.current, next);
+          const previous = previousStateRef.current;
+          const nextMilestone = previous ? deriveMkMilestone(previous, next) : null;
           previousStateRef.current = next;
           setState(next);
           if (nextMilestone) setMilestone(nextMilestone);
