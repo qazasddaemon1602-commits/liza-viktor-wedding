@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
 import { BunkerScreenGuard } from '../features/bunker/BunkerScreenGuard';
@@ -40,7 +41,7 @@ function currentJoinUrl(): string {
   return new URL('/join', window.location.origin).toString();
 }
 
-function projector(element: React.ReactNode) {
+function projector(element: ReactNode) {
   return <BunkerScreenGuard eventSlug="liza-viktor">{element}</BunkerScreenGuard>;
 }
 
