@@ -5,6 +5,7 @@ import {
 } from '../carriages/carriageCalls.realtime';
 import {
   clearCarriageCall as clearCarriageCallRpc,
+  publishCarriageCallToScreen,
   sendCarriageCall as sendCarriageCallRpc,
   type CarriageCallRpcClient,
   type OwnerCarriageCall,
@@ -100,6 +101,9 @@ export function createAdminPageDependencies(): AdminPageDependencies {
         showOnScreen,
       );
       await broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds);
+      if (showOnScreen) {
+        await publishCarriageCallToScreen(carriageRpcClient, call.callId);
+      }
       return call;
     },
     clearCarriageCall: async (callId, carriageIds) => {
