@@ -41,6 +41,22 @@ describe('PremierePlayer', () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
+  it('pauses once when playback is stopped and can resume the same source', () => {
+    const { rerender } = render(
+      <PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay />,
+    );
+    expect(play).toHaveBeenCalledTimes(1);
+
+    rerender(<PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay={false} />);
+    expect(pause).toHaveBeenCalledTimes(1);
+
+    rerender(<PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay={false} />);
+    expect(pause).toHaveBeenCalledTimes(1);
+
+    rerender(<PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay />);
+    expect(play).toHaveBeenCalledTimes(2);
+  });
+
   it('resets the one-shot play guard when a different premiere source is loaded', () => {
     const { rerender } = render(
       <PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay />,
