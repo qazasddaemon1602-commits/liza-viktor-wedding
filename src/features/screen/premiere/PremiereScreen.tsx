@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getCountdownFrame } from '../../premiere/countdown';
 import { PremiereCountdown } from '../../premiere/PremiereCountdown';
 import { PremierePlayer } from '../../premiere/PremierePlayer';
@@ -14,6 +14,7 @@ type PremiereScreenProps = {
 
 export function PremiereScreen({ state, nowMs, onCountdownTick, onEnded }: PremiereScreenProps) {
   const lastCueRef = useRef<number | null>(null);
+  const [endedLocally, setEndedLocally] = useState(false);
 
   const configured =
     state.status === 'standby'
@@ -46,6 +47,25 @@ export function PremiereScreen({ state, nowMs, onCountdownTick, onEnded }: Premi
     onCountdownTick(countdownNumber);
   }, [countdownNumber, onCountdownTick, state]);
 
+  useEffect(() => {
+    if (state.status === 'standby' || state.status === 'countdown') {
+      setEndedLocally(false);
+      return;
+    }
+
+    if (
+      (state.status === 'playing' || state.status === 'paused')
+      && state.positionSeconds < state.durationSeconds - 0.5
+    ) {
+      setEndedLocally(false);
+    }
+  }, [state]);
+
+  const handleEnded = () => {
+    setEndedLocally(true);
+    onEnded?.();
+  };
+
   if (state.status === 'black') {
     return <section className="premiere-black" data-testid="premiere-black" aria-label="Чёрный экран" />;
   }
@@ -65,7 +85,7 @@ export function PremiereScreen({ state, nowMs, onCountdownTick, onEnded }: Premi
         src={state.mediaUrl}
         shouldPlay={shouldPlay || state.status === 'playing'}
         positionSeconds={state.positionSeconds}
-        onEnded={onEnded}
+        onEnded={handleEnded}
       />
 
       {showStandby && <PremiereStandbyScreen />}
@@ -74,6 +94,13 @@ export function PremiereScreen({ state, nowMs, onCountdownTick, onEnded }: Premi
         <div className="premiere-paused-indicator" aria-label="Премьера на паузе">
           ПАУЗА
         </div>
+      )}
+      {endedLocally && (
+        <div
+          className="premiere-ended-black"
+          data-testid="premiere-ended-black"
+          aria-label="Премьера завершена"
+        />
       )}
     </section>
   );
