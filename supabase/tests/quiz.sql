@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(28);
+select plan(31);
 
 select has_table('public', 'questions', 'questions table exists');
 select has_table('public', 'quiz_votes', 'quiz votes table exists');
@@ -66,6 +66,13 @@ select ok(not has_function_privilege('anon', 'public.owner_get_quiz_control(uuid
 select ok(not has_function_privilege('anon', 'public.owner_seed_default_quiz_questions(uuid)', 'EXECUTE'), 'anonymous clients cannot seed quiz questions');
 select ok(has_function_privilege('authenticated', 'public.owner_get_quiz_control(uuid)', 'EXECUTE'), 'authenticated owner session can read quiz controls');
 select ok(has_function_privilege('authenticated', 'public.owner_seed_default_quiz_questions(uuid)', 'EXECUTE'), 'authenticated owner session can seed default questions');
+
+select ok(
+  exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='get_quiz_screen_state'),
+  'public projector quiz-state RPC exists'
+);
+select ok(has_function_privilege('anon', 'public.get_quiz_screen_state(text)', 'EXECUTE'), 'anonymous projector can read only the current quiz presentation state');
+select ok(has_function_privilege('authenticated', 'public.get_quiz_screen_state(text)', 'EXECUTE'), 'authenticated projector can read the current quiz presentation state');
 
 select * from finish();
 rollback;
