@@ -4,3 +4,6 @@ dist/
 .env.*
 coverage/
 .playwright/
+playwright-report/
+test-results/
+blob-report/
