@@ -58,6 +58,20 @@ describe('PremiereScreen', () => {
     expect(play).not.toHaveBeenCalled();
   });
 
+  it('reports browser-confirmed video readiness to the outer projector screen', () => {
+    const ready = vi.fn();
+    const { container } = render(
+      <PremiereScreen
+        state={state('standby')}
+        nowMs={Date.parse(base.serverNow)}
+        onVideoReady={ready}
+      />,
+    );
+
+    fireEvent.canPlay(container.querySelector('video')!);
+    expect(ready).toHaveBeenCalledTimes(1);
+  });
+
   it('derives countdown frames from the authoritative timestamp and emits each audio cue once', () => {
     const tick = vi.fn();
     const countdown = state('countdown');
