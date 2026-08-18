@@ -37,6 +37,25 @@ export type MkTournamentProjection =
       championGuestId: string | null;
     };
 
+export type MkOwnerRegistration = MkPlayer & {
+  status: MkRegistrationStatus;
+  registeredAt: string;
+};
+
+export type MkOwnerControl =
+  | { status: 'idle' }
+  | {
+      status: 'owner';
+      tournamentId: string;
+      state: MkTournamentState;
+      activeCount: number;
+      waitlistCount: number;
+      maxPlayers: 16;
+      registrations: MkOwnerRegistration[];
+      matches: MkMatch[];
+      championGuestId: string | null;
+    };
+
 export type BracketMatch = {
   matchKey: string;
   round: MkRound;
