@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
+import { createPremiereAudioController } from '../premiere/premiereAudio';
+import {
+  subscribeToPremiereRefresh,
+  type PremiereRealtimeClient,
+} from '../premiere/premiere.realtime';
+import {
+  getPremiereScreenState,
+  type PremiereRpcClient,
+  type PremiereScreenState,
+} from '../premiere/premiere.service';
 import {
   getRevealedCoupleAnswer,
   type CoupleRevealRpcClient,
@@ -23,6 +33,7 @@ import { CarriageCallScene } from './CarriageCallScene';
 import { CoupleAnswerRevealScene } from './CoupleAnswerRevealScene';
 import { FinalFiveRevealScene } from './FinalFiveRevealScene';
 import { IdleRegistrationScreen } from './IdleRegistrationScreen';
+import { PremiereScreen } from './premiere/PremiereScreen';
 import { QuizScreenScene } from './QuizScreenScene';
 import { createScreenAudioController } from './screenAudio';
 import {
@@ -37,10 +48,15 @@ export type ScreenPageDependencies = {
   loadQuiz?: () => Promise<QuizScreenState>;
   loadCoupleAnswer?: () => Promise<RevealedCoupleAnswer>;
   loadFinalFive?: () => Promise<RevealedFinalFive>;
+  loadPremiere?: () => Promise<PremiereScreenState>;
   subscribeToQuizRefresh?: (callback: () => void) => () => void;
+  subscribeToPremiereRefresh?: (callback: () => void) => () => void;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
+  armPremiereAudio?: () => Promise<boolean>;
+  playPremiereCountdownTick?: (second: number) => void;
   disposeAudio?: () => void;
+  disposePremiereAudio?: () => void;
 };
 
 type ScreenPageProps = {
@@ -58,21 +74,41 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
   const finalFiveRpcClient = client as unknown as FinalFiveRpcClient;
   const quizRealtimeClient = client as unknown as QuizRealtimeClient;
+  const premiereRpcClient = client as unknown as PremiereRpcClient;
+  const premiereRealtimeClient = client as unknown as PremiereRealtimeClient;
   const audio = createScreenAudioController();
+  const premiereAudio = createPremiereAudioController();
   return {
     subscribe: (callback) => subscribeToScreenEvents(screenClient, eventSlug, callback),
     loadQuiz: () => getQuizScreenState(quizRpcClient, eventSlug),
     loadCoupleAnswer: () => getRevealedCoupleAnswer(coupleRevealRpcClient, eventSlug),
     loadFinalFive: () => getRevealedFinalFive(finalFiveRpcClient, eventSlug),
+    loadPremiere: () => getPremiereScreenState(premiereRpcClient, eventSlug),
     subscribeToQuizRefresh: (callback) => subscribeToQuizRefresh(
       quizRealtimeClient,
       eventSlug,
       callback,
     ),
+    subscribeToPremiereRefresh: (callback) => subscribeToPremiereRefresh(
+      premiereRealtimeClient,
+      eventSlug,
+      callback,
+    ),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
+    armPremiereAudio: premiereAudio.arm,
+    playPremiereCountdownTick: premiereAudio.playCountdownTick,
     disposeAudio: audio.dispose,
+    disposePremiereAudio: premiereAudio.dispose,
   };
+}
+
+function isPremiereProtected(state: PremiereScreenState | null): boolean {
+  return state?.status === 'standby'
+    || state?.status === 'countdown'
+    || state?.status === 'playing'
+    || state?.status === 'paused'
+    || state?.status === 'black';
 }
 
 export function ScreenPage({
@@ -86,16 +122,25 @@ export function ScreenPage({
     () => dependencies ?? browserDependencies(eventSlug),
     [dependencies, eventSlug],
   );
+  const hasAudioArm = Boolean(deps.armArrivalAudio || deps.armPremiereAudio);
   const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
   const [activeEvent, setActiveEvent] = useState<ScreenPresentationEvent | null>(null);
   const [quizState, setQuizState] = useState<QuizScreenState | null>(null);
   const [coupleAnswer, setCoupleAnswer] = useState<RevealedCoupleAnswer>({ status: 'hidden' });
   const [finalFive, setFinalFive] = useState<RevealedFinalFive>({ status: 'hidden' });
-  const [audioArmed, setAudioArmed] = useState(!deps.armArrivalAudio);
+  const [premiereState, setPremiereState] = useState<PremiereScreenState | null>(null);
+  const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
+  const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
   const [armingAudio, setArmingAudio] = useState(false);
   const seenIds = useRef(new Set<string>());
+  const premiereProtectedRef = useRef(false);
+  const premiereClockOffsetRef = useRef(0);
+
+  const premiereProtected = isPremiereProtected(premiereState);
+  premiereProtectedRef.current = premiereProtected;
 
   useEffect(() => deps.subscribe((event) => {
+    if (premiereProtectedRef.current) return;
     if (seenIds.current.has(event.id)) return;
     seenIds.current.add(event.id);
     setQueue((current) => [...current, event]);
@@ -146,34 +191,87 @@ export function ScreenPage({
     };
   }, [deps]);
 
-  useEffect(() => () => {
-    deps.disposeAudio?.();
+  useEffect(() => {
+    if (!deps.loadPremiere) return;
+    let active = true;
+
+    const reload = () => {
+      void deps.loadPremiere?.()
+        .then((next) => {
+          if (!active) return;
+          const serverMs = Date.parse(next.serverNow);
+          const offset = Number.isFinite(serverMs) ? serverMs - Date.now() : 0;
+          premiereClockOffsetRef.current = offset;
+          setPremiereNowMs(Date.now() + offset);
+          setPremiereState(next);
+        })
+        .catch(() => {
+          // Keep the last valid projector state during a temporary network/realtime failure.
+        });
+    };
+
+    reload();
+    const unsubscribe = deps.subscribeToPremiereRefresh?.(reload);
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [deps]);
 
   useEffect(() => {
-    if (activeEvent || queue.length === 0) return;
+    if (premiereState?.status !== 'countdown') return;
+    const updateClock = () => {
+      setPremiereNowMs(Date.now() + premiereClockOffsetRef.current);
+    };
+    updateClock();
+    const interval = window.setInterval(updateClock, 50);
+    return () => window.clearInterval(interval);
+  }, [premiereState?.status, premiereState?.status === 'countdown' ? premiereState.startAt : null]);
+
+  useEffect(() => {
+    if (!premiereProtected) return;
+    setQueue([]);
+    setActiveEvent(null);
+  }, [premiereProtected]);
+
+  useEffect(() => () => {
+    deps.disposeAudio?.();
+    deps.disposePremiereAudio?.();
+  }, [deps]);
+
+  useEffect(() => {
+    if (premiereProtected || activeEvent || queue.length === 0) return;
     const [next, ...rest] = queue;
     setQueue(rest);
     setActiveEvent(next);
-  }, [activeEvent, queue]);
+  }, [activeEvent, premiereProtected, queue]);
 
   useEffect(() => {
-    if (!activeEvent) return;
+    if (!activeEvent || premiereProtected) return;
     const timer = window.setTimeout(() => {
       setActiveEvent(null);
     }, sceneDurationMs);
     return () => window.clearTimeout(timer);
-  }, [activeEvent, sceneDurationMs]);
+  }, [activeEvent, premiereProtected, sceneDurationMs]);
 
   const playSignal = useCallback(() => {
-    deps.playArrivalSignal?.();
+    if (!premiereProtectedRef.current) deps.playArrivalSignal?.();
+  }, [deps]);
+
+  const playPremiereCountdownTick = useCallback((second: number) => {
+    deps.playPremiereCountdownTick?.(second);
   }, [deps]);
 
   const armAudio = async () => {
-    if (!deps.armArrivalAudio || armingAudio) return;
+    if (!hasAudioArm || armingAudio) return;
     setArmingAudio(true);
     try {
-      setAudioArmed(await deps.armArrivalAudio());
+      const [arrivalReady, premiereReady] = await Promise.all([
+        deps.armArrivalAudio?.() ?? Promise.resolve(true),
+        deps.armPremiereAudio?.() ?? Promise.resolve(true),
+      ]);
+      setAudioArmed(Boolean(arrivalReady && premiereReady));
     } finally {
       setArmingAudio(false);
     }
@@ -192,8 +290,14 @@ export function ScreenPage({
     : null;
 
   return (
-    <div className="screen-page">
-      {activeQuiz ? (
+    <div className={`screen-page${premiereProtected ? ' screen-page--premiere' : ''}`}>
+      {premiereProtected && premiereState ? (
+        <PremiereScreen
+          state={premiereState}
+          nowMs={premiereNowMs}
+          onCountdownTick={playPremiereCountdownTick}
+        />
+      ) : activeQuiz ? (
         finalFiveForCurrentQuestion ? (
           <FinalFiveRevealScene state={finalFiveForCurrentQuestion} />
         ) : revealedForCurrentQuestion && activeQuiz.phase === 'results' ? (
@@ -209,7 +313,7 @@ export function ScreenPage({
         <IdleRegistrationScreen joinUrl={joinUrl} />
       )}
 
-      {!audioArmed && deps.armArrivalAudio && (
+      {!audioArmed && hasAudioArm && (!premiereProtected || premiereState?.status === 'standby') && (
         <button
           type="button"
           className="screen-audio-arm"
@@ -220,14 +324,14 @@ export function ScreenPage({
         </button>
       )}
 
-      {activeEvent?.kind === 'guest_registered' && (
+      {!premiereProtected && activeEvent?.kind === 'guest_registered' && (
         <TrainArrivalScene
           event={activeEvent}
           onSignal={playSignal}
         />
       )}
 
-      {activeEvent?.kind === 'carriage_call' && (
+      {!premiereProtected && activeEvent?.kind === 'carriage_call' && (
         <CarriageCallScene event={activeEvent} />
       )}
     </div>
