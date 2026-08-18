@@ -6,7 +6,7 @@ import {
 } from '../../premiere/premierePresence';
 import type { PremiereScreenPresence } from '../../premiere/premierePresence.realtime';
 import type { OwnerPremiereControl } from '../../premiere/premiere.service';
-import { PremiereReadiness } from './PremiereReadiness';
+import { getPremiereReadiness, PremiereReadiness } from './PremiereReadiness';
 
 export type AdminPremiereControlDependencies = {
   load: (eventId: string) => Promise<OwnerPremiereControl>;
@@ -171,6 +171,7 @@ export function AdminPremiereControl({
     registeredCount,
     state?.configured,
   ]);
+  const readiness = useMemo(() => getPremiereReadiness(readinessInputs), [readinessInputs]);
 
   const saveMedia = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -272,14 +273,21 @@ export function AdminPremiereControl({
         )}
 
         {state.configured && state.status === 'standby' && (
-          <button
-            type="button"
-            className="registration-submit"
-            disabled={busy !== ''}
-            onClick={() => void run('start', () => dependencies.start(eventId, 10))}
-          >
-            {busy === 'start' ? 'ЗАПУСКАЕМ…' : 'НАЧАТЬ ПРЕМЬЕРУ'}
-          </button>
+          <>
+            <button
+              type="button"
+              className="registration-submit"
+              disabled={busy !== '' || !readiness.technicalReady}
+              onClick={() => void run('start', () => dependencies.start(eventId, 10))}
+            >
+              {busy === 'start' ? 'ЗАПУСКАЕМ…' : 'НАЧАТЬ ПРЕМЬЕРУ'}
+            </button>
+            {!readiness.technicalReady && (
+              <p className="admin-premiere-start-lock" role="status">
+                СТАРТ ЗАБЛОКИРОВАН · ДОЖДИТЕСЬ ЭКРАНА, ВИДЕО И ЗВУКА
+              </p>
+            )}
+          </>
         )}
 
         {state.configured && state.status === 'countdown' && (
@@ -345,20 +353,8 @@ export function AdminPremiereControl({
         </div>
       )}
 
-      {state.configured && (
-        <label className="admin-premiere-sound-toggle">
-          <input
-            type="checkbox"
-            checked={state.countdownSoundEnabled}
-            disabled={busy !== ''}
-            onChange={(event) => void run('sound', () => dependencies.setCountdownSound(eventId, event.target.checked))}
-          />
-          <span>ЗВУК ОТСЧЁТА 10→1</span>
-        </label>
-      )}
-
-      {state.configured && (
-        <div className="admin-premiere-emergency" aria-label="Аварийные команды экрана">
+      {state.configured && state.status !== 'idle' && (
+        <div className="admin-premiere-emergency" aria-label="Аварийные команды премьеры">
           <button
             type="button"
             className="registration-secondary"
@@ -378,10 +374,17 @@ export function AdminPremiereControl({
         </div>
       )}
 
+      <label className="admin-premiere-sound">
+        <input
+          type="checkbox"
+          checked={state.countdownSoundEnabled}
+          disabled={busy !== ''}
+          onChange={(event) => void run('sound', () => dependencies.setCountdownSound(eventId, event.target.checked))}
+        />
+        <span>ЗВУК ОТСЧЁТА</span>
+      </label>
+
       {error && <p className="admin-premiere-error" role="alert">{error}</p>}
-      <p className="admin-premiere-note">
-        Регистрация гостей остаётся открытой: опоздавшие смогут войти и после премьеры.
-      </p>
     </section>
   );
 }
