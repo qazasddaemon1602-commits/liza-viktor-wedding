@@ -1,4 +1,14 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  broadcastCarriageCallRefresh,
+  type CarriageCallRealtimeClient,
+} from '../carriages/carriageCalls.realtime';
+import {
+  clearCarriageCall as clearCarriageCallRpc,
+  sendCarriageCall as sendCarriageCallRpc,
+  type CarriageCallRpcClient,
+  type OwnerCarriageCall,
+} from '../carriages/carriageCalls.service';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
   deleteGuest as deleteGuestRpc,
@@ -28,6 +38,12 @@ export type AdminPageDependencies = {
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
   issueGuestRecovery: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   subscribeToRegistrations: (callback: (guestId: string) => void) => () => void;
+  sendCarriageCall?: (
+    carriageIds: string[],
+    message: string,
+    showOnScreen: boolean,
+  ) => Promise<OwnerCarriageCall>;
+  clearCarriageCall?: (callId: string) => Promise<void>;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -37,6 +53,8 @@ function errorCode(error: unknown): string | undefined {
 
 export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
+  const carriageRpcClient = client as unknown as CarriageCallRpcClient;
+  const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
   let currentEventId = '';
 
   const loadDashboard = async () => {
@@ -72,6 +90,19 @@ export function createAdminPageDependencies(): AdminPageDependencies {
         callback,
       );
     },
+    sendCarriageCall: async (carriageIds, message, showOnScreen) => {
+      if (!currentEventId) throw new Error('Event dashboard must load before sending carriage calls');
+      const call = await sendCarriageCallRpc(
+        carriageRpcClient,
+        currentEventId,
+        carriageIds,
+        message,
+        showOnScreen,
+      );
+      await broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds);
+      return call;
+    },
+    clearCarriageCall: (callId) => clearCarriageCallRpc(carriageRpcClient, callId),
   };
 }
 
@@ -214,6 +245,8 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         lockComposition: deps.lockComposition,
         issueGuestRecovery: deps.issueGuestRecovery,
         subscribeToRegistrations: deps.subscribeToRegistrations,
+        sendCarriageCall: deps.sendCarriageCall,
+        clearCarriageCall: deps.clearCarriageCall,
       }}
     />
   );
