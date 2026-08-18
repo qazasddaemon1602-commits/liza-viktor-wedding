@@ -64,7 +64,7 @@ describe('AdminPremiereControl', () => {
       />,
     );
 
-    expect(await screen.findByText('ПРЕМЬЕРА ТРЕКА')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
     expect(screen.getByText('32 / ~40')).toBeInTheDocument();
     expect(screen.getByText('ПРЕМЬЕРА ГОТОВА')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeInTheDocument();
