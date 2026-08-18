@@ -5,6 +5,7 @@ import { AdminCarriageCalls } from './carriages/AdminCarriageCalls';
 import { AdminGuestsPage } from './guests/AdminGuestsPage';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
 import { enqueueNotices, type RegistrationNotice } from './notifications/notificationQueue';
+import { AdminQuizPanel, type AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
 
 export type AdminShellDependencies = {
   load: () => Promise<AdminDashboard>;
@@ -19,6 +20,7 @@ export type AdminShellDependencies = {
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
+  quiz?: AdminQuizPanelDependencies;
 };
 
 type AdminShellProps = {
@@ -206,6 +208,10 @@ export function AdminShell({ dependencies }: AdminShellProps) {
         )}
         <p>Фиксация не закрывает регистрацию: опоздавшие гости продолжат получать свободный подходящий вагон.</p>
       </section>
+
+      {dependencies.quiz && (
+        <AdminQuizPanel eventId={dashboard.event.id} dependencies={dependencies.quiz} />
+      )}
 
       {dependencies.sendCarriageCall && dependencies.clearCarriageCall && (
         <AdminCarriageCalls
