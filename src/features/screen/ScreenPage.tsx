@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
+import { CarriageCallScene } from './CarriageCallScene';
 import { IdleRegistrationScreen } from './IdleRegistrationScreen';
 import { createScreenAudioController } from './screenAudio';
 import {
   subscribeToScreenEvents,
   type ScreenEventsRealtimeClient,
+  type ScreenPresentationEvent,
 } from './screenEvents.realtime';
-import {
-  TrainArrivalScene,
-  type GuestRegistrationScreenEvent,
-} from './TrainArrivalScene';
+import { TrainArrivalScene } from './TrainArrivalScene';
 
 export type ScreenPageDependencies = {
-  subscribe: (callback: (event: GuestRegistrationScreenEvent) => void) => () => void;
+  subscribe: (callback: (event: ScreenPresentationEvent) => void) => () => void;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
   disposeAudio?: () => void;
@@ -29,9 +28,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const client = getSupabaseClient() as unknown as ScreenEventsRealtimeClient;
   const audio = createScreenAudioController();
   return {
-    subscribe: (callback) => subscribeToScreenEvents(client, eventSlug, (event) => {
-      if (event.kind === 'guest_registered') callback(event);
-    }),
+    subscribe: (callback) => subscribeToScreenEvents(client, eventSlug, callback),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
     disposeAudio: audio.dispose,
@@ -48,8 +45,8 @@ export function ScreenPage({
     () => dependencies ?? browserDependencies(eventSlug),
     [dependencies, eventSlug],
   );
-  const [queue, setQueue] = useState<GuestRegistrationScreenEvent[]>([]);
-  const [activeEvent, setActiveEvent] = useState<GuestRegistrationScreenEvent | null>(null);
+  const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
+  const [activeEvent, setActiveEvent] = useState<ScreenPresentationEvent | null>(null);
   const [audioArmed, setAudioArmed] = useState(!deps.armArrivalAudio);
   const [armingAudio, setArmingAudio] = useState(false);
   const seenIds = useRef(new Set<string>());
@@ -108,11 +105,15 @@ export function ScreenPage({
         </button>
       )}
 
-      {activeEvent && (
+      {activeEvent?.kind === 'guest_registered' && (
         <TrainArrivalScene
           event={activeEvent}
           onSignal={playSignal}
         />
+      )}
+
+      {activeEvent?.kind === 'carriage_call' && (
+        <CarriageCallScene event={activeEvent} />
       )}
     </div>
   );
