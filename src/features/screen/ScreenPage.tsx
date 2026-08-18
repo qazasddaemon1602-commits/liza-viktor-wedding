@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
+  getRevealedCoupleAnswer,
+  type CoupleRevealRpcClient,
+  type RevealedCoupleAnswer,
+} from '../quiz/coupleReveal.service';
+import {
   getQuizScreenState,
   type QuizScreenRpcClient,
   type QuizScreenState,
@@ -10,6 +15,7 @@ import {
   type QuizRealtimeClient,
 } from '../quiz/quiz.realtime';
 import { CarriageCallScene } from './CarriageCallScene';
+import { CoupleAnswerRevealScene } from './CoupleAnswerRevealScene';
 import { IdleRegistrationScreen } from './IdleRegistrationScreen';
 import { QuizScreenScene } from './QuizScreenScene';
 import { createScreenAudioController } from './screenAudio';
@@ -23,6 +29,7 @@ import { TrainArrivalScene } from './TrainArrivalScene';
 export type ScreenPageDependencies = {
   subscribe: (callback: (event: ScreenPresentationEvent) => void) => () => void;
   loadQuiz?: () => Promise<QuizScreenState>;
+  loadCoupleAnswer?: () => Promise<RevealedCoupleAnswer>;
   subscribeToQuizRefresh?: (callback: () => void) => () => void;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
@@ -41,11 +48,13 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const client = getSupabaseClient();
   const screenClient = client as unknown as ScreenEventsRealtimeClient;
   const quizRpcClient = client as unknown as QuizScreenRpcClient;
+  const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
   const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   const audio = createScreenAudioController();
   return {
     subscribe: (callback) => subscribeToScreenEvents(screenClient, eventSlug, callback),
     loadQuiz: () => getQuizScreenState(quizRpcClient, eventSlug),
+    loadCoupleAnswer: () => getRevealedCoupleAnswer(coupleRevealRpcClient, eventSlug),
     subscribeToQuizRefresh: (callback) => subscribeToQuizRefresh(
       quizRealtimeClient,
       eventSlug,
@@ -71,6 +80,7 @@ export function ScreenPage({
   const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
   const [activeEvent, setActiveEvent] = useState<ScreenPresentationEvent | null>(null);
   const [quizState, setQuizState] = useState<QuizScreenState | null>(null);
+  const [coupleAnswer, setCoupleAnswer] = useState<RevealedCoupleAnswer>({ status: 'hidden' });
   const [audioArmed, setAudioArmed] = useState(!deps.armArrivalAudio);
   const [armingAudio, setArmingAudio] = useState(false);
   const seenIds = useRef(new Set<string>());
@@ -82,17 +92,29 @@ export function ScreenPage({
   }), [deps]);
 
   useEffect(() => {
-    if (!deps.loadQuiz) return;
+    if (!deps.loadQuiz && !deps.loadCoupleAnswer) return;
     let active = true;
 
     const reload = () => {
-      void deps.loadQuiz?.()
-        .then((next) => {
-          if (active) setQuizState(next);
-        })
-        .catch(() => {
-          if (active) setQuizState((current) => current ?? { status: 'idle' });
-        });
+      if (deps.loadQuiz) {
+        void deps.loadQuiz()
+          .then((next) => {
+            if (active) setQuizState(next);
+          })
+          .catch(() => {
+            if (active) setQuizState((current) => current ?? { status: 'idle' });
+          });
+      }
+
+      if (deps.loadCoupleAnswer) {
+        void deps.loadCoupleAnswer()
+          .then((next) => {
+            if (active) setCoupleAnswer(next);
+          })
+          .catch(() => {
+            if (active) setCoupleAnswer({ status: 'hidden' });
+          });
+      }
     };
 
     reload();
@@ -138,11 +160,24 @@ export function ScreenPage({
   };
 
   const activeQuiz = quizState?.status === 'active' ? quizState : null;
+  const revealedForCurrentQuestion = activeQuiz?.phase === 'results'
+    && coupleAnswer.status === 'revealed'
+    && coupleAnswer.questionId === activeQuiz.question.id
+    ? coupleAnswer
+    : null;
 
   return (
     <div className="screen-page">
       {activeQuiz ? (
-        <QuizScreenScene state={activeQuiz} expectedGuestCount={expectedGuestCount} />
+        revealedForCurrentQuestion && activeQuiz.phase === 'results' ? (
+          <CoupleAnswerRevealScene
+            question={activeQuiz.question.text}
+            choice={revealedForCurrentQuestion.choice}
+            results={activeQuiz.results}
+          />
+        ) : (
+          <QuizScreenScene state={activeQuiz} expectedGuestCount={expectedGuestCount} />
+        )
       ) : (
         <IdleRegistrationScreen joinUrl={joinUrl} />
       )}
