@@ -54,6 +54,8 @@ export type EventTestResetResult = {
   deletedGuests: number;
   preservedCoupleAnswers: number;
   premiereConfigured: boolean;
+  mortalKombatReset: boolean;
+  bunkerReset: boolean;
   registrationOpen: boolean;
   nextTicketSequence: number;
 };
@@ -166,6 +168,8 @@ export async function resetEventTestData(
     || typeof data.deletedGuests !== 'number'
     || typeof data.preservedCoupleAnswers !== 'number'
     || typeof data.premiereConfigured !== 'boolean'
+    || typeof data.mortalKombatReset !== 'boolean'
+    || typeof data.bunkerReset !== 'boolean'
     || typeof data.registrationOpen !== 'boolean'
     || typeof data.nextTicketSequence !== 'number'
   ) {
@@ -176,6 +180,8 @@ export async function resetEventTestData(
     deletedGuests: data.deletedGuests,
     preservedCoupleAnswers: data.preservedCoupleAnswers,
     premiereConfigured: data.premiereConfigured,
+    mortalKombatReset: data.mortalKombatReset,
+    bunkerReset: data.bunkerReset,
     registrationOpen: data.registrationOpen,
     nextTicketSequence: data.nextTicketSequence,
   };
