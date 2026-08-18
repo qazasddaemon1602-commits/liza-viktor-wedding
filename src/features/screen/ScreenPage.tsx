@@ -6,6 +6,11 @@ import {
   type RevealedCoupleAnswer,
 } from '../quiz/coupleReveal.service';
 import {
+  getRevealedFinalFive,
+  type FinalFiveRpcClient,
+  type RevealedFinalFive,
+} from '../quiz/finalFive.service';
+import {
   getQuizScreenState,
   type QuizScreenRpcClient,
   type QuizScreenState,
@@ -16,6 +21,7 @@ import {
 } from '../quiz/quiz.realtime';
 import { CarriageCallScene } from './CarriageCallScene';
 import { CoupleAnswerRevealScene } from './CoupleAnswerRevealScene';
+import { FinalFiveRevealScene } from './FinalFiveRevealScene';
 import { IdleRegistrationScreen } from './IdleRegistrationScreen';
 import { QuizScreenScene } from './QuizScreenScene';
 import { createScreenAudioController } from './screenAudio';
@@ -30,6 +36,7 @@ export type ScreenPageDependencies = {
   subscribe: (callback: (event: ScreenPresentationEvent) => void) => () => void;
   loadQuiz?: () => Promise<QuizScreenState>;
   loadCoupleAnswer?: () => Promise<RevealedCoupleAnswer>;
+  loadFinalFive?: () => Promise<RevealedFinalFive>;
   subscribeToQuizRefresh?: (callback: () => void) => () => void;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
@@ -49,12 +56,14 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const screenClient = client as unknown as ScreenEventsRealtimeClient;
   const quizRpcClient = client as unknown as QuizScreenRpcClient;
   const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
+  const finalFiveRpcClient = client as unknown as FinalFiveRpcClient;
   const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   const audio = createScreenAudioController();
   return {
     subscribe: (callback) => subscribeToScreenEvents(screenClient, eventSlug, callback),
     loadQuiz: () => getQuizScreenState(quizRpcClient, eventSlug),
     loadCoupleAnswer: () => getRevealedCoupleAnswer(coupleRevealRpcClient, eventSlug),
+    loadFinalFive: () => getRevealedFinalFive(finalFiveRpcClient, eventSlug),
     subscribeToQuizRefresh: (callback) => subscribeToQuizRefresh(
       quizRealtimeClient,
       eventSlug,
@@ -81,6 +90,7 @@ export function ScreenPage({
   const [activeEvent, setActiveEvent] = useState<ScreenPresentationEvent | null>(null);
   const [quizState, setQuizState] = useState<QuizScreenState | null>(null);
   const [coupleAnswer, setCoupleAnswer] = useState<RevealedCoupleAnswer>({ status: 'hidden' });
+  const [finalFive, setFinalFive] = useState<RevealedFinalFive>({ status: 'hidden' });
   const [audioArmed, setAudioArmed] = useState(!deps.armArrivalAudio);
   const [armingAudio, setArmingAudio] = useState(false);
   const seenIds = useRef(new Set<string>());
@@ -92,7 +102,7 @@ export function ScreenPage({
   }), [deps]);
 
   useEffect(() => {
-    if (!deps.loadQuiz && !deps.loadCoupleAnswer) return;
+    if (!deps.loadQuiz && !deps.loadCoupleAnswer && !deps.loadFinalFive) return;
     let active = true;
 
     const reload = () => {
@@ -113,6 +123,16 @@ export function ScreenPage({
           })
           .catch(() => {
             if (active) setCoupleAnswer({ status: 'hidden' });
+          });
+      }
+
+      if (deps.loadFinalFive) {
+        void deps.loadFinalFive()
+          .then((next) => {
+            if (active) setFinalFive(next);
+          })
+          .catch(() => {
+            if (active) setFinalFive({ status: 'hidden' });
           });
       }
     };
@@ -160,6 +180,11 @@ export function ScreenPage({
   };
 
   const activeQuiz = quizState?.status === 'active' ? quizState : null;
+  const finalFiveForCurrentQuestion = activeQuiz?.phase === 'results'
+    && finalFive.status === 'revealed'
+    && finalFive.question.id === activeQuiz.question.id
+    ? finalFive
+    : null;
   const revealedForCurrentQuestion = activeQuiz?.phase === 'results'
     && coupleAnswer.status === 'revealed'
     && coupleAnswer.questionId === activeQuiz.question.id
@@ -169,7 +194,9 @@ export function ScreenPage({
   return (
     <div className="screen-page">
       {activeQuiz ? (
-        revealedForCurrentQuestion && activeQuiz.phase === 'results' ? (
+        finalFiveForCurrentQuestion ? (
+          <FinalFiveRevealScene state={finalFiveForCurrentQuestion} />
+        ) : revealedForCurrentQuestion && activeQuiz.phase === 'results' ? (
           <CoupleAnswerRevealScene
             question={activeQuiz.question.text}
             choice={revealedForCurrentQuestion.choice}
