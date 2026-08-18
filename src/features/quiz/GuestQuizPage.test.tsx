@@ -82,7 +82,7 @@ describe('GuestQuizPage', () => {
     expect(await screen.findByText('60%')).toBeInTheDocument();
     expect(screen.getByText('40%')).toBeInTheDocument();
     expect(screen.getByText('30 ответили')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'ЛИЗА' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'ВИКТОР' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^ЛИЗА/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^ВИКТОР/ })).toBeDisabled();
   });
 });
