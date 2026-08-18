@@ -44,6 +44,7 @@ function dependencies(overrides: Partial<AdminMkControlDependencies> = {}): Admi
     promote: vi.fn().mockResolvedValue(undefined),
     finalize: vi.fn().mockResolvedValue(undefined),
     setCurrent: vi.fn().mockResolvedValue(undefined),
+    showBracket: vi.fn().mockResolvedValue(undefined),
     recordWinner: vi.fn().mockResolvedValue({ status: 'recorded', matchId: 'm1', affectedMatches: [] }),
     undo: vi.fn().mockResolvedValue({ status: 'undone', matchId: 'm1', affectedMatches: [] }),
     broadcastRefresh: vi.fn().mockResolvedValue(undefined),
@@ -128,5 +129,26 @@ describe('AdminMkControl', () => {
     await user.click(screen.getByRole('button', { name: 'В ОСНОВНУЮ СЕТКУ' }));
     expect(promote).toHaveBeenCalledWith('wait-1');
     expect(await screen.findByText('16 / 16')).toBeInTheDocument();
+  });
+
+  it('can switch the live projector from a fight back to the full bracket', async () => {
+    const user = userEvent.setup();
+    const activeState: MkOwnerControl = {
+      ...ready,
+      state: 'active',
+      waitlistCount: 0,
+    };
+    const showBracket = vi.fn().mockResolvedValue(undefined);
+    const load = vi.fn().mockResolvedValue(activeState);
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ load, showBracket })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ВЫВЕСТИ СЕТКУ НА ЭКРАНЫ' }));
+    expect(showBracket).toHaveBeenCalledWith('event-1');
   });
 });
