@@ -24,6 +24,13 @@ const standbyState: OwnerPremiereControl = {
   serverNow,
 };
 
+async function flushPromises() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 describe('AdminPremiereControl live projector preflight', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -64,8 +71,9 @@ describe('AdminPremiereControl live projector preflight', () => {
         dependencies={dependencies}
       />,
     );
+    await flushPromises();
 
-    expect(await screen.findByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
 
     act(() => {
       emit?.({ screenId: 'tv-room-1', videoReady: true, audioArmed: true });
@@ -110,13 +118,15 @@ describe('AdminPremiereControl live projector preflight', () => {
         dependencies={dependencies}
       />,
     );
-    expect(await screen.findByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
+    await flushPromises();
+    expect(screen.getByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
 
     act(() => emit?.({ screenId: 'tv-room-1', videoReady: true, audioArmed: true }));
     expect(screen.getByText('ЭКРАНЫ НА СВЯЗИ · 1')).toBeInTheDocument();
 
-    act(() => {
+    await act(async () => {
       vi.advanceTimersByTime(16_000);
+      await Promise.resolve();
     });
 
     expect(screen.getByText('ЭКРАНЫ НА СВЯЗИ · 0')).toBeInTheDocument();
