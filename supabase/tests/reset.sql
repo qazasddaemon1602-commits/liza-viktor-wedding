@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(12);
 
 select ok(
   exists(
@@ -39,6 +39,17 @@ select ok(
 select ok(
   position('delete from public.final_five_answers' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) > 0,
   'reset clears live final-five answers'
+);
+
+select ok(
+  position('delete from public.mk_matches' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) > 0
+  and position('delete from public.mk_registrations' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) > 0,
+  'reset clears Mortal Kombat rehearsal bracket and registrations'
+);
+
+select ok(
+  position('delete from public.mk_tournaments' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) = 0,
+  'reset preserves the MK tournament configuration row'
 );
 
 select ok(
