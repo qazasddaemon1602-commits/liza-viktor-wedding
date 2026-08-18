@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
+  subscribeToQuizRefresh,
+  type QuizRealtimeClient,
+} from './quiz.realtime';
+import {
   getGuestQuizState,
   submitGuestQuizVote,
   type GuestQuizState,
@@ -20,6 +24,7 @@ export type GuestQuizPageDependencies = {
     questionId: string,
     choice: QuizChoice,
   ) => Promise<SubmitQuizVoteResult>;
+  subscribeToRefresh?: (callback: () => void) => () => void;
 };
 
 type GuestQuizPageProps = {
@@ -28,7 +33,9 @@ type GuestQuizPageProps = {
 };
 
 function browserDependencies(eventSlug: string): GuestQuizPageDependencies {
-  const client = getSupabaseClient() as unknown as QuizRpcClient;
+  const client = getSupabaseClient();
+  const rpcClient = client as unknown as QuizRpcClient;
+  const realtimeClient = client as unknown as QuizRealtimeClient;
   let cachedDeviceKey: string | undefined;
   const getDeviceKey = () => {
     cachedDeviceKey ??= getOrCreateDeviceKey();
@@ -37,14 +44,15 @@ function browserDependencies(eventSlug: string): GuestQuizPageDependencies {
 
   return {
     getDeviceKey,
-    load: (deviceKey) => getGuestQuizState(client, eventSlug, deviceKey),
+    load: (deviceKey) => getGuestQuizState(rpcClient, eventSlug, deviceKey),
     vote: (deviceKey, questionId, choice) => submitGuestQuizVote(
-      client,
+      rpcClient,
       eventSlug,
       deviceKey,
       questionId,
       choice,
     ),
+    subscribeToRefresh: (callback) => subscribeToQuizRefresh(realtimeClient, eventSlug, callback),
   };
 }
 
@@ -83,6 +91,28 @@ export function GuestQuizPage({
 
     return () => {
       active = false;
+    };
+  }, [deps]);
+
+  useEffect(() => {
+    if (!deps.subscribeToRefresh) return;
+    let active = true;
+    const unsubscribe = deps.subscribeToRefresh(() => {
+      void deps.load(deps.getDeviceKey())
+        .then((next) => {
+          if (active) {
+            setState(next);
+            setError('');
+          }
+        })
+        .catch(() => {
+          if (active) setError('Связь с игрой прервалась. Проверьте интернет.');
+        });
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
     };
   }, [deps]);
 
