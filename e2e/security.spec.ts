@@ -10,14 +10,18 @@ function anonymousClient() {
   return createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-async function eventId(): Promise<string> {
+async function ownerClient() {
   const owner = anonymousClient();
-  const { error: signInError } = await owner.auth.signInWithPassword({
+  const { error } = await owner.auth.signInWithPassword({
     email: OWNER_EMAIL,
     password: OWNER_PASSWORD,
   });
-  if (signInError) throw signInError;
+  if (error) throw error;
+  return owner;
+}
 
+async function eventId(): Promise<string> {
+  const owner = await ownerClient();
   const { data, error } = await owner.rpc('owner_get_dashboard', {
     p_event_slug: 'liza-viktor',
   });
@@ -37,6 +41,31 @@ async function eventId(): Promise<string> {
   }
 
   return String(data.event.id);
+}
+
+async function resetRuntime() {
+  const owner = await ownerClient();
+  const { data, error: dashboardError } = await owner.rpc('owner_get_dashboard', {
+    p_event_slug: 'liza-viktor',
+  });
+  if (dashboardError) throw dashboardError;
+  if (
+    typeof data !== 'object'
+    || data === null
+    || !('event' in data)
+    || typeof data.event !== 'object'
+    || data.event === null
+    || !('id' in data.event)
+  ) {
+    throw new Error('Security E2E dashboard is missing event id');
+  }
+
+  const { error } = await owner.rpc('owner_reset_event_test_data', {
+    p_event_id: String(data.event.id),
+    p_confirmation: 'СБРОСИТЬ',
+  });
+  if (error) throw error;
+  await owner.auth.signOut();
 }
 
 test('anonymous client cannot invoke owner mutations or enumerate private event data', async () => {
@@ -68,6 +97,8 @@ test('anonymous client cannot invoke owner mutations or enumerate private event 
 });
 
 test('/admin stays behind owner login and /screen exposes no owner mutation controls', async ({ browser }) => {
+  await resetRuntime();
+
   const anonymousContext = await browser.newContext();
   const page = await anonymousContext.newPage();
 
