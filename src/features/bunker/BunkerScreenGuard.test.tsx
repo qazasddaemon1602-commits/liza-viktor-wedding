@@ -48,6 +48,42 @@ describe('BunkerScreenGuard', () => {
     expect(screen.getByTestId('bunker-timer')).toHaveTextContent('29:59');
   });
 
+  it('stays on the protected bunker scene at 00:00 until the owner explicitly stops it', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-30T18:30:05.000Z'));
+
+    const stopAlarm = vi.fn();
+    const startAlarm = vi.fn();
+    const dependencies: BunkerScreenGuardDependencies = {
+      load: vi.fn().mockResolvedValue({
+        status: 'active',
+        startedAt: '2026-08-30T18:00:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 0,
+        soundEnabled: true,
+        serverNow: '2026-08-30T18:30:05.000Z',
+      }),
+      audio: {
+        arm: vi.fn().mockResolvedValue(true),
+        startAlarm,
+        stopAlarm,
+        dispose: vi.fn(),
+      },
+    };
+
+    render(
+      <BunkerScreenGuard dependencies={dependencies}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(screen.getByTestId('bunker-emergency-scene')).toBeInTheDocument();
+    expect(screen.getByTestId('bunker-timer')).toHaveTextContent('00:00');
+    expect(startAlarm).not.toHaveBeenCalled();
+    expect(stopAlarm).toHaveBeenCalled();
+  });
+
   it('polls the server while active so a reset exits emergency even if realtime refresh was lost', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-30T18:00:00.000Z'));
