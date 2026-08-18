@@ -9,6 +9,14 @@ import { PublicBracket } from './PublicBracket';
 
 const DEFAULT_EVENT_SLUG = 'liza-viktor';
 
+type ActiveMkTournamentProjection = Extract<MkTournamentProjection, { status: 'active' }>;
+
+function isActiveTournament(
+  projection: MkTournamentProjection,
+): projection is ActiveMkTournamentProjection {
+  return projection.status === 'active';
+}
+
 export type MortalKombatPageDependencies = {
   load: () => Promise<MkTournamentProjection>;
   join: () => Promise<MkJoinResult>;
@@ -120,7 +128,7 @@ export function MortalKombatPage({
     );
   }
 
-  if (!state || state.status === 'not_found' || state.status === 'idle') {
+  if (!state || !isActiveTournament(state)) {
     return (
       <main className="mk-page">
         <section className="mk-loading">
