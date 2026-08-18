@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminPage, type AdminPageDependencies } from './AdminPage';
@@ -120,7 +120,7 @@ describe('AdminPage', () => {
     );
 
     await screen.findByText('Лиза × Виктор');
-    expect(subscribeToRegistrations).toHaveBeenCalled();
+    await waitFor(() => expect(subscribeToRegistrations).toHaveBeenCalled());
 
     await act(async () => {
       realtimeCallback?.('g32');
