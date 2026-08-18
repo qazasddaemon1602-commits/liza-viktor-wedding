@@ -52,4 +52,36 @@ describe('GuestJoinPage', () => {
     expect(await screen.findByText(/не удалось проверить билет/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /попробовать снова/i })).toBeInTheDocument();
   });
+
+  it('loads the active call for the restored guest carriage', async () => {
+    const rpc = vi.fn(async (name: string) => {
+      if (name === 'restore_guest') {
+        return { data: { status: 'restored', guest: restoredGuest }, error: null };
+      }
+      if (name === 'get_guest_active_carriage_calls') {
+        return {
+          data: {
+            status: 'ok',
+            carriage: restoredGuest.carriage,
+            calls: [{
+              id: 'call-3',
+              message: 'ВАГОН 3 — ВАШ СОСТАВ ОТПРАВЛЯЕТСЯ НА БАР',
+              showOnScreen: false,
+              createdAt: '2026-08-30T13:00:00+05:00',
+            }],
+          },
+          error: null,
+        };
+      }
+      return { data: null, error: new Error(`Unexpected RPC ${name}`) };
+    });
+
+    render(<GuestJoinPage client={{ rpc }} eventSlug="liza-viktor" deviceKey="lvw_device_31" revealDelayMs={0} />);
+
+    expect(await screen.findByText('ВАГОН 3 — ВАШ СОСТАВ ОТПРАВЛЯЕТСЯ НА БАР')).toBeInTheDocument();
+    expect(rpc).toHaveBeenCalledWith('get_guest_active_carriage_calls', {
+      p_event_slug: 'liza-viktor',
+      p_device_key: 'lvw_device_31',
+    });
+  });
 });
