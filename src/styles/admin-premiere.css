@@ -206,6 +206,19 @@
   margin-top: 0;
 }
 
+.admin-premiere-start-lock {
+  width: 100%;
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-left: 2px solid var(--cinnamon);
+  color: rgba(39, 51, 43, 0.72);
+  background: rgba(126, 63, 60, 0.055);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.45;
+}
+
 .admin-premiere-transport,
 .admin-premiere-emergency {
   padding-top: 0.85rem;
