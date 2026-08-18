@@ -5,6 +5,7 @@ import './styles/globals.css';
 import './styles/train-arrival.css';
 import './styles/screen-announcements.css';
 import './styles/screen-controls.css';
+import './styles/quiz.css';
 
 const root = document.getElementById('root');
 
