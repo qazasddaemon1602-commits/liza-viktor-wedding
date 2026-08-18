@@ -14,12 +14,14 @@ describe('ScreenPage bunker protection', () => {
   it('drops ordinary projector events and their audio while bunker is active', async () => {
     let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
     const playArrivalSignal = vi.fn();
+    const stopArrivalAudio = vi.fn();
     const dependencies: ScreenPageDependencies = {
       subscribe: (callback) => {
         pushEvent = callback;
         return vi.fn();
       },
       playArrivalSignal,
+      stopArrivalAudio,
     };
 
     render(
@@ -31,6 +33,8 @@ describe('ScreenPage bunker protection', () => {
     );
 
     act(() => setBunkerPresentationProtected(true));
+    expect(stopArrivalAudio).toHaveBeenCalledTimes(1);
+
     act(() => {
       pushEvent?.({
         id: 'event-bunker-guest',
