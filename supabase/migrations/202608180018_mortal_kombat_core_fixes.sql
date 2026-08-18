@@ -16,16 +16,19 @@ declare
   v_event_id uuid;
   v_active_count integer := 0;
 begin
-  select r, t.event_id
-  into v_registration, v_event_id
+  select r into v_registration
   from public.mk_registrations r
-  join public.mk_tournaments t on t.id = r.tournament_id
   where r.id = p_registration_id
-  for update of r;
+  for update;
 
   if v_registration.id is null then
     raise exception 'MK registration not found' using errcode = 'P0002';
   end if;
+
+  select t.event_id into v_event_id
+  from public.mk_tournaments t
+  where t.id = v_registration.tournament_id;
+
   perform public._require_mk_owner(v_event_id);
 
   if v_registration.status <> 'waitlist' then
@@ -59,16 +62,20 @@ declare
   v_event_id uuid;
   v_tournament_state text;
 begin
-  select r, t.event_id, t.state
-  into v_registration, v_event_id, v_tournament_state
+  select r into v_registration
   from public.mk_registrations r
-  join public.mk_tournaments t on t.id = r.tournament_id
   where r.id = p_registration_id
-  for update of r;
+  for update;
 
   if v_registration.id is null then
     raise exception 'MK registration not found' using errcode = 'P0002';
   end if;
+
+  select t.event_id, t.state
+  into v_event_id, v_tournament_state
+  from public.mk_tournaments t
+  where t.id = v_registration.tournament_id;
+
   perform public._require_mk_owner(v_event_id);
 
   if v_tournament_state in ('active', 'complete') then
@@ -82,3 +89,8 @@ begin
   return jsonb_build_object('status', 'withdrawn', 'registrationId', p_registration_id);
 end;
 $$;
+
+revoke all on function public.owner_promote_mk_waitlist(uuid) from public, anon;
+revoke all on function public.owner_remove_mk_player(uuid) from public, anon;
+grant execute on function public.owner_promote_mk_waitlist(uuid) to authenticated;
+grant execute on function public.owner_remove_mk_player(uuid) to authenticated;
