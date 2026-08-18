@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
+import { BunkerScreenGuard } from '../features/bunker/BunkerScreenGuard';
 import { MortalKombatPage } from '../features/mortalKombat/MortalKombatPage';
 import { MkScreenPage } from '../features/mortalKombat/MkScreenPage';
 import { CouplePreanswersPage } from '../features/quiz/CouplePreanswersPage';
@@ -39,6 +40,10 @@ function currentJoinUrl(): string {
   return new URL('/join', window.location.origin).toString();
 }
 
+function projector(element: React.ReactNode) {
+  return <BunkerScreenGuard eventSlug="liza-viktor">{element}</BunkerScreenGuard>;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -49,11 +54,11 @@ export function AppRoutes() {
       <Route path="/liza" element={<FinalFiveRolePage role="liza" />} />
       <Route path="/viktor" element={<FinalFiveRolePage role="viktor" />} />
       <Route path="/admin" element={<AdminPage />} />
-      <Route path="/screen" element={<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />} />
+      <Route path="/screen" element={projector(<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />)} />
       <Route path="/screen/connect" element={<PlaceholderPage eyebrow="ПОДКЛЮЧЕНИЕ ЭКРАНА" title="PAIRING" description="Безопасное подключение телевизора к событию." />} />
       <Route path="/premiere" element={<PlaceholderPage eyebrow="ПРЕМЬЕРА" title="КОЛЬЦО" description="Видео будет подготовлено до запуска обратного отсчёта." />} />
       <Route path="/mortal-kombat" element={<MortalKombatPage eventSlug="liza-viktor" />} />
-      <Route path="/mortal-kombat/screen" element={<MkScreenPage eventSlug="liza-viktor" />} />
+      <Route path="/mortal-kombat/screen" element={projector(<MkScreenPage eventSlug="liza-viktor" />)} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
