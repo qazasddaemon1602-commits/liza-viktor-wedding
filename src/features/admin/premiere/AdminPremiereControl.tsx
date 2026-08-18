@@ -1,4 +1,10 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  getPremierePresenceSummary,
+  recordPremiereScreenPresence,
+  type PremiereScreenPresenceRecord,
+} from '../../premiere/premierePresence';
+import type { PremiereScreenPresence } from '../../premiere/premierePresence.realtime';
 import type { OwnerPremiereControl } from '../../premiere/premiere.service';
 import { PremiereReadiness } from './PremiereReadiness';
 
@@ -16,6 +22,9 @@ export type AdminPremiereControlDependencies = {
   returnMain: (eventId: string) => Promise<unknown>;
   setCountdownSound: (eventId: string, enabled: boolean) => Promise<unknown>;
   broadcastRefresh: () => Promise<unknown>;
+  subscribeScreenPresence?: (
+    callback: (presence: PremiereScreenPresence) => void,
+  ) => () => void;
 };
 
 type AdminPremiereControlProps = {
@@ -69,6 +78,8 @@ export function AdminPremiereControl({
   const [duration, setDuration] = useState('623');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [presenceRecords, setPresenceRecords] = useState<PremiereScreenPresenceRecord[]>([]);
+  const [presenceNowMs, setPresenceNowMs] = useState(() => Date.now());
 
   const reload = async () => {
     const next = await dependencies.load(eventId);
@@ -99,6 +110,27 @@ export function AdminPremiereControl({
     };
   }, [dependencies, eventId]);
 
+  useEffect(() => {
+    if (!dependencies.subscribeScreenPresence) return;
+    return dependencies.subscribeScreenPresence((presence) => {
+      const receivedAt = Date.now();
+      setPresenceNowMs(receivedAt);
+      setPresenceRecords((current) => recordPremiereScreenPresence(
+        current,
+        presence,
+        receivedAt,
+      ));
+    });
+  }, [dependencies]);
+
+  useEffect(() => {
+    if (!dependencies.subscribeScreenPresence) return;
+    const interval = window.setInterval(() => {
+      setPresenceNowMs(Date.now());
+    }, 1_000);
+    return () => window.clearInterval(interval);
+  }, [dependencies]);
+
   const run = async (name: string, action: () => Promise<unknown>) => {
     if (busy) return;
     setBusy(name);
@@ -115,14 +147,30 @@ export function AdminPremiereControl({
     }
   };
 
+  const presenceSummary = useMemo(
+    () => getPremierePresenceSummary(presenceRecords, presenceNowMs),
+    [presenceNowMs, presenceRecords],
+  );
+  const hasLivePresence = Boolean(dependencies.subscribeScreenPresence);
+
   const readinessInputs = useMemo(() => ({
     expected: expectedGuestCount,
     registered: registeredCount,
     quietMinutes: quietMinutes(lastRegisteredAt, nowMs),
-    projector: projectorConnected,
-    video: state?.configured === true,
-    audio: audioArmed,
-  }), [audioArmed, expectedGuestCount, lastRegisteredAt, nowMs, projectorConnected, registeredCount, state?.configured]);
+    projector: hasLivePresence ? presenceSummary.projectorConnected : projectorConnected,
+    video: hasLivePresence ? presenceSummary.videoReady : state?.configured === true,
+    audio: hasLivePresence ? presenceSummary.audioArmed : audioArmed,
+  }), [
+    audioArmed,
+    expectedGuestCount,
+    hasLivePresence,
+    lastRegisteredAt,
+    nowMs,
+    presenceSummary,
+    projectorConnected,
+    registeredCount,
+    state?.configured,
+  ]);
 
   const saveMedia = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -156,6 +204,18 @@ export function AdminPremiereControl({
           {statusLabel(state)}
         </strong>
       </div>
+
+      {hasLivePresence && (
+        <div className="admin-premiere-live-screens" aria-label="Экраны премьеры">
+          <strong>ЭКРАНЫ НА СВЯЗИ · {presenceSummary.connectedCount}</strong>
+          <span>
+            ВИДЕО {presenceSummary.videoReady ? 'ГОТОВО' : 'НЕ ГОТОВО'} · {presenceSummary.videoReadyCount}/{presenceSummary.connectedCount}
+          </span>
+          <span>
+            ЗВУК {presenceSummary.audioArmed ? 'ГОТОВ' : 'НЕ ГОТОВ'} · {presenceSummary.audioArmedCount}/{presenceSummary.connectedCount}
+          </span>
+        </div>
+      )}
 
       <PremiereReadiness inputs={readinessInputs} />
 
