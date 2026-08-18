@@ -23,6 +23,12 @@ const standbyState: OwnerPremiereControl = {
   serverNow,
 };
 
+const countdownState: OwnerPremiereControl = {
+  ...standbyState,
+  status: 'countdown',
+  startAt: '2026-08-30T12:00:10.000Z',
+};
+
 const playingState: OwnerPremiereControl = {
   ...standbyState,
   status: 'playing',
@@ -124,6 +130,44 @@ describe('AdminPremiereControl', () => {
       expect(deps.start).toHaveBeenCalledWith(eventId, 10);
       expect(deps.broadcastRefresh).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('does not invite a duplicate start when RPC succeeds but realtime refresh fails', async () => {
+    const deps = dependencies(standbyState);
+    deps.load = vi.fn()
+      .mockResolvedValueOnce(standbyState)
+      .mockResolvedValue(countdownState);
+    deps.broadcastRefresh = vi.fn()
+      .mockRejectedValueOnce(new Error('realtime offline'))
+      .mockResolvedValue(undefined);
+
+    render(
+      <AdminPremiereControl
+        eventId={eventId}
+        registeredCount={32}
+        expectedGuestCount={40}
+        lastRegisteredAt="2026-08-30T11:53:00.000Z"
+        projectorConnected
+        audioArmed
+        nowMs={Date.parse(serverNow)}
+        dependencies={deps}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' }));
+
+    expect(await screen.findByText(/КОМАНДА ВЫПОЛНЕНА/i)).toBeInTheDocument();
+    expect(screen.getByText('ИДЁТ ОТСЧЁТ')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).not.toBeInTheDocument();
+    expect(deps.start).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'ПОВТОРИТЬ СИНХРОНИЗАЦИЮ' }));
+
+    await waitFor(() => {
+      expect(deps.broadcastRefresh).toHaveBeenCalledTimes(2);
+    });
+    expect(deps.start).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'ПОВТОРИТЬ СИНХРОНИЗАЦИЮ' })).not.toBeInTheDocument();
   });
 
   it('exposes pause and ±5 second recovery controls while the track is playing', async () => {
