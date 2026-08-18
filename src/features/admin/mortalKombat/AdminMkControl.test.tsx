@@ -84,4 +84,49 @@ describe('AdminMkControl', () => {
     expect(finalize).toHaveBeenCalledWith('event-1');
     expect(broadcastRefresh).toHaveBeenCalledTimes(2);
   });
+
+  it('removes a no-show from the active sixteen so a waitlisted guest can be promoted before start', async () => {
+    const user = userEvent.setup();
+    const remove = vi.fn().mockResolvedValue(undefined);
+    const promote = vi.fn().mockResolvedValue(undefined);
+    const afterRemoval: MkOwnerControl = {
+      ...ready,
+      activeCount: 15,
+      registrations: ready.registrations.map((registration) =>
+        registration.registrationId === 'r1'
+          ? { ...registration, status: 'withdrawn' as const, seed: null }
+          : registration,
+      ),
+    };
+    const afterPromotion: MkOwnerControl = {
+      ...afterRemoval,
+      activeCount: 16,
+      waitlistCount: 0,
+      registrations: afterRemoval.registrations.map((registration) =>
+        registration.registrationId === 'wait-1'
+          ? { ...registration, status: 'active' as const }
+          : registration,
+      ),
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce(ready)
+      .mockResolvedValueOnce(afterRemoval)
+      .mockResolvedValueOnce(afterPromotion);
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ load, remove, promote })}
+      />,
+    );
+
+    await screen.findByText('16 / 16');
+    await user.click(screen.getByRole('button', { name: 'УБРАТЬ ИЗ СЕТКИ · Игрок 1' }));
+    expect(remove).toHaveBeenCalledWith('r1');
+    expect(await screen.findByText('15 / 16')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'В ОСНОВНУЮ СЕТКУ' }));
+    expect(promote).toHaveBeenCalledWith('wait-1');
+    expect(await screen.findByText('16 / 16')).toBeInTheDocument();
+  });
 });
