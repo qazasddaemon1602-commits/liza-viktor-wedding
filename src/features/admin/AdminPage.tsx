@@ -18,6 +18,11 @@ import {
   type AdminQuizRpcClient,
 } from '../quiz/adminQuiz.service';
 import {
+  getOwnerCouplePreanswerStatus,
+  issueOwnerCouplePreanswerAccess,
+  type OwnerCouplePreanswerRpcClient,
+} from '../quiz/ownerCouplePreanswers.service';
+import {
   broadcastQuizRefresh,
   type QuizRealtimeClient,
 } from '../quiz/quiz.realtime';
@@ -35,6 +40,7 @@ import {
   type AdminRealtimeClient,
 } from './admin.realtime';
 import { AdminShell } from './AdminShell';
+import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCouplePreanswersPanel';
 import type { AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
 
 const EVENT_SLUG = 'liza-viktor';
@@ -57,6 +63,7 @@ export type AdminPageDependencies = {
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
+  couplePreanswers?: AdminCouplePreanswersPanelDependencies;
   quiz?: AdminQuizPanelDependencies;
 };
 
@@ -65,11 +72,18 @@ function errorCode(error: unknown): string | undefined {
   return String((error as { code?: unknown }).code ?? '');
 }
 
+function buildCoupleAccessUrl(token: string): string {
+  const url = new URL('/couple-preanswers', window.location.origin);
+  url.searchParams.set('token', token);
+  return url.toString();
+}
+
 export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
   const quizRpcClient = client as unknown as AdminQuizRpcClient;
+  const coupleRpcClient = client as unknown as OwnerCouplePreanswerRpcClient;
   const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   let currentEventId = '';
 
@@ -124,6 +138,11 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     clearCarriageCall: async (callId, carriageIds) => {
       await clearCarriageCallRpc(carriageRpcClient, callId);
       await broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds);
+    },
+    couplePreanswers: {
+      load: (eventId) => getOwnerCouplePreanswerStatus(coupleRpcClient, eventId),
+      issue: (eventId) => issueOwnerCouplePreanswerAccess(coupleRpcClient, eventId),
+      buildAccessUrl: buildCoupleAccessUrl,
     },
     quiz: {
       load: (eventId) => getOwnerQuizControl(quizRpcClient, eventId),
@@ -284,6 +303,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         subscribeToRegistrations: deps.subscribeToRegistrations,
         sendCarriageCall: deps.sendCarriageCall,
         clearCarriageCall: deps.clearCarriageCall,
+        couplePreanswers: deps.couplePreanswers,
         quiz: deps.quiz,
       }}
     />
