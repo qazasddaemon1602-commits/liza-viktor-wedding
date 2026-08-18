@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { GuestJoinPage } from './GuestJoinPage';
 
@@ -83,5 +83,67 @@ describe('GuestJoinPage', () => {
       p_event_slug: 'liza-viktor',
       p_device_key: 'lvw_device_31',
     });
+  });
+
+  it('refreshes the guest banner from the backend when its carriage receives a realtime signal', async () => {
+    let callReads = 0;
+    const rpc = vi.fn(async (name: string) => {
+      if (name === 'restore_guest') {
+        return { data: { status: 'restored', guest: restoredGuest }, error: null };
+      }
+      if (name === 'get_guest_active_carriage_calls') {
+        callReads += 1;
+        return {
+          data: {
+            status: 'ok',
+            carriage: restoredGuest.carriage,
+            calls: callReads === 1 ? [{
+              id: 'call-3',
+              message: 'ВАГОН 3 — НА БАР',
+              showOnScreen: false,
+              createdAt: '2026-08-30T13:00:00+05:00',
+            }] : [],
+          },
+          error: null,
+        };
+      }
+      return { data: null, error: new Error(`Unexpected RPC ${name}`) };
+    });
+
+    let refreshHandler: (() => void) | undefined;
+    const unsubscribe = vi.fn();
+    const channel = {
+      on: vi.fn((_type: 'broadcast', _filter: { event: 'refresh' }, callback: () => void) => {
+        refreshHandler = callback;
+        return channel;
+      }),
+      subscribe: vi.fn(() => channel),
+      unsubscribe,
+      send: vi.fn().mockResolvedValue('ok'),
+    };
+    const realtimeClient = {
+      channel: vi.fn().mockReturnValue(channel),
+    };
+
+    render(
+      <GuestJoinPage
+        client={{ rpc }}
+        realtimeClient={realtimeClient}
+        eventSlug="liza-viktor"
+        deviceKey="lvw_device_31"
+        revealDelayMs={0}
+      />,
+    );
+
+    expect(await screen.findByText('ВАГОН 3 — НА БАР')).toBeInTheDocument();
+    expect(realtimeClient.channel).toHaveBeenCalledWith('carriage-call:carriage-3');
+
+    await act(async () => {
+      refreshHandler?.();
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText('ВАГОН 3 — НА БАР')).not.toBeInTheDocument();
+    expect(callReads).toBe(2);
   });
 });
