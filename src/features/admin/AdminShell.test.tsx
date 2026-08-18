@@ -182,7 +182,10 @@ describe('AdminShell', () => {
     );
 
     await screen.findByText('Иван Петров');
-    await waitFor(() => expect(screen.getByText('Анна Смирнова')).toBeInTheDocument(), { timeout: 500 });
+    await waitFor(
+      () => expect(screen.getByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeInTheDocument(),
+      { timeout: 500 },
+    );
     expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
   });
 
