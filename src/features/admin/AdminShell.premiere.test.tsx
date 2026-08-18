@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { OwnerPremiereControl } from '../premiere/premiere.service';
 import { AdminShell, type AdminShellDependencies } from './AdminShell';
@@ -101,6 +101,7 @@ describe('AdminShell premiere controls', () => {
 
     expect(await screen.findByRole('heading', { name: 'КОЛЬЦО · РЕЖИССЁРСКИЙ ПУЛЬТ' })).toBeInTheDocument();
     expect(premiereLoad).toHaveBeenCalledWith('event-1');
-    expect(screen.getByText('2 / ~40')).toBeInTheDocument();
+    const readiness = screen.getByRole('region', { name: 'Готовность премьеры' });
+    expect(within(readiness).getByText('2 / ~40')).toBeInTheDocument();
   });
 });
