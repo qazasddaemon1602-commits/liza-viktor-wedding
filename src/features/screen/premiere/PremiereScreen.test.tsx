@@ -6,6 +6,11 @@ import { PremiereScreen } from './PremiereScreen';
 const play = vi.fn<() => Promise<void>>();
 const pause = vi.fn<() => void>();
 
+type ConfiguredPremiereState = Extract<
+  PremiereScreenState,
+  { status: 'standby' | 'countdown' | 'playing' | 'paused' }
+>;
+
 const base = {
   mediaUrl: 'https://cdn.test/ring.mp4',
   durationSeconds: 623,
@@ -19,16 +24,16 @@ const base = {
 } as const;
 
 function state(
-  status: 'standby' | 'countdown' | 'playing' | 'paused',
-  patch: Partial<Extract<PremiereScreenState, { status: 'standby' | 'countdown' | 'playing' | 'paused' }>> = {},
-): PremiereScreenState {
+  status: ConfiguredPremiereState['status'],
+  patch: Partial<ConfiguredPremiereState> = {},
+): ConfiguredPremiereState {
   return {
     ...base,
     status,
     startAt: status === 'countdown' ? '2026-08-30T12:00:10.000Z' : null,
     playbackAnchorAt: status === 'playing' ? '2026-08-30T12:00:10.000Z' : null,
     ...patch,
-  } as PremiereScreenState;
+  } as ConfiguredPremiereState;
 }
 
 describe('PremiereScreen', () => {
