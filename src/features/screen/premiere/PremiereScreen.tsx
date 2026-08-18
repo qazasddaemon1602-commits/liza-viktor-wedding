@@ -64,6 +64,7 @@ export function PremiereScreen({ state, nowMs, onCountdownTick, onEnded }: Premi
       <PremierePlayer
         src={state.mediaUrl}
         shouldPlay={shouldPlay || state.status === 'playing'}
+        positionSeconds={state.positionSeconds}
         onEnded={onEnded}
       />
 
