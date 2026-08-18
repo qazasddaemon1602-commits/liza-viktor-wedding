@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
+import { ChampionScene } from '../mortalKombat/ChampionScene';
+import { MkFightScene } from '../mortalKombat/MkFightScene';
+import { subscribeToMkRefresh, type MkRealtimeClient } from '../mortalKombat/mk.realtime';
+import { getMkTournamentScreenState, type MkRpcClient } from '../mortalKombat/mk.service';
+import type { MkTournamentProjection } from '../mortalKombat/mk.types';
+import { PublicBracket } from '../mortalKombat/PublicBracket';
 import { createPremiereAudioController } from '../premiere/premiereAudio';
 import {
   broadcastPremiereScreenPresence,
@@ -55,8 +61,10 @@ export type ScreenPageDependencies = {
   loadCoupleAnswer?: () => Promise<RevealedCoupleAnswer>;
   loadFinalFive?: () => Promise<RevealedFinalFive>;
   loadPremiere?: () => Promise<PremiereScreenState>;
+  loadMortalKombat?: () => Promise<MkTournamentProjection>;
   subscribeToQuizRefresh?: (callback: () => void) => () => void;
   subscribeToPremiereRefresh?: (callback: () => void) => () => void;
+  subscribeToMkRefresh?: (callback: () => void) => () => void;
   broadcastPremierePresence?: (presence: PremiereScreenPresence) => Promise<void>;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
@@ -78,6 +86,8 @@ type ScreenPageProps = {
 function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const client = getSupabaseClient();
   const screenClient = client as unknown as ScreenEventsRealtimeClient;
+  const mkRpcClient = client as unknown as MkRpcClient;
+  const mkRealtimeClient = client as unknown as MkRealtimeClient;
   const quizRpcClient = client as unknown as QuizScreenRpcClient;
   const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
   const finalFiveRpcClient = client as unknown as FinalFiveRpcClient;
@@ -93,6 +103,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
     loadCoupleAnswer: () => getRevealedCoupleAnswer(coupleRevealRpcClient, eventSlug),
     loadFinalFive: () => getRevealedFinalFive(finalFiveRpcClient, eventSlug),
     loadPremiere: () => getPremiereScreenState(premiereRpcClient, eventSlug),
+    loadMortalKombat: () => getMkTournamentScreenState(mkRpcClient, eventSlug),
     subscribeToQuizRefresh: (callback) => subscribeToQuizRefresh(
       quizRealtimeClient,
       eventSlug,
@@ -100,6 +111,11 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
     ),
     subscribeToPremiereRefresh: (callback) => subscribeToPremiereRefresh(
       premiereRealtimeClient,
+      eventSlug,
+      callback,
+    ),
+    subscribeToMkRefresh: (callback) => subscribeToMkRefresh(
+      mkRealtimeClient,
       eventSlug,
       callback,
     ),
@@ -123,6 +139,10 @@ function isPremiereProtected(state: PremiereScreenState | null): boolean {
     || state?.status === 'playing'
     || state?.status === 'paused'
     || state?.status === 'black';
+}
+
+function isMortalKombatProtected(state: MkTournamentProjection | null): state is Extract<MkTournamentProjection, { status: 'active' }> {
+  return state?.status === 'active' && (state.state === 'active' || state.state === 'complete');
 }
 
 function premiereMediaUrl(state: PremiereScreenState | null): string | null {
@@ -161,6 +181,7 @@ export function ScreenPage({
   const [coupleAnswer, setCoupleAnswer] = useState<RevealedCoupleAnswer>({ status: 'hidden' });
   const [finalFive, setFinalFive] = useState<RevealedFinalFive>({ status: 'hidden' });
   const [premiereState, setPremiereState] = useState<PremiereScreenState | null>(null);
+  const [mkState, setMkState] = useState<MkTournamentProjection | null>(null);
   const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
   const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
   const [armingAudio, setArmingAudio] = useState(false);
@@ -168,12 +189,14 @@ export function ScreenPage({
   const [connectionDegraded, setConnectionDegraded] = useState(() => !browserLooksOnline());
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const seenIds = useRef(new Set<string>());
-  const premiereProtectedRef = useRef(false);
+  const presentationProtectedRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
 
   const premiereProtected = isPremiereProtected(premiereState);
+  const mortalKombatProtected = isMortalKombatProtected(mkState);
+  const presentationProtected = premiereProtected || mortalKombatProtected;
   const currentPremiereMediaUrl = premiereMediaUrl(premiereState);
-  premiereProtectedRef.current = premiereProtected;
+  presentationProtectedRef.current = presentationProtected;
 
   useEffect(() => {
     const handleOffline = () => setConnectionDegraded(true);
@@ -191,7 +214,7 @@ export function ScreenPage({
   }, []);
 
   useEffect(() => deps.subscribe((event) => {
-    if (premiereProtectedRef.current) return;
+    if (presentationProtectedRef.current) return;
     if (seenIds.current.has(event.id)) return;
     seenIds.current.add(event.id);
     setQueue((current) => [...current, event]);
@@ -280,6 +303,31 @@ export function ScreenPage({
   }, [deps, reconnectEpoch]);
 
   useEffect(() => {
+    if (!deps.loadMortalKombat) return;
+    let active = true;
+
+    const reload = () => {
+      void deps.loadMortalKombat?.()
+        .then((next) => {
+          if (!active) return;
+          setMkState(next);
+          if (browserLooksOnline()) setConnectionDegraded(false);
+        })
+        .catch(() => {
+          if (active) setConnectionDegraded(true);
+          // Keep the last valid fight/bracket during a temporary network failure.
+        });
+    };
+
+    reload();
+    const unsubscribe = deps.subscribeToMkRefresh?.(reload);
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [deps, reconnectEpoch]);
+
+  useEffect(() => {
     setVideoReady(false);
   }, [currentPremiereMediaUrl]);
 
@@ -315,10 +363,10 @@ export function ScreenPage({
   }, [premiereState?.status, premiereState?.status === 'countdown' ? premiereState.startAt : null]);
 
   useEffect(() => {
-    if (!premiereProtected) return;
+    if (!presentationProtected) return;
     setQueue([]);
     setActiveEvent(null);
-  }, [premiereProtected]);
+  }, [presentationProtected]);
 
   useEffect(() => () => {
     deps.disposeAudio?.();
@@ -326,22 +374,22 @@ export function ScreenPage({
   }, [deps]);
 
   useEffect(() => {
-    if (premiereProtected || activeEvent || queue.length === 0) return;
+    if (presentationProtected || activeEvent || queue.length === 0) return;
     const [next, ...rest] = queue;
     setQueue(rest);
     setActiveEvent(next);
-  }, [activeEvent, premiereProtected, queue]);
+  }, [activeEvent, presentationProtected, queue]);
 
   useEffect(() => {
-    if (!activeEvent || premiereProtected) return;
+    if (!activeEvent || presentationProtected) return;
     const timer = window.setTimeout(() => {
       setActiveEvent(null);
     }, sceneDurationMs);
     return () => window.clearTimeout(timer);
-  }, [activeEvent, premiereProtected, sceneDurationMs]);
+  }, [activeEvent, presentationProtected, sceneDurationMs]);
 
   const playSignal = useCallback(() => {
-    if (!premiereProtectedRef.current) deps.playArrivalSignal?.();
+    if (!presentationProtectedRef.current) deps.playArrivalSignal?.();
   }, [deps]);
 
   const playPremiereCountdownTick = useCallback((second: number) => {
@@ -373,9 +421,12 @@ export function ScreenPage({
     && coupleAnswer.questionId === activeQuiz.question.id
     ? coupleAnswer
     : null;
+  const currentMkMatch = mortalKombatProtected
+    ? mkState.matches.find((match) => match.current) ?? null
+    : null;
 
   return (
-    <div className={`screen-page${premiereProtected ? ' screen-page--premiere' : ''}`}>
+    <div className={`screen-page${premiereProtected ? ' screen-page--premiere' : ''}${mortalKombatProtected ? ' screen-page--mk' : ''}`}>
       {premiereProtected && premiereState ? (
         <PremiereScreen
           state={premiereState}
@@ -383,6 +434,14 @@ export function ScreenPage({
           onCountdownTick={playPremiereCountdownTick}
           onVideoReady={() => setVideoReady(true)}
         />
+      ) : mortalKombatProtected ? (
+        mkState.state === 'complete' && mkState.championGuestId ? (
+          <ChampionScene championGuestId={mkState.championGuestId} players={mkState.players} />
+        ) : currentMkMatch ? (
+          <MkFightScene match={currentMkMatch} players={mkState.players} />
+        ) : (
+          <PublicBracket state={mkState} />
+        )
       ) : activeQuiz ? (
         finalFiveForCurrentQuestion ? (
           <FinalFiveRevealScene state={finalFiveForCurrentQuestion} />
@@ -405,7 +464,7 @@ export function ScreenPage({
         </div>
       )}
 
-      {!audioArmed && hasAudioArm && (!premiereProtected || premiereState?.status === 'standby') && (
+      {!audioArmed && hasAudioArm && (!presentationProtected || premiereState?.status === 'standby') && (
         <button
           type="button"
           className="screen-audio-arm"
@@ -416,14 +475,14 @@ export function ScreenPage({
         </button>
       )}
 
-      {!premiereProtected && activeEvent?.kind === 'guest_registered' && (
+      {!presentationProtected && activeEvent?.kind === 'guest_registered' && (
         <TrainArrivalScene
           event={activeEvent}
           onSignal={playSignal}
         />
       )}
 
-      {!premiereProtected && activeEvent?.kind === 'carriage_call' && (
+      {!presentationProtected && activeEvent?.kind === 'carriage_call' && (
         <CarriageCallScene event={activeEvent} />
       )}
     </div>
