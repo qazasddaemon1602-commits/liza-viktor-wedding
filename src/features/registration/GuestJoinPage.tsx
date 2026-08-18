@@ -1,4 +1,8 @@
 import { useMemo } from 'react';
+import {
+  getGuestActiveCarriageCalls,
+  type CarriageCallRpcClient,
+} from '../carriages/carriageCalls.service';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { JoinPage, type JoinPageDependencies } from './JoinPage';
@@ -36,6 +40,7 @@ export function GuestJoinPage({
 }: GuestJoinPageProps) {
   const dependencies = useMemo<JoinPageDependencies>(() => {
     const registrationClient = client ?? browserRegistrationClient();
+    const carriageCallClient = registrationClient as unknown as CarriageCallRpcClient;
     let cachedDeviceKey = deviceKey;
     const getDeviceKey = () => {
       cachedDeviceKey ??= getOrCreateDeviceKey();
@@ -57,6 +62,11 @@ export function GuestJoinPage({
         eventSlug,
         key,
         recoveryCode,
+      ),
+      loadCarriageCalls: (key) => getGuestActiveCarriageCalls(
+        carriageCallClient,
+        eventSlug,
+        key,
       ),
     };
   }, [client, deviceKey, eventSlug]);
