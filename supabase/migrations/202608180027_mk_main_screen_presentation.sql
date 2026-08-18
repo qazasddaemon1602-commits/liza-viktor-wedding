@@ -20,6 +20,23 @@ begin
     raise exception 'MK tournament not found' using errcode = 'P0002';
   end if;
 
+  if p_enabled and exists (
+    select 1
+    from public.bunker_state b
+    where b.event_id = p_event_id and b.status = 'active'
+  ) then
+    raise exception 'Bunker emergency owns the shared projector' using errcode = '55000';
+  end if;
+
+  if p_enabled and exists (
+    select 1
+    from public.premiere_state p
+    where p.event_id = p_event_id
+      and p.status in ('standby', 'countdown', 'playing', 'paused', 'black')
+  ) then
+    raise exception 'Premiere owns the shared projector' using errcode = '55000';
+  end if;
+
   if p_enabled then
     update public.event_state
     set current_module = 'mortal_kombat',
