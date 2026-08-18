@@ -61,6 +61,7 @@ function parseTournament(data: unknown): MkTournamentProjection {
     || data.maxPlayers !== 16
     || !Array.isArray(data.players)
     || !Array.isArray(data.matches)
+    || typeof data.presentOnMainScreen !== 'boolean'
   ) {
     throw new Error('Unexpected MK tournament payload');
   }
@@ -81,6 +82,7 @@ function parseTournament(data: unknown): MkTournamentProjection {
     players: data.players.map(parsePlayer),
     matches: data.matches.map(parseMatch),
     championGuestId: typeof data.championGuestId === 'string' ? data.championGuestId : null,
+    presentOnMainScreen: data.presentOnMainScreen,
   };
 }
 
