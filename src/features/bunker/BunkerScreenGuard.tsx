@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
+import { setBunkerPresentationProtected } from './bunkerProtection';
 import {
   subscribeToBunkerRefresh,
   type BunkerRealtimeClient,
@@ -107,6 +108,13 @@ export function BunkerScreenGuard({
     ? remainingFromState(state, nowMs, serverOffsetRef.current)
     : 0;
   const emergencyActive = state?.status === 'active' && remainingSeconds > 0;
+
+  useEffect(() => {
+    setBunkerPresentationProtected(emergencyActive);
+    return () => {
+      setBunkerPresentationProtected(false);
+    };
+  }, [emergencyActive]);
 
   useEffect(() => {
     if (!emergencyActive) return;
