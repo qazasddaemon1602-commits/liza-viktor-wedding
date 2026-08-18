@@ -128,6 +128,17 @@ export async function getMkTournamentScreenState(
   client: MkRpcClient,
   eventSlug: string,
 ): Promise<MkTournamentProjection> {
+  const projection = await loadMkProjection(client, eventSlug, null);
+  if (projection.status === 'active' && !projection.presentOnMainScreen) {
+    return { status: 'idle' };
+  }
+  return projection;
+}
+
+export async function getMkTournamentDedicatedScreenState(
+  client: MkRpcClient,
+  eventSlug: string,
+): Promise<MkTournamentProjection> {
   return loadMkProjection(client, eventSlug, null);
 }
 
