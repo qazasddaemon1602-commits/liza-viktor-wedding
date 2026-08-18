@@ -50,8 +50,8 @@ describe('AdminQuizPanel', () => {
   it('shows current question and answered count without exposing result split before reveal', async () => {
     render(<AdminQuizPanel eventId="event-1" dependencies={deps()} />);
 
-    expect(await screen.findByRole('heading', { name: 'ЛИЗА ИЛИ ВИКТОР?' })).toBeInTheDocument();
-    expect(screen.getByText('Кто первым мирится после ссоры?')).toBeInTheDocument();
+    expect(await screen.findByText('Кто первым мирится после ссоры?')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'ЛИЗА ИЛИ ВИКТОР?' })).toBeInTheDocument();
     expect(screen.getByText('18 ответили')).toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'ПОКАЗАТЬ РЕЗУЛЬТАТ' })).toBeEnabled();
