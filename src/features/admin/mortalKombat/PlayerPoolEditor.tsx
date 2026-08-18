@@ -4,9 +4,15 @@ type PlayerPoolEditorProps = {
   registrations: MkOwnerRegistration[];
   disabled?: boolean;
   onSwap: (registrationA: string, registrationB: string) => Promise<void>;
+  onRemove: (registrationId: string) => Promise<void>;
 };
 
-export function PlayerPoolEditor({ registrations, disabled = false, onSwap }: PlayerPoolEditorProps) {
+export function PlayerPoolEditor({
+  registrations,
+  disabled = false,
+  onSwap,
+  onRemove,
+}: PlayerPoolEditorProps) {
   const seeded = registrations
     .filter((registration) => registration.status === 'active')
     .sort((a, b) => (a.seed ?? 999) - (b.seed ?? 999));
@@ -39,6 +45,15 @@ export function PlayerPoolEditor({ registrations, disabled = false, onSwap }: Pl
                 ))}
             </select>
           </label>
+          <button
+            type="button"
+            className="mk-seed-remove"
+            aria-label={`УБРАТЬ ИЗ СЕТКИ · ${registration.displayName}`}
+            disabled={disabled}
+            onClick={() => void onRemove(registration.registrationId)}
+          >
+            НЕ ПРИШЁЛ · УБРАТЬ
+          </button>
         </article>
       ))}
     </div>
