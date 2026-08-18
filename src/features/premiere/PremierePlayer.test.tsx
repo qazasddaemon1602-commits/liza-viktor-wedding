@@ -29,6 +29,21 @@ describe('PremierePlayer', () => {
     expect(play).not.toHaveBeenCalled();
   });
 
+  it('reports video readiness only after the browser can play the preloaded media', () => {
+    const ready = vi.fn();
+    const { container } = render(
+      <PremierePlayer
+        src="https://cdn.test/ring.mp4"
+        shouldPlay={false}
+        onReady={ready}
+      />,
+    );
+
+    expect(ready).not.toHaveBeenCalled();
+    fireEvent.canPlay(container.querySelector('video')!);
+    expect(ready).toHaveBeenCalledTimes(1);
+  });
+
   it('calls play exactly once when shouldPlay flips true', () => {
     const { rerender } = render(
       <PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay={false} />,
