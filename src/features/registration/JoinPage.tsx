@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { GuestActiveCarriageCalls, GuestCarriageCall } from '../carriages/carriageCalls.service';
+import { GuestCallBanner } from '../guest/GuestCallBanner';
 import { RegistrationPage } from './RegistrationPage';
 import type { RegistrationDraft } from './registrationModel';
 import type { RegisteredGuest } from './registration.types';
@@ -9,6 +11,8 @@ export type JoinPageDependencies = {
   restore: (deviceKey: string) => Promise<RestoreResult>;
   register: (draft: RegistrationDraft, confirmDuplicate?: boolean) => Promise<RegistrationResult>;
   recover: (deviceKey: string, recoveryCode: string) => Promise<RecoveryResult>;
+  loadCarriageCalls?: (deviceKey: string) => Promise<GuestActiveCarriageCalls>;
+  subscribeToCarriageCalls?: (carriageId: string, callback: () => void) => () => void;
 };
 
 type JoinPageProps = {
@@ -18,6 +22,7 @@ type JoinPageProps = {
 
 export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   const [guest, setGuest] = useState<RegisteredGuest | null>(null);
+  const [activeCall, setActiveCall] = useState<GuestCarriageCall | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState('');
@@ -42,6 +47,34 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   useEffect(() => {
     void restore();
   }, [restore]);
+
+  useEffect(() => {
+    if (!guest || !dependencies.loadCarriageCalls) {
+      setActiveCall(null);
+      return;
+    }
+
+    let active = true;
+    const refresh = async () => {
+      try {
+        const result = await dependencies.loadCarriageCalls?.(dependencies.getDeviceKey());
+        if (!active || !result) return;
+        setActiveCall(result.status === 'ok' ? (result.calls[0] ?? null) : null);
+      } catch {
+        if (active) setActiveCall(null);
+      }
+    };
+
+    void refresh();
+    const unsubscribe = dependencies.subscribeToCarriageCalls?.(guest.carriage.id, () => {
+      void refresh();
+    });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [dependencies, guest]);
 
   const register = async (draft: RegistrationDraft, confirmDuplicate?: boolean) => {
     const result = await dependencies.register(draft, confirmDuplicate);
@@ -138,6 +171,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   return (
     <>
+      {guest && <GuestCallBanner carriage={guest.carriage} call={activeCall} />}
       <RegistrationPage
         onRegister={register}
         initialGuest={guest}
