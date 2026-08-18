@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   clearCarriageCall,
   getGuestActiveCarriageCalls,
+  publishCarriageCallToScreen,
   sendCarriageCall,
   type CarriageCallRpcClient,
 } from './carriageCalls.service';
@@ -49,6 +50,17 @@ describe('carriage calls service', () => {
     expect(client.rpc).toHaveBeenCalledWith('owner_clear_carriage_call', {
       p_call_id: 'call-1',
     });
+  });
+
+  it('publishes a call to the projector only through the owner RPC', async () => {
+    const client = clientWith({ status: 'published', screenEventId: 'screen-1' });
+
+    const result = await publishCarriageCallToScreen(client, 'call-1');
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_publish_carriage_call_screen_event', {
+      p_call_id: 'call-1',
+    });
+    expect(result).toEqual({ status: 'published', screenEventId: 'screen-1' });
   });
 
   it('loads only active calls available to the current guest device', async () => {
