@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { JoinPage, type JoinPageDependencies } from './JoinPage';
@@ -73,5 +73,43 @@ describe('JoinPage', () => {
     expect(await screen.findByText(/код недействителен или уже истёк/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'ВЕРНУТЬСЯ К РЕГИСТРАЦИИ' }));
     expect(screen.getByRole('button', { name: /получить билет/i })).toBeInTheDocument();
+  });
+
+  it('shows only the current guest carriage call and refreshes after its carriage signal', async () => {
+    let refreshCallback: (() => void) | undefined;
+    const restore = vi.fn().mockResolvedValue({ status: 'restored', guest });
+    const loadCarriageCalls = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'ok',
+        carriage: guest.carriage,
+        calls: [{
+          id: 'call-1',
+          message: 'ВАШ СОСТАВ ОТПРАВЛЯЕТСЯ НА БАР',
+          showOnScreen: false,
+          createdAt: '2026-08-30T13:00:00+05:00',
+        }],
+      })
+      .mockResolvedValueOnce({ status: 'ok', carriage: guest.carriage, calls: [] });
+    const subscribeToCarriageCalls = vi.fn((_carriageId: string, callback: () => void) => {
+      refreshCallback = callback;
+      return vi.fn();
+    });
+
+    render(
+      <JoinPage
+        dependencies={dependencies({ restore, loadCarriageCalls, subscribeToCarriageCalls })}
+      />,
+    );
+
+    expect(await screen.findByText('ВАШ СОСТАВ ОТПРАВЛЯЕТСЯ НА БАР')).toBeInTheDocument();
+    expect(loadCarriageCalls).toHaveBeenCalledWith('lvw_device_1');
+    expect(subscribeToCarriageCalls).toHaveBeenCalledWith('carriage-3', expect.any(Function));
+
+    await act(async () => {
+      refreshCallback?.();
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText('ВАШ СОСТАВ ОТПРАВЛЯЕТСЯ НА БАР')).not.toBeInTheDocument();
   });
 });
