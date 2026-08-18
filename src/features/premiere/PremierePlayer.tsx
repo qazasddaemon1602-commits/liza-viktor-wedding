@@ -4,6 +4,7 @@ type PremierePlayerProps = {
   src: string;
   shouldPlay: boolean;
   positionSeconds?: number;
+  onReady?: () => void;
   onEnded?: () => void;
 };
 
@@ -11,6 +12,7 @@ export function PremierePlayer({
   src,
   shouldPlay,
   positionSeconds,
+  onReady,
   onEnded,
 }: PremierePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -64,6 +66,7 @@ export function PremierePlayer({
       preload="auto"
       playsInline
       controls={false}
+      onCanPlay={onReady}
       onEnded={onEnded}
     />
   );
