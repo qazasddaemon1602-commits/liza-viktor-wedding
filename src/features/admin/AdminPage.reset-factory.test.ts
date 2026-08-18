@@ -20,13 +20,15 @@ describe('createAdminPageDependencies rehearsal reset wiring', () => {
     mocked.channel.mockReset();
   });
 
-  it('wires the guarded owner reset and refreshes open projector modes', async () => {
+  it('wires the guarded owner reset and refreshes every protected projector mode', async () => {
     mocked.rpc.mockResolvedValueOnce({
       data: {
         status: 'reset',
         deletedGuests: 32,
         preservedCoupleAnswers: 30,
         premiereConfigured: true,
+        mortalKombatReset: true,
+        bunkerReset: true,
         registrationOpen: true,
         nextTicketSequence: 1,
       },
@@ -58,6 +60,8 @@ describe('createAdminPageDependencies rehearsal reset wiring', () => {
       deletedGuests: 32,
       preservedCoupleAnswers: 30,
       premiereConfigured: true,
+      mortalKombatReset: true,
+      bunkerReset: true,
       registrationOpen: true,
       nextTicketSequence: 1,
     });
@@ -65,17 +69,19 @@ describe('createAdminPageDependencies rehearsal reset wiring', () => {
       p_event_id: 'event-1',
       p_confirmation: 'СБРОСИТЬ',
     });
-    expect(mocked.channel).toHaveBeenCalledWith('premiere:liza-viktor');
-    expect(mocked.channel).toHaveBeenCalledWith('quiz:liza-viktor');
-    expect(channels.get('premiere:liza-viktor')?.send).toHaveBeenCalledWith({
-      type: 'broadcast',
-      event: 'refresh',
-      payload: {},
-    });
-    expect(channels.get('quiz:liza-viktor')?.send).toHaveBeenCalledWith({
-      type: 'broadcast',
-      event: 'refresh',
-      payload: {},
-    });
+
+    for (const channelName of [
+      'premiere:liza-viktor',
+      'quiz:liza-viktor',
+      'mk:liza-viktor',
+      'bunker:liza-viktor',
+    ]) {
+      expect(mocked.channel).toHaveBeenCalledWith(channelName);
+      expect(channels.get(channelName)?.send).toHaveBeenCalledWith({
+        type: 'broadcast',
+        event: 'refresh',
+        payload: {},
+      });
+    }
   });
 });
