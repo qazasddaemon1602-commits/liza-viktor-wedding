@@ -60,9 +60,13 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
 
   useEffect(() => {
     let active = true;
+    const current = control?.currentQuestionId
+      ? control.questions.find((question) => question.id === control.currentQuestionId)
+      : null;
     if (
       control?.phase !== 'results'
-      || !control.currentQuestionId
+      || !current
+      || current.questionType !== 'standard'
       || !deps.loadCoupleRevealStatus
     ) {
       setCoupleRevealStatus(null);
@@ -71,7 +75,7 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
       };
     }
 
-    void deps.loadCoupleRevealStatus(eventId, control.currentQuestionId)
+    void deps.loadCoupleRevealStatus(eventId, current.id)
       .then((next) => {
         if (active) setCoupleRevealStatus(next);
       })
@@ -82,7 +86,7 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
     return () => {
       active = false;
     };
-  }, [control?.currentQuestionId, control?.phase, deps, eventId]);
+  }, [control, deps, eventId]);
 
   const seed = async () => {
     setBusy('seed');
@@ -114,6 +118,8 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
 
   const reveal = async () => {
     if (!control?.currentQuestionId || control.phase !== 'voting') return;
+    const current = control.questions.find((question) => question.id === control.currentQuestionId);
+    if (!current || current.questionType !== 'standard') return;
     setBusy('reveal');
     setError('');
     try {
@@ -168,17 +174,18 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
     );
   }
 
+  const standardQuestions = control.questions.filter((question) => question.questionType === 'standard');
   const currentQuestion = control.currentQuestionId
-    ? control.questions.find((question) => question.id === control.currentQuestionId) ?? null
+    ? standardQuestions.find((question) => question.id === control.currentQuestionId) ?? null
     : null;
-  const availableQuestions = control.questions.filter(
+  const availableQuestions = standardQuestions.filter(
     (question) => question.enabled && question.id !== control.currentQuestionId,
   );
 
-  const lizaPercent = control.phase === 'results'
+  const lizaPercent = control.phase === 'results' && currentQuestion
     ? percentage(control.results.liza, control.results.total)
     : null;
-  const viktorPercent = control.phase === 'results'
+  const viktorPercent = control.phase === 'results' && currentQuestion
     ? percentage(control.results.viktor, control.results.total)
     : null;
 
@@ -189,12 +196,12 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
           <p className="eyebrow">LIVE QUIZ</p>
           <h2>ЛИЗА ИЛИ ВИКТОР?</h2>
         </div>
-        <span className={`admin-quiz-phase admin-quiz-phase-${control.phase}`}>
-          {control.phase === 'idle' ? 'ОЖИДАНИЕ' : control.phase === 'voting' ? 'ГОЛОСОВАНИЕ' : 'РЕЗУЛЬТАТ'}
+        <span className={`admin-quiz-phase admin-quiz-phase-${currentQuestion ? control.phase : 'idle'}`}>
+          {!currentQuestion || control.phase === 'idle' ? 'ОЖИДАНИЕ' : control.phase === 'voting' ? 'ГОЛОСОВАНИЕ' : 'РЕЗУЛЬТАТ'}
         </span>
       </div>
 
-      {control.questions.length === 0 ? (
+      {standardQuestions.length === 0 ? (
         <div className="admin-quiz-empty">
           <p>Пул вопросов пока пуст.</p>
           <button
