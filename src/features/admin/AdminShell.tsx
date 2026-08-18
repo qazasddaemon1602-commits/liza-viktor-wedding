@@ -3,6 +3,7 @@ import type { OwnerCarriageCall } from '../carriages/carriageCalls.service';
 import type { AdminDashboard, EventTestResetResult } from './admin.service';
 import { AdminCarriageCalls } from './carriages/AdminCarriageCalls';
 import { AdminGuestsPage } from './guests/AdminGuestsPage';
+import { AdminMkControl, type AdminMkControlDependencies } from './mortalKombat/AdminMkControl';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
 import { enqueueNotices, type RegistrationNotice } from './notifications/notificationQueue';
 import {
@@ -35,6 +36,7 @@ export type AdminShellDependencies = {
   premiere?: AdminPremiereControlDependencies;
   quiz?: AdminQuizPanelDependencies;
   finalFive?: AdminFinalFivePanelDependencies;
+  mortalKombat?: AdminMkControlDependencies;
 };
 
 type AdminShellProps = {
@@ -271,6 +273,10 @@ export function AdminShell({ dependencies }: AdminShellProps) {
 
       {dependencies.finalFive && (
         <AdminFinalFivePanel eventId={dashboard.event.id} dependencies={dependencies.finalFive} />
+      )}
+
+      {dependencies.mortalKombat && (
+        <AdminMkControl eventId={dashboard.event.id} dependencies={dependencies.mortalKombat} />
       )}
 
       {dependencies.sendCarriageCall && dependencies.clearCarriageCall && (
