@@ -69,7 +69,9 @@ import {
   loadOwnerDashboard,
   lockComposition as lockCompositionRpc,
   reassignGuest as reassignGuestRpc,
+  resetEventTestData as resetEventTestDataRpc,
   type AdminDashboard,
+  type EventTestResetResult,
 } from './admin.service';
 import {
   subscribeToGuestRegistrations,
@@ -94,6 +96,7 @@ export type AdminPageDependencies = {
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
   issueGuestRecovery: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
+  resetEventTestData?: (eventId: string, confirmation: string) => Promise<EventTestResetResult>;
   subscribeToRegistrations: (callback: (guestId: string) => void) => () => void;
   sendCarriageCall?: (
     carriageIds: string[],
@@ -163,6 +166,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     reassignGuest: (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
     lockComposition: (eventId) => lockCompositionRpc(client, eventId),
     issueGuestRecovery: (guestId) => issueGuestRecoveryRpc(client, guestId),
+    resetEventTestData: (eventId, confirmation) => resetEventTestDataRpc(client, eventId, confirmation),
     subscribeToRegistrations: (callback) => {
       if (!currentEventId) return () => undefined;
       return subscribeToGuestRegistrations(
@@ -409,6 +413,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         reassignGuest: deps.reassignGuest,
         lockComposition: deps.lockComposition,
         issueGuestRecovery: deps.issueGuestRecovery,
+        resetEventTestData: deps.resetEventTestData,
         subscribeToRegistrations: deps.subscribeToRegistrations,
         sendCarriageCall: deps.sendCarriageCall,
         clearCarriageCall: deps.clearCarriageCall,
