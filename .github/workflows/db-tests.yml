@@ -1,0 +1,36 @@
+name: database-tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/db-tests.yml'
+  push:
+    branches:
+      - feat/wedding-live-hub-mvp-ci
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/db-tests.yml'
+
+concurrency:
+  group: database-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.111.0
+          github-token: ${{ github.token }}
+      - name: Start local Supabase database
+        run: supabase db start
+      - name: Run pgTAP database tests
+        run: supabase test db
+      - name: Stop local Supabase database
+        if: always()
+        run: supabase stop --no-backup
