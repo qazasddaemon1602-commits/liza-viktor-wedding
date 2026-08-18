@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
+import {
+  getQuizScreenState,
+  type QuizScreenRpcClient,
+  type QuizScreenState,
+} from '../quiz/quizScreen.service';
+import {
+  subscribeToQuizRefresh,
+  type QuizRealtimeClient,
+} from '../quiz/quiz.realtime';
 import { CarriageCallScene } from './CarriageCallScene';
 import { IdleRegistrationScreen } from './IdleRegistrationScreen';
+import { QuizScreenScene } from './QuizScreenScene';
 import { createScreenAudioController } from './screenAudio';
 import {
   subscribeToScreenEvents,
@@ -12,6 +22,8 @@ import { TrainArrivalScene } from './TrainArrivalScene';
 
 export type ScreenPageDependencies = {
   subscribe: (callback: (event: ScreenPresentationEvent) => void) => () => void;
+  loadQuiz?: () => Promise<QuizScreenState>;
+  subscribeToQuizRefresh?: (callback: () => void) => () => void;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
   disposeAudio?: () => void;
@@ -21,14 +33,24 @@ type ScreenPageProps = {
   joinUrl: string;
   eventSlug?: string;
   sceneDurationMs?: number;
+  expectedGuestCount?: number;
   dependencies?: ScreenPageDependencies;
 };
 
 function browserDependencies(eventSlug: string): ScreenPageDependencies {
-  const client = getSupabaseClient() as unknown as ScreenEventsRealtimeClient;
+  const client = getSupabaseClient();
+  const screenClient = client as unknown as ScreenEventsRealtimeClient;
+  const quizRpcClient = client as unknown as QuizScreenRpcClient;
+  const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   const audio = createScreenAudioController();
   return {
-    subscribe: (callback) => subscribeToScreenEvents(client, eventSlug, callback),
+    subscribe: (callback) => subscribeToScreenEvents(screenClient, eventSlug, callback),
+    loadQuiz: () => getQuizScreenState(quizRpcClient, eventSlug),
+    subscribeToQuizRefresh: (callback) => subscribeToQuizRefresh(
+      quizRealtimeClient,
+      eventSlug,
+      callback,
+    ),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
     disposeAudio: audio.dispose,
@@ -39,6 +61,7 @@ export function ScreenPage({
   joinUrl,
   eventSlug = 'liza-viktor',
   sceneDurationMs = 5600,
+  expectedGuestCount = 40,
   dependencies,
 }: ScreenPageProps) {
   const deps = useMemo(
@@ -47,6 +70,7 @@ export function ScreenPage({
   );
   const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
   const [activeEvent, setActiveEvent] = useState<ScreenPresentationEvent | null>(null);
+  const [quizState, setQuizState] = useState<QuizScreenState | null>(null);
   const [audioArmed, setAudioArmed] = useState(!deps.armArrivalAudio);
   const [armingAudio, setArmingAudio] = useState(false);
   const seenIds = useRef(new Set<string>());
@@ -56,6 +80,29 @@ export function ScreenPage({
     seenIds.current.add(event.id);
     setQueue((current) => [...current, event]);
   }), [deps]);
+
+  useEffect(() => {
+    if (!deps.loadQuiz) return;
+    let active = true;
+
+    const reload = () => {
+      void deps.loadQuiz?.()
+        .then((next) => {
+          if (active) setQuizState(next);
+        })
+        .catch(() => {
+          if (active) setQuizState((current) => current ?? { status: 'idle' });
+        });
+    };
+
+    reload();
+    const unsubscribe = deps.subscribeToQuizRefresh?.(reload);
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [deps]);
 
   useEffect(() => () => {
     deps.disposeAudio?.();
@@ -90,9 +137,15 @@ export function ScreenPage({
     }
   };
 
+  const activeQuiz = quizState?.status === 'active' ? quizState : null;
+
   return (
     <div className="screen-page">
-      <IdleRegistrationScreen joinUrl={joinUrl} />
+      {activeQuiz ? (
+        <QuizScreenScene state={activeQuiz} expectedGuestCount={expectedGuestCount} />
+      ) : (
+        <IdleRegistrationScreen joinUrl={joinUrl} />
+      )}
 
       {!audioArmed && deps.armArrivalAudio && (
         <button
