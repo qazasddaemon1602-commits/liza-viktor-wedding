@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(30);
+select plan(33);
 
 select has_table('public', 'events', 'events table exists');
 select has_table('public', 'event_state', 'event_state table exists');
@@ -125,6 +125,25 @@ select ok(
 select ok(
   not has_table_privilege('anon', 'public.screen_events', 'INSERT'),
   'anonymous clients cannot forge presentation events'
+);
+select ok(
+  exists(
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'owner_publish_carriage_call_screen_event'
+      and pg_get_function_identity_arguments(p.oid) = 'p_call_id uuid'
+  ),
+  'owner can publish an approved carriage call to the projector'
+);
+select ok(
+  not has_function_privilege('anon', 'public.owner_publish_carriage_call_screen_event(uuid)', 'EXECUTE'),
+  'anonymous clients cannot publish carriage calls to the projector'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.owner_publish_carriage_call_screen_event(uuid)', 'EXECUTE'),
+  'authenticated owner session can invoke projector publish RPC'
 );
 
 select * from finish();
