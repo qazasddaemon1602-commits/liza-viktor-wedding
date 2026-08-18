@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MkTournamentProjection } from '../mortalKombat/mk.types';
 import { ScreenPage, type ScreenPageDependencies } from './ScreenPage';
+import type { ScreenPresentationEvent } from './screenEvents.realtime';
 
 const liveFight: MkTournamentProjection = {
   status: 'active',
@@ -25,13 +26,10 @@ const liveFight: MkTournamentProjection = {
 
 describe('ScreenPage Mortal Kombat integration', () => {
   it('replaces idle/quiz presentation with the authoritative current fight and suppresses arrival overlays', async () => {
-    let emitScreenEvent: ((event: {
-      id: string; kind: 'guest_registered'; guestId: string; firstName: string; lastName: string;
-      ticketNumber: string; carriageLabel: string; carriageAccentHex: string; createdAt: string;
-    }) => void) | undefined;
+    let emitScreenEvent: ((event: ScreenPresentationEvent) => void) | undefined;
     const dependencies: ScreenPageDependencies = {
       subscribe: (callback) => {
-        emitScreenEvent = callback as typeof emitScreenEvent;
+        emitScreenEvent = callback;
         return vi.fn();
       },
       loadMortalKombat: vi.fn().mockResolvedValue(liveFight),
@@ -46,13 +44,23 @@ describe('ScreenPage Mortal Kombat integration', () => {
 
     act(() => {
       emitScreenEvent?.({
-        id: 'event-guest-1', kind: 'guest_registered', guestId: 'guest-1', firstName: 'Поздний', lastName: 'Гость',
-        ticketNumber: 'LV-039', carriageLabel: 'ВАГОН №4', carriageAccentHex: '#31483A',
+        id: 'event-guest-1',
+        kind: 'guest_registered',
         createdAt: '2026-08-30T16:00:00.000Z',
+        payload: {
+          displayName: 'Поздний Гость',
+          carriage: {
+            id: 'carriage-4',
+            number: 4,
+            label: 'ВАГОН №4',
+            accentHex: '#31483A',
+            visualMark: '04',
+          },
+        },
       });
     });
 
-    expect(screen.queryByText('Поздний')).not.toBeInTheDocument();
+    expect(screen.queryByText('Поздний Гость')).not.toBeInTheDocument();
     expect(screen.getByText('ТЕКУЩИЙ БОЙ')).toBeInTheDocument();
   });
 });
