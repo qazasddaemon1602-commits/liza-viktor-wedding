@@ -107,7 +107,7 @@ export function BunkerScreenGuard({
   const remainingSeconds = state?.status === 'active'
     ? remainingFromState(state, nowMs, serverOffsetRef.current)
     : 0;
-  const emergencyActive = state?.status === 'active' && remainingSeconds > 0;
+  const emergencyActive = state?.status === 'active';
 
   useEffect(() => {
     setBunkerPresentationProtected(emergencyActive);
@@ -117,10 +117,10 @@ export function BunkerScreenGuard({
   }, [emergencyActive]);
 
   useEffect(() => {
-    if (!emergencyActive) return;
+    if (!emergencyActive || remainingSeconds <= 0) return;
     const interval = window.setInterval(() => setNowMs(Date.now()), 250);
     return () => window.clearInterval(interval);
-  }, [emergencyActive]);
+  }, [emergencyActive, remainingSeconds <= 0]);
 
   // Re-check authoritative state while the emergency is active. This is a fallback for
   // reset/stop commands if a realtime broadcast is lost on venue Wi-Fi.
@@ -145,7 +145,12 @@ export function BunkerScreenGuard({
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
-    if (!emergencyActive || state?.status !== 'active' || !state.soundEnabled) {
+    if (
+      !emergencyActive
+      || remainingSeconds <= 0
+      || state?.status !== 'active'
+      || !state.soundEnabled
+    ) {
       audio.stopAlarm();
       return;
     }
@@ -157,13 +162,13 @@ export function BunkerScreenGuard({
     });
 
     return () => audio.stopAlarm();
-  }, [deps, emergencyActive, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [deps, emergencyActive, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => () => deps?.audio?.dispose(), [deps]);
 
   const armSound = () => {
     const audio = deps?.audio;
-    if (!audio) return;
+    if (!audio || remainingSeconds <= 0) return;
     void audio.arm().then((armed) => {
       if (!activeRef.current) return;
       setSoundArmed(armed);
@@ -177,7 +182,7 @@ export function BunkerScreenGuard({
       {emergencyActive && state?.status === 'active' && (
         <BunkerEmergencyScene
           remainingSeconds={remainingSeconds}
-          soundEnabled={state.soundEnabled}
+          soundEnabled={state.soundEnabled && remainingSeconds > 0}
           soundArmed={soundArmed}
           onArmSound={armSound}
         />
