@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
 import {
   broadcastBunkerRefresh,
@@ -190,7 +190,7 @@ export function AdminBunkerControl({ eventId, dependencies }: AdminBunkerControl
             type="checkbox"
             checked={state.soundEnabled}
             disabled={busy}
-            onChange={(event) => void run(() => deps.setSound(eventId, event.target.checked))}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => void run(() => deps.setSound(eventId, event.target.checked))}
           />
           <span>ТРЕВОЖНЫЙ ЗВУК НА ТВ</span>
         </label>
