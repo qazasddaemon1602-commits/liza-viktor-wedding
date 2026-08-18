@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   GuestQuizPage,
@@ -84,5 +84,42 @@ describe('GuestQuizPage', () => {
     expect(screen.getByText('30 ответили')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^ЛИЗА/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: /^ВИКТОР/ })).toBeDisabled();
+  });
+
+  it('reloads authoritative quiz state when an empty realtime refresh arrives', async () => {
+    const revealedState: GuestQuizState = {
+      ...votingState,
+      phase: 'results',
+      selectedChoice: 'viktor',
+      answeredCount: 30,
+      results: { liza: 18, viktor: 12, total: 30 },
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce(votingState)
+      .mockResolvedValueOnce(revealedState);
+    let refresh: (() => void) | undefined;
+    const unsubscribe = vi.fn();
+    const dependencies: GuestQuizPageDependencies = {
+      getDeviceKey: () => 'lvw_device_1234',
+      load,
+      vote: vi.fn(),
+      subscribeToRefresh: (callback) => {
+        refresh = callback;
+        return unsubscribe;
+      },
+    };
+
+    const { unmount } = render(<GuestQuizPage dependencies={dependencies} />);
+
+    expect(await screen.findByRole('heading', { name: 'Кто дольше собирается?' })).toBeInTheDocument();
+    expect(screen.queryByText('60%')).not.toBeInTheDocument();
+
+    act(() => refresh?.());
+
+    expect(await screen.findByText('60%')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
+
+    unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
