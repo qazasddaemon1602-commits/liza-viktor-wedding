@@ -8,6 +8,7 @@ function fakeAudioContext() {
     connect: ReturnType<typeof vi.fn>;
     start: ReturnType<typeof vi.fn>;
     stop: ReturnType<typeof vi.fn>;
+    onended: (() => void) | null;
   }> = [];
   const gains: Array<{
     gain: {
@@ -30,6 +31,7 @@ function fakeAudioContext() {
         connect: vi.fn(),
         start: vi.fn(),
         stop: vi.fn(),
+        onended: null as (() => void) | null,
       };
       oscillators.push(oscillator);
       return oscillator;
@@ -78,5 +80,22 @@ describe('createScreenAudioController', () => {
     expect(oscillators[1].start).toHaveBeenCalled();
     expect(gains[0].gain.linearRampToValueAtTime).toHaveBeenCalled();
     expect(gains[1].gain.linearRampToValueAtTime).toHaveBeenCalled();
+  });
+
+  it('stops already scheduled arrival notes immediately without closing the armed audio context', async () => {
+    const { context, oscillators } = fakeAudioContext();
+    const audio = createScreenAudioController(() => context);
+
+    await audio.arm();
+    audio.playArrival();
+    audio.stopArrival();
+
+    expect(oscillators).toHaveLength(2);
+    expect(oscillators[0].stop).toHaveBeenLastCalledWith(context.currentTime);
+    expect(oscillators[1].stop).toHaveBeenLastCalledWith(context.currentTime);
+    expect(context.close).not.toHaveBeenCalled();
+
+    audio.playArrival();
+    expect(context.createOscillator).toHaveBeenCalledTimes(4);
   });
 });
