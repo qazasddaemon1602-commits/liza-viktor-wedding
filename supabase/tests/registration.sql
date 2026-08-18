@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(22);
+select plan(30);
 
 select has_table('public', 'events', 'events table exists');
 select has_table('public', 'event_state', 'event_state table exists');
@@ -89,6 +89,42 @@ select ok(
       and tablename = 'guests'
   ),
   'guests table is published to Supabase Realtime'
+);
+
+select has_table('public', 'screen_events', 'presentation-only screen events table exists');
+select has_column('public', 'screen_events', 'event_slug', 'screen events carry only public event routing slug');
+select has_column('public', 'screen_events', 'kind', 'screen events declare presentation event kind');
+select has_column('public', 'screen_events', 'payload', 'screen events contain presentation-safe payload');
+select ok(
+  exists(
+    select 1
+    from pg_trigger t
+    join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'guests'
+      and t.tgname = 'guest_registration_screen_event'
+      and not t.tgisinternal
+  ),
+  'guest registration emits a screen presentation event from the database'
+);
+select ok(
+  exists(
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'screen_events'
+  ),
+  'screen events are published to Supabase Realtime'
+);
+select ok(
+  has_table_privilege('anon', 'public.screen_events', 'SELECT'),
+  'anonymous projector can read presentation events'
+);
+select ok(
+  not has_table_privilege('anon', 'public.screen_events', 'INSERT'),
+  'anonymous clients cannot forge presentation events'
 );
 
 select * from finish();
