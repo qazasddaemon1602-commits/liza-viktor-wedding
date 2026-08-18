@@ -46,7 +46,7 @@ describe('AdminCarriageCalls', () => {
     expect(screen.getByText(/выберите хотя бы один вагон/i)).toBeInTheDocument();
   });
 
-  it('clears the active call from the owner control', async () => {
+  it('clears the active call and keeps its carriage targets for realtime refresh', async () => {
     const user = userEvent.setup();
     const onClear = vi.fn().mockResolvedValue(undefined);
     render(
@@ -56,8 +56,8 @@ describe('AdminCarriageCalls', () => {
         onClear={onClear}
         initialActiveCall={{
           callId: 'call-1',
-          message: 'ВАГОН №4 — НА MORTAL KOMBAT',
-          targetCarriageIds: ['c4'],
+          message: 'ВАГОНЫ №2 И №4 — ГОТОВИМСЯ',
+          targetCarriageIds: ['c2', 'c4'],
           showOnScreen: false,
           createdAt: '2026-08-30T13:00:00+05:00',
         }}
@@ -66,7 +66,7 @@ describe('AdminCarriageCalls', () => {
 
     await user.click(screen.getByRole('button', { name: 'СНЯТЬ ВЫЗОВ' }));
 
-    expect(onClear).toHaveBeenCalledWith('call-1');
+    expect(onClear).toHaveBeenCalledWith('call-1', ['c2', 'c4']);
     expect(screen.queryByText('ВЫЗОВ АКТИВЕН')).not.toBeInTheDocument();
   });
 });
