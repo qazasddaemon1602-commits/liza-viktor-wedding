@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
 import {
   broadcastBunkerRefresh,
@@ -55,10 +55,19 @@ export function AdminBunkerControl({ eventId, dependencies }: AdminBunkerControl
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const serverOffsetRef = useRef(0);
+
+  const storeState = (next: OwnerBunkerControl) => {
+    const receivedAt = Date.now();
+    const serverMs = Date.parse(next.serverNow);
+    serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
+    setNowMs(receivedAt);
+    setState(next);
+  };
 
   const reload = async () => {
     if (!deps) return;
-    setState(await deps.load(eventId));
+    storeState(await deps.load(eventId));
   };
 
   useEffect(() => {
@@ -66,7 +75,7 @@ export function AdminBunkerControl({ eventId, dependencies }: AdminBunkerControl
     let active = true;
     void deps.load(eventId)
       .then((next) => {
-        if (active) setState(next);
+        if (active) storeState(next);
       })
       .catch(() => {
         if (active) setError('Не удалось проверить статус Бункера.');
@@ -89,7 +98,7 @@ export function AdminBunkerControl({ eventId, dependencies }: AdminBunkerControl
         0,
         Math.ceil(
           state.durationSeconds
-          - (nowMs - Date.parse(state.startedAt) - (Date.now() - Date.parse(state.serverNow))) / 1000,
+          - (nowMs + serverOffsetRef.current - Date.parse(state.startedAt)) / 1000,
         ),
       )
     : 0;
