@@ -28,7 +28,7 @@
 | `npm run build` | NOT RUN | Требует полного dependency install. |
 | `npm run e2e` | NOT RUN | Playwright CI workflow подготовлен, но hosted run не наблюдается. |
 
-## Выполненные targeted-проверки текущего Bunker-блока
+## Выполненные targeted-проверки свежего кода
 
 | Проверка | Результат | Примечание |
 |---|---|---|
@@ -39,6 +39,10 @@
 | Bunker audio executable suite | PASS | 6/6: arm/resume, single alarm loop, pulse, stop, dispose. |
 | Bunker server-clock timer executable suite | PASS | 4/4: 30:00, 29:59, skewed TV clock + server offset, clamp at zero. |
 | Frontend reset-service contract | PASS | 6/6: explicit `СБРОСИТЬ`, MK/Bunker acknowledgements, couple-preservation acknowledgement, malformed response rejection. |
+| MK bracket + milestone pure suite | PASS | 15/15: 15 матчей, 8→4→2→1, downstream, invalid pools, 8/12/16, semifinalists/finalists/winner priority. |
+| MK public service + realtime suite | PASS | 9/9: guest/screen projection, waitlist join, privacy device key, invalid-state rejection, realtime refresh. |
+| PWA cache policy | PASS | 11/11: app shell, static cache, video bypass, external/API bypass. |
+| PWA service-worker registration | PASS | 5/5: `/sw.js`, scope `/`, unsupported/failure-safe behavior. |
 
 ## Ручная репетиция
 
@@ -59,12 +63,12 @@
 | Quiz voting/results | NOT RUN | |
 | Couple answer reveal | NOT RUN | |
 | Final Five isolation | NOT RUN | |
-| MK 16 игроков + waitlist | NOT RUN | |
-| MK no-show + promote | NOT RUN | |
-| MK draw 15 матчей | NOT RUN | |
+| MK 16 игроков + waitlist | NOT RUN | Targeted MK logic/service tests PASS, реальный браузерный поток ещё не прогнан. |
+| MK no-show + promote | NOT RUN | Component code/test добавлены; full Vitest/browser run ещё не подтверждён. |
+| MK draw 15 матчей | NOT RUN | Pure bracket 15/15 targeted suite PASS; DB/browser execution ещё не подтверждён. |
 | MK current fight на 2 ТВ | NOT RUN | |
 | MK показать сетку | NOT RUN | |
-| MK winner advancement | NOT RUN | |
+| MK winner advancement | NOT RUN | Pure downstream logic PASS; pgTAP/browser flow ещё не прогнан. |
 | MK correction warning | NOT RUN | |
 | MK champion | NOT RUN | |
 | Premiere video canplay 2/2 | NOT RUN | |
@@ -80,10 +84,10 @@
 | Natural end → black | NOT RUN | |
 | Return main screen | NOT RUN | |
 | Late guest after premiere | NOT RUN | |
-| Bunker two-step owner launch | NOT RUN | Targeted component test PASS, реальный браузер/owner session ещё не проверен. |
-| Bunker 30:00 synchronized on 2 TVs | NOT RUN | Таймерная формула PASS; реальное железо ещё не проверено. |
-| Bunker alarm/autoplay fallback | NOT RUN | Audio controller targeted suite PASS; браузерная политика autoplay ещё не проверена на ТВ. |
-| Bunker stop returns both screens | NOT RUN | Poll/realtime logic покрыта targeted tests; реальный multi-TV прогон ещё не проведён. |
+| Bunker two-step owner launch | NOT RUN | Targeted component/service contract PASS, реальный owner session ещё не проверен. |
+| Bunker 30:00 synchronized on 2 TVs | NOT RUN | Таймерная формула 4/4 PASS; реальное железо ещё не проверено. |
+| Bunker alarm/autoplay fallback | NOT RUN | Audio controller 6/6 PASS; браузерная политика autoplay ещё не проверена на ТВ. |
+| Bunker stop returns both screens | NOT RUN | Poll/realtime logic targeted PASS; реальный multi-TV прогон ещё не проведён. |
 | Wi‑Fi disconnect 10–20 sec | NOT RUN | |
 | Automatic reconnect | NOT RUN | |
 | Heartbeat TTL | NOT RUN | |
@@ -94,7 +98,7 @@
 
 - Во время targeted-проверки найден потенциальный строгий TypeScript-стык в `AdminBunkerDock`: raw Supabase client был приведён к явному `AdminRpcClient`. Исправлено.
 - Найден флейк-risk в Bunker fake-timer test (`findBy*` при fake timers). Переведён на детерминированный `act + advanceTimersByTimeAsync`.
-- Frontend reset parser не сохранял `mortalKombatReset` / `bunkerReset` из серверного ответа. Контракт обновлён.
+- Frontend reset parser не сохранял `mortalKombatReset` / `bunkerReset` из серверного ответа. Контракт обновлён и targeted test 6/6 PASS.
 - GitHub Actions runs/check statuses не возвращаются доступным connector даже для ранее известных CI commit SHA, поэтому hosted GREEN пока не подтверждён.
 
 ## Решения перед мероприятием
@@ -104,4 +108,4 @@
 
 ## Финальное решение
 
-**GO / NO-GO: НЕ ОПРЕДЕЛЕНО — targeted Bunker verification PASS, полный suite и real-hardware rehearsal ещё обязательны.**
+**GO / NO-GO: НЕ ОПРЕДЕЛЕНО — targeted fresh-code verification PASS, полный suite и real-hardware rehearsal ещё обязательны.**
