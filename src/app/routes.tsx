@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
 import { GuestJoinPage } from '../features/registration/GuestJoinPage';
-import { IdleRegistrationScreen } from '../features/screen/IdleRegistrationScreen';
+import { ScreenPage } from '../features/screen/ScreenPage';
 
 export const routePaths = [
   '/',
@@ -38,7 +38,7 @@ export function AppRoutes() {
       <Route path="/join" element={<GuestJoinPage />} />
       <Route path="/play" element={<PlaceholderPage eyebrow="СЕЙЧАС В ИГРЕ" title="ЛИЗА ИЛИ ВИКТОР?" description="Здесь появится активный вопрос." />} />
       <Route path="/admin" element={<AdminPage />} />
-      <Route path="/screen" element={<IdleRegistrationScreen joinUrl={currentJoinUrl()} />} />
+      <Route path="/screen" element={<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />} />
       <Route path="/screen/connect" element={<PlaceholderPage eyebrow="ПОДКЛЮЧЕНИЕ ЭКРАНА" title="PAIRING" description="Безопасное подключение телевизора к событию." />} />
       <Route path="/premiere" element={<PlaceholderPage eyebrow="ПРЕМЬЕРА" title="КОЛЬЦО" description="Видео будет подготовлено до запуска обратного отсчёта." />} />
       <Route path="/mortal-kombat" element={<PlaceholderPage eyebrow="16 ИГРОКОВ" title="MORTAL KOMBAT" description="Регистрация, текущий бой и турнирная сетка." />} />
