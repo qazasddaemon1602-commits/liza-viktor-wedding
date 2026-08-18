@@ -78,6 +78,7 @@ export function AdminPremiereControl({
   const [duration, setDuration] = useState('623');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [syncWarning, setSyncWarning] = useState('');
   const [presenceRecords, setPresenceRecords] = useState<PremiereScreenPresenceRecord[]>([]);
   const [presenceNowMs, setPresenceNowMs] = useState(() => Date.now());
 
@@ -135,13 +136,46 @@ export function AdminPremiereControl({
     if (busy) return;
     setBusy(name);
     setError('');
+    setSyncWarning('');
+
     try {
-      await action();
+      try {
+        await action();
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : 'Команда не выполнена';
+        setError(message);
+        return;
+      }
+
+      let warning = '';
+      try {
+        await dependencies.broadcastRefresh();
+      } catch {
+        warning = 'КОМАНДА ВЫПОЛНЕНА · REALTIME НЕ ДОСТАВЛЕН. НЕ ПОВТОРЯЙТЕ КОМАНДУ — ПОВТОРИТЕ СИНХРОНИЗАЦИЮ.';
+      }
+
+      try {
+        await reload();
+      } catch {
+        warning = warning || 'КОМАНДА ВЫПОЛНЕНА · НЕ УДАЛОСЬ ПЕРЕЧИТАТЬ СЕРВЕР. НЕ ПОВТОРЯЙТЕ КОМАНДУ.';
+      }
+
+      setSyncWarning(warning);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const resync = async () => {
+    if (busy) return;
+    setBusy('resync');
+    setError('');
+    try {
       await dependencies.broadcastRefresh();
       await reload();
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'Команда не выполнена';
-      setError(message);
+      setSyncWarning('');
+    } catch {
+      setSyncWarning('СИНХРОНИЗАЦИЯ ПОКА НЕ ДОСТАВЛЕНА · НЕ ПОВТОРЯЙТЕ OWNER-КОМАНДУ. ПРОВЕРЬТЕ СВЯЗЬ И ПОВТОРИТЕ СИНХРОНИЗАЦИЮ.');
     } finally {
       setBusy('');
     }
@@ -383,6 +417,20 @@ export function AdminPremiereControl({
         />
         <span>ЗВУК ОТСЧЁТА</span>
       </label>
+
+      {syncWarning && (
+        <div className="admin-premiere-sync-warning" role="status">
+          <p>{syncWarning}</p>
+          <button
+            type="button"
+            className="registration-secondary"
+            disabled={busy !== ''}
+            onClick={() => void resync()}
+          >
+            {busy === 'resync' ? 'СИНХРОНИЗИРУЕМ…' : 'ПОВТОРИТЬ СИНХРОНИЗАЦИЮ'}
+          </button>
+        </div>
+      )}
 
       {error && <p className="admin-premiere-error" role="alert">{error}</p>}
     </section>
