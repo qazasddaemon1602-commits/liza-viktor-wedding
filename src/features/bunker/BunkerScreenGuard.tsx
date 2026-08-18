@@ -66,6 +66,14 @@ export function BunkerScreenGuard({
   const activeRef = useRef(true);
   const serverOffsetRef = useRef(0);
 
+  const applyServerState = (next: BunkerScreenState) => {
+    const receivedAt = Date.now();
+    const serverMs = Date.parse(next.serverNow);
+    serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
+    setState(next);
+    setNowMs(receivedAt);
+  };
+
   useEffect(() => {
     activeRef.current = true;
     return () => {
@@ -80,11 +88,7 @@ export function BunkerScreenGuard({
       void deps.load()
         .then((next) => {
           if (!active) return;
-          const receivedAt = Date.now();
-          const serverMs = Date.parse(next.serverNow);
-          serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
-          setState(next);
-          setNowMs(receivedAt);
+          applyServerState(next);
         })
         .catch(() => {
           // Keep last authoritative bunker state during a short network drop.
@@ -109,6 +113,26 @@ export function BunkerScreenGuard({
     const interval = window.setInterval(() => setNowMs(Date.now()), 250);
     return () => window.clearInterval(interval);
   }, [emergencyActive]);
+
+  // Re-check authoritative state while the emergency is active. This is a fallback for
+  // reset/stop commands if a realtime broadcast is lost on venue Wi-Fi.
+  useEffect(() => {
+    if (!deps || !emergencyActive) return;
+    let active = true;
+    const interval = window.setInterval(() => {
+      void deps.load()
+        .then((next) => {
+          if (active) applyServerState(next);
+        })
+        .catch(() => {
+          // Keep the emergency visible from the last known server state until connectivity returns.
+        });
+    }, 2_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [deps, emergencyActive]);
 
   useEffect(() => {
     const audio = deps?.audio;
