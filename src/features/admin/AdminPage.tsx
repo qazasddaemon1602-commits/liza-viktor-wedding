@@ -15,6 +15,10 @@ import {
   type PremiereRealtimeClient,
 } from '../premiere/premiere.realtime';
 import {
+  subscribeToPremiereScreenPresence,
+  type PremierePresenceRealtimeClient,
+} from '../premiere/premierePresence.realtime';
+import {
   cancelPremiere,
   getOwnerPremiereControl,
   pausePremiere,
@@ -126,6 +130,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
   const premiereRpcClient = client as unknown as PremiereRpcClient;
   const premiereRealtimeClient = client as unknown as PremiereRealtimeClient;
+  const premierePresenceRealtimeClient = client as unknown as PremierePresenceRealtimeClient;
   const quizRpcClient = client as unknown as AdminQuizRpcClient;
   const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
   const coupleRpcClient = client as unknown as OwnerCouplePreanswerRpcClient;
@@ -221,6 +226,11 @@ export function createAdminPageDependencies(): AdminPageDependencies {
         enabled,
       ),
       broadcastRefresh: () => broadcastPremiereRefresh(premiereRealtimeClient, EVENT_SLUG),
+      subscribeScreenPresence: (callback) => subscribeToPremiereScreenPresence(
+        premierePresenceRealtimeClient,
+        EVENT_SLUG,
+        callback,
+      ),
     },
     quiz: {
       load: (eventId) => getOwnerQuizControl(quizRpcClient, eventId),
