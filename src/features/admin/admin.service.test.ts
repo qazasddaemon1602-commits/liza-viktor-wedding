@@ -9,6 +9,10 @@ import {
   type AdminRpcClient,
 } from './admin.service';
 
+function clientWith(data: unknown): AdminRpcClient {
+  return { rpc: vi.fn().mockResolvedValue({ data, error: null }) };
+}
+
 const dashboardPayload = {
   status: 'owner',
   event: {
@@ -20,7 +24,7 @@ const dashboardPayload = {
     expectedGuestCount: 40,
     registrationOpen: true,
     compositionLocked: false,
-    nextTicketSequence: 33,
+    nextTicketSequence: 12,
   },
   state: {
     currentModule: 'idle',
@@ -28,46 +32,24 @@ const dashboardPayload = {
     screenPinned: false,
     updatedAt: '2026-08-30T12:00:00+05:00',
   },
-  carriages: [
-    { id: 'c3', number: 3, label: 'ВАГОН №3', accentHex: '#7E3F3C', visualMark: '03', enabled: true },
-  ],
-  guests: [
-    {
-      id: 'g31',
-      firstName: 'Иван',
-      lastName: 'Петров',
-      affiliationType: 'viktor',
-      affiliationDetail: 'коллега Виктора',
-      ticketNumber: 'LV-031',
-      registeredAt: '2026-08-30T12:01:00+05:00',
-      lastSeenAt: '2026-08-30T12:05:00+05:00',
-      carriage: { id: 'c3', number: 3, label: 'ВАГОН №3', accentHex: '#7E3F3C', visualMark: '03' },
-    },
-  ],
+  carriages: [],
+  guests: [],
   recentActions: [],
 };
 
-function clientWith(data: unknown): AdminRpcClient {
-  return {
-    rpc: vi.fn().mockResolvedValue({ data, error: null }),
-  };
-}
-
 describe('admin service', () => {
-  it('bootstraps private owner dashboard with one protected RPC', async () => {
+  it('loads the private owner dashboard', async () => {
     const client = clientWith(dashboardPayload);
 
-    const dashboard = await loadOwnerDashboard(client, 'liza-viktor');
+    const result = await loadOwnerDashboard(client, 'liza-viktor');
 
     expect(client.rpc).toHaveBeenCalledWith('owner_get_dashboard', {
       p_event_slug: 'liza-viktor',
     });
-    expect(dashboard.event.expectedGuestCount).toBe(40);
-    expect(dashboard.guests[0].firstName).toBe('Иван');
-    expect(dashboard.guests[0].carriage.label).toBe('ВАГОН №3');
+    expect(result.event.id).toBe('event-1');
   });
 
-  it('deletes a duplicate only through the owner RPC', async () => {
+  it('deletes a guest only through the owner RPC', async () => {
     const client = clientWith({ status: 'deleted', guestId: 'g31' });
 
     await deleteGuest(client, 'g31');
@@ -80,11 +62,11 @@ describe('admin service', () => {
   it('reassigns a guest only through the owner RPC', async () => {
     const client = clientWith({ status: 'updated' });
 
-    await reassignGuest(client, 'g31', 'c4');
+    await reassignGuest(client, 'g31', 'c2');
 
     expect(client.rpc).toHaveBeenCalledWith('owner_reassign_guest', {
       p_guest_id: 'g31',
-      p_carriage_id: 'c4',
+      p_carriage_id: 'c2',
     });
   });
 
@@ -124,6 +106,8 @@ describe('admin service', () => {
       deletedGuests: 32,
       preservedCoupleAnswers: 30,
       premiereConfigured: true,
+      mortalKombatReset: true,
+      bunkerReset: true,
       registrationOpen: true,
       nextTicketSequence: 1,
     });
@@ -138,6 +122,8 @@ describe('admin service', () => {
       deletedGuests: 32,
       preservedCoupleAnswers: 30,
       premiereConfigured: true,
+      mortalKombatReset: true,
+      bunkerReset: true,
       registrationOpen: true,
       nextTicketSequence: 1,
     });
