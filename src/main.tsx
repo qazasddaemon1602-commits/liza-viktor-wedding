@@ -10,6 +10,7 @@ import './styles/quiz.css';
 import './styles/premiere.css';
 import './styles/admin-premiere.css';
 import './styles/admin-reset.css';
+import './styles/mortal-kombat.css';
 
 const root = document.getElementById('root');
 
