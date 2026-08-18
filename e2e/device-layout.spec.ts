@@ -44,10 +44,11 @@ test('main projector fits a 1920x1080 TV and keeps the QR call to action visible
 
   await page.goto('/screen');
   await expect(page.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
-  await expect(page.locator('.screen-qr')).toBeVisible();
+  const qr = page.getByTestId('registration-qr');
+  await expect(qr).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
-  const qrBox = await page.locator('.screen-qr').boundingBox();
+  const qrBox = await qr.boundingBox();
   expect(qrBox).not.toBeNull();
   expect(qrBox!.x).toBeGreaterThanOrEqual(0);
   expect(qrBox!.y).toBeGreaterThanOrEqual(0);
