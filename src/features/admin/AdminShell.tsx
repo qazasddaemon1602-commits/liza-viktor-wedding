@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { OwnerCarriageCall } from '../carriages/carriageCalls.service';
-import type { AdminDashboard } from './admin.service';
+import type { AdminDashboard, EventTestResetResult } from './admin.service';
 import { AdminCarriageCalls } from './carriages/AdminCarriageCalls';
 import { AdminGuestsPage } from './guests/AdminGuestsPage';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
@@ -9,6 +9,7 @@ import {
   AdminPremiereControl,
   type AdminPremiereControlDependencies,
 } from './premiere/AdminPremiereControl';
+import { AdminTestResetPanel } from './reset/AdminTestResetPanel';
 import {
   AdminCouplePreanswersPanel,
   type AdminCouplePreanswersPanelDependencies,
@@ -22,6 +23,7 @@ export type AdminShellDependencies = {
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
   issueGuestRecovery?: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
+  resetEventTestData?: (eventId: string, confirmation: string) => Promise<EventTestResetResult>;
   subscribeToRegistrations?: (callback: (guestId: string) => void) => () => void;
   sendCarriageCall?: (
     carriageIds: string[],
@@ -201,6 +203,17 @@ export function AdminShell({ dependencies }: AdminShellProps) {
     }
   };
 
+  const handleTestReset = async (confirmation: string): Promise<EventTestResetResult> => {
+    if (!dependencies.resetEventTestData) {
+      throw new Error('Test reset is not configured');
+    }
+    const result = await dependencies.resetEventTestData(dashboard.event.id, confirmation);
+    const fresh = await dependencies.load();
+    setNotices([]);
+    storeDashboard(fresh);
+    return result;
+  };
+
   return (
     <main className="admin-shell">
       <AdminRegistrationToasts
@@ -275,6 +288,13 @@ export function AdminShell({ dependencies }: AdminShellProps) {
         onReassign={handleReassign}
         onIssueRecovery={dependencies.issueGuestRecovery}
       />
+
+      {dependencies.resetEventTestData && (
+        <AdminTestResetPanel
+          guestCount={dashboard.guests.length}
+          onReset={handleTestReset}
+        />
+      )}
     </main>
   );
 }
