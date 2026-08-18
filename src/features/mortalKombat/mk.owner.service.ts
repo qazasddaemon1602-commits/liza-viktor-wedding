@@ -8,6 +8,22 @@ export type MkOwnerRpcClient = {
   ) => PromiseLike<{ data: unknown; error: MkOwnerRpcError }>;
 };
 
+export type MkAffectedMatch = {
+  matchId: string;
+  matchKey: string;
+  round: 'r16' | 'qf' | 'sf' | 'final';
+  position: number;
+};
+
+export type MkResultResponse =
+  | { status: 'impact'; matchId: string; affectedMatches: MkAffectedMatch[] }
+  | {
+      status: 'recorded' | 'champion' | 'undone' | 'unchanged';
+      matchId: string;
+      winnerGuestId?: string;
+      affectedMatches: MkAffectedMatch[];
+    };
+
 function throwRpcError(error: Exclude<MkOwnerRpcError, null>): never {
   if (error instanceof Error) throw error;
   const next = new Error(error.message || 'Owner Mortal Kombat request failed');
@@ -43,6 +59,38 @@ function parseMatch(value: unknown): MkMatch {
     throw new Error('Unexpected owner MK match payload');
   }
   return value as unknown as MkMatch;
+}
+
+function parseAffectedMatch(value: unknown): MkAffectedMatch {
+  if (!isRecord(value)
+    || typeof value.matchId !== 'string'
+    || typeof value.matchKey !== 'string'
+    || !['r16', 'qf', 'sf', 'final'].includes(String(value.round))
+    || typeof value.position !== 'number') {
+    throw new Error('Unexpected MK correction impact payload');
+  }
+  return value as unknown as MkAffectedMatch;
+}
+
+function parseResultResponse(data: unknown): MkResultResponse {
+  if (!isRecord(data) || typeof data.status !== 'string' || typeof data.matchId !== 'string') {
+    throw new Error('Unexpected MK result response');
+  }
+  const affectedMatches = Array.isArray(data.affectedMatches)
+    ? data.affectedMatches.map(parseAffectedMatch)
+    : [];
+  if (data.status === 'impact') {
+    return { status: 'impact', matchId: data.matchId, affectedMatches };
+  }
+  if (!['recorded', 'champion', 'undone', 'unchanged'].includes(data.status)) {
+    throw new Error('Unexpected MK result status');
+  }
+  return {
+    status: data.status as Exclude<MkResultResponse['status'], 'impact'>,
+    matchId: data.matchId,
+    winnerGuestId: typeof data.winnerGuestId === 'string' ? data.winnerGuestId : undefined,
+    affectedMatches,
+  };
 }
 
 export async function getOwnerMkControl(
@@ -134,4 +182,34 @@ export async function promoteMkWaitlist(client: MkOwnerRpcClient, registrationId
 
 export async function finalizeMkDraw(client: MkOwnerRpcClient, eventId: string): Promise<void> {
   await ownerCommand(client, 'owner_finalize_mk_draw', { p_event_id: eventId });
+}
+
+export async function setCurrentMkMatch(client: MkOwnerRpcClient, matchId: string): Promise<void> {
+  await ownerCommand(client, 'owner_set_current_mk_match', { p_match_id: matchId });
+}
+
+export async function recordMkWinner(
+  client: MkOwnerRpcClient,
+  matchId: string,
+  winnerGuestId: string,
+  clearCompletedDownstream = false,
+): Promise<MkResultResponse> {
+  const data = await ownerCommand(client, 'owner_record_mk_winner', {
+    p_match_id: matchId,
+    p_winner_guest_id: winnerGuestId,
+    clear_completed_downstream: clearCompletedDownstream,
+  });
+  return parseResultResponse(data);
+}
+
+export async function undoMkResult(
+  client: MkOwnerRpcClient,
+  matchId: string,
+  clearCompletedDownstream = false,
+): Promise<MkResultResponse> {
+  const data = await ownerCommand(client, 'owner_undo_mk_result', {
+    p_match_id: matchId,
+    clear_completed_downstream: clearCompletedDownstream,
+  });
+  return parseResultResponse(data);
 }
