@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import type { MkResultResponse } from '../../mortalKombat/mk.owner.service';
 import type { MkOwnerControl } from '../../mortalKombat/mk.types';
+import { MatchEditor } from './MatchEditor';
 import { PlayerPoolEditor } from './PlayerPoolEditor';
 
 export type AdminMkControlDependencies = {
@@ -11,6 +13,9 @@ export type AdminMkControlDependencies = {
   remove: (registrationId: string) => Promise<void>;
   promote: (registrationId: string) => Promise<void>;
   finalize: (eventId: string) => Promise<void>;
+  setCurrent: (matchId: string) => Promise<void>;
+  recordWinner: (matchId: string, winnerGuestId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
+  undo: (matchId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   broadcastRefresh: () => Promise<void>;
 };
 
@@ -27,6 +32,11 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   const reload = async () => {
     const next = await dependencies.load(eventId);
     setState(next);
+  };
+
+  const refreshAll = async () => {
+    await dependencies.broadcastRefresh();
+    await reload();
   };
 
   useEffect(() => {
@@ -49,8 +59,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     setError('');
     try {
       await command();
-      await dependencies.broadcastRefresh();
-      await reload();
+      await refreshAll();
     } catch {
       setError('Команда MK не выполнена. Проверьте состояние турнира и попробуйте ещё раз.');
     } finally {
@@ -189,10 +198,20 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       )}
 
       {!setupOpen && (
-        <div className="admin-mk-live-note">
-          <strong>{state.state === 'complete' ? 'ТУРНИР ЗАВЕРШЁН' : 'СЕТКА ЗАФИКСИРОВАНА'}</strong>
-          <p>Дальше результаты управляются через карточку текущего боя.</p>
-        </div>
+        <>
+          <div className="admin-mk-live-note">
+            <strong>{state.state === 'complete' ? 'ТУРНИР ЗАВЕРШЁН' : 'СЕТКА ЗАФИКСИРОВАНА'}</strong>
+            <p>Выберите текущий бой, затем отметьте победителя. Исправления защищены проверкой downstream-матчей.</p>
+          </div>
+          <MatchEditor
+            matches={state.matches}
+            registrations={state.registrations}
+            onSetCurrent={dependencies.setCurrent}
+            onRecordWinner={dependencies.recordWinner}
+            onUndo={dependencies.undo}
+            onChanged={refreshAll}
+          />
+        </>
       )}
 
       {error && <p className="admin-mk-error" role="alert">{error}</p>}
