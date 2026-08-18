@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
+import { CouplePreanswersPage } from '../features/quiz/CouplePreanswersPage';
 import { GuestQuizPage } from '../features/quiz/GuestQuizPage';
 import { GuestJoinPage } from '../features/registration/GuestJoinPage';
 import { ScreenPage } from '../features/screen/ScreenPage';
@@ -8,6 +9,7 @@ export const routePaths = [
   '/',
   '/join',
   '/play',
+  '/couple-preanswers',
   '/admin',
   '/screen',
   '/screen/connect',
@@ -38,6 +40,7 @@ export function AppRoutes() {
       <Route path="/" element={<PlaceholderPage eyebrow="30 · 08 · 2026" title="ЛИЗА × ВИКТОР" description="Второй день. Один состав. Много историй." />} />
       <Route path="/join" element={<GuestJoinPage />} />
       <Route path="/play" element={<GuestQuizPage />} />
+      <Route path="/couple-preanswers" element={<CouplePreanswersPage />} />
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/screen" element={<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />} />
       <Route path="/screen/connect" element={<PlaceholderPage eyebrow="ПОДКЛЮЧЕНИЕ ЭКРАНА" title="PAIRING" description="Безопасное подключение телевизора к событию." />} />
