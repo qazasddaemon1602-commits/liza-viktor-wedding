@@ -41,6 +41,43 @@ describe('PremierePlayer', () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
+  it('seeks to the authoritative position before starting a late or reconnected screen', () => {
+    const { container } = render(
+      <PremierePlayer
+        src="https://cdn.test/ring.mp4"
+        shouldPlay
+        positionSeconds={152.4}
+      />,
+    );
+
+    const video = container.querySelector('video')!;
+    expect(video.currentTime).toBeCloseTo(152.4);
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies a later authoritative seek without replaying the same source', () => {
+    const { container, rerender } = render(
+      <PremierePlayer
+        src="https://cdn.test/ring.mp4"
+        shouldPlay
+        positionSeconds={40}
+      />,
+    );
+    const video = container.querySelector('video')!;
+    expect(video.currentTime).toBeCloseTo(40);
+
+    rerender(
+      <PremierePlayer
+        src="https://cdn.test/ring.mp4"
+        shouldPlay
+        positionSeconds={75}
+      />,
+    );
+
+    expect(video.currentTime).toBeCloseTo(75);
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
   it('pauses once when playback is stopped and can resume the same source', () => {
     const { rerender } = render(
       <PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay />,
