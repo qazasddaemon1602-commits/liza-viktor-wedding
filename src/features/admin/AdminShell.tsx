@@ -18,7 +18,7 @@ export type AdminShellDependencies = {
     message: string,
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
-  clearCarriageCall?: (callId: string) => Promise<void>;
+  clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
 };
 
 type AdminShellProps = {
