@@ -29,7 +29,9 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const client = getSupabaseClient() as unknown as ScreenEventsRealtimeClient;
   const audio = createScreenAudioController();
   return {
-    subscribe: (callback) => subscribeToScreenEvents(client, eventSlug, callback),
+    subscribe: (callback) => subscribeToScreenEvents(client, eventSlug, (event) => {
+      if (event.kind === 'guest_registered') callback(event);
+    }),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
     disposeAudio: audio.dispose,
