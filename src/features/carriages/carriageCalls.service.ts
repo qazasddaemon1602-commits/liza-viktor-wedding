@@ -17,6 +17,11 @@ export type OwnerCarriageCall = {
   createdAt: string;
 };
 
+export type PublishedCarriageCall = {
+  status: 'published';
+  screenEventId: string;
+};
+
 export type GuestCarriageCall = {
   id: string;
   message: string;
@@ -85,6 +90,28 @@ export async function clearCarriageCall(
   if (!isRecord(data) || data.status !== 'cleared') {
     throw new Error('Unexpected carriage-call clear response');
   }
+}
+
+export async function publishCarriageCallToScreen(
+  client: CarriageCallRpcClient,
+  callId: string,
+): Promise<PublishedCarriageCall> {
+  const { data, error } = await client.rpc('owner_publish_carriage_call_screen_event', {
+    p_call_id: callId,
+  });
+  if (error) throwRpcError(error);
+  if (
+    !isRecord(data)
+    || data.status !== 'published'
+    || typeof data.screenEventId !== 'string'
+  ) {
+    throw new Error('Unexpected carriage-call projector response');
+  }
+
+  return {
+    status: 'published',
+    screenEventId: data.screenEventId,
+  };
 }
 
 export async function getGuestActiveCarriageCalls(
