@@ -11,6 +11,21 @@ import {
   type OwnerCarriageCall,
 } from '../carriages/carriageCalls.service';
 import {
+  closeMkRegistration,
+  finalizeMkDraw,
+  getOwnerMkControl,
+  openMkRegistration,
+  promoteMkWaitlist,
+  randomizeMkSeeds,
+  recordMkWinner,
+  removeMkPlayer,
+  setCurrentMkMatch,
+  swapMkSeeds,
+  undoMkResult,
+  type MkOwnerRpcClient,
+} from '../mortalKombat/mk.owner.service';
+import { broadcastMkRefresh, type MkRealtimeClient } from '../mortalKombat/mk.realtime';
+import {
   broadcastPremiereRefresh,
   type PremiereRealtimeClient,
 } from '../premiere/premiere.realtime';
@@ -78,6 +93,7 @@ import {
   type AdminRealtimeClient,
 } from './admin.realtime';
 import { AdminShell } from './AdminShell';
+import type { AdminMkControlDependencies } from './mortalKombat/AdminMkControl';
 import type { AdminPremiereControlDependencies } from './premiere/AdminPremiereControl';
 import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCouplePreanswersPanel';
 import type { AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
@@ -108,6 +124,7 @@ export type AdminPageDependencies = {
   premiere?: AdminPremiereControlDependencies;
   quiz?: AdminQuizPanelDependencies;
   finalFive?: AdminFinalFivePanelDependencies;
+  mortalKombat?: AdminMkControlDependencies;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -131,6 +148,8 @@ export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
+  const mkRpcClient = client as unknown as MkOwnerRpcClient;
+  const mkRealtimeClient = client as unknown as MkRealtimeClient;
   const premiereRpcClient = client as unknown as PremiereRpcClient;
   const premiereRealtimeClient = client as unknown as PremiereRealtimeClient;
   const premierePresenceRealtimeClient = client as unknown as PremierePresenceRealtimeClient;
@@ -171,6 +190,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       await Promise.all([
         broadcastPremiereRefresh(premiereRealtimeClient, EVENT_SLUG),
         broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
+        broadcastMkRefresh(mkRealtimeClient, EVENT_SLUG),
       ]);
       return result;
     },
@@ -278,6 +298,25 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       loadStatus: (eventId, questionId) => getOwnerFinalFiveStatus(finalFiveRpcClient, eventId, questionId),
       revealFinal: (eventId, questionId) => revealFinalFive(finalFiveRpcClient, eventId, questionId),
       broadcastRefresh: () => broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
+    },
+    mortalKombat: {
+      load: (eventId) => getOwnerMkControl(mkRpcClient, eventId),
+      open: (eventId) => openMkRegistration(mkRpcClient, eventId),
+      close: (eventId) => closeMkRegistration(mkRpcClient, eventId),
+      randomize: (eventId) => randomizeMkSeeds(mkRpcClient, eventId),
+      swap: (registrationA, registrationB) => swapMkSeeds(mkRpcClient, registrationA, registrationB),
+      remove: (registrationId) => removeMkPlayer(mkRpcClient, registrationId),
+      promote: (registrationId) => promoteMkWaitlist(mkRpcClient, registrationId),
+      finalize: (eventId) => finalizeMkDraw(mkRpcClient, eventId),
+      setCurrent: (matchId) => setCurrentMkMatch(mkRpcClient, matchId),
+      recordWinner: (matchId, winnerGuestId, clearDownstream) => recordMkWinner(
+        mkRpcClient,
+        matchId,
+        winnerGuestId,
+        clearDownstream,
+      ),
+      undo: (matchId, clearDownstream) => undoMkResult(mkRpcClient, matchId, clearDownstream),
+      broadcastRefresh: () => broadcastMkRefresh(mkRealtimeClient, EVENT_SLUG),
     },
   };
 }
@@ -428,6 +467,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
         premiere: deps.premiere,
         quiz: deps.quiz,
         finalFive: deps.finalFive,
+        mortalKombat: deps.mortalKombat,
       }}
     />
   );
