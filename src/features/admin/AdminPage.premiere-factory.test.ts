@@ -1,15 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocked = vi.hoisted(() => ({ rpc: vi.fn() }));
+const mocked = vi.hoisted(() => ({
+  rpc: vi.fn(),
+  channel: vi.fn(),
+}));
 
 vi.mock('../../lib/supabase', () => ({
-  getSupabaseClient: () => ({ rpc: mocked.rpc }),
+  getSupabaseClient: () => ({
+    rpc: mocked.rpc,
+    channel: mocked.channel,
+  }),
 }));
 
 import { createAdminPageDependencies } from './AdminPage';
 
 describe('createAdminPageDependencies premiere wiring', () => {
-  beforeEach(() => mocked.rpc.mockReset());
+  beforeEach(() => {
+    mocked.rpc.mockReset();
+    mocked.channel.mockReset();
+  });
 
   it('wires the secure owner premiere RPCs', async () => {
     mocked.rpc
@@ -62,5 +71,46 @@ describe('createAdminPageDependencies premiere wiring', () => {
       p_event_id: 'event-1',
       p_position_seconds: 152,
     });
+  });
+
+  it('wires live projector presence into the owner premiere panel', () => {
+    let listener: ((message: unknown) => void) | undefined;
+    const realtimeChannel = {
+      send: vi.fn().mockResolvedValue('ok'),
+      on: vi.fn((_type: string, _filter: unknown, callback: (message: unknown) => void) => {
+        listener = callback;
+        return realtimeChannel;
+      }),
+      subscribe: vi.fn(() => realtimeChannel),
+      unsubscribe: vi.fn(),
+    };
+    mocked.channel.mockReturnValue(realtimeChannel);
+
+    const deps = createAdminPageDependencies();
+    const receive = vi.fn();
+    const unsubscribe = deps.premiere!.subscribeScreenPresence!(receive);
+
+    expect(mocked.channel).toHaveBeenCalledWith('premiere:liza-viktor');
+    expect(realtimeChannel.on).toHaveBeenCalledWith(
+      'broadcast',
+      { event: 'screen_presence' },
+      expect.any(Function),
+    );
+
+    listener?.({
+      payload: {
+        screenId: 'tv-room-1',
+        videoReady: true,
+        audioArmed: false,
+      },
+    });
+    expect(receive).toHaveBeenCalledWith({
+      screenId: 'tv-room-1',
+      videoReady: true,
+      audioArmed: false,
+    });
+
+    unsubscribe();
+    expect(realtimeChannel.unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
