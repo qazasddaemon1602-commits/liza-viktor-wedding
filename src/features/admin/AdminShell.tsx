@@ -10,6 +10,7 @@ import {
   AdminPremiereControl,
   type AdminPremiereControlDependencies,
 } from './premiere/AdminPremiereControl';
+import { AdminRehearsalPanel } from './rehearsal/AdminRehearsalPanel';
 import { AdminTestResetPanel } from './reset/AdminTestResetPanel';
 import {
   AdminCouplePreanswersPanel,
@@ -233,6 +234,8 @@ export function AdminShell({ dependencies }: AdminShellProps) {
           <span>{dashboard.guests.length} / ~{dashboard.event.expectedGuestCount}</span>
         </div>
       </header>
+
+      <AdminRehearsalPanel />
 
       <section className="admin-operations" aria-label="Управление составом">
         {dashboard.event.compositionLocked ? (
