@@ -18,6 +18,11 @@ import {
   type AdminQuizRpcClient,
 } from '../quiz/adminQuiz.service';
 import {
+  getOwnerCoupleRevealStatus,
+  revealOwnerCoupleAnswer,
+  type CoupleRevealRpcClient,
+} from '../quiz/coupleReveal.service';
+import {
   getOwnerCouplePreanswerStatus,
   issueOwnerCouplePreanswerAccess,
   type OwnerCouplePreanswerRpcClient,
@@ -83,6 +88,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
   const quizRpcClient = client as unknown as AdminQuizRpcClient;
+  const coupleRevealRpcClient = client as unknown as CoupleRevealRpcClient;
   const coupleRpcClient = client as unknown as OwnerCouplePreanswerRpcClient;
   const quizRealtimeClient = client as unknown as QuizRealtimeClient;
   let currentEventId = '';
@@ -154,6 +160,16 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       ),
       reveal: (eventId, questionId) => revealOwnerQuizResults(
         quizRpcClient,
+        eventId,
+        questionId,
+      ),
+      loadCoupleRevealStatus: (eventId, questionId) => getOwnerCoupleRevealStatus(
+        coupleRevealRpcClient,
+        eventId,
+        questionId,
+      ),
+      revealCoupleAnswer: (eventId, questionId) => revealOwnerCoupleAnswer(
+        coupleRevealRpcClient,
         eventId,
         questionId,
       ),
