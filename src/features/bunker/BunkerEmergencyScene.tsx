@@ -18,6 +18,8 @@ export function BunkerEmergencyScene({
   soundArmed,
   onArmSound,
 }: BunkerEmergencySceneProps) {
+  const arrived = remainingSeconds <= 0;
+
   return (
     <section className="bunker-emergency" aria-live="assertive" data-testid="bunker-emergency-scene">
       <div className="bunker-emergency__scan" aria-hidden="true" />
@@ -33,14 +35,14 @@ export function BunkerEmergencyScene({
         <p>ЕДИНСТВЕННАЯ БЕЗОПАСНАЯ ТОЧКА</p>
 
         <div className="bunker-emergency__timer-block">
-          <span>ВРЕМЯ ДО ПРИБЫТИЯ</span>
+          <span>{arrived ? 'ПРИБЫТИЕ · БУНКЕР' : 'ВРЕМЯ ДО ПРИБЫТИЯ'}</span>
           <strong data-testid="bunker-timer">{timerLabel(remainingSeconds)}</strong>
         </div>
       </div>
 
       <footer className="bunker-emergency__footer">
         <span>СОХРАНЯЙТЕ СПОКОЙСТВИЕ · СЛЕДУЙТЕ УКАЗАНИЯМ ВЕДУЩЕГО</span>
-        <span>МАРШРУТ ПЕРЕСТРОЕН</span>
+        <span>{arrived ? 'ТОЧКА ДОСТИГНУТА' : 'МАРШРУТ ПЕРЕСТРОЕН'}</span>
       </footer>
 
       {soundEnabled && !soundArmed && onArmSound && (
