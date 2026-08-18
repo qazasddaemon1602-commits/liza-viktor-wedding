@@ -30,7 +30,7 @@
 
 ## Выполненные targeted-проверки свежего кода
 
-Всего исполняемых targeted assertions: **103 / 103 PASS**, отдельно выполнены строгие TypeScript compile-checks Bunker-блока и route integration.
+Всего исполняемых targeted assertions: **110 / 110 PASS**, отдельно выполнены строгие TypeScript compile-checks Bunker-блока и route integration.
 
 | Проверка | Результат | Примечание |
 |---|---|---|
@@ -41,6 +41,7 @@
 | Bunker audio executable suite | PASS | 6/6: arm/resume, single alarm loop, pulse, stop, dispose. |
 | Bunker server-clock timer executable suite | PASS | 4/4: 30:00, 29:59, skewed TV clock + server offset, clamp at zero. |
 | Bunker presentation protection executable suite | PASS | 5/5: false→true→false, no duplicate emit, unsubscribe isolation. |
+| Projector connection-health executable suite | PASS | 7/7: browser/quiz/premiere/MK/presence failures tracked independently; success одного источника не скрывает другой обрыв. |
 | Frontend reset-service contract | PASS | 6/6: explicit `СБРОСИТЬ`, MK/Bunker acknowledgements, couple-preservation acknowledgement, malformed response rejection. |
 | MK bracket + milestone pure suite | PASS | 15/15: 15 матчей, 8→4→2→1, downstream, invalid pools, 8/12/16, semifinalists/finalists/winner priority. |
 | MK public service + realtime suite | PASS | 9/9: guest/screen projection, waitlist join, privacy device key, invalid-state rejection, realtime refresh. |
@@ -53,8 +54,11 @@
 
 - `ScreenPage.bunker-protection.test.tsx`: Bunker отбрасывает ordinary screen events/audio; underlying premiere `<video>` размонтируется; после STOP authoritative state читается заново.
 - `BunkerScreenGuard.test.tsx`: emergency остаётся на `00:00` до explicit owner STOP, alarm loop на нуле не продолжается.
+- `AdminBunkerControl.test.tsx`: успешный owner RPC остаётся authoritative даже если realtime broadcast временно не отправился; оператор получает предупреждение, а не ложное «команда не выполнена».
+- `ScreenPage.resilience.test.tsx`: reconnect warning не исчезает, пока хотя бы один конкретный источник всё ещё failed.
 - `AdminPage.reset-factory.test.ts`: reset рассылает refresh в `premiere`, `quiz`, `mk` и `bunker`.
 - `e2e/event-flow.spec.ts`: два независимых `/screen`, синхронизация Бункера ≤1 сек, регистрация во время emergency не вызывает train-scene, STOP возвращает оба экрана без stale event.
+- `e2e/security.spec.ts`: anon не может запускать reset/Bunker/MK owner mutations и не может читать private guest/couple tables; `/screen` не содержит owner controls.
 
 ## Статический DB-аудит
 
@@ -62,7 +66,8 @@
 - `bunker.sql`: проверены table/function signatures/privileges/default 1800 sec; добавлен контракт, что `00:00` остаётся `active` до explicit STOP.
 - `mortal_kombat.sql`, `mortal_kombat_admin.sql`, `mortal_kombat_results.sql`, `mortal_kombat_screen_control.sql`: plan counts и RPC signatures/privileges сопоставлены с финальными миграциями.
 - `202608180018_mortal_kombat_core_fixes.sql` перекрывает ранний rowtype SELECT из core migration и заменяет seed uniqueness на partial unique index.
-- `.github/workflows/db-tests.yml` действительно вызывает `supabase db start` → `supabase test db`; команда соответствует официальному Supabase CLI CI-паттерну. Полный DB PASS всё равно не ставится до реального запуска.
+- `202608180025_bunker_arrival_hold.sql` сохраняет owner/anon EXECUTE-права после `CREATE OR REPLACE` и удерживает emergency active на `00:00` до owner STOP.
+- `.github/workflows/db-tests.yml` действительно вызывает `supabase db start` → `supabase test db`; полный DB PASS всё равно не ставится до реального запуска.
 
 ## Ручная репетиция
 
@@ -107,9 +112,10 @@
 | Bunker two-step owner launch | NOT RUN | Targeted component/service contract PASS, реальный owner session ещё не проверен. |
 | Bunker 30:00 synchronized on 2 TVs | NOT RUN | Таймерная формула PASS; двухэкранный Playwright test подготовлен, но не выполнен. |
 | Bunker alarm/autoplay fallback | NOT RUN | Audio controller PASS; браузерная autoplay policy ещё не проверена на ТВ. |
-| Bunker suppresses premiere/MK/ordinary events | NOT RUN | Regression test подготовлен; код теперь размонтирует underlying presentation state во время takeover. |
-| Bunker 00:00 hold | NOT RUN | Code/DB contract: остаётся emergency на `00:00` до explicit STOP; browser/DB runner ещё не выполнен. |
+| Bunker suppresses premiere/MK/ordinary events | NOT RUN | Regression test подготовлен; код размонтирует underlying presentation state во время takeover. |
+| Bunker 00:00 hold | NOT RUN | Code/DB contract: остаётся emergency на `00:00` до explicit STOP; alarm прекращается. |
 | Bunker stop returns both screens | NOT RUN | Poll/realtime + authoritative reload реализованы; реальный multi-TV прогон ещё не проведён. |
+| Partial network failure indicator | NOT RUN | Pure connection-health 7/7 PASS; React/browser regression test подготовлен. |
 | Wi‑Fi disconnect 10–20 sec | NOT RUN | |
 | Automatic reconnect | NOT RUN | |
 | Heartbeat TTL | NOT RUN | Targeted presence TTL PASS; реальная сеть ещё не проверена. |
@@ -123,10 +129,12 @@
 - Frontend reset parser терял `mortalKombatReset` / `bunkerReset` → контракт обновлён.
 - Старые reset React fixtures использовали прежнюю форму результата → обновлены.
 - Global reset очищал Bunker в DB, но не делал немедленный realtime refresh → добавлен `bunker:liza-viktor` broadcast.
-- Bunker визуально перекрывал обычные события, но очередь/train audio могла жить под emergency → добавлен presentation-protection contract, ordinary events теперь отбрасываются.
+- Bunker визуально перекрывал обычные события, но очередь/train audio могла жить под emergency → ordinary events теперь отбрасываются.
 - Underlying premiere video мог продолжать играть под Bunker → при takeover cached presentation states очищаются и media scene размонтируется; после STOP идёт authoritative reload.
-- На естественном `00:00` экран мог выйти из emergency, а `event_state` остаться Bunker → добавлена migration `202608180025_bunker_arrival_hold.sql`; теперь `00:00` держится до explicit owner STOP, alarm прекращается.
-- GitHub Actions runs/check statuses не возвращаются доступным connector даже для ранее известных CI commit SHA; публичная Actions page также не удалось получить через доступный web fetch. Hosted GREEN пока не подтверждён.
+- На естественном `00:00` экран мог выйти из emergency, а `event_state` остаться Bunker → migration `202608180025_bunker_arrival_hold.sql`; теперь `00:00` держится до explicit owner STOP, alarm прекращается.
+- Успешный Bunker RPC + упавший realtime мог показывать ложную ошибку и провоцировать повторный запуск → owner-пульт теперь считает RPC authoritative, отдельно предупреждает о realtime и всё равно перечитывает статус.
+- Успех одного `/screen` API мог скрыть ошибку другого источника → введён per-source connection health; reconnect warning снимается только после восстановления соответствующего источника.
+- GitHub Actions runs/check statuses не возвращаются доступным connector даже для ранее известных CI commit SHA; hosted GREEN пока не подтверждён.
 
 ## Решения перед мероприятием
 
@@ -135,4 +143,4 @@
 
 ## Финальное решение
 
-**GO / NO-GO: НЕ ОПРЕДЕЛЕНО — targeted fresh-code verification 103/103 PASS, полный suite и real-hardware rehearsal ещё обязательны.**
+**GO / NO-GO: НЕ ОПРЕДЕЛЕНО — targeted fresh-code verification 110/110 PASS, полный suite и real-hardware rehearsal ещё обязательны.**
