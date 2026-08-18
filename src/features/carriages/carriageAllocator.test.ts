@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chooseCarriage, type AllocationSnapshot } from './carriageAllocator';
+import {
+  chooseCarriage,
+  type AffiliationKey,
+  type AllocationSnapshot,
+} from './carriageAllocator';
 
 const base: AllocationSnapshot[] = [
   { id: '1', number: 1, total: 4, affiliations: { liza: 3, viktor: 0, common: 1, family: 0, colleagues: 0, other: 0 } },
@@ -8,6 +12,15 @@ const base: AllocationSnapshot[] = [
   { id: '4', number: 4, total: 5, affiliations: { liza: 1, viktor: 1, common: 1, family: 1, colleagues: 1, other: 0 } },
   { id: '5', number: 5, total: 5, affiliations: { liza: 1, viktor: 1, common: 1, family: 1, colleagues: 0, other: 1 } },
 ];
+
+const emptyAffiliations = (): Record<AffiliationKey, number> => ({
+  liza: 0,
+  viktor: 0,
+  common: 0,
+  family: 0,
+  colleagues: 0,
+  other: 0,
+});
 
 describe('chooseCarriage', () => {
   it('never chooses a more populated carriage while a smaller carriage exists', () => {
@@ -24,5 +37,29 @@ describe('chooseCarriage', () => {
     const before = structuredClone(base);
     chooseCarriage(base, 'common', () => 0.5);
     expect(base).toEqual(before);
+  });
+
+  it('keeps forty simulated guests evenly spread across all five carriages', () => {
+    const snapshots: AllocationSnapshot[] = Array.from({ length: 5 }, (_, index) => ({
+      id: String(index + 1),
+      number: index + 1,
+      total: 0,
+      affiliations: emptyAffiliations(),
+    }));
+    const affiliations: AffiliationKey[] = [
+      'liza', 'viktor', 'common', 'family', 'colleagues', 'other',
+    ];
+
+    for (let index = 0; index < 40; index += 1) {
+      const affiliation = affiliations[index % affiliations.length]!;
+      const selected = chooseCarriage(snapshots, affiliation, () => (index * 0.37) % 1);
+      selected.total += 1;
+      selected.affiliations[affiliation] += 1;
+    }
+
+    const totals = snapshots.map((item) => item.total);
+    expect(totals.reduce((sum, total) => sum + total, 0)).toBe(40);
+    expect(Math.max(...totals) - Math.min(...totals)).toBeLessThanOrEqual(1);
+    expect(totals.every((total) => total === 8)).toBe(true);
   });
 });
