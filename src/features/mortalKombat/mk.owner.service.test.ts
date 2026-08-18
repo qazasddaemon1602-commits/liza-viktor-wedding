@@ -4,7 +4,10 @@ import {
   getOwnerMkControl,
   openMkRegistration,
   randomizeMkSeeds,
+  recordMkWinner,
+  setCurrentMkMatch,
   swapMkSeeds,
+  undoMkResult,
   type MkOwnerRpcClient,
 } from './mk.owner.service';
 
@@ -55,5 +58,40 @@ describe('owner MK service', () => {
       p_registration_b: 'r2',
     });
     expect(client.rpc).toHaveBeenNthCalledWith(4, 'owner_finalize_mk_draw', { p_event_id: 'event-1' });
+  });
+
+  it('returns correction impact before destructive downstream clearing', async () => {
+    const client = clientWith({
+      status: 'impact',
+      matchId: 'm-r16-1',
+      affectedMatches: [
+        { matchId: 'm-qf-1', matchKey: 'qf-1', round: 'qf', position: 1 },
+      ],
+    });
+
+    const result = await recordMkWinner(client, 'm-r16-1', 'g1', false);
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_record_mk_winner', {
+      p_match_id: 'm-r16-1',
+      p_winner_guest_id: 'g1',
+      clear_completed_downstream: false,
+    });
+    expect(result).toMatchObject({ status: 'impact' });
+    if (result.status === 'impact') {
+      expect(result.affectedMatches[0].matchKey).toBe('qf-1');
+    }
+  });
+
+  it('wires current-match selection and explicit undo confirmation flag', async () => {
+    const client = clientWith({ status: 'undone', matchId: 'm1', affectedMatches: [] });
+
+    await setCurrentMkMatch(client, 'm1');
+    await undoMkResult(client, 'm1', true);
+
+    expect(client.rpc).toHaveBeenNthCalledWith(1, 'owner_set_current_mk_match', { p_match_id: 'm1' });
+    expect(client.rpc).toHaveBeenNthCalledWith(2, 'owner_undo_mk_result', {
+      p_match_id: 'm1',
+      clear_completed_downstream: true,
+    });
   });
 });
