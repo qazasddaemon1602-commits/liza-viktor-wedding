@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ScreenPage, type ScreenPageDependencies } from './ScreenPage';
 import type { GuestRegistrationScreenEvent } from './TrainArrivalScene';
@@ -104,5 +104,32 @@ describe('ScreenPage', () => {
 
     expect(screen.getByTestId('registration-qr')).toBeInTheDocument();
     expect(dependencies.playArrivalSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for one local interaction to arm projector audio, then hides the control', async () => {
+    const armArrivalAudio = vi.fn().mockResolvedValue(true);
+    const dependencies: ScreenPageDependencies = {
+      subscribe: () => vi.fn(),
+      armArrivalAudio,
+      playArrivalSignal: vi.fn(),
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' });
+    fireEvent.click(button);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(armArrivalAudio).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).not.toBeInTheDocument();
   });
 });
