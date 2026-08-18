@@ -54,6 +54,12 @@ async function registerGuest(page: Page, firstName: string, lastName: string) {
   await expect(page.getByText(/LV-\d{3}/)).toBeVisible();
 }
 
+function timerSeconds(label: string | null): number {
+  if (!label || !/^\d{2}:\d{2}$/.test(label)) throw new Error(`Unexpected timer label: ${label}`);
+  const [minutes, seconds] = label.split(':').map(Number);
+  return minutes * 60 + seconds;
+}
+
 test.beforeEach(async () => {
   await resetRuntime();
 });
@@ -139,5 +145,52 @@ test('registration during premiere countdown never interrupts the protected proj
 
   await client.auth.signOut();
   await screenContext.close();
+  await guestContext.close();
+});
+
+test('bunker takes over two projectors, stays synchronized, and drops ordinary events', async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const screenAContext = await browser.newContext();
+  const screenBContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const owner = await ownerContext.newPage();
+  const screenA = await screenAContext.newPage();
+  const screenB = await screenBContext.newPage();
+  const guest = await guestContext.newPage();
+
+  await loginOwner(owner);
+  await Promise.all([screenA.goto('/screen'), screenB.goto('/screen')]);
+  await expect(screenA.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
+  await expect(screenB.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
+
+  await expect(owner.getByRole('heading', { name: 'БУНКЕР' })).toBeVisible({ timeout: 10_000 });
+  await owner.getByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }).click();
+  await owner.getByRole('button', { name: /ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ/ }).click();
+
+  await expect(screenA.getByTestId('bunker-emergency-scene')).toBeVisible();
+  await expect(screenB.getByTestId('bunker-emergency-scene')).toBeVisible();
+  await expect(screenA.getByText('ЭКСТРЕННОЕ СООБЩЕНИЕ')).toBeVisible();
+  await expect(screenB.getByText('ЭКСТРЕННОЕ СООБЩЕНИЕ')).toBeVisible();
+
+  const timerA = timerSeconds(await screenA.getByTestId('bunker-timer').textContent());
+  const timerB = timerSeconds(await screenB.getByTestId('bunker-timer').textContent());
+  expect(Math.abs(timerA - timerB)).toBeLessThanOrEqual(1);
+  expect(timerA).toBeGreaterThanOrEqual(1795);
+
+  await registerGuest(guest, 'Во Время', 'Бункера');
+  await expect(screenA.getByTestId('train-arrival-scene')).toHaveCount(0);
+  await expect(screenB.getByTestId('train-arrival-scene')).toHaveCount(0);
+
+  await owner.getByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' }).click();
+  await expect(screenA.getByTestId('bunker-emergency-scene')).toHaveCount(0);
+  await expect(screenB.getByTestId('bunker-emergency-scene')).toHaveCount(0);
+  await expect(screenA.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
+  await expect(screenB.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
+  await expect(screenA.getByText('Во Время Бункера')).toHaveCount(0);
+  await expect(screenB.getByText('Во Время Бункера')).toHaveCount(0);
+
+  await ownerContext.close();
+  await screenAContext.close();
+  await screenBContext.close();
   await guestContext.close();
 });
