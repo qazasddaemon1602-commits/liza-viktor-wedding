@@ -177,6 +177,14 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
         initialGuest={guest}
         revealDelayMs={revealDelayMs}
       />
+      {guest && (
+        <nav className="guest-event-actions" aria-label="Активности события">
+          <a className="guest-event-action guest-event-action--mk" href="/mortal-kombat">
+            <span>MORTAL KOMBAT</span>
+            <strong>УЧАСТВОВАТЬ</strong>
+          </a>
+        </nav>
+      )}
       {!guest && (
         <div className="registration-recovery-entry">
           <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>
