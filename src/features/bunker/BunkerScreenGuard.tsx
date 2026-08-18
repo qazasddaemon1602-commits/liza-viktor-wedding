@@ -40,12 +40,14 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
   }
 }
 
-function remainingFromState(state: Extract<BunkerScreenState, { status: 'active' }>, nowMs: number): number {
-  const serverMs = Date.parse(state.serverNow);
+function remainingFromState(
+  state: Extract<BunkerScreenState, { status: 'active' }>,
+  nowMs: number,
+  serverOffsetMs: number,
+): number {
   const startedMs = Date.parse(state.startedAt);
-  if (!Number.isFinite(serverMs) || !Number.isFinite(startedMs)) return state.remainingSeconds;
-  const serverOffset = serverMs - Date.now();
-  const effectiveNow = nowMs + serverOffset;
+  if (!Number.isFinite(startedMs)) return state.remainingSeconds;
+  const effectiveNow = nowMs + serverOffsetMs;
   return Math.max(0, Math.ceil(state.durationSeconds - (effectiveNow - startedMs) / 1000));
 }
 
@@ -62,6 +64,7 @@ export function BunkerScreenGuard({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [soundArmed, setSoundArmed] = useState(false);
   const activeRef = useRef(true);
+  const serverOffsetRef = useRef(0);
 
   useEffect(() => {
     activeRef.current = true;
@@ -77,8 +80,11 @@ export function BunkerScreenGuard({
       void deps.load()
         .then((next) => {
           if (!active) return;
+          const receivedAt = Date.now();
+          const serverMs = Date.parse(next.serverNow);
+          serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
           setState(next);
-          setNowMs(Date.now());
+          setNowMs(receivedAt);
         })
         .catch(() => {
           // Keep last authoritative bunker state during a short network drop.
@@ -94,7 +100,7 @@ export function BunkerScreenGuard({
   }, [deps]);
 
   const remainingSeconds = state?.status === 'active'
-    ? remainingFromState(state, nowMs)
+    ? remainingFromState(state, nowMs, serverOffsetRef.current)
     : 0;
   const emergencyActive = state?.status === 'active' && remainingSeconds > 0;
 
