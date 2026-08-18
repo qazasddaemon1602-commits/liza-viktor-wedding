@@ -188,6 +188,10 @@ export async function setCurrentMkMatch(client: MkOwnerRpcClient, matchId: strin
   await ownerCommand(client, 'owner_set_current_mk_match', { p_match_id: matchId });
 }
 
+export async function showMkBracket(client: MkOwnerRpcClient, eventId: string): Promise<void> {
+  await ownerCommand(client, 'owner_show_mk_bracket', { p_event_id: eventId });
+}
+
 export async function recordMkWinner(
   client: MkOwnerRpcClient,
   matchId: string,
