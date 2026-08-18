@@ -6,7 +6,7 @@ on:
       - main
   push:
     branches:
-      - feat/wedding-live-hub-mvp-ci
+      - feat/admin-rehearsal-links
 
 jobs:
   test:
