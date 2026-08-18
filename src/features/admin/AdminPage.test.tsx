@@ -154,4 +154,34 @@ describe('AdminPage', () => {
     expect(issueGuestRecovery).toHaveBeenCalledWith('g32');
     expect(await screen.findByText('AB12-CD34')).toBeInTheDocument();
   });
+
+  it('passes carriage call actions through to the owner shell', async () => {
+    const user = userEvent.setup();
+    const sendCarriageCall = vi.fn().mockResolvedValue({
+      callId: 'call-4',
+      message: 'ВАГОН 4 — НА MORTAL KOMBAT',
+      targetCarriageIds: ['c4'],
+      showOnScreen: false,
+      createdAt: '2026-08-30T13:00:00+05:00',
+    });
+    const clearCarriageCall = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AdminPage
+        dependencies={dependencies({
+          getSession: vi.fn().mockResolvedValue({ userId: 'owner-1' }),
+          sendCarriageCall,
+          clearCarriageCall,
+        })}
+      />,
+    );
+
+    await screen.findByText('Лиза × Виктор');
+    await user.click(screen.getByLabelText('Выбрать ВАГОН №4'));
+    await user.type(screen.getByLabelText('Сообщение вагонам'), 'ВАГОН 4 — НА MORTAL KOMBAT');
+    await user.click(screen.getByRole('button', { name: 'ОТПРАВИТЬ ВЫЗОВ' }));
+
+    expect(sendCarriageCall).toHaveBeenCalledWith(['c4'], 'ВАГОН 4 — НА MORTAL KOMBAT', false);
+    expect(await screen.findByText('ВЫЗОВ АКТИВЕН')).toBeInTheDocument();
+  });
 });
