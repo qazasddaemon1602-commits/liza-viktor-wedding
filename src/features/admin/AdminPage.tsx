@@ -43,7 +43,7 @@ export type AdminPageDependencies = {
     message: string,
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
-  clearCarriageCall?: (callId: string) => Promise<void>;
+  clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -102,7 +102,10 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       await broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds);
       return call;
     },
-    clearCarriageCall: (callId) => clearCarriageCallRpc(carriageRpcClient, callId),
+    clearCarriageCall: async (callId, carriageIds) => {
+      await clearCarriageCallRpc(carriageRpcClient, callId);
+      await broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds);
+    },
   };
 }
 
