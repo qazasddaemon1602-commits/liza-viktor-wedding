@@ -3,13 +3,35 @@ import { useEffect, useRef } from 'react';
 type PremierePlayerProps = {
   src: string;
   shouldPlay: boolean;
+  positionSeconds?: number;
   onEnded?: () => void;
 };
 
-export function PremierePlayer({ src, shouldPlay, onEnded }: PremierePlayerProps) {
+export function PremierePlayer({
+  src,
+  shouldPlay,
+  positionSeconds,
+  onEnded,
+}: PremierePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playedSourceRef = useRef<string | null>(null);
   const wasPlayingRef = useRef(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (
+      !video
+      || positionSeconds === undefined
+      || !Number.isFinite(positionSeconds)
+      || positionSeconds < 0
+    ) {
+      return;
+    }
+
+    if (Math.abs(video.currentTime - positionSeconds) > 0.75) {
+      video.currentTime = positionSeconds;
+    }
+  }, [positionSeconds, src]);
 
   useEffect(() => {
     const video = videoRef.current;
