@@ -40,6 +40,7 @@ describe('BunkerScreenGuard', () => {
     expect(screen.getByText('ЭКСТРЕННОЕ СООБЩЕНИЕ')).toBeInTheDocument();
     expect(screen.getByText('ПОЕЗД ИЗМЕНИЛ МАРШРУТ.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'БУНКЕР' })).toBeInTheDocument();
+    expect(screen.getByText('ВРЕМЯ ДО ПРИБЫТИЯ')).toBeInTheDocument();
     expect(screen.getByTestId('bunker-timer')).toHaveTextContent('30:00');
 
     await act(async () => {
@@ -79,6 +80,7 @@ describe('BunkerScreenGuard', () => {
     await flushLoadedState();
 
     expect(screen.getByTestId('bunker-emergency-scene')).toBeInTheDocument();
+    expect(screen.getByText('ПРИБЫТИЕ · БУНКЕР')).toBeInTheDocument();
     expect(screen.getByTestId('bunker-timer')).toHaveTextContent('00:00');
     expect(startAlarm).not.toHaveBeenCalled();
     expect(stopAlarm).toHaveBeenCalled();
