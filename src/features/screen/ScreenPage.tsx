@@ -190,6 +190,7 @@ export function ScreenPage({
   const [premiereState, setPremiereState] = useState<PremiereScreenState | null>(null);
   const [mkState, setMkState] = useState<MkTournamentProjection | null>(null);
   const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
   const [armingAudio, setArmingAudio] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
@@ -201,6 +202,7 @@ export function ScreenPage({
   const seenIds = useRef(new Set<string>());
   const presentationProtectedRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
+  const autoAudioAttemptedRef = useRef(false);
 
   const premiereProtected = isPremiereProtected(premiereState);
   const mortalKombatProtected = isMortalKombatProtected(mkState);
@@ -212,6 +214,26 @@ export function ScreenPage({
   const markConnection = useCallback((source: ConnectionSource, healthy: boolean) => {
     setConnectionFailures((current) => updateConnectionHealth(current, source, healthy));
   }, []);
+
+  const armAudio = useCallback(async () => {
+    if (!hasAudioArm || armingAudio) return;
+    setArmingAudio(true);
+    try {
+      const [arrivalReady, premiereReady] = await Promise.all([
+        deps.armArrivalAudio?.() ?? Promise.resolve(true),
+        deps.armPremiereAudio?.() ?? Promise.resolve(true),
+      ]);
+      setAudioArmed(Boolean(arrivalReady && premiereReady));
+    } finally {
+      setArmingAudio(false);
+    }
+  }, [armingAudio, deps, hasAudioArm]);
+
+  useEffect(() => {
+    if (!hasAudioArm || !soundEnabled || autoAudioAttemptedRef.current) return;
+    autoAudioAttemptedRef.current = true;
+    void armAudio();
+  }, [armAudio, hasAudioArm, soundEnabled]);
 
   useEffect(() => subscribeToBunkerPresentationProtection((active) => {
     setBunkerProtected(active);
@@ -427,25 +449,24 @@ export function ScreenPage({
   }, [activeEvent, presentationProtected, sceneDurationMs]);
 
   const playSignal = useCallback(() => {
-    if (!presentationProtectedRef.current) deps.playArrivalSignal?.();
-  }, [deps]);
+    if (!presentationProtectedRef.current && soundEnabled && audioArmed) {
+      deps.playArrivalSignal?.();
+    }
+  }, [audioArmed, deps, soundEnabled]);
 
   const playPremiereCountdownTick = useCallback((second: number) => {
-    deps.playPremiereCountdownTick?.(second);
-  }, [deps]);
+    if (soundEnabled && audioArmed) deps.playPremiereCountdownTick?.(second);
+  }, [audioArmed, deps, soundEnabled]);
 
-  const armAudio = async () => {
-    if (!hasAudioArm || armingAudio) return;
-    setArmingAudio(true);
-    try {
-      const [arrivalReady, premiereReady] = await Promise.all([
-        deps.armArrivalAudio?.() ?? Promise.resolve(true),
-        deps.armPremiereAudio?.() ?? Promise.resolve(true),
-      ]);
-      setAudioArmed(Boolean(arrivalReady && premiereReady));
-    } finally {
-      setArmingAudio(false);
-    }
+  const disableAudio = () => {
+    setSoundEnabled(false);
+    setAudioArmed(false);
+    deps.stopArrivalAudio?.();
+  };
+
+  const enableAudio = async () => {
+    setSoundEnabled(true);
+    await armAudio();
   };
 
   const activeQuiz = quizState?.status === 'active' ? quizState : null;
@@ -502,14 +523,18 @@ export function ScreenPage({
         </div>
       )}
 
-      {!audioArmed && hasAudioArm && (!presentationProtected || premiereState?.status === 'standby') && (
+      {hasAudioArm && (!presentationProtected || premiereState?.status === 'standby') && (
         <button
           type="button"
           className="screen-audio-arm"
           disabled={armingAudio}
-          onClick={() => void armAudio()}
+          onClick={() => soundEnabled ? disableAudio() : void enableAudio()}
         >
-          {armingAudio ? 'ВКЛЮЧАЕМ…' : 'ВКЛЮЧИТЬ ЗВУК'}
+          {armingAudio
+            ? 'ВКЛЮЧАЕМ…'
+            : soundEnabled
+              ? 'ВЫКЛЮЧИТЬ ЗВУК'
+              : 'ВКЛЮЧИТЬ ЗВУК'}
         </button>
       )}
 
