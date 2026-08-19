@@ -63,6 +63,11 @@ describe('RegistrationPage', () => {
 
     expect(screen.getByText('Иван Петров')).toBeInTheDocument();
     expect(screen.getByText('LV-031')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket-stub')).toBeInTheDocument();
+    expect(screen.getByText('PASSENGER')).toBeInTheDocument();
+    expect(screen.getByText('VALID · 30 AUG 2026')).toBeInTheDocument();
+    expect(screen.getByTestId('wedding-railway-emblem')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
   });
 

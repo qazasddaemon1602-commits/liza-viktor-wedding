@@ -54,6 +54,33 @@ test('main projector fits a 1920x1080 TV and keeps the QR call to action visible
   expect(qrBox!.y).toBeGreaterThanOrEqual(0);
   expect(qrBox!.x + qrBox!.width).toBeLessThanOrEqual(1920);
   expect(qrBox!.y + qrBox!.height).toBeLessThanOrEqual(1080);
+  expect(qrBox!.width).toBeGreaterThanOrEqual(320);
+  expect(qrBox!.height).toBeGreaterThanOrEqual(320);
+
+  await context.close();
+});
+
+test('guest ticket fits a 390px phone and keeps passenger details visible', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+
+  await page.goto('/join');
+  await page.getByLabel('Имя').fill('Верстка');
+  await page.getByLabel('Фамилия').fill('Тест');
+  await page.getByLabel('С кем вы сегодня?').selectOption('common');
+  await page.getByLabel('Уточнение').fill('Device layout E2E');
+  await page.getByRole('button', { name: 'ПОЛУЧИТЬ БИЛЕТ' }).click();
+
+  await expect(page.getByTestId('virtual-ticket')).toBeVisible();
+  await expect(page.getByTestId('virtual-ticket-stub')).toBeVisible();
+  await expect(page.getByText('Верстка Тест')).toBeVisible();
+  await expect(page.getByText(/ВАГОН №\d/)).toBeVisible();
+  await expect(page.getByText(/LV-\d{3}/)).toBeVisible();
+  await expectNoHorizontalOverflow(page);
 
   await context.close();
 });
