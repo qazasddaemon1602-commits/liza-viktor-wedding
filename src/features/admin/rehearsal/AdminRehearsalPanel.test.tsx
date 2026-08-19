@@ -4,6 +4,12 @@ import { AdminRehearsalPanel } from './AdminRehearsalPanel';
 
 const serverNow = '2026-08-19T03:30:00.000Z';
 
+type ScreenPresence = {
+  screenId: string;
+  videoReady: boolean;
+  audioArmed: boolean;
+};
+
 const configuredPremiere = {
   status: 'idle' as const,
   configured: true as const,
@@ -73,7 +79,7 @@ describe('AdminRehearsalPanel', () => {
   });
 
   it('reports ready when two screens, video, audio, premiere and couple answers are ready', async () => {
-    let onPresence: ((presence: { screenId: string; videoReady: boolean; audioArmed: boolean }) => void) | undefined;
+    let onPresence: ((presence: ScreenPresence) => void) | undefined;
 
     render(
       <AdminRehearsalPanel
@@ -82,7 +88,7 @@ describe('AdminRehearsalPanel', () => {
         expectedScreenCount={2}
         premiere={{
           load: vi.fn().mockResolvedValue(configuredPremiere),
-          subscribeScreenPresence: (callback) => {
+          subscribeScreenPresence: (callback: (presence: ScreenPresence) => void) => {
             onPresence = callback;
             return () => undefined;
           },
