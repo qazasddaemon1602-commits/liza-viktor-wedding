@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { GuestActiveCarriageCalls, GuestCarriageCall } from '../carriages/carriageCalls.service';
-import { GuestCallBanner } from '../guest/GuestCallBanner';
+import { GuestHub } from '../guest/GuestHub';
+import { useGuestQuizLiveState, type GuestQuizLiveDependencies } from '../guest/useGuestQuizLiveState';
 import { RegistrationPage } from './RegistrationPage';
 import type { RegistrationDraft } from './registrationModel';
 import type { RegisteredGuest } from './registration.types';
@@ -13,6 +14,7 @@ export type JoinPageDependencies = {
   recover: (deviceKey: string, recoveryCode: string) => Promise<RecoveryResult>;
   loadCarriageCalls?: (deviceKey: string) => Promise<GuestActiveCarriageCalls>;
   subscribeToCarriageCalls?: (carriageId: string, callback: () => void) => () => void;
+  quiz?: GuestQuizLiveDependencies;
 };
 
 type JoinPageProps = {
@@ -28,6 +30,10 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   const [recoveryCode, setRecoveryCode] = useState('');
   const [recoveryError, setRecoveryError] = useState('');
   const [recovering, setRecovering] = useState(false);
+  const quiz = useGuestQuizLiveState({
+    dependencies: dependencies.quiz,
+    enabled: Boolean(guest && dependencies.quiz),
+  });
 
   const restore = useCallback(async () => {
     setState('loading');
@@ -136,7 +142,21 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
     );
   }
 
-  if (recoveryOpen && !guest) {
+  if (guest) {
+    return (
+      <GuestHub
+        guest={guest}
+        activeCall={activeCall}
+        quizState={quiz.state}
+        quizError={quiz.error}
+        quizSubmitting={quiz.submitting}
+        onQuizVote={(choice) => void quiz.vote(choice)}
+        onQuizDeadline={() => void quiz.reload()}
+      />
+    );
+  }
+
+  if (recoveryOpen) {
     return (
       <main className="registration-shell">
         <section className="registration-card">
@@ -171,31 +191,16 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   return (
     <>
-      {guest && <GuestCallBanner carriage={guest.carriage} call={activeCall} />}
       <RegistrationPage
         onRegister={register}
-        initialGuest={guest}
+        initialGuest={null}
         revealDelayMs={revealDelayMs}
       />
-      {guest && (
-        <nav className="guest-event-actions" aria-label="Активности события">
-          <a
-            className="guest-event-action guest-event-action--mk"
-            href="/mortal-kombat"
-            aria-label="MORTAL KOMBAT · УЧАСТВОВАТЬ"
-          >
-            <span>MORTAL KOMBAT</span>
-            <strong>УЧАСТВОВАТЬ</strong>
-          </a>
-        </nav>
-      )}
-      {!guest && (
-        <div className="registration-recovery-entry">
-          <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>
-            У МЕНЯ УЖЕ БЫЛ БИЛЕТ
-          </button>
-        </div>
-      )}
+      <div className="registration-recovery-entry">
+        <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>
+          У МЕНЯ УЖЕ БЫЛ БИЛЕТ
+        </button>
+      </div>
     </>
   );
 }
