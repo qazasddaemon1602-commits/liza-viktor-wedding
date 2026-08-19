@@ -36,7 +36,7 @@ const dashboard: AdminDashboard = {
 };
 
 describe('AdminShell rehearsal readiness integration', () => {
-  it('wires the owner premiere, screen presence and couple-answer status into the rehearsal panel', async () => {
+  it('shows live projector status as advisory telemetry even with a single TV', async () => {
     const presenceCallbacks: Array<(presence: ScreenPresence) => void> = [];
 
     const premiere: NonNullable<AdminShellDependencies['premiere']> = {
@@ -103,10 +103,13 @@ describe('AdminShell rehearsal readiness integration', () => {
     act(() => {
       for (const callback of presenceCallbacks) {
         callback({ screenId: 'tv-main', videoReady: true, audioArmed: true });
-        callback({ screenId: 'tv-second', videoReady: true, audioArmed: true });
       }
     });
 
-    expect(await screen.findByText('ГОТОВО К РЕПЕТИЦИИ')).toBeInTheDocument();
+    expect(await screen.findByText('ИНДИКАЦИЯ · НЕ БЛОКИРУЕТ')).toBeInTheDocument();
+    expect(screen.getByText('ТВ · 1')).toBeInTheDocument();
+    expect(screen.getByText('ВИДЕО · 1 / 1')).toBeInTheDocument();
+    expect(screen.getByText('ЗВУК · 1 / 1')).toBeInTheDocument();
+    expect(screen.queryByText('ЕСТЬ БЛОКЕРЫ')).not.toBeInTheDocument();
   });
 });
