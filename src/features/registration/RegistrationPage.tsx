@@ -212,7 +212,7 @@ export function RegistrationPage({
           <label>
             <span>Уточнение</span>
             <input
-              placeholder="Например: друг Вити / подруга Лизы"
+              placeholder="Друг Вити / подруга Лизы"
               value={draft.affiliationDetail}
               onChange={(event) => update('affiliationDetail', event.target.value)}
             />
