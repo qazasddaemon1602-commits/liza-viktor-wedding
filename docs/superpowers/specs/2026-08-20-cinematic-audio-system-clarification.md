@@ -11,3 +11,7 @@ Exceptions are only passive/non-action elements (scrolling, plain text, decorati
 The first guest interaction should also be used to arm/unlock browser audio. If the browser only permits audio after that gesture, the interaction must still complete normally even when its own cue cannot be heard; subsequent interactions use the normal sound vocabulary.
 
 This does not change the cinematic restraint principle: universal interaction coverage means every action has feedback, not that every action is loud.
+
+## Lean first-production verification
+
+For the first audio rollout, verification is intentionally reduced so the feature can reach production quickly for a real listening pass: targeted shared-audio and projector/train-audio tests, TypeScript typecheck, production build, and one representative browser smoke only when CI runner infrastructure is available. The main acceptance pass after publish is one real `/screen` plus one guest phone.
