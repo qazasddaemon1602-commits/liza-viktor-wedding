@@ -40,9 +40,9 @@ jobs:
           version: 2.111.0
           github-token: ${{ github.token }}
       - run: npm install --legacy-peer-deps
-      - run: npx playwright install chromium
-      - name: Start local Supabase services required by E2E
-        run: supabase start -x storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - run: npx playwright install --with-deps chromium
+      - name: Start full local Supabase stack
+        run: supabase start
       - name: Export local Supabase environment
         shell: bash
         run: |
