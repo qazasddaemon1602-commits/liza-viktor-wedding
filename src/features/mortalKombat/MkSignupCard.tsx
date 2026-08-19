@@ -1,5 +1,5 @@
 import type { MkTournamentProjection } from './mk.types';
-import mkReference from '@/assets/mk_reference.png.asset.json';
+import mkReference from '../../assets/mk_reference.png.asset.json';
 
 type ActiveProjection = Extract<MkTournamentProjection, { status: 'active' }>;
 
