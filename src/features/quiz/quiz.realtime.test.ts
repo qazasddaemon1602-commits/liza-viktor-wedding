@@ -50,4 +50,22 @@ describe('quiz realtime refresh', () => {
     });
     expect(unsubscribe).toHaveBeenCalled();
   });
+
+  it('does not freeze an owner action when the realtime channel never reports subscription status', async () => {
+    const { client, channel, send, unsubscribe } = realtimeHarness();
+    channel.subscribe.mockImplementation(() => channel);
+
+    await expect(broadcastQuizRefresh(client, 'liza-viktor', 20)).resolves.toBeUndefined();
+
+    expect(send).not.toHaveBeenCalled();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a failed refresh send as best-effort after the database mutation already succeeded', async () => {
+    const { client, send, unsubscribe } = realtimeHarness();
+    send.mockRejectedValueOnce(new Error('offline'));
+
+    await expect(broadcastQuizRefresh(client, 'liza-viktor')).resolves.toBeUndefined();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
 });

@@ -7,6 +7,12 @@ import {
   getGuestActiveCarriageCalls,
   type CarriageCallRpcClient,
 } from '../carriages/carriageCalls.service';
+import { subscribeToQuizRefresh, type QuizRealtimeClient } from '../quiz/quiz.realtime';
+import {
+  getGuestQuizState,
+  submitGuestQuizVote,
+  type QuizRpcClient,
+} from '../quiz/quiz.service';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { JoinPage, type JoinPageDependencies } from './JoinPage';
@@ -22,6 +28,8 @@ const DEFAULT_EVENT_SLUG = 'liza-viktor';
 type GuestJoinPageProps = {
   client?: RegistrationRpcClient;
   realtimeClient?: CarriageCallRealtimeClient;
+  quizClient?: QuizRpcClient;
+  quizRealtimeClient?: QuizRealtimeClient;
   eventSlug?: string;
   deviceKey?: string;
   revealDelayMs?: number;
@@ -30,6 +38,8 @@ type GuestJoinPageProps = {
 export function GuestJoinPage({
   client,
   realtimeClient,
+  quizClient,
+  quizRealtimeClient,
   eventSlug = DEFAULT_EVENT_SLUG,
   deviceKey,
   revealDelayMs,
@@ -43,8 +53,14 @@ export function GuestJoinPage({
       },
     };
     const carriageCallClient = registrationClient as unknown as CarriageCallRpcClient;
-    const activeRealtimeClient = realtimeClient
+    const activeQuizClient = quizClient
+      ?? (browserSupabase as unknown as QuizRpcClient | null)
+      ?? undefined;
+    const activeCarriageRealtimeClient = realtimeClient
       ?? (browserSupabase as unknown as CarriageCallRealtimeClient | null)
+      ?? undefined;
+    const activeQuizRealtimeClient = quizRealtimeClient
+      ?? (browserSupabase as unknown as QuizRealtimeClient | null)
       ?? undefined;
     let cachedDeviceKey = deviceKey;
     const getDeviceKey = () => {
@@ -73,15 +89,29 @@ export function GuestJoinPage({
         eventSlug,
         key,
       ),
-      subscribeToCarriageCalls: activeRealtimeClient
+      subscribeToCarriageCalls: activeCarriageRealtimeClient
         ? (carriageId, callback) => subscribeToCarriageCallRefresh(
-          activeRealtimeClient,
+          activeCarriageRealtimeClient,
           carriageId,
           callback,
         )
         : undefined,
+      quiz: activeQuizClient ? {
+        getDeviceKey,
+        load: (key) => getGuestQuizState(activeQuizClient, eventSlug, key),
+        vote: (key, questionId, choice) => submitGuestQuizVote(
+          activeQuizClient,
+          eventSlug,
+          key,
+          questionId,
+          choice,
+        ),
+        subscribeToRefresh: activeQuizRealtimeClient
+          ? (callback) => subscribeToQuizRefresh(activeQuizRealtimeClient, eventSlug, callback)
+          : undefined,
+      } : undefined,
     };
-  }, [client, deviceKey, eventSlug, realtimeClient]);
+  }, [client, deviceKey, eventSlug, quizClient, quizRealtimeClient, realtimeClient]);
 
   return <JoinPage dependencies={dependencies} revealDelayMs={revealDelayMs} />;
 }
