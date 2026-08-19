@@ -266,6 +266,12 @@ export function installGlobalInteractionAudio(controller: SiteAudioController = 
     if (!target || target.hasAttribute('data-audio-disabled')) return;
     if (target.matches(':disabled, [aria-disabled="true"]')) return;
 
+    if (target.classList.contains('screen-audio-arm')) {
+      const turningOff = target.textContent?.includes('ВЫКЛЮЧИТЬ ЗВУК') ?? false;
+      controller.setEnabled(!turningOff);
+      if (turningOff) return;
+    }
+
     const cue = cueFromElement(target);
     void controller.arm().then((ready) => {
       if (ready) controller.play(cue);
