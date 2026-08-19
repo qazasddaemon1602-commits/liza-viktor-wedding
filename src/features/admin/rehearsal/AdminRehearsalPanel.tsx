@@ -30,6 +30,9 @@ type AdminRehearsalPanelProps = {
   currentModule?: string | null;
   currentScreenMode?: string | null;
   expectedScreenCount?: number;
+  registrationOpen?: boolean;
+  compositionLocked?: boolean;
+  guestCount?: number;
   premiere?: RehearsalPremiereDependencies;
   couplePreanswers?: RehearsalCoupleDependencies;
 };
