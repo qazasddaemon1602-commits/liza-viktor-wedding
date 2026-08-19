@@ -50,16 +50,7 @@ export function AppRoutes() {
       <Route path="/liza" element={<FinalFiveRolePage role="liza" />} />
       <Route path="/viktor" element={<FinalFiveRolePage role="viktor" />} />
       <Route path="/admin" element={<><AdminPage /><AdminBunkerDock /></>} />
-      <Route
-        path="/screen"
-        element={projector(
-          <ScreenPage
-            joinUrl={currentJoinUrl()}
-            eventSlug="liza-viktor"
-            sceneDurationMs={12_000}
-          />,
-        )}
-      />
+      <Route path="/screen" element={projector(<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />)} />
       <Route path="/screen/connect" element={<Navigate to={routeRedirects['/screen/connect']} replace />} />
       <Route path="/premiere" element={<Navigate to={routeRedirects['/premiere']} replace />} />
       <Route path="/mortal-kombat" element={<MortalKombatPage eventSlug="liza-viktor" />} />

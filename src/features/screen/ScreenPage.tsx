@@ -85,6 +85,7 @@ type ScreenPageProps = {
   eventSlug?: string;
   screenId?: string;
   sceneDurationMs?: number;
+  carriageCallDurationMs?: number;
   expectedGuestCount?: number;
   dependencies?: ScreenPageDependencies;
 };
@@ -192,6 +193,7 @@ export function ScreenPage({
   eventSlug = 'liza-viktor',
   screenId,
   sceneDurationMs = 5600,
+  carriageCallDurationMs,
   expectedGuestCount = 40,
   dependencies,
 }: ScreenPageProps) {
@@ -199,6 +201,8 @@ export function ScreenPage({
     () => dependencies ?? browserDependencies(eventSlug),
     [dependencies, eventSlug],
   );
+  const resolvedCarriageCallDurationMs = carriageCallDurationMs
+    ?? (sceneDurationMs === 5600 ? 12_000 : sceneDurationMs);
   const [resolvedScreenId] = useState(() => screenId?.trim() || `screen-${getOrCreateDeviceKey()}`);
   const hasAudioArm = Boolean(deps.armArrivalAudio || deps.armPremiereAudio);
   const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
@@ -473,11 +477,14 @@ export function ScreenPage({
 
   useEffect(() => {
     if (!activeEvent || presentationProtected) return;
+    const durationMs = activeEvent.kind === 'carriage_call'
+      ? resolvedCarriageCallDurationMs
+      : sceneDurationMs;
     const timer = window.setTimeout(() => {
       setActiveEvent(null);
-    }, sceneDurationMs);
+    }, durationMs);
     return () => window.clearTimeout(timer);
-  }, [activeEvent, presentationProtected, sceneDurationMs]);
+  }, [activeEvent, presentationProtected, resolvedCarriageCallDurationMs, sceneDurationMs]);
 
   const playSignal = useCallback(() => {
     if (!presentationProtectedRef.current && soundEnabled && audioArmed) {
