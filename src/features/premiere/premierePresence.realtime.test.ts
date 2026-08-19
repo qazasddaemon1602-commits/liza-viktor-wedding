@@ -33,7 +33,7 @@ function channelFixture() {
 }
 
 describe('premiere screen presence realtime', () => {
-  it('broadcasts one typed screen heartbeat after the channel is subscribed', async () => {
+  it('broadcasts one typed screen heartbeat after the dedicated presence channel is subscribed', async () => {
     const fixture = channelFixture();
     const heartbeat = {
       screenId: 'screen-tv-1',
@@ -49,7 +49,7 @@ describe('premiere screen presence realtime', () => {
     fixture.status('SUBSCRIBED');
     await promise;
 
-    expect(fixture.client.channel).toHaveBeenCalledWith('premiere:liza-viktor');
+    expect(fixture.client.channel).toHaveBeenCalledWith('premiere-presence:liza-viktor');
     expect(fixture.channel.send).toHaveBeenCalledWith({
       type: 'broadcast',
       event: 'screen_presence',
@@ -85,6 +85,42 @@ describe('premiere screen presence realtime', () => {
     });
 
     unsubscribe();
+    expect(fixture.channel.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares one underlying presence subscription across multiple admin consumers', () => {
+    const fixture = channelFixture();
+    const rehearsal = vi.fn();
+    const premiereControl = vi.fn();
+
+    const unsubscribeRehearsal = subscribeToPremiereScreenPresence(
+      fixture.client,
+      'liza-viktor',
+      rehearsal,
+    );
+    const unsubscribePremiereControl = subscribeToPremiereScreenPresence(
+      fixture.client,
+      'liza-viktor',
+      premiereControl,
+    );
+
+    expect(fixture.client.channel).toHaveBeenCalledTimes(1);
+
+    fixture.emit({
+      payload: {
+        screenId: 'screen-tv-main',
+        videoReady: true,
+        audioArmed: true,
+      },
+    });
+
+    expect(rehearsal).toHaveBeenCalledTimes(1);
+    expect(premiereControl).toHaveBeenCalledTimes(1);
+
+    unsubscribeRehearsal();
+    expect(fixture.channel.unsubscribe).not.toHaveBeenCalled();
+
+    unsubscribePremiereControl();
     expect(fixture.channel.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
