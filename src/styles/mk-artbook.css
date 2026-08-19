@@ -1,0 +1,915 @@
+/* Mortal Kombat — editorial artbook / arena visual layer.
+   Imported after the legacy tournament styles so data-flow and admin styles stay untouched. */
+
+.mk-page,
+.mk-screen-page {
+  --mk-black: #070706;
+  --mk-black-soft: #0d0c0a;
+  --mk-gold: #c5a46a;
+  --mk-gold-bright: #e2c68e;
+  --mk-gold-dim: rgba(197, 164, 106, 0.38);
+  --mk-gold-faint: rgba(197, 164, 106, 0.12);
+  --mk-oxblood: #4c211d;
+  --mk-ivory: #efe7d8;
+  --mk-muted: rgba(239, 231, 216, 0.52);
+  --mk-line: rgba(197, 164, 106, 0.24);
+  color: var(--mk-ivory);
+  background:
+    radial-gradient(circle at 68% 12%, rgba(96, 55, 30, 0.16), transparent 29rem),
+    linear-gradient(115deg, rgba(76, 33, 29, 0.1), transparent 42%),
+    repeating-linear-gradient(90deg, transparent 0 11.9vw, rgba(197, 164, 106, 0.035) 12vw),
+    var(--mk-black);
+}
+
+.mk-page {
+  position: relative;
+  isolation: isolate;
+  gap: clamp(1.2rem, 2.2vw, 2.2rem);
+  padding: clamp(0.85rem, 2.4vw, 2.8rem);
+}
+
+.mk-page::before,
+.mk-screen-page::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent 78%);
+}
+
+.mk-page > *,
+.mk-screen-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mk-loading h1,
+.mk-hero h1,
+.mk-section-heading h2,
+.mk-public-bracket h2,
+.mk-screen-scene h1,
+.mk-screen-scene h2 {
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Narrow', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  text-shadow: none;
+}
+
+.mk-hero {
+  position: relative;
+  min-height: clamp(25rem, 48vw, 45rem);
+  align-items: stretch;
+  padding: clamp(1.4rem, 3.8vw, 4.8rem);
+  border: 1px solid var(--mk-line);
+  background:
+    linear-gradient(90deg, rgba(7, 7, 6, 0.12), rgba(7, 7, 6, 0.62)),
+    linear-gradient(130deg, rgba(197, 164, 106, 0.08), transparent 42%);
+  overflow: hidden;
+}
+
+.mk-hero::before {
+  content: 'MK / 16';
+  position: absolute;
+  top: clamp(1rem, 2vw, 2rem);
+  right: clamp(1rem, 2vw, 2rem);
+  color: rgba(197, 164, 106, 0.18);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(5rem, 15vw, 15rem);
+  line-height: 0.8;
+  letter-spacing: -0.06em;
+  writing-mode: vertical-rl;
+  pointer-events: none;
+}
+
+.mk-hero::after {
+  content: '';
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid rgba(197, 164, 106, 0.08);
+  pointer-events: none;
+}
+
+.mk-hero-copy {
+  z-index: 2;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.mk-hero-meta {
+  display: grid;
+  gap: 0.3rem;
+  margin-bottom: clamp(1rem, 2vw, 2rem);
+}
+
+.mk-hero-meta .eyebrow,
+.mk-hero-meta > span,
+.mk-hero-note {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.56rem, 0.8vw, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.mk-hero h1 {
+  max-width: 9ch;
+  margin: 0;
+  color: var(--mk-ivory);
+  font-size: clamp(5.2rem, 15vw, 14.5rem);
+  line-height: 0.7;
+}
+
+.mk-hero h1 span {
+  color: var(--mk-gold);
+}
+
+.mk-hero-note {
+  margin-top: clamp(1.2rem, 2.3vw, 2.4rem);
+  color: var(--mk-gold-bright);
+}
+
+.mk-hero-figure {
+  position: absolute;
+  z-index: 1;
+  top: 7%;
+  right: clamp(13rem, 21vw, 25rem);
+  width: clamp(13rem, 25vw, 27rem);
+  height: 92%;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.mk-hero-figure__head {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  width: 25%;
+  aspect-ratio: 0.82;
+  border: 1px solid rgba(197, 164, 106, 0.45);
+  border-radius: 45% 45% 38% 38%;
+  background: linear-gradient(145deg, rgba(197, 164, 106, 0.2), rgba(76, 33, 29, 0.05));
+  transform: translateX(-50%) rotate(-4deg);
+}
+
+.mk-hero-figure__body {
+  position: absolute;
+  top: 27%;
+  left: 50%;
+  width: 74%;
+  height: 68%;
+  border: 1px solid rgba(197, 164, 106, 0.32);
+  background:
+    linear-gradient(90deg, rgba(197, 164, 106, 0.12), transparent 50%),
+    rgba(197, 164, 106, 0.025);
+  clip-path: polygon(28% 0, 72% 0, 94% 18%, 78% 48%, 88% 100%, 12% 100%, 22% 48%, 6% 18%);
+  transform: translateX(-50%);
+}
+
+.mk-hero-figure i {
+  position: absolute;
+  right: 0;
+  bottom: 2%;
+  color: rgba(197, 164, 106, 0.4);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.65rem;
+  font-style: normal;
+  letter-spacing: 0.2em;
+}
+
+.mk-hero-counter {
+  z-index: 3;
+  align-self: flex-end;
+  justify-items: end;
+  min-width: clamp(8rem, 12vw, 13rem);
+  padding-bottom: 0.3rem;
+}
+
+.mk-hero-counter small {
+  color: var(--mk-gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.mk-hero-counter strong {
+  color: var(--mk-ivory);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(5rem, 10vw, 10rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+}
+
+.mk-hero-counter span {
+  color: var(--mk-gold);
+}
+
+.mk-signup-card,
+.mk-public-bracket {
+  border: 1px solid var(--mk-line);
+  background:
+    linear-gradient(120deg, rgba(197, 164, 106, 0.035), transparent 35%),
+    rgba(8, 8, 7, 0.86);
+  box-shadow: none;
+}
+
+.mk-signup-card::before,
+.mk-public-bracket::before {
+  background:
+    linear-gradient(90deg, transparent 0 49.9%, rgba(197, 164, 106, 0.08) 50%, transparent 50.1%),
+    linear-gradient(0deg, transparent 0 49.9%, rgba(197, 164, 106, 0.05) 50%, transparent 50.1%);
+  background-size: 6rem 6rem;
+  opacity: 0.35;
+}
+
+.mk-signup-card {
+  min-height: 18rem;
+  align-content: center;
+  padding: clamp(1.5rem, 3.4vw, 3.6rem);
+}
+
+.mk-signup-card > strong {
+  color: var(--mk-ivory);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(2.2rem, 5vw, 4.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.mk-signup-card--confirmed {
+  border-color: rgba(197, 164, 106, 0.65);
+  background: linear-gradient(135deg, rgba(197, 164, 106, 0.09), rgba(7, 7, 6, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(197, 164, 106, 0.08);
+}
+
+.mk-signup-card--waitlist {
+  border-color: rgba(239, 231, 216, 0.22);
+  background: rgba(7, 7, 6, 0.9);
+}
+
+.mk-fighter-emblem {
+  position: relative;
+  width: 8.4rem;
+  aspect-ratio: 1;
+  display: grid;
+  align-content: end;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--mk-gold);
+  border-radius: 0;
+  color: var(--mk-gold);
+  background: rgba(197, 164, 106, 0.025);
+  overflow: hidden;
+}
+
+.mk-fighter-emblem::before {
+  content: '';
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  width: 18%;
+  aspect-ratio: 0.8;
+  border: 1px solid rgba(197, 164, 106, 0.6);
+  border-radius: 46% 46% 40% 40%;
+  transform: translateX(-50%);
+}
+
+.mk-fighter-emblem::after {
+  content: '';
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  width: 56%;
+  height: 42%;
+  border: 1px solid rgba(197, 164, 106, 0.42);
+  background: rgba(197, 164, 106, 0.035);
+  clip-path: polygon(30% 0, 70% 0, 100% 28%, 78% 100%, 22% 100%, 0 28%);
+  transform: translateX(-50%);
+}
+
+.mk-fighter-emblem span,
+.mk-fighter-emblem strong {
+  position: relative;
+  z-index: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mk-fighter-emblem span {
+  font-size: 0.52rem;
+  letter-spacing: 0.2em;
+}
+
+.mk-fighter-emblem strong {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.mk-primary-button {
+  min-height: 3.65rem;
+  border: 1px solid var(--mk-gold);
+  border-radius: 0;
+  color: var(--mk-gold-bright);
+  background: rgba(7, 7, 6, 0.96);
+  box-shadow: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.mk-primary-button:hover:not(:disabled) {
+  color: #090806;
+  background: var(--mk-gold-bright);
+  box-shadow: none;
+  transform: translateY(-2px);
+}
+
+.mk-public-bracket {
+  padding: clamp(1.35rem, 3vw, 3rem);
+}
+
+.mk-section-heading {
+  align-items: flex-end;
+  padding-bottom: 1.3rem;
+  border-bottom: 1px solid var(--mk-line);
+}
+
+.mk-section-heading .eyebrow,
+.mk-public-bracket--waiting .eyebrow {
+  color: var(--mk-gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mk-bracket-russian,
+.mk-bracket-live-label {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+.mk-section-heading h2,
+.mk-public-bracket--waiting h2 {
+  margin-top: 0.45rem;
+  color: var(--mk-ivory);
+  font-size: clamp(3.2rem, 7vw, 7.5rem);
+  line-height: 0.78;
+}
+
+.mk-bracket-status {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+  flex: none;
+}
+
+.mk-bracket-status span,
+.mk-bracket-status strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+}
+
+.mk-bracket-status span {
+  color: var(--mk-muted);
+}
+
+.mk-bracket-status strong {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--mk-gold-dim);
+  color: var(--mk-gold-bright);
+}
+
+.mk-bracket-scroll {
+  grid-template-columns: repeat(4, minmax(15rem, 1fr));
+  gap: 1rem;
+  padding-top: 1.2rem;
+  scrollbar-color: var(--mk-gold-dim) transparent;
+}
+
+.mk-bracket-round {
+  position: relative;
+  gap: 0.72rem;
+  padding-left: 0.8rem;
+  border-left: 1px solid rgba(197, 164, 106, 0.13);
+}
+
+.mk-bracket-round__heading {
+  min-height: 2.4rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.mk-bracket-round__heading > span {
+  color: var(--mk-gold);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.2rem;
+}
+
+.mk-bracket-round h3 {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+}
+
+.mk-bracket-match {
+  position: relative;
+  min-height: 10rem;
+  gap: 0.6rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(239, 231, 216, 0.11);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.022), rgba(197, 164, 106, 0.018));
+  overflow: hidden;
+}
+
+.mk-bracket-match::after {
+  content: attr(data-match);
+  position: absolute;
+  right: -0.15rem;
+  bottom: -0.9rem;
+  color: rgba(197, 164, 106, 0.045);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 5rem;
+}
+
+.mk-bracket-match--current {
+  border-color: var(--mk-gold);
+  background: linear-gradient(145deg, rgba(197, 164, 106, 0.1), rgba(76, 33, 29, 0.08));
+  box-shadow: inset 3px 0 0 var(--mk-gold);
+}
+
+.mk-bracket-match header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.mk-bracket-match header em {
+  color: var(--mk-gold-bright);
+  font-style: normal;
+}
+
+.mk-bracket-fighter {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.mk-bracket-fighter b {
+  color: var(--mk-gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.mk-bracket-fighter strong {
+  color: var(--mk-ivory);
+  font-family: 'Arial Narrow', Arial, sans-serif;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.mk-bracket-fighter strong.is-winner {
+  color: var(--mk-gold-bright);
+  text-shadow: none;
+}
+
+.mk-bracket-match > i {
+  position: relative;
+  z-index: 1;
+  color: rgba(197, 164, 106, 0.38);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.3rem;
+  font-style: normal;
+  line-height: 1;
+}
+
+.mk-screen-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.mk-fight-scene {
+  position: relative;
+  isolation: isolate;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background:
+    radial-gradient(circle at center, rgba(197, 164, 106, 0.08), transparent 36%),
+    linear-gradient(90deg, rgba(76, 33, 29, 0.07), transparent 26% 74%, rgba(76, 33, 29, 0.07)),
+    #070706;
+}
+
+.mk-fight-scene::before {
+  background:
+    linear-gradient(rgba(197, 164, 106, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(197, 164, 106, 0.035) 1px, transparent 1px);
+  background-size: 6vw 6vw;
+  opacity: 1;
+}
+
+.mk-fight-scene::after {
+  content: '';
+  position: absolute;
+  inset: clamp(1rem, 2.4vw, 2.6rem);
+  z-index: -1;
+  border: 1px solid rgba(197, 164, 106, 0.16);
+  pointer-events: none;
+}
+
+.mk-fight-topline {
+  position: relative;
+  z-index: 3;
+  align-items: flex-start;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mk-fight-topline__label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.mk-fight-kicker {
+  color: var(--mk-gold-bright);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.mk-fight-topline__label em {
+  color: rgba(239, 231, 216, 0.38);
+  font-size: 0.58rem;
+  font-style: normal;
+  letter-spacing: 0.15em;
+}
+
+.mk-fight-topline > strong {
+  color: var(--mk-muted);
+  font-size: 0.62rem;
+}
+
+.mk-fight-versus {
+  position: relative;
+  z-index: 2;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: clamp(1rem, 3vw, 4rem);
+}
+
+.mk-fighter {
+  position: relative;
+  min-height: min(67vh, 48rem);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding-bottom: clamp(1.5rem, 4vw, 4.5rem);
+  overflow: hidden;
+}
+
+.mk-fighter--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.mk-fighter-portrait {
+  position: absolute;
+  z-index: -1;
+  top: 3%;
+  left: 50%;
+  width: min(74%, 25rem);
+  height: 76%;
+  opacity: 0.3;
+  transform: translateX(-50%);
+}
+
+.mk-fighter-portrait::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 24%;
+  aspect-ratio: 0.8;
+  border: 1px solid rgba(197, 164, 106, 0.78);
+  border-radius: 46% 46% 40% 40%;
+  background: rgba(197, 164, 106, 0.06);
+  transform: translateX(-50%);
+}
+
+.mk-fighter-portrait::after {
+  content: '';
+  position: absolute;
+  top: 24%;
+  left: 50%;
+  width: 82%;
+  height: 74%;
+  border: 1px solid rgba(197, 164, 106, 0.52);
+  background:
+    linear-gradient(130deg, rgba(197, 164, 106, 0.1), transparent 42%),
+    rgba(197, 164, 106, 0.02);
+  clip-path: polygon(28% 0, 72% 0, 100% 18%, 79% 48%, 91% 100%, 9% 100%, 21% 48%, 0 18%);
+  transform: translateX(-50%);
+}
+
+.mk-fighter-portrait--right {
+  transform: translateX(-50%) scaleX(-1);
+}
+
+.mk-fighter > span {
+  position: relative;
+  z-index: 2;
+  color: var(--mk-gold-bright);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(0.58rem, 0.9vw, 0.78rem);
+  letter-spacing: 0.2em;
+}
+
+.mk-fighter small {
+  position: relative;
+  z-index: 2;
+  margin-top: 0.35rem;
+  color: rgba(239, 231, 216, 0.38);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(0.48rem, 0.7vw, 0.64rem);
+  letter-spacing: 0.13em;
+}
+
+.mk-fighter h2 {
+  position: relative;
+  z-index: 2;
+  max-width: 7ch;
+  margin-top: 0.5rem;
+  color: var(--mk-ivory);
+  font-size: clamp(4.4rem, 8.6vw, 10.5rem);
+  line-height: 0.72;
+  letter-spacing: -0.045em;
+  overflow-wrap: anywhere;
+}
+
+.mk-fighter--right h2 {
+  margin-left: auto;
+}
+
+.mk-fighter.is-winner h2 {
+  color: var(--mk-gold-bright);
+}
+
+.mk-vs-mark {
+  align-self: center;
+  color: var(--mk-gold);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(5rem, 13vw, 15rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  text-shadow: none;
+  animation: none;
+}
+
+.mk-fight-winner {
+  position: relative;
+  z-index: 3;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mk-line);
+}
+
+.mk-fight-winner span {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mk-fight-winner strong {
+  color: var(--mk-gold-bright);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(2rem, 4vw, 4.5rem);
+  letter-spacing: -0.02em;
+}
+
+.mk-champion-scene {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at center, rgba(197, 164, 106, 0.1), transparent 34%),
+    repeating-linear-gradient(90deg, transparent 0 11.9vw, rgba(197, 164, 106, 0.04) 12vw),
+    #070706;
+}
+
+.mk-champion-scene::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: clamp(1rem, 2.5vw, 2.8rem);
+  border: 1px solid var(--mk-line);
+}
+
+.mk-champion-index {
+  position: absolute;
+  top: clamp(2rem, 5vw, 5rem);
+  left: clamp(2rem, 6vw, 7rem);
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+}
+
+.mk-champion-scene > .mk-champion-finish {
+  margin: 0;
+  color: var(--mk-oxblood);
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: clamp(4rem, 11vw, 13rem);
+  font-style: normal;
+  line-height: 0.78;
+  letter-spacing: -0.04em;
+  text-shadow: none;
+}
+
+.mk-champion-scene > span {
+  margin-top: clamp(1.4rem, 3vw, 3rem);
+  color: var(--mk-gold-bright);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mk-champion-scene h2 {
+  max-width: 9ch;
+  margin-top: 0.45rem;
+  color: var(--mk-ivory);
+  font-size: clamp(6rem, 16vw, 20rem);
+  line-height: 0.68;
+}
+
+.mk-champion-rule {
+  width: min(22rem, 52vw);
+  height: 1px;
+  margin-top: 2rem;
+  background: var(--mk-gold);
+}
+
+.mk-champion-scene i {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.62rem;
+}
+
+.mk-milestone-scene {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(197, 164, 106, 0.09), transparent 36%),
+    #070706;
+}
+
+.mk-milestone-scene__index {
+  position: absolute;
+  top: clamp(1.5rem, 4vw, 4rem);
+  left: clamp(1.5rem, 5vw, 5rem);
+  color: rgba(197, 164, 106, 0.52);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+}
+
+.mk-milestone-scene__frame {
+  border-color: var(--mk-line);
+  background: rgba(7, 7, 6, 0.76);
+}
+
+@media (max-width: 760px) {
+  .mk-page {
+    padding: 0.75rem;
+  }
+
+  .mk-hero {
+    min-height: 34rem;
+    padding: 1.25rem;
+  }
+
+  .mk-hero::after {
+    inset: 0.55rem;
+  }
+
+  .mk-hero-copy {
+    min-height: 30rem;
+  }
+
+  .mk-hero h1 {
+    font-size: clamp(4.8rem, 24vw, 7.5rem);
+  }
+
+  .mk-hero-figure {
+    top: 7%;
+    right: -4rem;
+    width: 15rem;
+    opacity: 0.24;
+  }
+
+  .mk-hero-counter {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+  }
+
+  .mk-hero-counter strong {
+    font-size: 3.6rem;
+  }
+
+  .mk-hero-counter span {
+    font-size: 0.52rem;
+  }
+
+  .mk-signup-card {
+    min-height: 0;
+  }
+
+  .mk-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mk-bracket-status {
+    justify-items: start;
+  }
+
+  .mk-bracket-scroll {
+    grid-template-columns: repeat(4, 15rem);
+  }
+
+  .mk-fight-scene {
+    padding: 1.35rem;
+  }
+
+  .mk-fight-topline {
+    gap: 0.65rem;
+  }
+
+  .mk-fight-versus {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+    justify-items: stretch;
+  }
+
+  .mk-fighter,
+  .mk-fighter--right {
+    min-height: 10rem;
+    align-items: flex-start;
+    padding: 1rem 0;
+    text-align: left;
+  }
+
+  .mk-fighter--right {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .mk-fighter-portrait {
+    width: 8rem;
+    height: 10rem;
+    left: 30%;
+    opacity: 0.16;
+  }
+
+  .mk-fighter-portrait--right {
+    left: 70%;
+  }
+
+  .mk-fighter h2 {
+    max-width: 9ch;
+    font-size: clamp(3.2rem, 16vw, 5.7rem);
+  }
+
+  .mk-vs-mark {
+    justify-self: center;
+    font-size: 3.1rem;
+  }
+
+  .mk-champion-scene h2 {
+    font-size: clamp(5rem, 22vw, 8rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-primary-button {
+    transition: none;
+  }
+}
