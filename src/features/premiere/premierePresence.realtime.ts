@@ -1,3 +1,5 @@
+import { siteAudio } from '../../lib/siteAudio';
+
 export type PremiereScreenPresence = {
   screenId: string;
   videoReady: boolean;
@@ -115,6 +117,14 @@ export function subscribeToPremiereScreenPresence(
   };
 }
 
+export function withDeviceAudioPresence(presence: PremiereScreenPresence): PremiereScreenPresence {
+  const deviceAllowsAudio = siteAudio.isEnabled() && siteAudio.getVolume() > 0;
+  return {
+    ...presence,
+    audioArmed: deviceAllowsAudio && (presence.audioArmed || siteAudio.isArmed()),
+  };
+}
+
 export async function broadcastPremiereScreenPresence(
   client: PremierePresenceRealtimeClient,
   eventSlug: string,
@@ -141,7 +151,7 @@ export async function broadcastPremiereScreenPresence(
     await channel.send({
       type: 'broadcast',
       event: 'screen_presence',
-      payload: presence,
+      payload: withDeviceAudioPresence(presence),
     });
   } finally {
     void channel.unsubscribe();
