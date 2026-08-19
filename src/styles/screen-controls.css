@@ -5,11 +5,6 @@
   overflow: hidden;
 }
 
-/* Legacy ScreenPage control is kept only for internal audio arming/state compatibility. */
-.screen-audio-arm {
-  display: none !important;
-}
-
 .screen-audio-control {
   position: fixed;
   z-index: 1105;
