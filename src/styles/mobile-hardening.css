@@ -24,6 +24,10 @@
     height: 2.75rem;
   }
 
+  .screen-audio-control__range {
+    height: 2.75rem;
+  }
+
   .registration-shell {
     padding-top: max(0.8rem, env(safe-area-inset-top));
     padding-right: max(0.8rem, env(safe-area-inset-right));
@@ -57,6 +61,13 @@
 
 /* 320px phones do not have enough usable width for two large quiz answers. */
 @media (max-width: 420px) {
+  .quiz-live-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 0.45rem;
+  }
+
   .quiz-choices {
     grid-template-columns: 1fr;
   }
