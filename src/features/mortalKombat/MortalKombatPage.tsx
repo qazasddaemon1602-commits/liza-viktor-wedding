@@ -145,10 +145,12 @@ export function MortalKombatPage({
       <header className="mk-hero">
         <div>
           <p className="eyebrow">ЛИЗА × ВИКТОР · 30.08.2026</p>
-          <h1>MORTAL<br />KOMBAT</h1>
+          <h1 style={{ color: 'var(--mk-gold)', textShadow: '0 0 20px rgba(193,154,91,0.4)' }}>
+            MORTAL<br />KOMBAT
+          </h1>
         </div>
         <div className="mk-hero-counter">
-          <strong>{state.activeCount}</strong>
+          <strong style={{ color: 'var(--mk-gold)' }}>{state.activeCount}</strong>
           <span>/ 16 БОЙЦОВ</span>
         </div>
       </header>

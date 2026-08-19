@@ -27,12 +27,12 @@ export function MkFightScene({ match, players }: MkFightSceneProps) {
 
       <div className="mk-fight-versus">
         <div className={`mk-fighter${match.winnerGuestId === match.player1GuestId ? ' is-winner' : ''}`}>
-          <span>PLAYER 1</span>
+          <span style={{ color: 'var(--mk-gold-dim)' }}>БОЕЦ 1</span>
           <h2>{player1}</h2>
         </div>
-        <div className="mk-vs-mark" aria-label="против">VS</div>
+        <div className="mk-vs-mark">VS</div>
         <div className={`mk-fighter${match.winnerGuestId === match.player2GuestId ? ' is-winner' : ''}`}>
-          <span>PLAYER 2</span>
+          <span style={{ color: 'var(--mk-gold-dim)' }}>БОЕЦ 2</span>
           <h2>{player2}</h2>
         </div>
       </div>

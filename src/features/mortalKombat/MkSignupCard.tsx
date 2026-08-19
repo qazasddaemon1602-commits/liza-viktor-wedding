@@ -1,4 +1,5 @@
 import type { MkTournamentProjection } from './mk.types';
+import mkReference from '../../assets/mk_reference.png.asset.json';
 
 type ActiveProjection = Extract<MkTournamentProjection, { status: 'active' }>;
 
@@ -43,6 +44,20 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
 
   return (
     <section className="mk-signup-card">
+      <div 
+        style={{ 
+          width: '120px', 
+          height: '120px', 
+          margin: '0 auto 1rem',
+          backgroundImage: `url(${mkReference.url})`,
+          backgroundSize: '300px',
+          backgroundPosition: 'center 85%',
+          borderRadius: '50%',
+          border: '2px solid var(--mk-gold)',
+          boxShadow: '0 0 20px var(--mk-gold-dim)'
+        }}
+        aria-hidden="true"
+      />
       <p className="eyebrow">MORTAL KOMBAT · 16 МЕСТ</p>
       <strong>{state.activeCount} / 16</strong>
       <p>
@@ -54,7 +69,7 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
         disabled={joining}
         onClick={onJoin}
       >
-        {joining ? 'ДОБАВЛЯЕМ В СЕТКУ…' : 'УЧАСТВОВАТЬ В MORTAL KOMBAT'}
+        {joining ? 'ДОБАВЛЯЕМ В СЕТКУ…' : 'УЧАСТВОВАТЬ В БИТВЕ'}
       </button>
     </section>
   );
