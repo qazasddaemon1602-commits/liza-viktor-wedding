@@ -100,10 +100,473 @@
 .wedding-route-rule > i::before { left: 0; }
 .wedding-route-rule > i::after { right: 0; }
 
+/* Wedding idle TV: oversized collectible ticket */
+.event-screen--idle {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  place-items: center;
+  gap: clamp(1rem, 2vh, 2rem);
+  padding: clamp(1.3rem, 2.5vw, 3rem);
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 88% 9%, rgba(155, 169, 180, 0.17), transparent 28rem),
+    radial-gradient(circle at 5% 92%, rgba(154, 99, 72, 0.09), transparent 34rem),
+    linear-gradient(135deg, #f6f1e9 0%, var(--wedding-paper) 48%, #eee6da 100%);
+}
+
+.event-screen--idle::before {
+  inset: clamp(0.8rem, 1.4vw, 1.45rem);
+  border: 1px solid rgba(37, 39, 36, 0.11);
+}
+
+.idle-ticket {
+  position: relative;
+  width: min(94vw, 112rem);
+  min-height: min(76vh, 49rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(27rem, 0.38fr);
+  overflow: hidden;
+  border: 1px solid var(--wedding-line-strong);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.46), transparent 34%),
+    var(--wedding-paper);
+  box-shadow:
+    0 2.8rem 8rem rgba(37, 39, 36, 0.13),
+    0 0 0 0.5rem rgba(243, 238, 229, 0.52);
+  isolation: isolate;
+}
+
+.idle-ticket::before {
+  content: "";
+  position: absolute;
+  inset: 0.72rem;
+  z-index: 4;
+  border: 1px solid rgba(37, 39, 36, 0.13);
+  pointer-events: none;
+}
+
+.idle-ticket::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.14;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(37, 39, 36, 0.15) 0 0.55px, transparent 0.7px),
+    radial-gradient(circle at 70% 70%, rgba(154, 99, 72, 0.13) 0 0.45px, transparent 0.7px);
+  background-size: 11px 13px, 17px 19px;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.idle-ticket__body,
+.idle-ticket__stub {
+  position: relative;
+  z-index: 1;
+}
+
+.idle-ticket__body {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(1.5rem, 3vh, 3rem);
+  padding: clamp(2.3rem, 3.6vw, 5rem);
+}
+
+.idle-screen__masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: clamp(0.85rem, 1.4vh, 1.35rem);
+  border-bottom: 1px solid var(--wedding-line-soft);
+  font-size: clamp(0.65rem, 0.72vw, 0.82rem);
+  font-weight: 800;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.idle-screen__brand {
+  color: var(--wedding-forest);
+}
+
+.idle-screen__brand::before {
+  content: "✦";
+  margin-right: 0.75rem;
+  color: var(--wedding-brass);
+}
+
+.idle-screen__date {
+  color: rgba(37, 39, 36, 0.56);
+}
+
+.idle-ticket__body-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 0.56fr);
+  align-items: center;
+  gap: clamp(2rem, 4vw, 5rem);
+}
+
+.idle-screen__copy {
+  min-width: 0;
+  display: grid;
+  gap: clamp(1rem, 1.8vh, 1.7rem);
+  padding: 0;
+}
+
+.idle-screen__copy::before {
+  display: none;
+}
+
+.idle-screen__copy .eyebrow {
+  color: var(--wedding-cinnamon);
+  font-size: clamp(0.64rem, 0.72vw, 0.82rem);
+  letter-spacing: 0.19em;
+}
+
+.idle-screen__copy h1 {
+  max-width: 8.2ch;
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4.7rem, 6.9vw, 9.3rem);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.057em;
+  text-wrap: balance;
+}
+
+.idle-screen__lead {
+  max-width: 34rem;
+  color: rgba(37, 39, 36, 0.66);
+  font-size: clamp(1rem, 1.12vw, 1.28rem);
+  line-height: 1.55;
+}
+
+.idle-screen__route {
+  width: min(100%, 34rem);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  margin-top: clamp(0.6rem, 1vh, 1rem);
+  color: var(--wedding-forest);
+  font-size: clamp(0.65rem, 0.7vw, 0.8rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.idle-screen__route i {
+  position: relative;
+  height: 1px;
+  overflow: visible;
+  background: var(--wedding-line-strong);
+}
+
+.idle-screen__route i::before,
+.idle-screen__route i::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0.42rem;
+  aspect-ratio: 1;
+  border: 1px solid rgba(49, 72, 58, 0.42);
+  border-radius: 50%;
+  background: var(--wedding-paper);
+  transform: translateY(-50%);
+}
+
+.idle-screen__route i::before { left: 0; }
+.idle-screen__route i::after { right: 0; }
+
+.idle-screen__route i::after {
+  box-shadow: -0.9rem 0 0 -0.12rem var(--wedding-brass);
+}
+
+.idle-ticket__art {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 18rem;
+  color: var(--wedding-forest);
+}
+
+.idle-ticket__art-kicker {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: rgba(37, 39, 36, 0.42);
+  font-size: clamp(0.55rem, 0.62vw, 0.68rem);
+  font-weight: 800;
+  letter-spacing: 0.21em;
+}
+
+.idle-ticket__locomotive {
+  width: min(100%, 28rem);
+  color: color-mix(in srgb, var(--wedding-forest) 82%, var(--wedding-blue-grey));
+  opacity: 0.85;
+  filter: drop-shadow(0 1.4rem 1.8rem rgba(49, 72, 58, 0.08));
+  transform: translateY(-0.35rem);
+  animation: idle-paper-drift 12s ease-in-out infinite alternate;
+}
+
+.idle-ticket__stamp {
+  position: absolute;
+  right: 3%;
+  bottom: 4%;
+  width: clamp(5.2rem, 6.3vw, 7.1rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.1rem;
+  border: 1px solid rgba(154, 99, 72, 0.42);
+  border-radius: 50%;
+  color: rgba(154, 99, 72, 0.68);
+  transform: rotate(-9deg);
+}
+
+.idle-ticket__stamp::before {
+  content: "";
+  position: absolute;
+  inset: 0.36rem;
+  border: 1px solid rgba(154, 99, 72, 0.26);
+  border-radius: inherit;
+}
+
+.idle-ticket__stamp span {
+  font-size: clamp(0.48rem, 0.55vw, 0.62rem);
+  font-weight: 800;
+  letter-spacing: 0.17em;
+}
+
+.idle-ticket__stamp strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.15rem, 1.55vw, 1.75rem);
+  font-weight: 400;
+}
+
+.idle-ticket__serial {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  justify-content: start;
+  gap: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--wedding-line-soft);
+  color: rgba(37, 39, 36, 0.42);
+  font-size: clamp(0.53rem, 0.59vw, 0.66rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.idle-ticket__serial span:nth-child(2) {
+  color: var(--wedding-brass);
+}
+
+.idle-ticket__stub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(1.2rem, 2.1vh, 2rem);
+  padding: clamp(2.4rem, 3.2vw, 4.2rem);
+  border-left: 1px dashed rgba(37, 39, 36, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 30%),
+    color-mix(in srgb, var(--wedding-blue-grey) 18%, var(--wedding-paper));
+}
+
+.idle-ticket__stub::before {
+  content: "";
+  position: absolute;
+  left: -0.58rem;
+  top: 1rem;
+  bottom: 1rem;
+  width: 1.15rem;
+  background: radial-gradient(circle, #f3eee5 0 0.29rem, transparent 0.31rem) center top / 100% 1.18rem repeat-y;
+  pointer-events: none;
+}
+
+.idle-ticket__stub-head {
+  width: 100%;
+  display: grid;
+  gap: 0.45rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(37, 39, 36, 0.16);
+  text-align: left;
+}
+
+.idle-ticket__stub-head span {
+  color: rgba(37, 39, 36, 0.48);
+  font-size: clamp(0.52rem, 0.6vw, 0.66rem);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.idle-ticket__stub-head strong {
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 1.5vw, 1.75rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.idle-screen__qr-frame {
+  position: relative;
+  width: min(100%, 27rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.9rem, 1.3vw, 1.35rem);
+  border: 1px solid rgba(37, 39, 36, 0.2);
+  background: var(--wedding-paper);
+  box-shadow:
+    0 1.8rem 4.5rem rgba(37, 39, 36, 0.1),
+    0 0 0 0.42rem rgba(243, 238, 229, 0.48);
+}
+
+.idle-screen__qr-frame::before,
+.idle-screen__qr-frame::after {
+  width: 2rem;
+  height: 2rem;
+  border-color: var(--wedding-cinnamon);
+  opacity: 0.58;
+}
+
+.idle-screen__qr {
+  width: 100%;
+  height: 100%;
+}
+
+.idle-screen__scan-label {
+  margin: 0;
+  color: var(--wedding-forest);
+  font-size: clamp(0.58rem, 0.67vw, 0.74rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+.idle-ticket__stub-meta {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.46rem 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(37, 39, 36, 0.16);
+  font-size: clamp(0.5rem, 0.56vw, 0.62rem);
+  letter-spacing: 0.13em;
+}
+
+.idle-ticket__stub-meta span {
+  color: rgba(37, 39, 36, 0.42);
+  font-weight: 800;
+}
+
+.idle-ticket__stub-meta strong {
+  color: rgba(37, 39, 36, 0.72);
+  font-weight: 800;
+  text-align: right;
+}
+
+.idle-screen__footer {
+  width: min(94vw, 112rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0;
+  border: 0;
+  color: rgba(37, 39, 36, 0.46);
+  font-size: clamp(0.56rem, 0.62vw, 0.7rem);
+  font-weight: 800;
+  letter-spacing: 0.17em;
+}
+
+@keyframes idle-paper-drift {
+  from { transform: translate3d(0, -0.35rem, 0); opacity: 0.78; }
+  to { transform: translate3d(0.45rem, 0.18rem, 0); opacity: 0.9; }
+}
+
+@media (max-width: 1100px) {
+  .idle-ticket {
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 0.42fr);
+  }
+
+  .idle-ticket__body-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.44fr);
+  }
+
+  .idle-screen__copy h1 {
+    font-size: clamp(4rem, 7vw, 6.8rem);
+  }
+}
+
+@media (max-width: 900px) {
+  .event-screen--idle {
+    min-height: 100dvh;
+    overflow: auto;
+    padding: 1rem;
+  }
+
+  .event-screen--idle::before {
+    display: none;
+  }
+
+  .idle-ticket {
+    width: min(100%, 42rem);
+    min-height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .idle-ticket__body {
+    padding: clamp(1.8rem, 6vw, 3rem);
+  }
+
+  .idle-ticket__body-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .idle-ticket__art {
+    min-height: 12rem;
+  }
+
+  .idle-ticket__locomotive {
+    width: min(78%, 24rem);
+  }
+
+  .idle-ticket__stub {
+    border-left: 0;
+    border-top: 1px dashed rgba(37, 39, 36, 0.3);
+  }
+
+  .idle-ticket__stub::before {
+    top: -0.58rem;
+    right: 1rem;
+    bottom: auto;
+    left: 1rem;
+    width: auto;
+    height: 1.15rem;
+    background: radial-gradient(circle, #f3eee5 0 0.29rem, transparent 0.31rem) left center / 1.18rem 100% repeat-x;
+  }
+
+  .idle-screen__footer {
+    width: min(100%, 42rem);
+    flex-wrap: wrap;
+    padding: 0.5rem 0.25rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wedding-editorial-surface *,
   .wedding-editorial-surface *::before,
-  .wedding-editorial-surface *::after {
+  .wedding-editorial-surface *::after,
+  .event-screen--idle *,
+  .event-screen--idle *::before,
+  .event-screen--idle *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
