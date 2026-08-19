@@ -1,0 +1,111 @@
+:root {
+  --wedding-paper: #f3eee5;
+  --wedding-cream: #e9dfd0;
+  --wedding-mist: #d9d2c7;
+  --wedding-graphite: #252724;
+  --wedding-forest: #31483a;
+  --wedding-blue-grey: #9ba9b4;
+  --wedding-brass: #a58c5b;
+  --wedding-cinnamon: #9a6348;
+  --wedding-line-soft: rgba(37, 39, 36, 0.14);
+  --wedding-line-strong: rgba(37, 39, 36, 0.28);
+  --wedding-paper-shadow: 0 2rem 6rem rgba(37, 39, 36, 0.09);
+}
+
+.wedding-editorial-surface {
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(155, 169, 180, 0.12), transparent 30rem),
+    radial-gradient(circle at 8% 88%, rgba(154, 99, 72, 0.08), transparent 34rem),
+    var(--wedding-paper);
+}
+
+.wedding-editorial-title {
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.045em;
+}
+
+.wedding-editorial-meta {
+  color: rgba(37, 39, 36, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.wedding-railway-emblem {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--wedding-forest);
+}
+
+.wedding-railway-emblem path,
+.wedding-railway-emblem rect,
+.wedding-railway-emblem circle {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wedding-ticket-rule {
+  position: relative;
+  border: 1px solid var(--wedding-line-strong);
+  background: var(--wedding-paper);
+  box-shadow: var(--wedding-paper-shadow);
+}
+
+.wedding-ticket-rule::before {
+  content: "";
+  position: absolute;
+  inset: 0.55rem;
+  border: 1px solid var(--wedding-line-soft);
+  pointer-events: none;
+}
+
+.wedding-route-rule {
+  display: grid;
+  grid-template-columns: auto minmax(2.5rem, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--wedding-forest);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.wedding-route-rule > i {
+  position: relative;
+  height: 1px;
+  background: var(--wedding-line-strong);
+}
+
+.wedding-route-rule > i::before,
+.wedding-route-rule > i::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0.38rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--wedding-line-strong);
+  border-radius: 50%;
+  background: var(--wedding-paper);
+  transform: translateY(-50%);
+}
+
+.wedding-route-rule > i::before { left: 0; }
+.wedding-route-rule > i::after { right: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wedding-editorial-surface *,
+  .wedding-editorial-surface *::before,
+  .wedding-editorial-surface *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
