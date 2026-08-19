@@ -1,4 +1,4 @@
-import { siteAudio } from '../../lib/siteAudio';
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
 
 export type BunkerAudioController = {
   arm: () => Promise<boolean>;
@@ -35,6 +35,18 @@ export function createBunkerAudioController(): BunkerAudioController {
     activeOscillators.clear();
   };
 
+  const arm = async (): Promise<boolean> => {
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
+    const ctx = ensureContext();
+    if (!ctx) return false;
+    try {
+      if (ctx.state !== 'running') await ctx.resume();
+      return ctx.state === 'running';
+    } catch {
+      return false;
+    }
+  };
+
   const pulse = () => {
     const volume = siteAudio.getVolume();
     if (!siteAudio.isEnabled() || volume <= 0) return;
@@ -65,17 +77,13 @@ export function createBunkerAudioController(): BunkerAudioController {
     if (context?.state === 'suspended') void context.resume().catch(() => undefined);
   });
 
+  const rearmFromProjectorControl = () => {
+    void arm();
+  };
+  window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
+
   return {
-    arm: async () => {
-      const ctx = ensureContext();
-      if (!ctx) return false;
-      try {
-        if (ctx.state !== 'running') await ctx.resume();
-        return ctx.state === 'running';
-      } catch {
-        return false;
-      }
-    },
+    arm,
     startAlarm: () => {
       if (interval !== null) return;
       pulse();
@@ -89,6 +97,7 @@ export function createBunkerAudioController(): BunkerAudioController {
     dispose: () => {
       if (interval !== null) window.clearInterval(interval);
       interval = null;
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
       unsubscribeSettings();
       stopActive();
       void context?.close();
