@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - feat/admin-rehearsal-links
-      - feat/mk-artbook-visuals
 
 jobs:
   test:
@@ -19,11 +18,7 @@ jobs:
           node-version: 22
       - run: npm install --legacy-peer-deps
       - run: npm run typecheck
-      - name: Run focused MK visual tests
-        if: github.event_name == 'pull_request' && github.head_ref == 'feat/mk-artbook-visuals'
-        run: npm test -- src/features/mortalKombat/MkVisualLanguage.test.tsx
       - name: Run unit tests
-        if: github.event_name != 'pull_request' || github.head_ref != 'feat/mk-artbook-visuals'
         shell: bash
         run: |
           set +e
