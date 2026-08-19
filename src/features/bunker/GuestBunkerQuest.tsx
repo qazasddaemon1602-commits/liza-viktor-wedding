@@ -91,7 +91,9 @@ export function GuestBunkerQuest({
 
       {(state.phase === 'dossier_1' || state.phase === 'dossier_2') && (
         <div className="guest-bunker-briefing">
-          <p className="eyebrow">КОМАНДА · ВАГОН {resolvedCarriageNumber ?? '—'}</p>
+          <p className="eyebrow">
+            {resolvedCarriageNumber == null ? 'КОМАНДА' : `КОМАНДА · ВАГОН ${resolvedCarriageNumber}`}
+          </p>
           <strong>{state.phase === 'dossier_1' ? 'СРАВНИТЕ ПЕРВЫЕ ДАННЫЕ С ВАГОНОМ' : 'ДОСЬЕ РАСКРЫТО · ГОТОВЬТЕСЬ К ЗАДАНИЮ'}</strong>
         </div>
       )}
