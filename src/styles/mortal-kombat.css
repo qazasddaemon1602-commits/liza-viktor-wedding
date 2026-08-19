@@ -106,14 +106,29 @@
 
 .mk-signup-card,
 .mk-public-bracket {
-  border: 1px solid var(--mk-line);
-  background: rgba(255, 255, 255, 0.025);
+  border: 2px solid var(--mk-gold-dim);
+  background: rgba(10, 10, 10, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.mk-signup-card::before,
+.mk-public-bracket::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 45%, var(--mk-gold-dim) 50%, transparent 55%);
+  background-size: 200% 200%;
+  opacity: 0.05;
+  pointer-events: none;
 }
 
 .mk-signup-card {
   display: grid;
-  gap: 0.8rem;
-  padding: clamp(1.25rem, 3vw, 2.4rem);
+  gap: 1rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  text-align: center;
+  justify-items: center;
 }
 
 .mk-signup-card > strong {
