@@ -47,6 +47,12 @@
   .guest-hub-header h1 {
     overflow-wrap: anywhere;
   }
+
+  .guest-bunker-options button,
+  .guest-bunker-answer button,
+  .guest-bunker-terminal button {
+    min-height: 2.75rem;
+  }
 }
 
 /* 320px phones do not have enough usable width for two large quiz answers. */
