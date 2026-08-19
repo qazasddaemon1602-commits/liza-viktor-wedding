@@ -18,11 +18,7 @@ jobs:
           node-version: 22
       - run: npm install --legacy-peer-deps
       - run: npm run typecheck
-      - name: Run focused production readiness tests
-        if: github.event_name == 'pull_request' && github.head_ref == 'feat/production-readiness'
-        run: npm test -- src/features/admin/rehearsal/AdminRehearsalPanel.test.tsx
       - name: Run unit tests
-        if: github.event_name != 'pull_request' || github.head_ref != 'feat/production-readiness'
         shell: bash
         run: |
           set +e
