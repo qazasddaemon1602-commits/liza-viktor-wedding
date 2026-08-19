@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { siteAudio } from '../../lib/siteAudio';
 import type { GuestQuizState, QuizChoice } from './quiz.service';
 import { QuizPhaseTimer } from './QuizPhaseTimer';
 
@@ -29,6 +31,14 @@ export function GuestLiveQuizCard({
   const lizaPercent = state.phase === 'results' ? percentage(state.results.liza, state.results.total) : null;
   const viktorPercent = state.phase === 'results' ? percentage(state.results.viktor, state.results.total) : null;
 
+  useEffect(() => {
+    if (state.phase === 'results') siteAudio.play('reveal');
+  }, [state.phase, state.question.id]);
+
+  useEffect(() => {
+    if (error) siteAudio.play('error');
+  }, [error]);
+
   return (
     <section className={`quiz-live-card guest-live-quiz-card${compact ? ' guest-live-quiz-card--compact' : ''}`} aria-live="polite">
       <header className="quiz-heading">
@@ -47,6 +57,7 @@ export function GuestLiveQuizCard({
       <div className="quiz-choices" aria-label="Варианты ответа">
         <button
           type="button"
+          data-audio-cue="select"
           className={`quiz-choice quiz-choice-liza${state.selectedChoice === 'liza' ? ' is-selected' : ''}`}
           disabled={locked}
           onClick={() => onVote('liza')}
@@ -56,6 +67,7 @@ export function GuestLiveQuizCard({
         </button>
         <button
           type="button"
+          data-audio-cue="select"
           className={`quiz-choice quiz-choice-viktor${state.selectedChoice === 'viktor' ? ' is-selected' : ''}`}
           disabled={locked}
           onClick={() => onVote('viktor')}
