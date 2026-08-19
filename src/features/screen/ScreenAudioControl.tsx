@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { siteAudio } from '../../lib/siteAudio';
+import { requestProjectorAudioRearm, siteAudio } from '../../lib/siteAudio';
 
 const LAST_VOLUME_KEY = 'love-story-live:sound-last-volume';
 const DEFAULT_VOLUME = 0.75;
@@ -57,6 +57,11 @@ export function ScreenAudioControl() {
 
   if (!visible) return null;
 
+  const armAllProjectorAudio = () => {
+    void siteAudio.arm();
+    requestProjectorAudioRearm();
+  };
+
   const toggleMuted = () => {
     if (!muted) {
       siteAudio.setEnabled(false);
@@ -65,7 +70,7 @@ export function ScreenAudioControl() {
 
     if (siteAudio.getVolume() <= 0) siteAudio.setVolume(readLastVolume());
     siteAudio.setEnabled(true);
-    void siteAudio.arm();
+    armAllProjectorAudio();
   };
 
   const changeVolume = (value: number) => {
@@ -79,7 +84,7 @@ export function ScreenAudioControl() {
     rememberVolume(next);
     siteAudio.setVolume(next);
     siteAudio.setEnabled(true);
-    void siteAudio.arm();
+    armAllProjectorAudio();
   };
 
   return (
