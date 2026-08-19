@@ -3,15 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { WeddingRailwayEmblem } from './WeddingRailwayEmblem';
 
 describe('WeddingRailwayEmblem', () => {
-  it('renders an original decorative railway emblem', () => {
-    render(<WeddingRailwayEmblem />);
+  it('renders an original decorative railway mark without exposing interactive UI', () => {
+    render(<WeddingRailwayEmblem className="test-emblem" />);
 
-    expect(screen.getByTestId('wedding-railway-emblem')).toBeInTheDocument();
-  });
-
-  it('accepts a custom class name', () => {
-    render(<WeddingRailwayEmblem className="custom-emblem" />);
-
-    expect(screen.getByTestId('wedding-railway-emblem')).toHaveClass('custom-emblem');
+    const emblem = screen.getByTestId('wedding-railway-emblem');
+    expect(emblem).toHaveClass('test-emblem');
+    expect(emblem).toHaveAttribute('aria-hidden', 'true');
   });
 });
