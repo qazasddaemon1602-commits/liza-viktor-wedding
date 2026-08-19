@@ -15,6 +15,13 @@ export type SiteAudioSettings = {
   volume: number;
 };
 
+export const PROJECTOR_AUDIO_REARM_EVENT = 'love-story-live:projector-audio-rearm';
+
+export function requestProjectorAudioRearm() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+}
+
 type AudioParamLike = {
   setValueAtTime: (value: number, time: number) => unknown;
   linearRampToValueAtTime: (value: number, time: number) => unknown;
