@@ -83,7 +83,11 @@ export function GuestHub({
             <strong>{quizStatus}</strong>
             <p>Вопрос появится здесь автоматически — переходить на отдельную страницу не нужно.</p>
           </article>
-          <a className="guest-hub-activity-link guest-event-action--mk" href="/mortal-kombat">
+          <a
+            className="guest-hub-activity-link guest-event-action--mk"
+            href="/mortal-kombat"
+            aria-label="MORTAL KOMBAT · УЧАСТВОВАТЬ"
+          >
             <span>MORTAL KOMBAT</span>
             <strong>ОТКРЫТЬ АРЕНУ</strong>
             <p>Регистрация и статус турнира. После проверки вернитесь сюда.</p>
