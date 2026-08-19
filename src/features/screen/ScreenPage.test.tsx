@@ -163,12 +163,13 @@ describe('ScreenPage', () => {
     expect(dependencies.playArrivalSignal).toHaveBeenCalledTimes(1);
   });
 
-  it('asks for one local interaction to arm projector audio, then hides the control', async () => {
+  it('enables projector audio by default and exposes a disable-first toggle', async () => {
     const armArrivalAudio = vi.fn().mockResolvedValue(true);
     const dependencies: ScreenPageDependencies = {
       subscribe: () => vi.fn(),
       armArrivalAudio,
       playArrivalSignal: vi.fn(),
+      stopArrivalAudio: vi.fn(),
     };
 
     render(
@@ -179,14 +180,16 @@ describe('ScreenPage', () => {
       />,
     );
 
-    const button = screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' });
-    fireEvent.click(button);
-
     await act(async () => {
+      await Promise.resolve();
       await Promise.resolve();
     });
 
     expect(armArrivalAudio).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).not.toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' });
+    fireEvent.click(button);
+
+    expect(dependencies.stopArrivalAudio).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
   });
 });
