@@ -35,23 +35,32 @@ export function subscribeToMkRefresh(
 export async function broadcastMkRefresh(
   client: MkRealtimeClient,
   eventSlug: string,
+  subscribeTimeoutMs = 1200,
 ): Promise<void> {
   const channel = client.channel(`mk:${eventSlug}`);
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
-    channel.subscribe((status) => {
-      if (settled) return;
-      if (status === 'SUBSCRIBED') {
-        settled = true;
-        resolve();
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        settled = true;
-        reject(new Error(`Unable to subscribe MK channel: ${status}`));
-      }
-    });
-  });
-
   try {
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject(new Error('Unable to subscribe MK channel: SUBSCRIBE_TIMEOUT'));
+      }, subscribeTimeoutMs);
+
+      channel.subscribe((status) => {
+        if (settled) return;
+        if (status === 'SUBSCRIBED') {
+          settled = true;
+          clearTimeout(timeout);
+          resolve();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          settled = true;
+          clearTimeout(timeout);
+          reject(new Error(`Unable to subscribe MK channel: ${status}`));
+        }
+      });
+    });
+
     await channel.send({ type: 'broadcast', event: 'refresh', payload: {} });
   } finally {
     void channel.unsubscribe();
