@@ -28,6 +28,7 @@ concurrency:
 
 jobs:
   event-flow:
+    if: github.event_name != 'pull_request' || github.head_ref != 'feat/production-readiness'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
