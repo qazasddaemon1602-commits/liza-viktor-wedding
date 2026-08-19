@@ -12,8 +12,9 @@
 | Опоздавшие гости продолжают участвовать | регистрация открыта после lock/Premiere | ГОТОВО + E2E |
 | Новый пассажир появляется на ТВ | projector screen event + cinematic train scene | ГОТОВО + E2E |
 | Поезд должен быть именно поездом | locomotive/coaches/track/steam DOM/CSS scene | ГОТОВО |
-| Несколько ТВ работают синхронно | Realtime + authoritative server state + heartbeat | ГОТОВО |
-| Вызвать конкретный вагон | carriage calls на телефоны + optional TV scene | ГОТОВО |
+| Несколько ТВ работают синхронно | Realtime + authoritative server state + heartbeat; 1 ТВ тоже валидно | ГОТОВО |
+| Readiness ТВ/видео/звука | live telemetry, advisory only, не блокирует owner-команды | ГОТОВО |
+| Вызвать конкретный вагон | carriage calls на телефоны + optional TV scene (~12 сек) | ГОТОВО |
 | Квиз гостей | `/play`, owner activation/reveal, TV results | ГОТОВО |
 | Приватные ответы Лизы/Виктора | tokenized couple preanswers + owner status | ГОТОВО ПО КОДУ; CONTENT PENDING |
 | Final Five | отдельные role tokens `/liza`, `/viktor` + reveal | ГОТОВО |
@@ -22,10 +23,13 @@
 | MK исправление результата | impact preview + explicit downstream clear/undo | ГОТОВО |
 | MK на ТВ | shared `/screen` по owner-команде + dedicated `/mortal-kombat/screen` | ГОТОВО |
 | Вернуть общий ТВ без остановки MK | `ВЕРНУТЬ ГЛАВНЫЙ ЭКРАН` | ГОТОВО |
-| Премьера трека | owner preflight/control + `/screen` protected mode | ГОТОВО ПО КОДУ; REAL VIDEO PENDING |
+| Премьера трека | owner control + advisory preflight + `/screen` protected mode | ГОТОВО ПО КОДУ; REAL VIDEO PENDING |
 | Отсчёт перед премьерой | строго `10 → 1`, без 0, sound cues | ГОТОВО |
 | Не ждать всех опоздавших перед премьерой | guest count advisory, manual owner start | ГОТОВО |
+| Не ждать технический readiness перед ручным стартом | TV/video/audio status не входит в disabled/guard owner-команды | ГОТОВО |
 | Поздний ТВ подхватывает текущую позицию | authoritative server position | ГОТОВО |
+| Device-local звук ТВ | icon mute + slider 0–100, default 75%, localStorage | ГОТОВО |
+| Единый mute/volume | UI cues + train/call + countdown + media + bunker alarm | ГОТОВО ПО КОДУ |
 | Сюжетный поворот Бункер | emergency takeover + `30:00` | ГОТОВО |
 | `00:00` Бункера не возвращает QR сам | hold until explicit STOP | ГОТОВО |
 | Bunker выше Premiere/MK/quiz/train | protected hierarchy + underlying unmount | ГОТОВО + E2E |
@@ -35,7 +39,7 @@
 | Админка с телефона | responsive 390px contract + touch layout | ГОТОВО АВТОМАТИЧЕСКИ; REAL PHONE PENDING |
 | Главный экран на Full HD TV | 1920×1080 layout E2E | ГОТОВО АВТОМАТИЧЕСКИ; REAL TV PENDING |
 | Пережить короткий обрыв сети | last-valid state + reconnect + polling fallbacks | ГОТОВО ПО КОДУ |
-| Будущий красивый домен | относительные routes, `/` → `/join` | ГОТОВО ПО КОДУ; `.ru` PENDING |
+| Production-домен | `liza-viktor.site`, относительные routes, `/` → `/join` | ГОТОВО |
 
 ## Приоритет экранных сцен
 
@@ -65,14 +69,14 @@
 - общий финальный код/сборка результата;
 - дополнительные сюжетные события/модификаторы.
 
-### Почему это не добавлено ночью
+### Почему это вынесено в следующий этап
 
-Это **не маленькая UI-фича**, а отдельная игровая система с контентом и балансом. Случайно сгенерировать 100+ карточек, задания и scoring прямо перед репетицией означало бы добавить больше риска, чем пользы. База live-события уже стабильна; этот слой лучше сделать отдельным этапом после утверждения формата карточек/заданий и затем подключить к существующим гостям/вагонам.
+Это отдельная игровая система с контентом и балансом. База live-события должна оставаться технически стабильной; карточки, новые задания и scoring подключаются следующим этапом поверх уже готовых гостей/вагонов, не смешиваясь с техническим hardening текущей версии.
 
-## Что ещё блокирует финальный EVENT-DAY GO
+## Что ещё требует EVENT-DAY проверки, но не является программным блокером
 
-1. Перенести/заполнить реальные ответы Лизы и Виктора — в новой Lovable Cloud сейчас `0` preanswers.
-2. Разместить реальный `КОЛЬЦО.mp4` вне GitHub и проверить `canplay`/звук на двух реальных ТВ.
-3. Провести hardware rehearsal: owner phone + guest phone + 2 TV + venue Wi‑Fi + audio output.
-4. Купить/подключить `.ru`, проверить открытие из России без VPN и QR именно на финальный домен.
-5. После визуальных правок по референсам повторить тот же CI/pgTAP/E2E и короткий hardware rehearsal.
+1. Заполнить реальные ответы Лизы и Виктора в production-базе, если они ещё не заполнены.
+2. Проверить реальный production URL видео `КОЛЬЦО`, его `canplay` и аудиовыход на каждом фактически используемом ТВ.
+3. Провести hardware rehearsal: owner phone + guest phone + фактическое количество TV/projector + venue Wi‑Fi + HDMI/audio output. Один ТВ является валидной конфигурацией; если используется несколько, отдельно проверить синхронизацию.
+4. Проверить `https://liza-viktor.site` и QR из сети/устройств, которые реально будут использовать гости.
+5. После завтрашних визуальных правок и добавления новых квестов повторить CI/pgTAP/E2E и короткий hardware rehearsal.

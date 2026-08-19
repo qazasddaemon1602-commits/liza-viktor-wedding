@@ -1,8 +1,5 @@
 type BunkerEmergencySceneProps = {
   remainingSeconds: number;
-  soundEnabled: boolean;
-  soundArmed: boolean;
-  onArmSound?: () => void;
 };
 
 function timerLabel(seconds: number): string {
@@ -12,12 +9,7 @@ function timerLabel(seconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
-export function BunkerEmergencyScene({
-  remainingSeconds,
-  soundEnabled,
-  soundArmed,
-  onArmSound,
-}: BunkerEmergencySceneProps) {
+export function BunkerEmergencyScene({ remainingSeconds }: BunkerEmergencySceneProps) {
   const arrived = remainingSeconds <= 0;
 
   return (
@@ -66,7 +58,6 @@ export function BunkerEmergencyScene({
         </g>
       </svg>
 
-
       <header className="bunker-emergency__header">
         <span className="bunker-emergency__signal" aria-hidden="true" />
         <strong>ЭКСТРЕННОЕ СООБЩЕНИЕ</strong>
@@ -88,12 +79,6 @@ export function BunkerEmergencyScene({
         <span>СОХРАНЯЙТЕ СПОКОЙСТВИЕ · СЛЕДУЙТЕ УКАЗАНИЯМ ВЕДУЩЕГО</span>
         <span>{arrived ? 'ТОЧКА ДОСТИГНУТА' : 'МАРШРУТ ПЕРЕСТРОЕН'}</span>
       </footer>
-
-      {soundEnabled && !soundArmed && onArmSound && (
-        <button type="button" className="bunker-emergency__sound" onClick={onArmSound}>
-          ВКЛЮЧИТЬ ТРЕВОГУ
-        </button>
-      )}
     </section>
   );
 }

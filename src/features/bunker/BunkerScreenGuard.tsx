@@ -63,8 +63,6 @@ export function BunkerScreenGuard({
   );
   const [state, setState] = useState<BunkerScreenState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [soundArmed, setSoundArmed] = useState(false);
-  const activeRef = useRef(true);
   const serverOffsetRef = useRef(0);
 
   const applyServerState = (next: BunkerScreenState) => {
@@ -74,13 +72,6 @@ export function BunkerScreenGuard({
     setState(next);
     setNowMs(receivedAt);
   };
-
-  useEffect(() => {
-    activeRef.current = true;
-    return () => {
-      activeRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!deps) return;
@@ -155,37 +146,21 @@ export function BunkerScreenGuard({
       return;
     }
 
-    void audio.arm().then((armed) => {
-      if (!activeRef.current) return;
-      setSoundArmed(armed);
-      if (armed) audio.startAlarm();
-    });
+    // Schedule the alarm even if autoplay initially blocks AudioContext.resume().
+    // The shared projector icon/slider can re-arm the context later without losing the scene.
+    audio.startAlarm();
+    void audio.arm();
 
     return () => audio.stopAlarm();
   }, [deps, emergencyPhase, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => () => deps?.audio?.dispose(), [deps]);
 
-  const armSound = () => {
-    const audio = deps?.audio;
-    if (!audio || !emergencyPhase || remainingSeconds <= 0) return;
-    void audio.arm().then((armed) => {
-      if (!activeRef.current) return;
-      setSoundArmed(armed);
-      if (armed) audio.startAlarm();
-    });
-  };
-
   return (
     <>
       {children}
       {bunkerActive && state?.status === 'active' && activePhase === 'emergency' && (
-        <BunkerEmergencyScene
-          remainingSeconds={remainingSeconds}
-          soundEnabled={state.soundEnabled && remainingSeconds > 0}
-          soundArmed={soundArmed}
-          onArmSound={armSound}
-        />
+        <BunkerEmergencyScene remainingSeconds={remainingSeconds} />
       )}
       {bunkerActive && state?.status === 'active' && activePhase !== 'emergency' && (
         <BunkerQuestScene state={state} remainingSeconds={remainingSeconds} />

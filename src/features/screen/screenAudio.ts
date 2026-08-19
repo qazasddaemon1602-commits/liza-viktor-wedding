@@ -1,3 +1,5 @@
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
+
 type AudioParamLike = {
   setValueAtTime: (value: number, time: number) => unknown;
   linearRampToValueAtTime: (value: number, time: number) => unknown;
@@ -52,49 +54,14 @@ export function createScreenAudioController(
   factory: AudioContextFactory = browserAudioContextFactory,
 ): ScreenAudioController {
   let context: AudioContextLike | null = null;
+  let masterGain: GainLike | null = null;
+  const usesSharedBrowserContext = factory === browserAudioContextFactory;
   const activeOscillators = new Set<OscillatorLike>();
 
-  const arm = async (): Promise<boolean> => {
-    try {
-      context ??= factory();
-      if (context.state !== 'running') await context.resume();
-      return context.state === 'running';
-    } catch {
-      return false;
-    }
-  };
-
-  const playTone = (
-    frequency: number,
-    startAt: number,
-    duration: number,
-    peak = 0.024,
-    type: OscillatorType = 'sine',
-  ) => {
-    if (!context || context.state !== 'running') return;
-
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(frequency, startAt);
-
-    gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.linearRampToValueAtTime(peak, startAt + Math.min(0.08, duration / 5));
-    gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
-
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.onended = () => activeOscillators.delete(oscillator);
-    activeOscillators.add(oscillator);
-    oscillator.start(startAt);
-    oscillator.stop(startAt + duration + 0.03);
-  };
-
-  const playArrival = () => {
-    if (!context || context.state !== 'running') return;
-    const now = context.currentTime + 0.015;
-    playTone(523.25, now, 0.16);
-    playTone(659.25, now + 0.19, 0.2);
+  const applyMasterVolume = () => {
+    if (!context || !masterGain) return;
+    const audible = siteAudio.isEnabled() && siteAudio.getVolume() > 0;
+    masterGain.gain.setValueAtTime(audible ? siteAudio.getVolume() : 0, context.currentTime);
   };
 
   const stopOscillators = () => {
@@ -107,6 +74,64 @@ export function createScreenAudioController(
       }
     }
     activeOscillators.clear();
+  };
+
+  const unsubscribeSettings = siteAudio.subscribe(() => applyMasterVolume());
+
+  const arm = async (): Promise<boolean> => {
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
+    try {
+      context ??= factory();
+      if (context.state !== 'running') await context.resume();
+      if (!masterGain) {
+        masterGain = context.createGain();
+        masterGain.connect(context.destination);
+      }
+      applyMasterVolume();
+      return context.state === 'running';
+    } catch {
+      return false;
+    }
+  };
+
+  const rearmFromProjectorControl = () => {
+    void arm();
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
+  }
+
+  const playTone = (
+    frequency: number,
+    startAt: number,
+    duration: number,
+    peak = 0.024,
+    type: OscillatorType = 'sine',
+  ) => {
+    if (!context || context.state !== 'running' || !masterGain || !siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
+
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.linearRampToValueAtTime(peak, startAt + Math.min(0.08, duration / 5));
+    gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
+
+    oscillator.connect(gain);
+    gain.connect(masterGain);
+    oscillator.onended = () => activeOscillators.delete(oscillator);
+    activeOscillators.add(oscillator);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + duration + 0.03);
+  };
+
+  const playArrival = () => {
+    if (!context || context.state !== 'running') return;
+    const now = context.currentTime + 0.015;
+    playTone(523.25, now, 0.16);
+    playTone(659.25, now + 0.19, 0.2);
   };
 
   const playCarriageCall = () => {
@@ -138,20 +163,19 @@ export function createScreenAudioController(
     playTone(73.42, start + 9.15, 1.55, 0.012, 'triangle');
   };
 
-  const stopArrival = () => {
-    stopOscillators();
-  };
-
-  const stopCarriageCall = () => {
-    stopOscillators();
-  };
+  const stopArrival = () => stopOscillators();
+  const stopCarriageCall = () => stopOscillators();
 
   const dispose = () => {
+    unsubscribeSettings();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
+    }
     stopOscillators();
     const current = context;
     context = null;
-    if (current && current === sharedBrowserContext) sharedBrowserContext = null;
-    if (current) void current.close().catch(() => undefined);
+    masterGain = null;
+    if (!usesSharedBrowserContext && current) void current.close().catch(() => undefined);
   };
 
   return {

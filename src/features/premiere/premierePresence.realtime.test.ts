@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { siteAudio } from '../../lib/siteAudio';
 import {
   broadcastPremiereScreenPresence,
   subscribeToPremiereScreenPresence,
+  withDeviceAudioPresence,
   type PremierePresenceRealtimeChannel,
   type PremierePresenceRealtimeClient,
 } from './premierePresence.realtime';
@@ -33,8 +35,19 @@ function channelFixture() {
 }
 
 describe('premiere screen presence realtime', () => {
+  beforeEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
+  afterEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
   it('broadcasts one typed screen heartbeat after the dedicated presence channel is subscribed', async () => {
     const fixture = channelFixture();
+    siteAudio.setEnabled(false);
     const heartbeat = {
       screenId: 'screen-tv-1',
       videoReady: true,
@@ -56,6 +69,26 @@ describe('premiere screen presence realtime', () => {
       payload: heartbeat,
     });
     expect(fixture.channel.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports shared device mute as audio not ready without affecting other telemetry', () => {
+    siteAudio.setEnabled(false);
+    expect(withDeviceAudioPresence({
+      screenId: 'screen-tv-1',
+      videoReady: true,
+      audioArmed: true,
+    })).toEqual({
+      screenId: 'screen-tv-1',
+      videoReady: true,
+      audioArmed: false,
+    });
+
+    siteAudio.setEnabled(true);
+    expect(withDeviceAudioPresence({
+      screenId: 'screen-tv-1',
+      videoReady: true,
+      audioArmed: true,
+    }).audioArmed).toBe(true);
   });
 
   it('subscribes to valid screen heartbeats and ignores malformed payloads', () => {

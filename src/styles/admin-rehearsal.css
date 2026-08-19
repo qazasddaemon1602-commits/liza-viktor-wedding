@@ -56,6 +56,11 @@
   background: rgba(49, 72, 58, 0.06);
 }
 
+.admin-rehearsal__verdict.is-info {
+  border-left-color: rgba(49, 72, 58, 0.38);
+  background: rgba(49, 72, 58, 0.035);
+}
+
 .admin-rehearsal__verdict span {
   color: rgba(39, 51, 43, 0.5);
   font-size: 0.58rem;
@@ -95,10 +100,10 @@
   background: rgba(49, 72, 58, 0.045);
 }
 
-.admin-rehearsal__checks .has-blocker {
-  border-color: rgba(154, 99, 72, 0.28);
-  color: var(--cinnamon);
-  background: rgba(154, 99, 72, 0.055);
+.admin-rehearsal__checks .is-watch {
+  border-color: rgba(154, 99, 72, 0.2);
+  color: rgba(112, 72, 53, 0.88);
+  background: rgba(154, 99, 72, 0.035);
 }
 
 .admin-rehearsal__links {

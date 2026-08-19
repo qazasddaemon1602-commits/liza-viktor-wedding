@@ -49,6 +49,41 @@ describe('BunkerScreenGuard', () => {
     expect(screen.getByTestId('bunker-timer')).toHaveTextContent('29:59');
   });
 
+  it('keeps the alarm schedule active even when initial browser audio arming is blocked', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-30T18:00:00.000Z'));
+
+    const arm = vi.fn().mockResolvedValue(false);
+    const startAlarm = vi.fn();
+    const dependencies: BunkerScreenGuardDependencies = {
+      load: vi.fn().mockResolvedValue({
+        status: 'active',
+        startedAt: '2026-08-30T18:00:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 1800,
+        soundEnabled: true,
+        serverNow: '2026-08-30T18:00:00.000Z',
+      }),
+      audio: {
+        arm,
+        startAlarm,
+        stopAlarm: vi.fn(),
+        dispose: vi.fn(),
+      },
+    };
+
+    render(
+      <BunkerScreenGuard dependencies={dependencies}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(startAlarm).toHaveBeenCalledTimes(1);
+    expect(arm).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('bunker-emergency-scene')).toBeInTheDocument();
+  });
+
   it('stays on the protected bunker scene at 00:00 until the owner explicitly stops it', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-30T18:30:05.000Z'));
