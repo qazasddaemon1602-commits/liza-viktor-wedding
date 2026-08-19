@@ -1,0 +1,148 @@
+/* Technical mobile hardening only. Keep visual redesign work in the dedicated visual pass. */
+
+/* Fixed projector controls must remain tappable and clear of device cutouts. */
+.screen-audio-control {
+  top: max(clamp(0.7rem, 1.5vw, 1.25rem), env(safe-area-inset-top));
+  right: max(clamp(0.7rem, 1.5vw, 1.25rem), env(safe-area-inset-right));
+}
+
+.screen-connection-indicator {
+  left: max(clamp(0.7rem, 1.4vw, 1.25rem), env(safe-area-inset-left));
+  bottom: max(clamp(0.7rem, 1.4vw, 1.25rem), env(safe-area-inset-bottom));
+}
+
+@media (max-width: 560px) {
+  .screen-audio-control {
+    top: max(0.55rem, env(safe-area-inset-top));
+    right: max(0.55rem, env(safe-area-inset-right));
+    min-height: 3rem;
+  }
+
+  /* Keep the icon visually minimal while giving touch users a 44px target. */
+  .screen-audio-control__toggle {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .registration-shell {
+    padding-top: max(0.8rem, env(safe-area-inset-top));
+    padding-right: max(0.8rem, env(safe-area-inset-right));
+    padding-bottom: max(0.8rem, env(safe-area-inset-bottom));
+    padding-left: max(0.8rem, env(safe-area-inset-left));
+  }
+
+  .guest-hub {
+    padding-top: max(0.7rem, env(safe-area-inset-top));
+    padding-right: max(0.7rem, env(safe-area-inset-right));
+    padding-bottom: max(0.7rem, env(safe-area-inset-bottom));
+    padding-left: max(0.7rem, env(safe-area-inset-left));
+  }
+
+  .guest-hub-header > div {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .guest-hub-header p,
+  .guest-hub-header h1 {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* 320px phones do not have enough usable width for two large quiz answers. */
+@media (max-width: 420px) {
+  .quiz-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .quiz-choice {
+    min-height: 6.75rem;
+    padding: 1rem;
+  }
+
+  .quiz-choice strong {
+    font-size: clamp(2.35rem, 14vw, 3.2rem);
+    overflow-wrap: anywhere;
+  }
+
+  .guest-hub-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .guest-hub-section-heading > span {
+    text-align: left;
+  }
+}
+
+/* Emergency/projector scenes are normally TVs, but must not clip when tested
+   or recovered from a phone held landscape. */
+@media (max-height: 520px) {
+  .bunker-emergency {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .bunker-emergency__header,
+  .bunker-emergency__footer {
+    gap: 0.7rem;
+    font-size: 0.55rem;
+  }
+
+  .bunker-emergency__header {
+    padding-bottom: 0.5rem;
+  }
+
+  .bunker-emergency__footer {
+    padding-top: 0.5rem;
+  }
+
+  .bunker-emergency__content {
+    padding: 0;
+  }
+
+  .bunker-emergency__content > p {
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+  }
+
+  .bunker-emergency__content h1 {
+    margin: 0.35rem 0;
+    font-size: clamp(2.4rem, 15vh, 4rem);
+  }
+
+  .bunker-emergency__timer-block {
+    margin-top: 0.45rem;
+  }
+
+  .bunker-emergency__timer-block strong {
+    font-size: clamp(2.8rem, 18vh, 4.5rem);
+  }
+
+  .mk-screen-scene {
+    padding-top: max(0.9rem, env(safe-area-inset-top));
+    padding-right: max(1.2rem, env(safe-area-inset-right));
+    padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+    padding-left: max(1.2rem, env(safe-area-inset-left));
+  }
+
+  .mk-fighter {
+    min-height: 52vh;
+    padding-bottom: 0.75rem;
+  }
+
+  .mk-fighter h2 {
+    font-size: clamp(2.6rem, 12vh, 5rem);
+  }
+
+  .mk-vs-mark {
+    font-size: clamp(2.5rem, 14vh, 5rem);
+  }
+
+  .mk-fight-winner {
+    padding-top: 0.45rem;
+  }
+}
