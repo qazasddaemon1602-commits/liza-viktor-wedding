@@ -71,6 +71,7 @@ describe('premiere countdown audio', () => {
     expect(frequency.setValueAtTime).toHaveBeenLastCalledWith(110, expect.any(Number));
     expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.018 * 0.75, expect.any(Number));
     expect(oscillator.stop).toHaveBeenCalled();
+    audio.dispose();
   });
 
   it('keeps the final-three pulse slightly stronger but still restrained', () => {
@@ -81,6 +82,7 @@ describe('premiere countdown audio', () => {
 
     expect(frequency.setValueAtTime).toHaveBeenLastCalledWith(146.83, expect.any(Number));
     expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.028 * 0.75, expect.any(Number));
+    audio.dispose();
   });
 
   it('stays silent when the device is muted', async () => {
@@ -91,5 +93,6 @@ describe('premiere countdown audio', () => {
     expect(await audio.arm()).toBe(false);
     audio.playCountdownTick(4);
     expect(context.createOscillator).not.toHaveBeenCalled();
+    audio.dispose();
   });
 });
