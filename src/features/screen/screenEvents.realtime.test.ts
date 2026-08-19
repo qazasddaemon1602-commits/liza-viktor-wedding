@@ -4,6 +4,24 @@ import {
   type ScreenEventsRealtimeClient,
 } from './screenEvents.realtime';
 
+function guestRow(id = 'screen-event-31') {
+  return {
+    id,
+    kind: 'guest_registered',
+    created_at: '2026-08-30T12:06:00+05:00',
+    payload: {
+      displayName: 'Анна Смирнова',
+      carriage: {
+        id: 'c4',
+        number: 4,
+        label: 'ВАГОН №4',
+        accentHex: '#78806A',
+        visualMark: '04',
+      },
+    },
+  };
+}
+
 describe('subscribeToScreenEvents', () => {
   it('subscribes only to public screen events for the current event slug and parses guest arrivals', () => {
     const callback = vi.fn();
@@ -31,23 +49,7 @@ describe('subscribeToScreenEvents', () => {
     expect(subscribe).toHaveBeenCalled();
 
     const handler = on.mock.calls[0][2];
-    handler({
-      new: {
-        id: 'screen-event-31',
-        kind: 'guest_registered',
-        created_at: '2026-08-30T12:06:00+05:00',
-        payload: {
-          displayName: 'Анна Смирнова',
-          carriage: {
-            id: 'c4',
-            number: 4,
-            label: 'ВАГОН №4',
-            accentHex: '#78806A',
-            visualMark: '04',
-          },
-        },
-      },
-    });
+    handler({ new: guestRow() });
 
     expect(callback).toHaveBeenCalledWith({
       id: 'screen-event-31',
@@ -67,6 +69,35 @@ describe('subscribeToScreenEvents', () => {
 
     cleanup();
     expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it('catches up a short-lived persisted event when realtime insert was missed', async () => {
+    const callback = vi.fn();
+    const channel = { on: vi.fn().mockReturnThis(), subscribe: vi.fn(), unsubscribe: vi.fn() };
+    const order = vi.fn().mockResolvedValue({ data: [guestRow('catch-up-1')], error: null });
+    const query = {
+      eq: vi.fn().mockReturnThis(),
+      gt: vi.fn().mockReturnThis(),
+      order,
+    };
+    const select = vi.fn().mockReturnValue(query);
+    const client: ScreenEventsRealtimeClient = {
+      channel: vi.fn().mockReturnValue(channel),
+      from: vi.fn().mockReturnValue({ select }),
+    };
+
+    const cleanup = subscribeToScreenEvents(client, 'liza-viktor', callback);
+    await vi.waitFor(() => expect(callback).toHaveBeenCalledTimes(1));
+
+    expect(client.from).toHaveBeenCalledWith('screen_events');
+    expect(query.eq).toHaveBeenCalledWith('event_slug', 'liza-viktor');
+    expect(query.gt).toHaveBeenCalledWith('expires_at', expect.any(String));
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: true });
+
+    // The same event arriving after catch-up must not be presented twice.
+    channel.on.mock.calls[0][2]({ new: guestRow('catch-up-1') });
+    expect(callback).toHaveBeenCalledTimes(1);
+    cleanup();
   });
 
   it('parses owner-published carriage call screen events', () => {

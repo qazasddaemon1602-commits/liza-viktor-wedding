@@ -61,13 +61,21 @@ test('open guest hub receives live quiz, vote, results and closed-round history'
   await registerGuest(guest);
   await loginOwner(owner);
 
-  const seed = owner.getByRole('button', { name: 'ДОБАВИТЬ 30 ВОПРОСОВ' });
+  const quizPanel = owner.getByLabel('Управление викториной');
+  await expect(quizPanel).toBeVisible();
+  const seed = quizPanel.getByRole('button', { name: 'ДОБАВИТЬ 30 ВОПРОСОВ' });
+  const launch = quizPanel.getByRole('button', { name: /^ЗАПУСТИТЬ:/ }).first();
+
+  await expect.poll(
+    async () => (await seed.count()) + (await launch.count()),
+    { timeout: 10_000 },
+  ).toBeGreaterThan(0);
+
   if (await seed.count()) {
     await seed.click();
   }
 
-  const launch = owner.getByRole('button', { name: /^ЗАПУСТИТЬ:/ }).first();
-  await expect(launch).toBeVisible();
+  await expect(launch).toBeVisible({ timeout: 10_000 });
   const launchName = await launch.getAttribute('aria-label');
   const questionText = launchName?.replace(/^ЗАПУСТИТЬ:\s*/, '') ?? '';
   if (!questionText) throw new Error('Unable to resolve live quiz question text');
@@ -78,10 +86,14 @@ test('open guest hub receives live quiz, vote, results and closed-round history'
   await guest.getByRole('button', { name: 'ЛИЗА' }).click();
   await expect(guest.getByText('ОТВЕТ ПРИНЯТ')).toBeVisible();
 
-  await owner.getByRole('button', { name: 'ЗАКРЫТЬ ОТВЕТЫ СЕЙЧАС' }).click();
+  const closeAnswers = quizPanel.getByRole('button', { name: 'ЗАКРЫТЬ ОТВЕТЫ СЕЙЧАС' });
+  await expect(closeAnswers).toBeVisible({ timeout: 10_000 });
+  await closeAnswers.click();
   await expect(guest.getByText('100%')).toBeVisible({ timeout: 10_000 });
 
-  await owner.getByRole('button', { name: 'ЗАКРЫТЬ ВОПРОС' }).click();
+  const closeQuestion = quizPanel.getByRole('button', { name: 'ЗАКРЫТЬ ВОПРОС' });
+  await expect(closeQuestion).toBeVisible({ timeout: 10_000 });
+  await closeQuestion.click();
   await expect(guest.getByText('ОЖИДАЕМ СЛЕДУЮЩЕЕ СОБЫТИЕ')).toBeVisible({ timeout: 10_000 });
   await expect(guest.getByLabel('История вечера').getByText(questionText)).toBeVisible();
   await expect(owner.getByLabel('Пройденные вопросы').getByText(questionText)).toBeVisible();
