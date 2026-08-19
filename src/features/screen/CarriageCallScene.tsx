@@ -1,5 +1,6 @@
 import { useEffect, type CSSProperties } from 'react';
 import { siteAudio } from '../../lib/siteAudio';
+import { createScreenAudioController } from './screenAudio';
 import type { CarriageCallScreenEvent } from './screenEvents.realtime';
 
 type CarriageCallSceneProps = {
@@ -15,38 +16,17 @@ function projectorSoundEnabled(): boolean {
 export function CarriageCallScene({ event }: CarriageCallSceneProps) {
   useEffect(() => {
     siteAudio.beginPriority('scene');
-    if (!projectorSoundEnabled()) {
-      return () => siteAudio.endPriority('scene');
-    }
+    const audio = createScreenAudioController();
 
-    let audio: HTMLAudioElement | null = null;
-    if (typeof Audio !== 'undefined') {
-      audio = new Audio('/audio/train/carriage-call.mp3');
-      audio.preload = 'auto';
-      audio.volume = 0.72;
-      const playback = audio.play();
-      if (playback && typeof playback.catch === 'function') {
-        void playback.catch(() => {
-          void siteAudio.arm().then((ready) => {
-            if (ready) siteAudio.play('impact');
-          });
-        });
-      }
-    } else {
-      void siteAudio.arm().then((ready) => {
-        if (ready) siteAudio.play('impact');
+    if (projectorSoundEnabled()) {
+      void audio.arm().then((ready) => {
+        if (ready) audio.playCarriageCall();
       });
     }
 
     return () => {
-      if (audio) {
-        audio.pause();
-        try {
-          audio.currentTime = 0;
-        } catch {
-          // Metadata may not have loaded yet; pause is enough.
-        }
-      }
+      audio.stopCarriageCall();
+      audio.dispose();
       siteAudio.endPriority('scene');
     };
   }, [event.id]);
