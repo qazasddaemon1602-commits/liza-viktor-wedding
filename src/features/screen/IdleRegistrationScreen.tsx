@@ -8,6 +8,9 @@ type IdleRegistrationScreenProps = {
 export function IdleRegistrationScreen({ joinUrl }: IdleRegistrationScreenProps) {
   return (
     <main className="event-screen event-screen--idle wedding-editorial-surface">
+      <div className="event-screen__ambient event-screen__ambient--left" />
+      <div className="event-screen__ambient event-screen__ambient--right" />
+      
       <section className="idle-ticket" aria-label="Свадебный железнодорожный билет">
         <div className="idle-ticket__body" data-testid="idle-ticket-body">
           <header className="idle-screen__masthead">

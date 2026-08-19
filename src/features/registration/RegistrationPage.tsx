@@ -166,7 +166,7 @@ export function RegistrationPage({
     <main className="registration-shell">
       <section className="registration-card">
         <header className="registration-heading">
-          <p className="eyebrow">ПОЕЗД ВИКТОРА · 30.08.2026</p>
+          <p className="eyebrow">ЛИЗА × ВИКТОР · 30.08.2026</p>
           <h1>ВАШ БИЛЕТ ЖДЁТ</h1>
           <p>Представьтесь — и сайт определит ваш вагон-команду на сегодняшний вечер.</p>
         </header>
