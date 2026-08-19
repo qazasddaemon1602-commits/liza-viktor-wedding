@@ -1,3 +1,4 @@
+import Hls from 'hls.js';
 import { useEffect, useRef, useState } from 'react';
 import { siteAudio } from '../../lib/siteAudio';
 import { needsPremiereMediaResolution, resolvePremiereMediaUrl } from './premiereMedia';
@@ -11,6 +12,14 @@ type PremierePlayerProps = {
   onEnded?: () => void;
 };
 
+function isHlsSource(value: string) {
+  try {
+    return new URL(value, window.location.origin).pathname.toLowerCase().endsWith('.m3u8');
+  } catch {
+    return /\.m3u8(?:$|[?#])/i.test(value);
+  }
+}
+
 export function PremierePlayer({
   src,
   shouldPlay,
@@ -20,8 +29,10 @@ export function PremierePlayer({
   onEnded,
 }: PremierePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const playedSourceRef = useRef<string | null>(null);
   const wasPlayingRef = useRef(false);
+  const [sourceReadyVersion, setSourceReadyVersion] = useState(0);
   const [audioSettings, setAudioSettings] = useState(() => siteAudio.getSettings());
   const [playableSrc, setPlayableSrc] = useState(() => (
     needsPremiereMediaResolution(src) ? '' : src
@@ -65,6 +76,52 @@ export function PremierePlayer({
 
   useEffect(() => {
     const video = videoRef.current;
+    if (!video) return;
+
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+    playedSourceRef.current = null;
+    wasPlayingRef.current = false;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+
+    if (!playableSrc) return;
+
+    if (isHlsSource(playableSrc)) {
+      const nativeManagedHls = (
+        video.canPlayType('application/vnd.apple.mpegurl')
+        && 'ManagedMediaSource' in window
+      );
+
+      if (!nativeManagedHls && Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          startLevel: -1,
+        });
+        hlsRef.current = hls;
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          hls.loadSource(playableSrc);
+        });
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setSourceReadyVersion((version) => version + 1);
+        });
+        hls.attachMedia(video);
+
+        return () => {
+          hls.destroy();
+          if (hlsRef.current === hls) hlsRef.current = null;
+        };
+      }
+    }
+
+    video.src = playableSrc;
+    video.load();
+    setSourceReadyVersion((version) => version + 1);
+  }, [playableSrc]);
+
+  useEffect(() => {
+    const video = videoRef.current;
     if (
       !video
       || !playableSrc
@@ -76,9 +133,14 @@ export function PremierePlayer({
     }
 
     if (Math.abs(video.currentTime - positionSeconds) > 0.75) {
-      video.currentTime = positionSeconds;
+      try {
+        video.currentTime = positionSeconds;
+      } catch {
+        // Some media engines reject seeking until metadata is ready. The same
+        // effect runs again after the HLS manifest/source becomes ready.
+      }
     }
-  }, [positionSeconds, playableSrc]);
+  }, [positionSeconds, playableSrc, sourceReadyVersion]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -93,7 +155,7 @@ export function PremierePlayer({
       return;
     }
 
-    if (playedSourceRef.current === playableSrc) return;
+    if (playedSourceRef.current === playableSrc && !video.paused) return;
 
     playedSourceRef.current = playableSrc;
     wasPlayingRef.current = true;
@@ -101,7 +163,7 @@ export function PremierePlayer({
       if (playedSourceRef.current === playableSrc) playedSourceRef.current = null;
       wasPlayingRef.current = false;
     });
-  }, [shouldPlay, playableSrc]);
+  }, [shouldPlay, playableSrc, sourceReadyVersion]);
 
   const deviceMuted = muted || !audioSettings.enabled || audioSettings.volume <= 0;
 
@@ -109,7 +171,6 @@ export function PremierePlayer({
     <video
       ref={videoRef}
       className="premiere-player"
-      src={playableSrc || undefined}
       preload="auto"
       playsInline
       muted={deviceMuted}
