@@ -272,6 +272,9 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
         currentModule={dashboard.state?.currentModule ?? 'idle'}
         currentScreenMode={dashboard.state?.screenMode ?? 'idle'}
         expectedScreenCount={2}
+        registrationOpen={dashboard.event.registrationOpen}
+        compositionLocked={dashboard.event.compositionLocked}
+        guestCount={dashboard.guests.length}
         premiere={dependencies.premiere}
         couplePreanswers={dependencies.couplePreanswers}
       />
