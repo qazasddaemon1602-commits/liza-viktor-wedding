@@ -34,11 +34,13 @@ export function IdleRegistrationScreen({ joinUrl }: IdleRegistrationScreenProps)
 
             <div className="idle-ticket__art" aria-hidden="true">
               <span className="idle-ticket__art-kicker">THE LOVE RAILWAY</span>
-              <WeddingRailwayEmblem className="wedding-railway-emblem idle-ticket__locomotive" />
-              <div className="idle-ticket__stamp">
-                <span>LV</span>
-                <strong>30·08</strong>
-                <span>2026</span>
+              <div className="idle-ticket__art-container">
+                <WeddingRailwayEmblem className="wedding-railway-emblem idle-ticket__locomotive" />
+                <div className="idle-ticket__stamp">
+                  <span>LV</span>
+                  <strong>30·08</strong>
+                  <span>2026</span>
+                </div>
               </div>
             </div>
           </div>
