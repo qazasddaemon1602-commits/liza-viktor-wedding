@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties } from 'react';
+import { WeddingRailwayEmblem } from '../visual/WeddingRailwayEmblem';
 
 export type GuestRegistrationScreenEvent = {
   id: string;
@@ -47,7 +48,7 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
 
   return (
     <section
-      className="train-arrival"
+      className="train-arrival train-arrival--editorial"
       data-testid="train-arrival-scene"
       style={accentStyle}
       aria-live="assertive"
@@ -55,21 +56,43 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
     >
       <div className="train-arrival__wash" aria-hidden="true" />
       <div className="train-arrival__speed-lines" aria-hidden="true" />
+      <div className="train-arrival__paper-grain" aria-hidden="true" />
 
       <div className="train-arrival__meta">
-        <span>ПОЕЗД ВИКТОРА</span>
+        <span>ПОЕЗД ВИКТОРА · PLATFORM ANNOUNCEMENT</span>
         <span>30 · 08 · 2026</span>
       </div>
 
-      <div className="train-arrival__copy">
-        <p className="train-arrival__eyebrow">НОВЫЙ ПАССАЖИР</p>
-        <h2>{event.payload.displayName}</h2>
-        <div className="train-arrival__assignment">
-          <span className="train-arrival__mark">{event.payload.carriage.visualMark}</span>
-          <div>
-            <small>МЕСТО В СОСТАВЕ</small>
-            <strong>{event.payload.carriage.label}</strong>
+      <div className="train-arrival__platform-ticket" data-testid="arrival-platform-ticket">
+        <div className="train-arrival__ticket-index" aria-hidden="true">
+          <span>ARRIVAL</span>
+          <strong>{event.payload.carriage.visualMark}</strong>
+          <span>LV · TYUMEN</span>
+        </div>
+
+        <div className="train-arrival__copy">
+          <p className="train-arrival__eyebrow">НОВЫЙ ПАССАЖИР</p>
+          <h2>{event.payload.displayName}</h2>
+          <div className="train-arrival__assignment">
+            <span className="train-arrival__mark">{event.payload.carriage.visualMark}</span>
+            <div>
+              <small>МЕСТО В СОСТАВЕ</small>
+              <strong>{event.payload.carriage.label}</strong>
+            </div>
           </div>
+        </div>
+
+        <div className="train-arrival__editorial-seal" data-testid="arrival-editorial-seal" aria-hidden="true">
+          <WeddingRailwayEmblem className="wedding-railway-emblem train-arrival__seal-emblem" />
+          <span>PASSENGER ACCEPTED</span>
+          <i />
+          <span>LOVE RAILWAY · 2026</span>
+        </div>
+
+        <div className="train-arrival__ticket-route" aria-hidden="true">
+          <span>WELCOME</span>
+          <i />
+          <span>{event.payload.carriage.label}</span>
         </div>
       </div>
 
