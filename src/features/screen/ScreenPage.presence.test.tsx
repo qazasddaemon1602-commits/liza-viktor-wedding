@@ -32,7 +32,7 @@ describe('ScreenPage premiere presence heartbeat', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('reports the screen immediately, then updates video and audio readiness', async () => {
+  it('starts with sound enabled, auto-arms audio, and exposes a disable-first toggle that mutes premiere media', async () => {
     const broadcastPremierePresence = vi.fn().mockResolvedValue(undefined);
     const dependencies = {
       subscribe: () => vi.fn(),
@@ -42,6 +42,7 @@ describe('ScreenPage premiere presence heartbeat', () => {
       armArrivalAudio: vi.fn().mockResolvedValue(true),
       armPremiereAudio: vi.fn().mockResolvedValue(true),
       playArrivalSignal: vi.fn(),
+      stopArrivalAudio: vi.fn(),
       playPremiereCountdownTick: vi.fn(),
     };
 
@@ -55,14 +56,30 @@ describe('ScreenPage premiere presence heartbeat', () => {
     );
     await flushPromises();
 
-    expect(broadcastPremierePresence).toHaveBeenCalledWith({
+    const video = container.querySelector('video')!;
+    expect(video.muted).toBe(false);
+    expect(dependencies.armArrivalAudio).toHaveBeenCalledTimes(1);
+    expect(dependencies.armPremiereAudio).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
+    expect(broadcastPremierePresence).toHaveBeenLastCalledWith({
       screenId: 'tv-room-1',
       videoReady: false,
-      audioArmed: false,
+      audioArmed: true,
     });
 
-    fireEvent.canPlay(container.querySelector('video')!);
+    fireEvent.canPlay(video);
     await flushPromises();
+    expect(broadcastPremierePresence).toHaveBeenLastCalledWith({
+      screenId: 'tv-room-1',
+      videoReady: true,
+      audioArmed: true,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' }));
+    await flushPromises();
+    expect(video.muted).toBe(true);
+    expect(dependencies.stopArrivalAudio).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
     expect(broadcastPremierePresence).toHaveBeenLastCalledWith({
       screenId: 'tv-room-1',
       videoReady: true,
@@ -71,6 +88,8 @@ describe('ScreenPage premiere presence heartbeat', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' }));
     await flushPromises();
+    expect(video.muted).toBe(false);
+    expect(screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
     expect(broadcastPremierePresence).toHaveBeenLastCalledWith({
       screenId: 'tv-room-1',
       videoReady: true,

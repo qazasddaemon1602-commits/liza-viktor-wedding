@@ -180,8 +180,8 @@ export function AdminRehearsalPanel({
 
           <div className="admin-rehearsal__checks">
             <span className={screensReady ? 'is-ready' : 'has-blocker'}>ТВ · {presence.connectedCount} / {expectedScreenCount}</span>
-            <span className={videoReady ? 'is-ready' : 'has-blocker'}>ВИДЕО · {videoReady ? 'ГОТОВО' : 'НЕ ГОТОВО'}</span>
-            <span className={audioReady ? 'is-ready' : 'has-blocker'}>ЗВУК · {audioReady ? 'ГОТОВ' : 'НЕ ГОТОВ'}</span>
+            <span className={videoReady ? 'is-ready' : 'has-blocker'}>ВИДЕО · {presence.videoReadyCount} / {expectedScreenCount}</span>
+            <span className={audioReady ? 'is-ready' : 'has-blocker'}>ЗВУК · {presence.audioArmedCount} / {expectedScreenCount}</span>
             <span className={premiereReady ? 'is-ready' : 'has-blocker'}>{premiereLabel}</span>
             <span className={coupleReady ? 'is-ready' : 'has-blocker'}>{coupleLabel}</span>
             <span className={bunkerActive ? 'has-blocker' : 'is-ready'}>БУНКЕР · {bunkerActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>

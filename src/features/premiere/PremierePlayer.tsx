@@ -5,6 +5,7 @@ type PremierePlayerProps = {
   src: string;
   shouldPlay: boolean;
   positionSeconds?: number;
+  muted?: boolean;
   onReady?: () => void;
   onEnded?: () => void;
 };
@@ -13,6 +14,7 @@ export function PremierePlayer({
   src,
   shouldPlay,
   positionSeconds,
+  muted = false,
   onReady,
   onEnded,
 }: PremierePlayerProps) {
@@ -98,6 +100,7 @@ export function PremierePlayer({
       src={playableSrc || undefined}
       preload="auto"
       playsInline
+      muted={muted}
       controls={false}
       onCanPlay={onReady}
       onEnded={onEnded}

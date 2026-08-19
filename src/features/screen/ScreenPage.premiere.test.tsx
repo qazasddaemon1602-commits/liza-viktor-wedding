@@ -132,9 +132,10 @@ describe('ScreenPage premiere protection', () => {
     expect(dependencies.playArrivalSignal).not.toHaveBeenCalled();
   });
 
-  it('uses the same projector interaction to arm normal screen audio and premiere countdown audio', async () => {
+  it('auto-arms normal and premiere audio together and lets the operator mute the screen', async () => {
     const armArrivalAudio = vi.fn().mockResolvedValue(true);
     const armPremiereAudio = vi.fn().mockResolvedValue(true);
+    const stopArrivalAudio = vi.fn();
     const dependencies = {
       subscribe: () => vi.fn(),
       loadPremiere: vi.fn().mockResolvedValue(standbyState),
@@ -142,6 +143,7 @@ describe('ScreenPage premiere protection', () => {
       armArrivalAudio,
       armPremiereAudio,
       playArrivalSignal: vi.fn(),
+      stopArrivalAudio,
       playPremiereCountdownTick: vi.fn(),
     };
 
@@ -154,12 +156,12 @@ describe('ScreenPage premiere protection', () => {
     );
     await flushPromises();
 
-    const button = screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' });
-    fireEvent.click(button);
-    await flushPromises();
-
     expect(armArrivalAudio).toHaveBeenCalledTimes(1);
     expect(armPremiereAudio).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).not.toBeInTheDocument();
+    const button = screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' });
+
+    fireEvent.click(button);
+    expect(stopArrivalAudio).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
   });
 });

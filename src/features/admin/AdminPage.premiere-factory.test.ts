@@ -73,7 +73,7 @@ describe('createAdminPageDependencies premiere wiring', () => {
     });
   });
 
-  it('wires live projector presence into the owner premiere panel', () => {
+  it('wires live projector presence into the owner premiere panel on its dedicated channel', () => {
     let listener: ((message: unknown) => void) | undefined;
     const realtimeChannel = {
       send: vi.fn().mockResolvedValue('ok'),
@@ -90,7 +90,7 @@ describe('createAdminPageDependencies premiere wiring', () => {
     const receive = vi.fn();
     const unsubscribe = deps.premiere!.subscribeScreenPresence!(receive);
 
-    expect(mocked.channel).toHaveBeenCalledWith('premiere:liza-viktor');
+    expect(mocked.channel).toHaveBeenCalledWith('premiere-presence:liza-viktor');
     expect(realtimeChannel.on).toHaveBeenCalledWith(
       'broadcast',
       { event: 'screen_presence' },

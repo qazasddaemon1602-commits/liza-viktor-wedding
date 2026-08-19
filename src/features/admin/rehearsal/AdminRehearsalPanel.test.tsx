@@ -44,7 +44,7 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByRole('link', { name: 'MK НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
   });
 
-  it('shows rehearsal blockers when technical or content readiness is missing', async () => {
+  it('shows rehearsal blockers with live technical counts when readiness is missing', async () => {
     render(
       <AdminRehearsalPanel
         eventId="event-1"
@@ -70,12 +70,50 @@ describe('AdminRehearsalPanel', () => {
     });
 
     expect(screen.getByText('ТВ · 0 / 2')).toBeInTheDocument();
-    expect(screen.getByText('ВИДЕО · НЕ ГОТОВО')).toBeInTheDocument();
-    expect(screen.getByText('ЗВУК · НЕ ГОТОВ')).toBeInTheDocument();
+    expect(screen.getByText('ВИДЕО · 0 / 2')).toBeInTheDocument();
+    expect(screen.getByText('ЗВУК · 0 / 2')).toBeInTheDocument();
     expect(screen.getByText('ПРЕМЬЕРА · НЕ НАСТРОЕНА')).toBeInTheDocument();
     expect(screen.getByText('ОТВЕТЫ ПАРЫ · 2 / 5')).toBeInTheDocument();
     expect(screen.getByText('БУНКЕР · ГОТОВ')).toBeInTheDocument();
     expect(screen.getByText('MK · ГОТОВ')).toBeInTheDocument();
+  });
+
+  it('updates each readiness count as a projector heartbeat arrives', async () => {
+    let onPresence: ((presence: ScreenPresence) => void) | undefined;
+
+    render(
+      <AdminRehearsalPanel
+        eventId="event-1"
+        currentModule="idle"
+        expectedScreenCount={2}
+        premiere={{
+          load: vi.fn().mockResolvedValue(configuredPremiere),
+          subscribeScreenPresence: (callback: (presence: ScreenPresence) => void) => {
+            onPresence = callback;
+            return () => undefined;
+          },
+        }}
+        couplePreanswers={{
+          load: vi.fn().mockResolvedValue({
+            status: 'finalized',
+            answeredCount: 5,
+            totalCount: 5,
+            issuedAt: serverNow,
+            finalizedAt: serverNow,
+          }),
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(onPresence).toBeTypeOf('function'));
+
+    act(() => {
+      onPresence?.({ screenId: 'tv-main', videoReady: false, audioArmed: true });
+    });
+
+    expect(screen.getByText('ТВ · 1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('ВИДЕО · 0 / 2')).toBeInTheDocument();
+    expect(screen.getByText('ЗВУК · 1 / 2')).toBeInTheDocument();
   });
 
   it('reports an unissued couple link explicitly and shows a clean production start state', async () => {
@@ -182,8 +220,8 @@ describe('AdminRehearsalPanel', () => {
     });
 
     expect(screen.getByText('ТВ · 2 / 2')).toBeInTheDocument();
-    expect(screen.getByText('ВИДЕО · ГОТОВО')).toBeInTheDocument();
-    expect(screen.getByText('ЗВУК · ГОТОВ')).toBeInTheDocument();
+    expect(screen.getByText('ВИДЕО · 2 / 2')).toBeInTheDocument();
+    expect(screen.getByText('ЗВУК · 2 / 2')).toBeInTheDocument();
     expect(screen.getByText('ПРЕМЬЕРА · ГОТОВА')).toBeInTheDocument();
     expect(screen.getByText('ОТВЕТЫ ПАРЫ · ГОТОВЫ')).toBeInTheDocument();
     expect(screen.getByText('БУНКЕР · ГОТОВ')).toBeInTheDocument();
