@@ -7,25 +7,17 @@ type CarriageCallSceneProps = {
   event: CarriageCallScreenEvent;
 };
 
-function projectorSoundEnabled(): boolean {
-  if (typeof document === 'undefined') return true;
-  const control = document.querySelector('.screen-audio-arm');
-  return !control?.textContent?.includes('ВКЛЮЧИТЬ ЗВУК');
-}
-
 export function CarriageCallScene({ event }: CarriageCallSceneProps) {
   useEffect(() => {
     siteAudio.beginPriority('scene');
     const audio = createScreenAudioController();
 
-    if (projectorSoundEnabled()) {
-      void audio.arm().then((ready) => {
-        if (ready) audio.playCarriageCall();
-      });
-    }
+    void audio.arm().then((ready) => {
+      if (ready) audio.playCarriageCall();
+    });
 
     return () => {
-      audio.stopCarriageCall();
+      audio.dispose();
       siteAudio.endPriority('scene');
     };
   }, [event.id]);
