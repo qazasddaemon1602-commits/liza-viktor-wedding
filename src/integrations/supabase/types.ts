@@ -14,29 +14,179 @@ export type Database = {
   }
   public: {
     Tables: {
+      bunker_final_attempts: {
+        Row: {
+          correct: boolean
+          created_at: string
+          event_id: string
+          guest_id: string | null
+          id: number
+          run_nonce: string
+          submitted_code_hash: string
+        }
+        Insert: {
+          correct: boolean
+          created_at?: string
+          event_id: string
+          guest_id?: string | null
+          id?: number
+          run_nonce: string
+          submitted_code_hash: string
+        }
+        Update: {
+          correct?: boolean
+          created_at?: string
+          event_id?: string
+          guest_id?: string | null
+          id?: number
+          run_nonce?: string
+          submitted_code_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bunker_final_attempts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bunker_final_attempts_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bunker_guest_profiles: {
+        Row: {
+          baggage: string
+          created_at: string
+          event_id: string
+          guest_id: string
+          health: string
+          hidden_fact: string
+          hobby: string
+          id: string
+          profession: string
+          profile: string
+          run_nonce: string
+        }
+        Insert: {
+          baggage: string
+          created_at?: string
+          event_id: string
+          guest_id: string
+          health: string
+          hidden_fact: string
+          hobby: string
+          id?: string
+          profession: string
+          profile: string
+          run_nonce: string
+        }
+        Update: {
+          baggage?: string
+          created_at?: string
+          event_id?: string
+          guest_id?: string
+          health?: string
+          hidden_fact?: string
+          hobby?: string
+          id?: string
+          profession?: string
+          profile?: string
+          run_nonce?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bunker_guest_profiles_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bunker_guest_profiles_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bunker_mission_templates: {
+        Row: {
+          carriage_number: number
+          correct_answer: string
+          hint_copy: string
+          id: string
+          options: Json
+          prompt: string
+          stage: string
+          success_copy: string
+          title: string
+        }
+        Insert: {
+          carriage_number: number
+          correct_answer: string
+          hint_copy: string
+          id?: string
+          options?: Json
+          prompt: string
+          stage: string
+          success_copy: string
+          title: string
+        }
+        Update: {
+          carriage_number?: number
+          correct_answer?: string
+          hint_copy?: string
+          id?: string
+          options?: Json
+          prompt?: string
+          stage?: string
+          success_copy?: string
+          title?: string
+        }
+        Relationships: []
+      }
       bunker_state: {
         Row: {
           duration_seconds: number
           event_id: string
+          phase: string
+          phase_started_at: string | null
+          run_nonce: string | null
           sound_enabled: boolean
           started_at: string | null
           status: string
+          unlocked_at: string | null
           updated_at: string
         }
         Insert: {
           duration_seconds?: number
           event_id: string
+          phase?: string
+          phase_started_at?: string | null
+          run_nonce?: string | null
           sound_enabled?: boolean
           started_at?: string | null
           status?: string
+          unlocked_at?: string | null
           updated_at?: string
         }
         Update: {
           duration_seconds?: number
           event_id?: string
+          phase?: string
+          phase_started_at?: string | null
+          run_nonce?: string | null
           sound_enabled?: boolean
           started_at?: string | null
           status?: string
+          unlocked_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -45,6 +195,77 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: true
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bunker_team_progress: {
+        Row: {
+          attempt_count: number
+          carriage_id: string
+          completed_at: string | null
+          completed_by_guest_id: string | null
+          event_id: string
+          id: string
+          mission_template_id: string
+          reward_fragment: string | null
+          run_nonce: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          carriage_id: string
+          completed_at?: string | null
+          completed_by_guest_id?: string | null
+          event_id: string
+          id?: string
+          mission_template_id: string
+          reward_fragment?: string | null
+          run_nonce: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          carriage_id?: string
+          completed_at?: string | null
+          completed_by_guest_id?: string | null
+          event_id?: string
+          id?: string
+          mission_template_id?: string
+          reward_fragment?: string | null
+          run_nonce?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bunker_team_progress_carriage_id_fkey"
+            columns: ["carriage_id"]
+            isOneToOne: false
+            referencedRelation: "carriages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bunker_team_progress_completed_by_guest_id_fkey"
+            columns: ["completed_by_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bunker_team_progress_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bunker_team_progress_mission_template_id_fkey"
+            columns: ["mission_template_id"]
+            isOneToOne: false
+            referencedRelation: "bunker_mission_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -967,11 +1188,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _bunker_guest_id: {
+        Args: { p_device_key: string; p_event_slug: string }
+        Returns: string
+      }
       _couple_preanswer_token_hash: {
         Args: { p_token: string }
         Returns: string
       }
       _device_hash: { Args: { device_key: string }; Returns: string }
+      _ensure_bunker_guest_profile: {
+        Args: { p_event_id: string; p_guest_id: string; p_run_nonce: string }
+        Returns: undefined
+      }
+      _ensure_bunker_team_progress: {
+        Args: { p_event_id: string; p_run_nonce: string }
+        Returns: undefined
+      }
       _final_five_token_hash: { Args: { p_token: string }; Returns: string }
       _guest_profile_json: { Args: { guest_id: string }; Returns: Json }
       _mk_next_match: {
@@ -1013,6 +1246,10 @@ export type Database = {
         Args: { p_device_key: string; p_event_slug: string }
         Returns: Json
       }
+      get_guest_bunker_state: {
+        Args: { p_device_key: string; p_event_slug: string }
+        Returns: Json
+      }
       get_mk_tournament_state: {
         Args: { p_device_key?: string; p_event_slug: string }
         Returns: Json
@@ -1039,6 +1276,11 @@ export type Database = {
         Args: { p_event_id: string; p_question_id: string }
         Returns: Json
       }
+      owner_advance_bunker_phase: {
+        Args: { p_event_id: string; p_phase: string }
+        Returns: Json
+      }
+      owner_begin_bunker_quest: { Args: { p_event_id: string }; Returns: Json }
       owner_cancel_premiere: { Args: { p_event_id: string }; Returns: Json }
       owner_clear_carriage_call: { Args: { p_call_id: string }; Returns: Json }
       owner_close_mk_registration: {
@@ -1051,7 +1293,12 @@ export type Database = {
       }
       owner_delete_guest: { Args: { p_guest_id: string }; Returns: Json }
       owner_finalize_mk_draw: { Args: { p_event_id: string }; Returns: Json }
+      owner_force_complete_bunker_team_stage: {
+        Args: { p_carriage_id: string; p_event_id: string; p_stage: string }
+        Returns: Json
+      }
       owner_get_bunker_control: { Args: { p_event_id: string }; Returns: Json }
+      owner_get_bunker_quest: { Args: { p_event_id: string }; Returns: Json }
       owner_get_couple_preanswer_status: {
         Args: { p_event_id: string }
         Returns: Json
@@ -1116,6 +1363,10 @@ export type Database = {
       }
       owner_replace_mk_player: {
         Args: { p_guest_id: string; p_registration_id: string }
+        Returns: Json
+      }
+      owner_reset_bunker_team_stage: {
+        Args: { p_carriage_id: string; p_event_id: string; p_stage: string }
         Returns: Json
       }
       owner_reset_event_test_data: {
@@ -1205,6 +1456,7 @@ export type Database = {
         Args: { clear_completed_downstream?: boolean; p_match_id: string }
         Returns: Json
       }
+      owner_unlock_bunker: { Args: { p_event_id: string }; Returns: Json }
       recover_guest: {
         Args: {
           p_device_key: string
@@ -1245,6 +1497,19 @@ export type Database = {
           p_question_id: string
           p_role: string
           p_token: string
+        }
+        Returns: Json
+      }
+      submit_guest_bunker_final_code: {
+        Args: { p_code: string; p_device_key: string; p_event_slug: string }
+        Returns: Json
+      }
+      submit_guest_bunker_mission: {
+        Args: {
+          p_answer: string
+          p_device_key: string
+          p_event_slug: string
+          p_stage: string
         }
         Returns: Json
       }
