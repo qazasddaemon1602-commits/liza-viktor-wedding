@@ -26,7 +26,6 @@ export function CarriageCallScene({ event }: CarriageCallSceneProps) {
 
     return () => {
       audio.stopCarriageCall();
-      audio.dispose();
       siteAudio.endPriority('scene');
     };
   }, [event.id]);
