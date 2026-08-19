@@ -78,7 +78,9 @@ export function createBunkerAudioController(): BunkerAudioController {
   });
 
   const rearmFromProjectorControl = () => {
-    void arm();
+    void arm().then((armed) => {
+      if (armed && interval !== null) pulse();
+    });
   };
   window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
 
