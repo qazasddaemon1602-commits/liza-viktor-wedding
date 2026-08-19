@@ -12,6 +12,8 @@ import {
   type BunkerRpcClient,
   type OwnerBunkerControl,
 } from '../../bunker/bunker.service';
+import { useOwnerBunkerQuestState } from '../../bunker/useOwnerBunkerQuestState';
+import { BunkerQuestOwnerPanel } from './BunkerQuestOwnerPanel';
 
 export type AdminBunkerControlDependencies = {
   load: (eventId: string) => Promise<OwnerBunkerControl>;
@@ -56,6 +58,9 @@ export function AdminBunkerControl({ eventId, dependencies }: AdminBunkerControl
   const [error, setError] = useState('');
   const [nowMs, setNowMs] = useState(() => Date.now());
   const serverOffsetRef = useRef(0);
+  const quest = useOwnerBunkerQuestState(eventId, {
+    enabled: state?.status === 'active' && !dependencies,
+  });
 
   const storeState = (next: OwnerBunkerControl) => {
     const receivedAt = Date.now();
@@ -213,6 +218,20 @@ export function AdminBunkerControl({ eventId, dependencies }: AdminBunkerControl
         </label>
       )}
 
+      {state?.status === 'active' && quest.state?.status === 'active' && (
+        <BunkerQuestOwnerPanel
+          state={quest.state}
+          busy={quest.busy}
+          onBegin={() => void quest.begin()}
+          onAdvance={(phase) => void quest.advance(phase)}
+          onReset={(carriageId, stage) => void quest.resetStage(carriageId, stage)}
+          onForce={(carriageId, stage) => void quest.forceStage(carriageId, stage)}
+          onUnlock={() => void quest.unlock()}
+        />
+      )}
+
+      {quest.error && <p className="admin-bunker-error" role="alert">{quest.error}</p>}
+      {quest.warning && <p className="admin-bunker-error" role="status">{quest.warning}</p>}
       {error && <p className="admin-bunker-error" role="alert">{error}</p>}
     </section>
   );

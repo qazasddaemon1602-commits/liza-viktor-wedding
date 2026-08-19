@@ -1,3 +1,4 @@
+import type { BunkerMissionStage, GuestBunkerQuestState } from '../bunker/bunkerQuest.types';
 import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
 import type { RegisteredGuest } from '../registration/registration.types';
 import { VirtualTicket } from '../registration/VirtualTicket';
@@ -7,6 +8,12 @@ import { GuestLiveActivity } from './GuestLiveActivity';
 type GuestHubProps = {
   guest: RegisteredGuest;
   activeCall: GuestCarriageCall | null;
+  bunkerState?: GuestBunkerQuestState | null;
+  bunkerFeedback?: string;
+  bunkerError?: string;
+  bunkerSubmitting?: boolean;
+  onBunkerMission?: (stage: BunkerMissionStage, answer: string) => void;
+  onBunkerFinalCode?: (code: string) => void;
   quizState: GuestQuizState | null;
   quizError?: string;
   quizSubmitting?: QuizChoice | null;
@@ -23,9 +30,28 @@ function historyFrom(state: GuestQuizState | null): QuizHistoryEntry[] {
   return state.history;
 }
 
+function bunkerStatus(state: GuestBunkerQuestState | null): string {
+  if (!state || state.status !== 'active') return 'ОЖИДАЕМ ЗАПУСК';
+  switch (state.phase) {
+    case 'emergency': return 'ЭКСТРЕННОЕ СООБЩЕНИЕ';
+    case 'dossier_1': return 'ДОСЬЕ · ЭТАП I';
+    case 'dossier_2': return 'ДОСЬЕ · ЭТАП II';
+    case 'mission_a': return 'ЗАДАНИЕ A';
+    case 'mission_b': return 'ЗАДАНИЕ B';
+    case 'final': return state.final.unlocked ? 'ДОСТУП ПОЛУЧЕН' : 'ФИНАЛЬНЫЙ КОД';
+    case 'completed': return 'БУНКЕР ОТКРЫТ';
+  }
+}
+
 export function GuestHub({
   guest,
   activeCall,
+  bunkerState = null,
+  bunkerFeedback = '',
+  bunkerError = '',
+  bunkerSubmitting = false,
+  onBunkerMission = () => undefined,
+  onBunkerFinalCode = () => undefined,
   quizState,
   quizError = '',
   quizSubmitting = null,
@@ -63,6 +89,11 @@ export function GuestHub({
         <GuestLiveActivity
           carriage={guest.carriage}
           activeCall={activeCall}
+          bunkerState={bunkerState}
+          bunkerFeedback={bunkerFeedback || bunkerError}
+          bunkerSubmitting={bunkerSubmitting}
+          onBunkerMission={onBunkerMission}
+          onBunkerFinalCode={onBunkerFinalCode}
           quizState={quizState}
           quizError={quizError}
           quizSubmitting={quizSubmitting}
@@ -76,6 +107,11 @@ export function GuestHub({
           <p className="eyebrow">МОИ АКТИВНОСТИ</p>
         </div>
         <div className="guest-hub-activity-grid">
+          <article className={bunkerState?.status === 'active' ? 'guest-hub-activity--active' : ''}>
+            <span>БУНКЕР</span>
+            <strong>{bunkerStatus(bunkerState)}</strong>
+            <p>Экстренный протокол, личное досье и задания вагона появятся здесь автоматически.</p>
+          </article>
           <article>
             <span>LIVE QUIZ</span>
             <strong>{quizStatus}</strong>

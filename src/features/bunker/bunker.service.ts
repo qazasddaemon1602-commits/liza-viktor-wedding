@@ -1,3 +1,12 @@
+import type { BunkerPhase } from './bunkerQuest.types';
+
+export type BunkerScreenTeamState = {
+  carriageNumber: number;
+  label: string;
+  missionAComplete: boolean;
+  missionBComplete: boolean;
+};
+
 export type BunkerScreenState =
   | { status: 'idle' | 'not_found'; serverNow: string }
   | {
@@ -6,6 +15,9 @@ export type BunkerScreenState =
       durationSeconds: number;
       remainingSeconds: number;
       soundEnabled: boolean;
+      phase: BunkerPhase;
+      unlocked: boolean;
+      teams: BunkerScreenTeamState[];
       serverNow: string;
     };
 
@@ -33,6 +45,16 @@ export type BunkerRpcClient = {
   ) => PromiseLike<{ data: unknown; error: BunkerRpcError }>;
 };
 
+const BUNKER_PHASES = new Set<BunkerPhase>([
+  'emergency',
+  'dossier_1',
+  'dossier_2',
+  'mission_a',
+  'mission_b',
+  'final',
+  'completed',
+]);
+
 function rpcError(error: Exclude<BunkerRpcError, null>): never {
   if (error instanceof Error) throw error;
   const next = new Error(error.message || 'Bunker request failed');
@@ -58,6 +80,39 @@ function positiveInteger(value: unknown): number {
   return value;
 }
 
+function phase(value: unknown): BunkerPhase {
+  if (value === undefined) return 'emergency';
+  if (typeof value !== 'string' || !BUNKER_PHASES.has(value as BunkerPhase)) {
+    throw new Error('Unexpected bunker phase');
+  }
+  return value as BunkerPhase;
+}
+
+function parseTeams(value: unknown): BunkerScreenTeamState[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new Error('Unexpected bunker team progress');
+  return value.map((entry) => {
+    if (
+      !record(entry)
+      || typeof entry.carriageNumber !== 'number'
+      || !Number.isInteger(entry.carriageNumber)
+      || entry.carriageNumber < 1
+      || typeof entry.label !== 'string'
+      || !entry.label.trim()
+      || typeof entry.missionAComplete !== 'boolean'
+      || typeof entry.missionBComplete !== 'boolean'
+    ) {
+      throw new Error('Unexpected bunker team progress');
+    }
+    return {
+      carriageNumber: entry.carriageNumber,
+      label: entry.label,
+      missionAComplete: entry.missionAComplete,
+      missionBComplete: entry.missionBComplete,
+    };
+  });
+}
+
 function parseScreen(data: unknown): BunkerScreenState {
   if (!record(data) || typeof data.status !== 'string') {
     throw new Error('Unexpected bunker screen response');
@@ -79,6 +134,9 @@ function parseScreen(data: unknown): BunkerScreenState {
     durationSeconds: positiveInteger(data.durationSeconds),
     remainingSeconds: positiveInteger(data.remainingSeconds),
     soundEnabled: data.soundEnabled,
+    phase: phase(data.phase),
+    unlocked: data.unlocked === undefined ? false : Boolean(data.unlocked),
+    teams: parseTeams(data.teams),
     serverNow,
   };
 }
