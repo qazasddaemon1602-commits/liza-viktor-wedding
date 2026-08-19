@@ -9,6 +9,29 @@ function isYandexDiskPublicUrl(value: string) {
   }
 }
 
+function googleDriveFileId(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (host !== 'drive.google.com' && host !== 'docs.google.com') return null;
+
+    const fileMatch = url.pathname.match(/\/file\/d\/([^/]+)/i);
+    if (fileMatch?.[1]) return fileMatch[1];
+
+    return url.searchParams.get('id');
+  } catch {
+    return null;
+  }
+}
+
+function googleDriveDirectUrl(fileId: string) {
+  const direct = new URL('https://drive.usercontent.google.com/download');
+  direct.searchParams.set('id', fileId);
+  direct.searchParams.set('export', 'download');
+  direct.searchParams.set('confirm', 't');
+  return direct.toString();
+}
+
 type PublicDownloadResponse = {
   href?: unknown;
 };
@@ -17,6 +40,9 @@ export async function resolvePremiereMediaUrl(
   source: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<string> {
+  const driveFileId = googleDriveFileId(source);
+  if (driveFileId) return googleDriveDirectUrl(driveFileId);
+
   if (!isYandexDiskPublicUrl(source)) return source;
 
   const endpoint = new URL(YANDEX_PUBLIC_DOWNLOAD_ENDPOINT);
@@ -36,5 +62,5 @@ export async function resolvePremiereMediaUrl(
 }
 
 export function needsPremiereMediaResolution(source: string) {
-  return isYandexDiskPublicUrl(source);
+  return Boolean(googleDriveFileId(source)) || isYandexDiskPublicUrl(source);
 }

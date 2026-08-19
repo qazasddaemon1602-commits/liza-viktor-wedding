@@ -26,6 +26,26 @@ describe('premiere media resolver', () => {
     expect(requestedMethod).toBe('GET');
   });
 
+  it('resolves a Google Drive share link without an API request', async () => {
+    const source = 'https://drive.google.com/file/d/1_lEX3Z-FKUJnRC5pQiNxetpyXxGWf2KH/view?usp=drivesdk';
+    let called = false;
+    const fetchImpl = (async () => {
+      called = true;
+      throw new Error('fetch must not run for Google Drive share links');
+    }) as typeof fetch;
+
+    const resolved = await resolvePremiereMediaUrl(source, fetchImpl);
+    const direct = new URL(resolved);
+
+    expect(direct.origin).toBe('https://drive.usercontent.google.com');
+    expect(direct.pathname).toBe('/download');
+    expect(direct.searchParams.get('id')).toBe('1_lEX3Z-FKUJnRC5pQiNxetpyXxGWf2KH');
+    expect(direct.searchParams.get('export')).toBe('download');
+    expect(direct.searchParams.get('confirm')).toBe('t');
+    expect(called).toBe(false);
+    expect(needsPremiereMediaResolution(source)).toBe(true);
+  });
+
   it('does not resolve a normal direct media URL', async () => {
     const source = 'https://cdn.example.com/premiere.mp4';
     let called = false;
@@ -51,9 +71,11 @@ describe('premiere media resolver', () => {
     )).rejects.toThrow('returned no direct href');
   });
 
-  it('recognizes supported Yandex public-link hosts', () => {
+  it('recognizes supported share-link hosts', () => {
     expect(needsPremiereMediaResolution('https://disk.yandex.ru/i/file')).toBe(true);
     expect(needsPremiereMediaResolution('https://disk.yandex.com/i/file')).toBe(true);
     expect(needsPremiereMediaResolution('https://yadi.sk/i/file')).toBe(true);
+    expect(needsPremiereMediaResolution('https://drive.google.com/file/d/file-id/view')).toBe(true);
+    expect(needsPremiereMediaResolution('https://drive.google.com/open?id=file-id')).toBe(true);
   });
 });
