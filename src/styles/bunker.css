@@ -233,9 +233,9 @@
 .bunker-emergency__schematic {
   position: absolute;
   right: clamp(1.6rem, 2.6vw, 3.2rem);
-  bottom: clamp(5.5rem, 9vh, 9rem);
+  bottom: clamp(7rem, 15vh, 12rem);
   z-index: -1;
-  width: min(34vw, 640px);
+  width: min(30vw, 560px);
   height: auto;
   opacity: 0.55;
   pointer-events: none;
