@@ -1,4 +1,4 @@
-import { siteAudio } from '../../lib/siteAudio';
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
 
 type AudioParamLike = {
   setValueAtTime: (value: number, time: number) => unknown;
@@ -94,6 +94,13 @@ export function createScreenAudioController(
     }
   };
 
+  const rearmFromProjectorControl = () => {
+    void arm();
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
+  }
+
   const playTone = (
     frequency: number,
     startAt: number,
@@ -161,6 +168,9 @@ export function createScreenAudioController(
 
   const dispose = () => {
     unsubscribeSettings();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
+    }
     stopOscillators();
     const current = context;
     context = null;
