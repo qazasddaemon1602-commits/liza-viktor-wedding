@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { siteAudio } from '../../lib/siteAudio';
 import {
   createPremiereAudioController,
   getCountdownCue,
@@ -35,6 +36,16 @@ function fakeAudioContext() {
 }
 
 describe('premiere countdown audio', () => {
+  beforeEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
+  afterEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
   it('never schedules a countdown cue for zero or an out-of-range second', () => {
     expect(getCountdownCue(0)).toBeNull();
     expect(getCountdownCue(-1)).toBeNull();
@@ -48,7 +59,7 @@ describe('premiere countdown audio', () => {
     expect(getCountdownCue(1)).toBe('countdown-final');
   });
 
-  it('plays a low pulse only for valid countdown seconds', () => {
+  it('plays a low pulse at the device volume only for valid countdown seconds', () => {
     const { context, frequency, gain, oscillator } = fakeAudioContext();
     const audio = createPremiereAudioController(() => context);
 
@@ -58,7 +69,7 @@ describe('premiere countdown audio', () => {
     audio.playCountdownTick(4);
     expect(context.createOscillator).toHaveBeenCalledTimes(1);
     expect(frequency.setValueAtTime).toHaveBeenLastCalledWith(110, expect.any(Number));
-    expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.018, expect.any(Number));
+    expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.018 * 0.75, expect.any(Number));
     expect(oscillator.stop).toHaveBeenCalled();
   });
 
@@ -69,6 +80,16 @@ describe('premiere countdown audio', () => {
     audio.playCountdownTick(3);
 
     expect(frequency.setValueAtTime).toHaveBeenLastCalledWith(146.83, expect.any(Number));
-    expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.028, expect.any(Number));
+    expect(gain.linearRampToValueAtTime).toHaveBeenCalledWith(0.028 * 0.75, expect.any(Number));
+  });
+
+  it('stays silent when the device is muted', async () => {
+    const { context } = fakeAudioContext();
+    const audio = createPremiereAudioController(() => context);
+    siteAudio.setEnabled(false);
+
+    expect(await audio.arm()).toBe(false);
+    audio.playCountdownTick(4);
+    expect(context.createOscillator).not.toHaveBeenCalled();
   });
 });
