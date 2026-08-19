@@ -37,12 +37,15 @@ export type ScreenAudioController = {
 };
 
 type AudioContextFactory = () => AudioContextLike;
+let sharedBrowserContext: AudioContextLike | null = null;
 
 function browserAudioContextFactory(): AudioContextLike {
+  if (sharedBrowserContext && sharedBrowserContext.state !== 'closed') return sharedBrowserContext;
   const AudioContextConstructor = window.AudioContext
     ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextConstructor) throw new Error('Web Audio is not supported');
-  return new AudioContextConstructor() as unknown as AudioContextLike;
+  sharedBrowserContext = new AudioContextConstructor() as unknown as AudioContextLike;
+  return sharedBrowserContext;
 }
 
 export function createScreenAudioController(
@@ -147,6 +150,7 @@ export function createScreenAudioController(
     stopOscillators();
     const current = context;
     context = null;
+    if (current && current === sharedBrowserContext) sharedBrowserContext = null;
     if (current) void current.close().catch(() => undefined);
   };
 
