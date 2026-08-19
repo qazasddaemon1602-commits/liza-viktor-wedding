@@ -490,6 +490,7 @@ export function ScreenPage({
         <PremiereScreen
           state={premiereState}
           nowMs={premiereNowMs}
+          muted={!soundEnabled}
           onCountdownTick={playPremiereCountdownTick}
           onVideoReady={() => setVideoReady(true)}
         />
