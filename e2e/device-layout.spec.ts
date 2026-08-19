@@ -38,6 +38,28 @@ test('owner admin is usable on a 390px phone without horizontal overflow', async
   await context.close();
 });
 
+test('main projector fits a 1920x1080 TV and keeps the QR call to action visible', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const page = await context.newPage();
+
+  await page.goto('/screen');
+  await expect(page.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
+  const qr = page.getByTestId('registration-qr');
+  await expect(qr).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  const qrBox = await qr.boundingBox();
+  expect(qrBox).not.toBeNull();
+  expect(qrBox!.x).toBeGreaterThanOrEqual(0);
+  expect(qrBox!.y).toBeGreaterThanOrEqual(0);
+  expect(qrBox!.x + qrBox!.width).toBeLessThanOrEqual(1920);
+  expect(qrBox!.y + qrBox!.height).toBeLessThanOrEqual(1080);
+  expect(qrBox!.width).toBeGreaterThanOrEqual(320);
+  expect(qrBox!.height).toBeGreaterThanOrEqual(320);
+
+  await context.close();
+});
+
 test('guest ticket fits a 390px phone and keeps passenger details visible', async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -59,28 +81,6 @@ test('guest ticket fits a 390px phone and keeps passenger details visible', asyn
   await expect(page.getByText(/ВАГОН №\d/)).toBeVisible();
   await expect(page.getByText(/LV-\d{3}/)).toBeVisible();
   await expectNoHorizontalOverflow(page);
-
-  await context.close();
-});
-
-test('main projector fits a 1920x1080 TV and keeps the QR call to action visible', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
-  const page = await context.newPage();
-
-  await page.goto('/screen');
-  await expect(page.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
-  const qr = page.getByTestId('registration-qr');
-  await expect(qr).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-
-  const qrBox = await qr.boundingBox();
-  expect(qrBox).not.toBeNull();
-  expect(qrBox!.x).toBeGreaterThanOrEqual(0);
-  expect(qrBox!.y).toBeGreaterThanOrEqual(0);
-  expect(qrBox!.x + qrBox!.width).toBeLessThanOrEqual(1920);
-  expect(qrBox!.y + qrBox!.height).toBeLessThanOrEqual(1080);
-  expect(qrBox!.width).toBeGreaterThanOrEqual(320);
-  expect(qrBox!.height).toBeGreaterThanOrEqual(320);
 
   await context.close();
 });
