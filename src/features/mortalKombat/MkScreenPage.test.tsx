@@ -53,7 +53,8 @@ describe('MkScreenPage', () => {
   it('shows the champion after the final result', async () => {
     render(<MkScreenPage dependencies={dependencies(completed)} />);
 
-    expect(await screen.findByText('CHAMPION')).toBeInTheDocument();
+    expect(await screen.findByText('FINISH HIM')).toBeInTheDocument();
+    expect(screen.getByText('ПОБЕДИТЕЛЬ')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Сергей' })).toBeInTheDocument();
   });
 });
