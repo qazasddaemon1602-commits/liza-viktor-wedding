@@ -157,6 +157,18 @@ function parseHistory(value: unknown): QuizHistoryEntry[] | undefined {
   });
 }
 
+function parseTimedProjection(data: Record<string, unknown>): TimedProjection {
+  const timed: TimedProjection = {};
+  if (typeof data.roundId === 'string') timed.roundId = data.roundId;
+  const phaseStartedAt = parseOptionalTimestamp(data.phaseStartedAt);
+  const phaseEndsAt = parseOptionalTimestamp(data.phaseEndsAt);
+  const history = parseHistory(data.history);
+  if (phaseStartedAt !== undefined) timed.phaseStartedAt = phaseStartedAt;
+  if (phaseEndsAt !== undefined) timed.phaseEndsAt = phaseEndsAt;
+  if (history !== undefined) timed.history = history;
+  return timed;
+}
+
 function throwRpcError(error: Exclude<QuizRpcError, null>): never {
   if (error instanceof Error) throw error;
   const next = new Error(error.message || 'Quiz request failed');
@@ -180,7 +192,10 @@ export async function getGuestQuizState(
 
   if (data.status === 'not_found') return { status: 'not_found' };
   if (data.status === 'not_registered') return { status: 'not_registered' };
-  if (data.status === 'idle') return { status: 'idle', history: parseHistory(data.history) };
+  if (data.status === 'idle') {
+    const history = parseHistory(data.history);
+    return history === undefined ? { status: 'idle' } : { status: 'idle', history };
+  }
   if (data.status !== 'active') throw new Error('Unexpected quiz-state response');
 
   if (data.phase !== 'voting' && data.phase !== 'results') {
@@ -194,15 +209,8 @@ export async function getGuestQuizState(
     throw new Error('Unexpected selected quiz choice');
   }
 
-  const timed = {
-    roundId: typeof data.roundId === 'string' ? data.roundId : undefined,
-    phaseStartedAt: parseOptionalTimestamp(data.phaseStartedAt),
-    phaseEndsAt: parseOptionalTimestamp(data.phaseEndsAt),
-    history: parseHistory(data.history),
-  };
-
   const base = {
-    ...timed,
+    ...parseTimedProjection(data),
     status: 'active' as const,
     question: parseQuestion(data.question),
     selectedChoice,
