@@ -28,7 +28,6 @@ concurrency:
 
 jobs:
   event-flow:
-    if: github.head_ref != 'fix/premiere-yandex-disk'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
