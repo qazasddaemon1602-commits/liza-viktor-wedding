@@ -1,0 +1,457 @@
+/* Guest registration and collectible mobile ticket — presentation only. */
+
+.registration-shell {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow-x: hidden;
+  padding: clamp(1rem, 4vw, 2.4rem);
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 90% 4%, rgba(155, 169, 180, 0.17), transparent 20rem),
+    radial-gradient(circle at 8% 94%, rgba(154, 99, 72, 0.09), transparent 24rem),
+    linear-gradient(145deg, #f7f2ea 0%, var(--wedding-paper) 52%, #ece4d8 100%);
+}
+
+.registration-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0.75rem;
+  border: 1px solid rgba(37, 39, 36, 0.08);
+  pointer-events: none;
+}
+
+.registration-card,
+.registration-routing {
+  position: relative;
+  width: min(100%, 35rem);
+  padding: clamp(1.7rem, 6vw, 3rem);
+  border: 1px solid var(--wedding-line-strong);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.42), transparent 38%),
+    var(--wedding-paper);
+  box-shadow: var(--wedding-paper-shadow);
+}
+
+.registration-card::before,
+.registration-routing::before {
+  content: "";
+  position: absolute;
+  inset: 0.55rem;
+  border: 1px solid var(--wedding-line-soft);
+  pointer-events: none;
+}
+
+.registration-heading {
+  gap: 0.95rem;
+  margin-bottom: 2.2rem;
+}
+
+.registration-heading .eyebrow,
+.registration-routing .eyebrow,
+.registration-success > .eyebrow {
+  color: var(--wedding-cinnamon);
+}
+
+.registration-heading h1,
+.registration-routing h1 {
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.055em;
+}
+
+.registration-heading > p:last-child,
+.registration-hint,
+.registration-card > p {
+  color: rgba(37, 39, 36, 0.64);
+}
+
+.registration-form label {
+  color: var(--wedding-forest);
+}
+
+.registration-form input,
+.registration-form select,
+.registration-form textarea {
+  border-bottom-color: rgba(37, 39, 36, 0.25);
+  color: var(--wedding-graphite);
+}
+
+.registration-form input:focus,
+.registration-form select:focus,
+.registration-form textarea:focus {
+  border-color: var(--wedding-cinnamon);
+}
+
+.registration-submit {
+  color: var(--wedding-paper);
+  background: var(--wedding-graphite);
+}
+
+.registration-secondary {
+  border-color: var(--wedding-line-strong);
+  color: var(--wedding-graphite);
+}
+
+.registration-route-line {
+  background: var(--wedding-line-soft);
+}
+
+.registration-route-line span {
+  background: var(--wedding-brass);
+}
+
+.registration-shell--ticket {
+  align-items: center;
+}
+
+.registration-success {
+  width: min(100%, 44rem);
+  gap: 1.15rem;
+  padding: 0;
+}
+
+.registration-success > .eyebrow,
+.registration-success > .registration-hint {
+  padding-inline: 0.35rem;
+}
+
+.virtual-ticket {
+  --ticket-accent: var(--wedding-forest);
+  position: relative;
+  width: 100%;
+  min-height: 35rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.5rem;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(37, 39, 36, 0.28);
+  color: var(--wedding-graphite);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ticket-accent) 6%, transparent), transparent 48%),
+    var(--wedding-paper);
+  box-shadow:
+    0 2rem 5rem rgba(37, 39, 36, 0.13),
+    0 0 0 0.42rem rgba(243, 238, 229, 0.5);
+  isolation: isolate;
+}
+
+.virtual-ticket::before {
+  content: "";
+  position: absolute;
+  inset: 0.55rem;
+  z-index: 5;
+  border: 1px solid rgba(37, 39, 36, 0.12);
+  pointer-events: none;
+}
+
+.virtual-ticket::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: auto;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  opacity: 0.12;
+  background-image:
+    radial-gradient(circle at 18% 24%, rgba(37, 39, 36, 0.16) 0 0.5px, transparent 0.7px),
+    radial-gradient(circle at 72% 68%, rgba(154, 99, 72, 0.13) 0 0.45px, transparent 0.7px);
+  background-size: 12px 14px, 17px 19px;
+  pointer-events: none;
+}
+
+.virtual-ticket__main,
+.virtual-ticket__stub {
+  position: relative;
+  z-index: 1;
+}
+
+.virtual-ticket__main {
+  min-width: 0;
+  display: grid;
+  align-content: space-between;
+  gap: 1.15rem;
+  padding: clamp(1.55rem, 5vw, 2.4rem);
+}
+
+.virtual-ticket__topline,
+.virtual-ticket__route,
+.virtual-ticket__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: rgba(37, 39, 36, 0.48);
+  font-size: clamp(0.54rem, 1.7vw, 0.66rem);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.virtual-ticket__topline {
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--wedding-line-soft);
+}
+
+.virtual-ticket__route {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  color: var(--wedding-forest);
+}
+
+.virtual-ticket__line {
+  position: relative;
+  height: 1px;
+  background: rgba(49, 72, 58, 0.28);
+}
+
+.virtual-ticket__line::before,
+.virtual-ticket__line::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0.35rem;
+  aspect-ratio: 1;
+  border: 1px solid rgba(49, 72, 58, 0.42);
+  border-radius: 50%;
+  background: var(--wedding-paper);
+  transform: translateY(-50%);
+}
+
+.virtual-ticket__line::before { left: 0; }
+.virtual-ticket__line::after { right: 0; }
+
+.virtual-ticket__locomotive {
+  width: min(62%, 15rem);
+  margin: 0.3rem 0 0 auto;
+  color: color-mix(in srgb, var(--wedding-forest) 78%, var(--wedding-blue-grey));
+  opacity: 0.65;
+}
+
+.virtual-ticket__passenger {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+
+.virtual-ticket__field-label,
+.virtual-ticket__stub-label,
+.virtual-ticket__valid {
+  color: rgba(37, 39, 36, 0.46);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.virtual-ticket h2 {
+  max-width: 10ch;
+  margin: 0;
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.75rem, 10vw, 4.7rem);
+  font-weight: 400;
+  line-height: 0.88;
+  letter-spacing: -0.055em;
+  overflow-wrap: anywhere;
+}
+
+.virtual-ticket__carriage {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  color: var(--ticket-accent);
+}
+
+.virtual-ticket__carriage > div {
+  display: grid;
+  gap: 0.35rem;
+  padding-bottom: 0.18rem;
+}
+
+.virtual-ticket__mark {
+  color: var(--ticket-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.6rem, 12vw, 5.4rem);
+  font-weight: 400;
+  line-height: 0.78;
+}
+
+.virtual-ticket__carriage strong {
+  color: var(--wedding-graphite);
+  font-size: clamp(0.86rem, 3vw, 1.05rem);
+  letter-spacing: 0.13em;
+}
+
+.virtual-ticket__footer {
+  justify-content: flex-start;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--wedding-line-soft);
+}
+
+.virtual-ticket__footer span:nth-child(2) {
+  color: var(--wedding-brass);
+}
+
+.virtual-ticket__stub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 1.35rem 0.85rem;
+  border-left: 1px dashed rgba(37, 39, 36, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 30%),
+    color-mix(in srgb, var(--ticket-accent) 11%, var(--wedding-cream));
+  text-align: center;
+}
+
+.virtual-ticket__stub::before {
+  content: "";
+  position: absolute;
+  left: -0.56rem;
+  top: 0.9rem;
+  bottom: 0.9rem;
+  width: 1.1rem;
+  background: radial-gradient(circle, #f3eee5 0 0.27rem, transparent 0.3rem) center top / 100% 1.08rem repeat-y;
+  pointer-events: none;
+}
+
+.virtual-ticket__valid {
+  color: color-mix(in srgb, var(--ticket-accent) 62%, var(--wedding-graphite));
+  line-height: 1.5;
+}
+
+.virtual-ticket__number {
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.virtual-ticket__stub-mark {
+  margin-block: 0.4rem;
+  color: color-mix(in srgb, var(--ticket-accent) 72%, var(--wedding-graphite));
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.2rem, 11vw, 4.7rem);
+  line-height: 0.8;
+  opacity: 0.76;
+}
+
+.virtual-ticket__stub-seal {
+  width: 4.2rem;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.05rem;
+  margin-top: 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--ticket-accent) 38%, transparent);
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--ticket-accent) 68%, var(--wedding-graphite));
+  font-size: 0.5rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  transform: rotate(-8deg);
+}
+
+.virtual-ticket__stub-seal i {
+  color: var(--wedding-brass);
+  font-style: normal;
+}
+
+@media (max-width: 520px) {
+  .registration-shell {
+    place-items: start center;
+    padding: 0.8rem;
+  }
+
+  .registration-shell::before {
+    display: none;
+  }
+
+  .registration-success {
+    width: 100%;
+  }
+
+  .virtual-ticket {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .virtual-ticket__main {
+    gap: 1rem;
+    padding: 1.35rem;
+  }
+
+  .virtual-ticket__topline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .virtual-ticket__locomotive {
+    width: min(58%, 12rem);
+  }
+
+  .virtual-ticket__stub {
+    grid-template-columns: 1fr auto auto;
+    justify-items: start;
+    align-items: center;
+    gap: 0.45rem 0.8rem;
+    padding: 1.35rem;
+    border-top: 1px dashed rgba(37, 39, 36, 0.3);
+    border-left: 0;
+    text-align: left;
+  }
+
+  .virtual-ticket__stub::before {
+    top: -0.56rem;
+    right: 0.9rem;
+    bottom: auto;
+    left: 0.9rem;
+    width: auto;
+    height: 1.1rem;
+    background: radial-gradient(circle, #f3eee5 0 0.27rem, transparent 0.3rem) left center / 1.08rem 100% repeat-x;
+  }
+
+  .virtual-ticket__valid {
+    grid-column: 1 / -1;
+  }
+
+  .virtual-ticket__stub-label {
+    align-self: end;
+  }
+
+  .virtual-ticket__number {
+    align-self: end;
+  }
+
+  .virtual-ticket__stub-mark {
+    grid-row: 2 / 4;
+    grid-column: 3;
+    margin: 0;
+    font-size: 3.2rem;
+  }
+
+  .virtual-ticket__stub-seal {
+    width: 3.3rem;
+    grid-column: 1 / 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .registration-shell *,
+  .registration-shell *::before,
+  .registration-shell *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
