@@ -59,7 +59,8 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
       <div className="train-arrival__paper-grain" aria-hidden="true" />
 
       <div className="train-arrival__meta">
-        <span>ПОЕЗД ВИКТОРА · PLATFORM ANNOUNCEMENT</span>
+        <span>ПОЕЗД ВИКТОРА</span>
+        <span>PLATFORM ANNOUNCEMENT</span>
         <span>30 · 08 · 2026</span>
       </div>
 
@@ -92,7 +93,7 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
         <div className="train-arrival__ticket-route" aria-hidden="true">
           <span>WELCOME</span>
           <i />
-          <span>{event.payload.carriage.label}</span>
+          <span>CARRIAGE {event.payload.carriage.visualMark}</span>
         </div>
       </div>
 
