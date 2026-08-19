@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties } from 'react';
+import { siteAudio } from '../../lib/siteAudio';
 import { WeddingRailwayEmblem } from '../visual/WeddingRailwayEmblem';
 import type { RegisteredGuest } from './registration.types';
 
@@ -11,6 +12,12 @@ export function VirtualTicket({ guest }: VirtualTicketProps) {
     '--carriage-accent': guest.carriage.accentHex,
     '--ticket-accent': guest.carriage.accentHex,
   } as CSSProperties;
+
+  useEffect(() => {
+    siteAudio.play('confirm');
+    const timer = window.setTimeout(() => siteAudio.play('success'), 120);
+    return () => window.clearTimeout(timer);
+  }, [guest.id]);
 
   return (
     <article

@@ -31,16 +31,21 @@ export type ScreenAudioController = {
   arm: () => Promise<boolean>;
   playArrival: () => void;
   stopArrival: () => void;
+  playCarriageCall: () => void;
+  stopCarriageCall: () => void;
   dispose: () => void;
 };
 
 type AudioContextFactory = () => AudioContextLike;
+let sharedBrowserContext: AudioContextLike | null = null;
 
 function browserAudioContextFactory(): AudioContextLike {
+  if (sharedBrowserContext && sharedBrowserContext.state !== 'closed') return sharedBrowserContext;
   const AudioContextConstructor = window.AudioContext
     ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextConstructor) throw new Error('Web Audio is not supported');
-  return new AudioContextConstructor() as unknown as AudioContextLike;
+  sharedBrowserContext = new AudioContextConstructor() as unknown as AudioContextLike;
+  return sharedBrowserContext;
 }
 
 export function createScreenAudioController(
@@ -59,16 +64,22 @@ export function createScreenAudioController(
     }
   };
 
-  const playTone = (frequency: number, startAt: number, duration: number) => {
+  const playTone = (
+    frequency: number,
+    startAt: number,
+    duration: number,
+    peak = 0.024,
+    type: OscillatorType = 'sine',
+  ) => {
     if (!context || context.state !== 'running') return;
 
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.type = 'sine';
+    oscillator.type = type;
     oscillator.frequency.setValueAtTime(frequency, startAt);
 
     gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.linearRampToValueAtTime(0.024, startAt + 0.025);
+    gain.gain.linearRampToValueAtTime(peak, startAt + Math.min(0.08, duration / 5));
     gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
 
     oscillator.connect(gain);
@@ -86,7 +97,7 @@ export function createScreenAudioController(
     playTone(659.25, now + 0.19, 0.2);
   };
 
-  const stopArrival = () => {
+  const stopOscillators = () => {
     if (!context) return;
     for (const oscillator of activeOscillators) {
       try {
@@ -98,13 +109,57 @@ export function createScreenAudioController(
     activeOscillators.clear();
   };
 
-  const dispose = () => {
-    if (!context) return;
-    stopArrival();
-    const current = context;
-    context = null;
-    void current.close().catch(() => undefined);
+  const playCarriageCall = () => {
+    if (!context || context.state !== 'running') return;
+    stopOscillators();
+    const start = context.currentTime + 0.02;
+
+    // Long low rail/engine bed.
+    playTone(48, start, 10.8, 0.045, 'triangle');
+    playTone(63, start + 0.15, 10.1, 0.028, 'sine');
+
+    // Rhythmic rail impacts.
+    for (let index = 0; index < 11; index += 1) {
+      const at = start + 0.55 + index * 0.78;
+      playTone(index % 2 === 0 ? 92 : 104, at, 0.12, 0.018, 'triangle');
+    }
+
+    // Station chime.
+    playTone(523.25, start + 0.15, 0.17, 0.018, 'sine');
+    playTone(659.25, start + 0.38, 0.2, 0.017, 'sine');
+
+    // Cinematic two-note train horn.
+    playTone(174.61, start + 2.7, 1.35, 0.055, 'triangle');
+    playTone(130.81, start + 2.82, 1.25, 0.044, 'sine');
+    playTone(155.56, start + 4.35, 0.85, 0.035, 'triangle');
+
+    // Distant tail as the train leaves.
+    playTone(92.5, start + 8.45, 1.2, 0.016, 'sine');
+    playTone(73.42, start + 9.15, 1.55, 0.012, 'triangle');
   };
 
-  return { arm, playArrival, stopArrival, dispose };
+  const stopArrival = () => {
+    stopOscillators();
+  };
+
+  const stopCarriageCall = () => {
+    stopOscillators();
+  };
+
+  const dispose = () => {
+    stopOscillators();
+    const current = context;
+    context = null;
+    if (current && current === sharedBrowserContext) sharedBrowserContext = null;
+    if (current) void current.close().catch(() => undefined);
+  };
+
+  return {
+    arm,
+    playArrival,
+    stopArrival,
+    playCarriageCall,
+    stopCarriageCall,
+    dispose,
+  };
 }

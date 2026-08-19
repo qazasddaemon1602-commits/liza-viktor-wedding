@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { siteAudio } from '../../lib/siteAudio';
 import type { MkPlayer } from './mk.types';
 
 type ChampionSceneProps = {
@@ -7,6 +9,12 @@ type ChampionSceneProps = {
 
 export function ChampionScene({ championGuestId, players }: ChampionSceneProps) {
   const champion = players.find((player) => player.guestId === championGuestId)?.displayName ?? 'ПОБЕДИТЕЛЬ';
+
+  useEffect(() => {
+    siteAudio.play('impact');
+    const timer = window.setTimeout(() => siteAudio.play('success'), 240);
+    return () => window.clearTimeout(timer);
+  }, [championGuestId]);
 
   return (
     <section className="mk-screen-scene mk-champion-scene">
