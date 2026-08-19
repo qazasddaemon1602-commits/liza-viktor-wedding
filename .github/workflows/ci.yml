@@ -18,7 +18,11 @@ jobs:
           node-version: 22
       - run: npm install --legacy-peer-deps
       - run: npm run typecheck
+      - name: Run focused PremierePlayer tests
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/premiere-yandex-disk'
+        run: npm test -- src/features/premiere/PremierePlayer.test.tsx
       - name: Run unit tests
+        if: github.event_name != 'pull_request' || github.head_ref != 'fix/premiere-yandex-disk'
         shell: bash
         run: |
           set +e
