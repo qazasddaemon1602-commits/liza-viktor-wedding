@@ -54,8 +54,15 @@ export function createScreenAudioController(
   factory: AudioContextFactory = browserAudioContextFactory,
 ): ScreenAudioController {
   let context: AudioContextLike | null = null;
+  let masterGain: GainLike | null = null;
   const usesSharedBrowserContext = factory === browserAudioContextFactory;
   const activeOscillators = new Set<OscillatorLike>();
+
+  const applyMasterVolume = () => {
+    if (!context || !masterGain) return;
+    const audible = siteAudio.isEnabled() && siteAudio.getVolume() > 0;
+    masterGain.gain.setValueAtTime(audible ? siteAudio.getVolume() : 0, context.currentTime);
+  };
 
   const stopOscillators = () => {
     if (!context) return;
@@ -69,15 +76,18 @@ export function createScreenAudioController(
     activeOscillators.clear();
   };
 
-  const unsubscribeSettings = siteAudio.subscribe((settings) => {
-    if (!settings.enabled || settings.volume <= 0) stopOscillators();
-  });
+  const unsubscribeSettings = siteAudio.subscribe(() => applyMasterVolume());
 
   const arm = async (): Promise<boolean> => {
     if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
     try {
       context ??= factory();
       if (context.state !== 'running') await context.resume();
+      if (!masterGain) {
+        masterGain = context.createGain();
+        masterGain.connect(context.destination);
+      }
+      applyMasterVolume();
       return context.state === 'running';
     } catch {
       return false;
@@ -91,8 +101,7 @@ export function createScreenAudioController(
     peak = 0.024,
     type: OscillatorType = 'sine',
   ) => {
-    const volume = siteAudio.getVolume();
-    if (!context || context.state !== 'running' || !siteAudio.isEnabled() || volume <= 0) return;
+    if (!context || context.state !== 'running' || !masterGain || !siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
 
     const oscillator = context.createOscillator();
     const gain = context.createGain();
@@ -100,11 +109,11 @@ export function createScreenAudioController(
     oscillator.frequency.setValueAtTime(frequency, startAt);
 
     gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.linearRampToValueAtTime(peak * volume, startAt + Math.min(0.08, duration / 5));
+    gain.gain.linearRampToValueAtTime(peak, startAt + Math.min(0.08, duration / 5));
     gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
 
     oscillator.connect(gain);
-    gain.connect(context.destination);
+    gain.connect(masterGain);
     oscillator.onended = () => activeOscillators.delete(oscillator);
     activeOscillators.add(oscillator);
     oscillator.start(startAt);
@@ -155,6 +164,7 @@ export function createScreenAudioController(
     stopOscillators();
     const current = context;
     context = null;
+    masterGain = null;
     if (!usesSharedBrowserContext && current) void current.close().catch(() => undefined);
   };
 
