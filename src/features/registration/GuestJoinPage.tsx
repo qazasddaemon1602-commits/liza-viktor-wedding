@@ -28,6 +28,8 @@ const DEFAULT_EVENT_SLUG = 'liza-viktor';
 type GuestJoinPageProps = {
   client?: RegistrationRpcClient;
   realtimeClient?: CarriageCallRealtimeClient;
+  quizClient?: QuizRpcClient;
+  quizRealtimeClient?: QuizRealtimeClient;
   eventSlug?: string;
   deviceKey?: string;
   revealDelayMs?: number;
@@ -36,6 +38,8 @@ type GuestJoinPageProps = {
 export function GuestJoinPage({
   client,
   realtimeClient,
+  quizClient,
+  quizRealtimeClient,
   eventSlug = DEFAULT_EVENT_SLUG,
   deviceKey,
   revealDelayMs,
@@ -49,11 +53,15 @@ export function GuestJoinPage({
       },
     };
     const carriageCallClient = registrationClient as unknown as CarriageCallRpcClient;
-    const quizClient = registrationClient as unknown as QuizRpcClient;
+    const activeQuizClient = quizClient
+      ?? (browserSupabase as unknown as QuizRpcClient | null)
+      ?? undefined;
     const activeCarriageRealtimeClient = realtimeClient
       ?? (browserSupabase as unknown as CarriageCallRealtimeClient | null)
       ?? undefined;
-    const activeQuizRealtimeClient = (browserSupabase as unknown as QuizRealtimeClient | null) ?? undefined;
+    const activeQuizRealtimeClient = quizRealtimeClient
+      ?? (browserSupabase as unknown as QuizRealtimeClient | null)
+      ?? undefined;
     let cachedDeviceKey = deviceKey;
     const getDeviceKey = () => {
       cachedDeviceKey ??= getOrCreateDeviceKey();
@@ -88,11 +96,11 @@ export function GuestJoinPage({
           callback,
         )
         : undefined,
-      quiz: {
+      quiz: activeQuizClient ? {
         getDeviceKey,
-        load: (key) => getGuestQuizState(quizClient, eventSlug, key),
+        load: (key) => getGuestQuizState(activeQuizClient, eventSlug, key),
         vote: (key, questionId, choice) => submitGuestQuizVote(
-          quizClient,
+          activeQuizClient,
           eventSlug,
           key,
           questionId,
@@ -101,9 +109,9 @@ export function GuestJoinPage({
         subscribeToRefresh: activeQuizRealtimeClient
           ? (callback) => subscribeToQuizRefresh(activeQuizRealtimeClient, eventSlug, callback)
           : undefined,
-      },
+      } : undefined,
     };
-  }, [client, deviceKey, eventSlug, realtimeClient]);
+  }, [client, deviceKey, eventSlug, quizClient, quizRealtimeClient, realtimeClient]);
 
   return <JoinPage dependencies={dependencies} revealDelayMs={revealDelayMs} />;
 }
