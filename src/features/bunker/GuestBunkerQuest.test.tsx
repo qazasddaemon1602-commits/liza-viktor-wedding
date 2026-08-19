@@ -39,10 +39,11 @@ describe('GuestBunkerQuest', () => {
   });
 
   it('reveals dossier progressively instead of rerolling or exposing future fields', () => {
-    render(<GuestBunkerQuest state={base} onMission={vi.fn()} onFinalCode={vi.fn()} />);
+    render(<GuestBunkerQuest state={base} carriageNumber={2} onMission={vi.fn()} onFinalCode={vi.fn()} />);
 
     expect(screen.getByText('АРХИТЕКТОР')).toBeInTheDocument();
     expect(screen.getByText('31 ГОД · ЛЮБИТ ПОРЯДОК')).toBeInTheDocument();
+    expect(screen.getByText('КОМАНДА · ВАГОН 2')).toBeInTheDocument();
     expect(screen.getAllByText('СКРЫТО ДО КОМАНДЫ ВЕДУЩЕГО').length).toBeGreaterThanOrEqual(4);
   });
 

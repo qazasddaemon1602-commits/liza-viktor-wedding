@@ -8,6 +8,7 @@ type ActiveState = Extract<GuestBunkerQuestState, { status: 'active' }>;
 
 type GuestBunkerQuestProps = {
   state: ActiveState;
+  carriageNumber?: number;
   submitting?: boolean;
   feedback?: string;
   onMission: (stage: BunkerMissionStage, answer: string) => Promise<void> | void;
@@ -32,6 +33,7 @@ function DossierRow({ label, value }: { label: string; value: string | null }) {
 
 export function GuestBunkerQuest({
   state,
+  carriageNumber,
   submitting = false,
   feedback = '',
   onMission,
@@ -42,6 +44,7 @@ export function GuestBunkerQuest({
   const mission = state.team?.mission;
   const missionStage = state.team?.stage;
   const hasOptions = Boolean(mission?.options.length);
+  const resolvedCarriageNumber = state.team?.carriageNumber ?? carriageNumber;
 
   const submitTypedMission = () => {
     if (!missionStage || !missionAnswer.trim() || submitting) return;
@@ -88,7 +91,7 @@ export function GuestBunkerQuest({
 
       {(state.phase === 'dossier_1' || state.phase === 'dossier_2') && (
         <div className="guest-bunker-briefing">
-          <p className="eyebrow">КОМАНДА · ВАГОН {state.team?.carriageNumber ?? '—'}</p>
+          <p className="eyebrow">КОМАНДА · ВАГОН {resolvedCarriageNumber ?? '—'}</p>
           <strong>{state.phase === 'dossier_1' ? 'СРАВНИТЕ ПЕРВЫЕ ДАННЫЕ С ВАГОНОМ' : 'ДОСЬЕ РАСКРЫТО · ГОТОВЬТЕСЬ К ЗАДАНИЮ'}</strong>
         </div>
       )}

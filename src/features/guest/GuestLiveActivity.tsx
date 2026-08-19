@@ -40,6 +40,7 @@ export function GuestLiveActivity({
       <div className="guest-live-activity guest-live-activity--bunker">
         <GuestBunkerQuest
           state={bunkerState}
+          carriageNumber={carriage.number}
           submitting={bunkerSubmitting}
           feedback={bunkerFeedback}
           onMission={onBunkerMission}
