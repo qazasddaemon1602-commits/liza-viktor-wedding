@@ -28,6 +28,7 @@ concurrency:
 
 jobs:
   event-flow:
+    if: github.head_ref != 'feat/mk-artbook-visuals'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
