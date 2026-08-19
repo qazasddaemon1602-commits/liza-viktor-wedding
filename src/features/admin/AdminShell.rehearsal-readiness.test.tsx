@@ -5,6 +5,12 @@ import type { AdminDashboard } from './admin.service';
 
 const serverNow = '2026-08-19T03:30:00.000Z';
 
+type ScreenPresence = {
+  screenId: string;
+  videoReady: boolean;
+  audioArmed: boolean;
+};
+
 const dashboard: AdminDashboard = {
   status: 'owner',
   event: {
@@ -31,7 +37,7 @@ const dashboard: AdminDashboard = {
 
 describe('AdminShell rehearsal readiness integration', () => {
   it('wires the owner premiere, screen presence and couple-answer status into the rehearsal panel', async () => {
-    let presenceCallback: ((presence: { screenId: string; videoReady: boolean; audioArmed: boolean }) => void) | undefined;
+    const presenceCallbacks: Array<(presence: ScreenPresence) => void> = [];
 
     const premiere: NonNullable<AdminShellDependencies['premiere']> = {
       load: vi.fn().mockResolvedValue({
@@ -60,8 +66,11 @@ describe('AdminShell rehearsal readiness integration', () => {
       setCountdownSound: vi.fn().mockResolvedValue(undefined),
       broadcastRefresh: vi.fn().mockResolvedValue(undefined),
       subscribeScreenPresence: (callback) => {
-        presenceCallback = callback;
-        return () => undefined;
+        presenceCallbacks.push(callback);
+        return () => {
+          const index = presenceCallbacks.indexOf(callback);
+          if (index >= 0) presenceCallbacks.splice(index, 1);
+        };
       },
     };
 
@@ -89,11 +98,13 @@ describe('AdminShell rehearsal readiness integration', () => {
     render(<AdminShell dependencies={dependencies} refreshIntervalMs={0} />);
 
     await screen.findByText('Лиза × Виктор');
-    await waitFor(() => expect(presenceCallback).toBeTypeOf('function'));
+    await waitFor(() => expect(presenceCallbacks.length).toBeGreaterThanOrEqual(2));
 
     act(() => {
-      presenceCallback?.({ screenId: 'tv-main', videoReady: true, audioArmed: true });
-      presenceCallback?.({ screenId: 'tv-second', videoReady: true, audioArmed: true });
+      for (const callback of presenceCallbacks) {
+        callback({ screenId: 'tv-main', videoReady: true, audioArmed: true });
+        callback({ screenId: 'tv-second', videoReady: true, audioArmed: true });
+      }
     });
 
     expect(await screen.findByText('ГОТОВО К РЕПЕТИЦИИ')).toBeInTheDocument();
