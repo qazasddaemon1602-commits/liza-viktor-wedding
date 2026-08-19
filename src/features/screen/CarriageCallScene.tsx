@@ -1,11 +1,56 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties } from 'react';
+import { siteAudio } from '../../lib/siteAudio';
 import type { CarriageCallScreenEvent } from './screenEvents.realtime';
 
 type CarriageCallSceneProps = {
   event: CarriageCallScreenEvent;
 };
 
+function projectorSoundEnabled(): boolean {
+  if (typeof document === 'undefined') return true;
+  const control = document.querySelector('.screen-audio-arm');
+  return !control?.textContent?.includes('ВКЛЮЧИТЬ ЗВУК');
+}
+
 export function CarriageCallScene({ event }: CarriageCallSceneProps) {
+  useEffect(() => {
+    siteAudio.beginPriority('scene');
+    if (!projectorSoundEnabled()) {
+      return () => siteAudio.endPriority('scene');
+    }
+
+    let audio: HTMLAudioElement | null = null;
+    if (typeof Audio !== 'undefined') {
+      audio = new Audio('/audio/train/carriage-call.mp3');
+      audio.preload = 'auto';
+      audio.volume = 0.72;
+      const playback = audio.play();
+      if (playback && typeof playback.catch === 'function') {
+        void playback.catch(() => {
+          void siteAudio.arm().then((ready) => {
+            if (ready) siteAudio.play('impact');
+          });
+        });
+      }
+    } else {
+      void siteAudio.arm().then((ready) => {
+        if (ready) siteAudio.play('impact');
+      });
+    }
+
+    return () => {
+      if (audio) {
+        audio.pause();
+        try {
+          audio.currentTime = 0;
+        } catch {
+          // Metadata may not have loaded yet; pause is enough.
+        }
+      }
+      siteAudio.endPriority('scene');
+    };
+  }, [event.id]);
+
   return (
     <section className="carriage-call-scene" aria-live="assertive" aria-atomic="true">
       <div className="carriage-call-scene__frame" aria-hidden="true" />
