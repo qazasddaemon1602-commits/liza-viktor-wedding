@@ -1,3 +1,5 @@
+import { siteAudio } from '../../lib/siteAudio';
+
 type PremiereAudioParamLike = {
   setValueAtTime: (value: number, time: number) => unknown;
   linearRampToValueAtTime: (value: number, time: number) => unknown;
@@ -59,6 +61,7 @@ export function createPremiereAudioController(
   };
 
   const arm = async (): Promise<boolean> => {
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
     try {
       const current = getContext();
       if (current.state !== 'running') await current.resume();
@@ -70,7 +73,8 @@ export function createPremiereAudioController(
 
   const playCountdownTick = (second: number) => {
     const cue = getCountdownCue(second);
-    if (!cue) return;
+    const volume = siteAudio.getVolume();
+    if (!cue || !siteAudio.isEnabled() || volume <= 0) return;
 
     let current: PremiereAudioContextLike;
     try {
@@ -83,7 +87,7 @@ export function createPremiereAudioController(
     const startAt = current.currentTime + 0.012;
     const final = cue === 'countdown-final';
     const frequency = final ? 146.83 : 110;
-    const peak = final ? 0.028 : 0.018;
+    const peak = (final ? 0.028 : 0.018) * volume;
     const duration = final ? 0.16 : 0.12;
 
     const oscillator = current.createOscillator();
