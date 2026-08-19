@@ -12,6 +12,7 @@ import './styles/train-arrival.css';
 import './styles/screen-announcements.css';
 import './styles/screen-controls.css';
 import './styles/quiz.css';
+import './styles/wedding-scenes.css';
 import './styles/premiere.css';
 import './styles/admin-premiere.css';
 import './styles/admin-reset.css';

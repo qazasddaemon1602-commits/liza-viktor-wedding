@@ -36,8 +36,13 @@ export function FinalFiveRevealScene({ state, stepMs = 1500 }: FinalFiveRevealSc
     : 'СЕМЕЙНАЯ ДИСКУССИЯ ОФИЦИАЛЬНО ОТКРЫТА.';
 
   return (
-    <section className="final-five-reveal-scene" aria-live="polite">
-      <div className="final-five-reveal-frame">
+    <section className="final-five-reveal-scene final-five-reveal-scene--editorial" aria-live="polite">
+      <div className="final-five-reveal-frame" data-testid="final-five-editorial-spread">
+        <div className="final-five-reveal-meta" aria-hidden="true">
+          <span>PRIVATE EDITION · FINAL FIVE</span>
+          <span>L × V · CONFIDENTIAL ANSWERS</span>
+        </div>
+
         <p className="eyebrow">ФИНАЛЬНАЯ ПЯТЁРКА</p>
         <h1>{state.question.text}</h1>
 
@@ -49,20 +54,34 @@ export function FinalFiveRevealScene({ state, stepMs = 1500 }: FinalFiveRevealSc
 
         <div className="final-five-reveal-private-answers">
           {stage >= 1 && (
-            <div className="final-five-reveal-answer">
+            <div className="final-five-reveal-answer final-five-reveal-answer--liza">
               <span>ОТВЕТ ЛИЗЫ</span>
               <strong className="final-five-reveal-answer-value">{label(state.lizaAnswer)}</strong>
+              <small aria-hidden="true">PRIVATE CARD · 01</small>
             </div>
           )}
           {stage >= 2 && (
-            <div className="final-five-reveal-answer">
+            <div className="final-five-reveal-answer final-five-reveal-answer--viktor">
               <span>ОТВЕТ ВИКТОРА</span>
               <strong className="final-five-reveal-answer-value">{label(state.viktorAnswer)}</strong>
+              <small aria-hidden="true">PRIVATE CARD · 02</small>
             </div>
           )}
         </div>
 
         {stage >= 3 && <strong className="final-five-reveal-verdict">{verdict}</strong>}
+
+        <div className="final-five-reveal-seal" aria-hidden="true">
+          <span>LV</span>
+          <i>✦</i>
+          <span>30·08·26</span>
+        </div>
+
+        <div className="final-five-reveal-footer" aria-hidden="true">
+          <span>WEDDING ARCHIVE</span>
+          <i />
+          <span>FINAL FIVE · LOVE RAILWAY</span>
+        </div>
       </div>
     </section>
   );
