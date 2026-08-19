@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - feat/admin-rehearsal-links
+      - feat/mk-artbook-visuals
 
 jobs:
   test:
