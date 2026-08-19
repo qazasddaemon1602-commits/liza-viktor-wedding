@@ -46,7 +46,6 @@ export function AdminRehearsalPanel({
   eventId,
   currentModule,
   currentScreenMode,
-  expectedScreenCount = 2,
   registrationOpen,
   compositionLocked,
   guestCount,
@@ -122,24 +121,13 @@ export function AdminRehearsalPanel({
   const runtime = `${currentModule ?? ''} ${currentScreenMode ?? ''}`;
   const bunkerActive = runtimeHas(runtime, ['bunker']);
   const mortalKombatActive = runtimeHas(runtime, ['mortal_kombat', 'mortal-kombat', 'mortal kombat', 'mk']);
-  const screensReady = presence.connectedCount >= expectedScreenCount;
-  const videoReady = presence.videoReadyCount >= expectedScreenCount;
-  const audioReady = presence.audioArmedCount >= expectedScreenCount;
+  const screensOnline = presence.connectedCount > 0;
+  const videoReady = presence.videoReadyCount > 0;
+  const audioReady = presence.audioArmedCount > 0;
   const premiereReady = premiereState?.configured === true
     && (premiereState.status === 'idle' || premiereState.status === 'standby');
   const coupleReady = coupleStatus?.status === 'finalized';
   const loading = showReadiness && !premiereError && !coupleError && (!premiereState || !coupleStatus);
-  const allReady = showReadiness
-    && !loading
-    && !premiereError
-    && !coupleError
-    && screensReady
-    && videoReady
-    && audioReady
-    && premiereReady
-    && coupleReady
-    && !bunkerActive
-    && !mortalKombatActive;
 
   const premiereLabel = premiereError
     ? 'ПРЕМЬЕРА · ПРОВЕРКА НЕДОСТУПНА'
@@ -172,36 +160,36 @@ export function AdminRehearsalPanel({
       </div>
 
       {showReadiness && (
-        <div className="admin-rehearsal__readiness" aria-label="Готовность к репетиции">
-          <div className={`admin-rehearsal__verdict ${allReady ? 'is-ready' : 'has-blockers'}`} role="status">
+        <div className="admin-rehearsal__readiness" aria-label="Статусы репетиции">
+          <div className="admin-rehearsal__verdict is-info" role="status">
             <span>ПРОВЕРКА ПЕРЕД ЗАПУСКОМ</span>
-            <strong>{loading ? 'ПРОВЕРЯЕМ ГОТОВНОСТЬ…' : allReady ? 'ГОТОВО К РЕПЕТИЦИИ' : 'ЕСТЬ БЛОКЕРЫ'}</strong>
+            <strong>{loading ? 'СОБИРАЕМ СТАТУСЫ…' : 'ИНДИКАЦИЯ · НЕ БЛОКИРУЕТ'}</strong>
           </div>
 
           <div className="admin-rehearsal__checks">
-            <span className={screensReady ? 'is-ready' : 'has-blocker'}>ТВ · {presence.connectedCount} / {expectedScreenCount}</span>
-            <span className={videoReady ? 'is-ready' : 'has-blocker'}>ВИДЕО · {presence.videoReadyCount} / {expectedScreenCount}</span>
-            <span className={audioReady ? 'is-ready' : 'has-blocker'}>ЗВУК · {presence.audioArmedCount} / {expectedScreenCount}</span>
-            <span className={premiereReady ? 'is-ready' : 'has-blocker'}>{premiereLabel}</span>
-            <span className={coupleReady ? 'is-ready' : 'has-blocker'}>{coupleLabel}</span>
-            <span className={bunkerActive ? 'has-blocker' : 'is-ready'}>БУНКЕР · {bunkerActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
-            <span className={mortalKombatActive ? 'has-blocker' : 'is-ready'}>MK · {mortalKombatActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
+            <span className={screensOnline ? 'is-ready' : 'is-watch'}>ТВ · {presence.connectedCount}</span>
+            <span className={videoReady ? 'is-ready' : 'is-watch'}>ВИДЕО · {presence.videoReadyCount} / {presence.connectedCount}</span>
+            <span className={audioReady ? 'is-ready' : 'is-watch'}>ЗВУК · {presence.audioArmedCount} / {presence.connectedCount}</span>
+            <span className={premiereReady ? 'is-ready' : 'is-watch'}>{premiereLabel}</span>
+            <span className={coupleReady ? 'is-ready' : 'is-watch'}>{coupleLabel}</span>
+            <span className={bunkerActive ? 'is-watch' : 'is-ready'}>БУНКЕР · {bunkerActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
+            <span className={mortalKombatActive ? 'is-watch' : 'is-ready'}>MK · {mortalKombatActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
           </div>
 
           {showEventStartReadiness && (
             <>
-              <div className={`admin-rehearsal__verdict ${eventStartClean ? 'is-ready' : 'has-blockers'}`}>
+              <div className={`admin-rehearsal__verdict ${eventStartClean ? 'is-ready' : 'is-info'}`}>
                 <span>СОСТОЯНИЕ ПЕРЕД ГОСТЯМИ</span>
                 <strong>{eventStartClean ? 'СТАРТ СОБЫТИЯ · ЧИСТО' : 'СТАРТ СОБЫТИЯ · ПРОВЕРИТЬ'}</strong>
               </div>
               <div className="admin-rehearsal__checks" aria-label="Чистота стартового состояния">
-                <span className={registrationOpen ? 'is-ready' : 'has-blocker'}>
+                <span className={registrationOpen ? 'is-ready' : 'is-watch'}>
                   РЕГИСТРАЦИЯ · {registrationOpen ? 'ОТКРЫТА' : 'ЗАКРЫТА'}
                 </span>
-                <span className={guestCount === 0 ? 'is-ready' : 'has-blocker'}>
+                <span className={guestCount === 0 ? 'is-ready' : 'is-watch'}>
                   ТЕСТОВЫЕ ГОСТИ · {guestCount}
                 </span>
-                <span className={!compositionLocked ? 'is-ready' : 'has-blocker'}>
+                <span className={!compositionLocked ? 'is-ready' : 'is-watch'}>
                   СОСТАВ · {compositionLocked ? 'ЗАФИКСИРОВАН' : 'СВОБОДЕН'}
                 </span>
               </div>
