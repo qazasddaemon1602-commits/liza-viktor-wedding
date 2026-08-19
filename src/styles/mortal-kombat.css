@@ -144,13 +144,14 @@
 }
 
 .mk-signup-card--confirmed {
-  border-color: rgba(100, 140, 110, 0.42);
-  background: rgba(49, 72, 58, 0.22);
+  border-color: var(--mk-gold);
+  background: rgba(193, 154, 91, 0.15);
+  box-shadow: 0 0 20px rgba(193, 154, 91, 0.1);
 }
 
 .mk-signup-card--waitlist {
-  border-color: rgba(183, 135, 79, 0.36);
-  background: rgba(183, 135, 79, 0.08);
+  border-color: var(--mk-muted);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .mk-primary-button {
@@ -212,8 +213,8 @@
 .mk-section-heading > span {
   flex: none;
   padding: 0.5rem 0.65rem;
-  border: 1px solid rgba(243, 236, 223, 0.18);
-  color: var(--mk-muted);
+  border: 1px solid var(--mk-gold-dim);
+  color: var(--mk-gold);
   font-size: 0.62rem;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -251,8 +252,9 @@
 }
 
 .mk-bracket-match--current {
-  border-color: rgba(183, 135, 79, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(183, 135, 79, 0.18);
+  border-color: var(--mk-gold);
+  background: rgba(193, 154, 91, 0.1);
+  box-shadow: 0 0 15px rgba(193, 154, 91, 0.2);
 }
 
 .mk-bracket-match > span {
@@ -268,7 +270,8 @@
 }
 
 .mk-bracket-match strong.is-winner {
-  color: #dcb580;
+  color: var(--mk-gold);
+  text-shadow: 0 0 5px var(--mk-gold-dim);
 }
 
 .mk-bracket-match i {
@@ -444,11 +447,10 @@
   display: grid;
   gap: 1.1rem;
   padding: clamp(1.25rem, 2.2vw, 2rem);
-  border: 1px solid rgba(39, 51, 43, 0.16);
-  background:
-    linear-gradient(125deg, rgba(126, 63, 60, 0.055), transparent 48%),
-    rgba(243, 236, 223, 0.72);
-  box-shadow: 0 1.5rem 4rem rgba(39, 51, 43, 0.05);
+  border: 2px solid var(--mk-gold-dim);
+  background: #0f120f;
+  color: var(--mk-ivory);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.4);
 }
 
 .admin-mk-heading {
@@ -461,9 +463,10 @@
 .admin-mk-heading h2,
 .admin-mk-current-match h3,
 .admin-mk-waitlist h3 {
-  color: var(--forest);
+  color: var(--mk-gold);
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 400;
+  text-transform: uppercase;
 }
 
 .admin-mk-heading h2 {
