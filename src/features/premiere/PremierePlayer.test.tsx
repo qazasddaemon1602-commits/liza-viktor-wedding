@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PremierePlayer } from './PremierePlayer';
 
@@ -15,6 +15,7 @@ describe('PremierePlayer', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -27,6 +28,33 @@ describe('PremierePlayer', () => {
     expect(video).toHaveAttribute('src', 'https://cdn.test/ring.mp4');
     expect(video).toHaveAttribute('preload', 'auto');
     expect(play).not.toHaveBeenCalled();
+  });
+
+  it('resolves a public Yandex Disk share link to a direct media href before playback', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ href: 'https://downloader.disk.yandex.ru/ring.mp4' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(
+      <PremierePlayer src="https://disk.yandex.ru/i/ogOrvj98Qk7bXQ" shouldPlay={false} />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('video')).toHaveAttribute(
+        'src',
+        'https://downloader.disk.yandex.ru/ring.mp4',
+      );
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      'https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=',
+    );
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      encodeURIComponent('https://disk.yandex.ru/i/ogOrvj98Qk7bXQ'),
+    );
   });
 
   it('reports video readiness only after the browser can play the preloaded media', () => {
