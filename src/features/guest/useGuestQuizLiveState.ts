@@ -82,6 +82,18 @@ export function useGuestQuizLiveState({
     return () => unsubscribe?.();
   }, [deps, enabled, reload]);
 
+  // Broadcast is intentionally only an invalidation signal and can be missed while a phone
+  // is reconnecting. A low-frequency visible-page poll makes the guest cabinet self-healing
+  // without turning every timer tick into a backend request.
+  useEffect(() => {
+    if (!enabled || !deps) return;
+    const intervalMs = state?.status === 'active' ? 3_000 : 6_000;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void reload();
+    }, intervalMs);
+    return () => window.clearInterval(interval);
+  }, [deps, enabled, reload, state?.status]);
+
   useEffect(() => {
     if (!enabled || !deps || state?.status !== 'active' || !state.phaseEndsAt) return;
     const deadline = Date.parse(state.phaseEndsAt);

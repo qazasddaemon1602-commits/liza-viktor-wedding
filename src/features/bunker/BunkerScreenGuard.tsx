@@ -122,10 +122,10 @@ export function BunkerScreenGuard({
     return () => window.clearInterval(interval);
   }, [emergencyActive, remainingSeconds <= 0]);
 
-  // Re-check authoritative state while the emergency is active. This is a fallback for
-  // reset/stop commands if a realtime broadcast is lost on venue Wi-Fi.
+  // Broadcast can be missed if a TV is still reconnecting when the owner presses START/STOP.
+  // Poll in both idle and active states so a projector always converges to authoritative state.
   useEffect(() => {
-    if (!deps || !emergencyActive) return;
+    if (!deps) return;
     let active = true;
     const interval = window.setInterval(() => {
       void deps.load()
@@ -133,9 +133,9 @@ export function BunkerScreenGuard({
           if (active) applyServerState(next);
         })
         .catch(() => {
-          // Keep the emergency visible from the last known server state until connectivity returns.
+          // Keep the last valid screen state until connectivity returns.
         });
-    }, 2_000);
+    }, emergencyActive ? 2_000 : 1_500);
     return () => {
       active = false;
       window.clearInterval(interval);

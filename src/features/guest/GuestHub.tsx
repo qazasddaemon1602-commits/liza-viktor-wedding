@@ -51,7 +51,6 @@ export function GuestHub({
       <section className="guest-hub-section guest-hub-ticket" aria-label="Мой билет">
         <div className="guest-hub-section-heading">
           <p className="eyebrow">МОЙ БИЛЕТ</p>
-          <span>{guest.ticketNumber}</span>
         </div>
         <VirtualTicket guest={guest} />
       </section>
@@ -75,7 +74,6 @@ export function GuestHub({
       <section className="guest-hub-section" aria-label="Мои активности">
         <div className="guest-hub-section-heading">
           <p className="eyebrow">МОИ АКТИВНОСТИ</p>
-          <span>{guest.carriage.label}</span>
         </div>
         <div className="guest-hub-activity-grid">
           <article>
