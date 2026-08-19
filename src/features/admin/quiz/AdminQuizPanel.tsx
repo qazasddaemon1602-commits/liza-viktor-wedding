@@ -2,19 +2,25 @@ import { useEffect, useMemo, useState } from 'react';
 import type {
   ActivateQuizQuestionResult,
   AdminQuizControl,
+  CloseQuizRoundResult,
   RevealQuizResultsResult,
+  ReturnQuizMainResult,
   SeedQuizQuestionsResult,
 } from '../../quiz/adminQuiz.service';
 import type {
   OwnerCoupleRevealStatus,
   RevealOwnerCoupleAnswerResult,
 } from '../../quiz/coupleReveal.service';
+import { AdminQuizHistory } from './AdminQuizHistory';
+import { AdminQuizLiveControl } from './AdminQuizLiveControl';
 
 export type AdminQuizPanelDependencies = {
   load: (eventId: string) => Promise<AdminQuizControl>;
   seed: (eventId: string) => Promise<SeedQuizQuestionsResult>;
   activate: (eventId: string, questionId: string) => Promise<ActivateQuizQuestionResult>;
   reveal: (eventId: string, questionId: string) => Promise<RevealQuizResultsResult>;
+  close: (eventId: string) => Promise<CloseQuizRoundResult>;
+  returnMain: (eventId: string) => Promise<ReturnQuizMainResult>;
   broadcastRefresh: () => Promise<void>;
   loadCoupleRevealStatus?: (eventId: string, questionId: string) => Promise<OwnerCoupleRevealStatus>;
   revealCoupleAnswer?: (eventId: string, questionId: string) => Promise<RevealOwnerCoupleAnswerResult>;
@@ -24,11 +30,6 @@ type AdminQuizPanelProps = {
   eventId: string;
   dependencies: AdminQuizPanelDependencies;
 };
-
-function percentage(value: number, total: number): number {
-  if (total <= 0) return 0;
-  return Math.round((value / total) * 100);
-}
 
 export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
   const deps = useMemo(() => dependencies, [dependencies]);
@@ -70,9 +71,7 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
       || !deps.loadCoupleRevealStatus
     ) {
       setCoupleRevealStatus(null);
-      return () => {
-        active = false;
-      };
+      return () => { active = false; };
     }
 
     void deps.loadCoupleRevealStatus(eventId, current.id)
@@ -83,9 +82,7 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
         if (active) setCoupleRevealStatus({ status: 'not_ready', revealed: false });
       });
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [control, deps, eventId]);
 
   const seed = async () => {
@@ -127,9 +124,62 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
       await deps.broadcastRefresh();
       await reload();
     } catch {
-      setError('Не удалось показать результат.');
+      setError('Не удалось закрыть ответы и показать результат.');
     } finally {
       setBusy('');
+    }
+  };
+
+  const close = async () => {
+    setBusy('close');
+    setError('');
+    try {
+      await deps.close(eventId);
+      await deps.broadcastRefresh();
+      await reload();
+    } catch {
+      setError('Не удалось закрыть текущий вопрос.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const next = async (questionId: string) => {
+    setBusy('next');
+    setError('');
+    setCoupleRevealStatus(null);
+    try {
+      await deps.close(eventId);
+      await deps.activate(eventId, questionId);
+      await deps.broadcastRefresh();
+      await reload();
+    } catch {
+      setError('Не удалось запустить следующий вопрос.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const returnMain = async () => {
+    setBusy('return-main');
+    setError('');
+    try {
+      await deps.returnMain(eventId);
+      await deps.broadcastRefresh();
+      await reload();
+    } catch {
+      setError('Не удалось вернуть ТВ на основной экран.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const deadline = async () => {
+    try {
+      await reload();
+      await deps.broadcastRefresh();
+    } catch {
+      setError('Не удалось обновить фазу по таймеру. Нажмите действие вручную.');
     }
   };
 
@@ -175,25 +225,30 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
   }
 
   const standardQuestions = control.questions.filter((question) => question.questionType === 'standard');
+  const completedIds = new Set(
+    (control.history ?? [])
+      .filter((entry) => entry.questionType === 'standard')
+      .map((entry) => entry.questionId),
+  );
   const currentQuestion = control.currentQuestionId
     ? standardQuestions.find((question) => question.id === control.currentQuestionId) ?? null
     : null;
   const availableQuestions = standardQuestions.filter(
-    (question) => question.enabled && question.id !== control.currentQuestionId,
+    (question) => question.enabled
+      && question.id !== control.currentQuestionId
+      && !completedIds.has(question.id),
   );
-
-  const lizaPercent = control.phase === 'results' && currentQuestion
-    ? percentage(control.results.liza, control.results.total)
-    : null;
-  const viktorPercent = control.phase === 'results' && currentQuestion
-    ? percentage(control.results.viktor, control.results.total)
-    : null;
+  const nextQuestion = currentQuestion
+    ? availableQuestions
+      .filter((question) => question.sortOrder > currentQuestion.sortOrder)
+      .sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? availableQuestions.sort((a, b) => a.sortOrder - b.sortOrder)[0]
+    : availableQuestions.sort((a, b) => a.sortOrder - b.sortOrder)[0];
 
   return (
     <section className="admin-quiz-panel" aria-label="Управление викториной">
       <div className="admin-quiz-heading">
         <div>
-          <p className="eyebrow">LIVE QUIZ</p>
+          <p className="eyebrow">LIVE QUIZ · 30 СЕК + 30 СЕК</p>
           <h2>ЛИЗА ИЛИ ВИКТОР?</h2>
         </div>
         <span className={`admin-quiz-phase admin-quiz-phase-${currentQuestion ? control.phase : 'idle'}`}>
@@ -215,54 +270,42 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
         </div>
       ) : (
         <>
-          {currentQuestion && (
-            <div className="admin-quiz-current">
-              <p className="eyebrow">ТЕКУЩИЙ ВОПРОС</p>
-              <strong>{currentQuestion.text}</strong>
-              <p>{control.answeredCount} ответили</p>
+          {currentQuestion && (control.phase === 'voting' || control.phase === 'results') && (
+            <>
+              <AdminQuizLiveControl
+                control={control}
+                question={currentQuestion}
+                busy={busy}
+                hasNext={Boolean(nextQuestion)}
+                onReveal={() => void reveal()}
+                onClose={() => void close()}
+                onNext={() => { if (nextQuestion) void next(nextQuestion.id); }}
+                onReturnMain={() => void returnMain()}
+                onDeadline={() => void deadline()}
+              />
 
-              {control.phase === 'voting' && (
+              {control.phase === 'results' && coupleRevealStatus?.status === 'ready' && deps.revealCoupleAnswer && (
                 <button
                   type="button"
-                  className="registration-submit"
-                  disabled={busy === 'reveal'}
-                  onClick={() => void reveal()}
+                  className="registration-submit admin-quiz-couple-action"
+                  disabled={busy === 'reveal-couple'}
+                  onClick={() => void revealCoupleAnswer()}
                 >
-                  {busy === 'reveal' ? 'ОТКРЫВАЕМ…' : 'ПОКАЗАТЬ РЕЗУЛЬТАТ'}
+                  {busy === 'reveal-couple' ? 'ОТКРЫВАЕМ…' : 'ПОКАЗАТЬ ОТВЕТ ЛИЗЫ И ВИКТОРА'}
                 </button>
               )}
 
-              {control.phase === 'results' && (
-                <>
-                  <div className="admin-quiz-results" aria-label="Результаты голосования">
-                    <strong>ЛИЗА {lizaPercent}%</strong>
-                    <strong>ВИКТОР {viktorPercent}%</strong>
-                  </div>
-
-                  {coupleRevealStatus?.status === 'ready' && deps.revealCoupleAnswer && (
-                    <button
-                      type="button"
-                      className="registration-submit"
-                      disabled={busy === 'reveal-couple'}
-                      onClick={() => void revealCoupleAnswer()}
-                    >
-                      {busy === 'reveal-couple' ? 'ОТКРЫВАЕМ…' : 'ПОКАЗАТЬ ОТВЕТ ЛИЗЫ И ВИКТОРА'}
-                    </button>
-                  )}
-
-                  {coupleRevealStatus?.status === 'revealed' && (
-                    <strong className="admin-quiz-couple-revealed">ОТВЕТ ПАРЫ ПОКАЗАН</strong>
-                  )}
-
-                  {coupleRevealStatus?.status === 'not_ready' && (
-                    <p className="admin-quiz-couple-not-ready">Совместный ответ для этого вопроса ещё не готов к показу.</p>
-                  )}
-                </>
+              {control.phase === 'results' && coupleRevealStatus?.status === 'revealed' && (
+                <strong className="admin-quiz-couple-revealed">ОТВЕТ ПАРЫ ПОКАЗАН</strong>
               )}
-            </div>
+
+              {control.phase === 'results' && coupleRevealStatus?.status === 'not_ready' && (
+                <p className="admin-quiz-couple-not-ready">Совместный ответ для этого вопроса ещё не готов к показу.</p>
+              )}
+            </>
           )}
 
-          <div className="admin-quiz-question-list" aria-label="Вопросы викторины">
+          <div className="admin-quiz-question-list" aria-label="Оставшиеся вопросы викторины">
             {availableQuestions.map((question) => (
               <article key={question.id} className="admin-quiz-question-row">
                 <div>
@@ -284,6 +327,7 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
         </>
       )}
 
+      <AdminQuizHistory history={control.history} />
       {error && <p className="admin-quiz-error" role="alert">{error}</p>}
     </section>
   );
