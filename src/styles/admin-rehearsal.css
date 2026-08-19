@@ -33,6 +33,74 @@
   line-height: 1.5;
 }
 
+.admin-rehearsal__readiness {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(49, 72, 58, 0.16);
+  background: rgba(255, 252, 246, 0.44);
+}
+
+.admin-rehearsal__verdict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-left: 3px solid rgba(154, 99, 72, 0.68);
+  background: rgba(154, 99, 72, 0.06);
+}
+
+.admin-rehearsal__verdict.is-ready {
+  border-left-color: rgba(49, 72, 58, 0.72);
+  background: rgba(49, 72, 58, 0.06);
+}
+
+.admin-rehearsal__verdict span {
+  color: rgba(39, 51, 43, 0.5);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.admin-rehearsal__verdict strong {
+  color: var(--forest);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: right;
+}
+
+.admin-rehearsal__checks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.admin-rehearsal__checks span {
+  min-width: 0;
+  padding: 0.58rem 0.65rem;
+  border: 1px solid rgba(49, 72, 58, 0.12);
+  color: rgba(39, 51, 43, 0.7);
+  background: rgba(255, 252, 246, 0.38);
+  font-size: 0.6rem;
+  font-weight: 850;
+  line-height: 1.3;
+  letter-spacing: 0.055em;
+}
+
+.admin-rehearsal__checks .is-ready {
+  border-color: rgba(49, 72, 58, 0.22);
+  color: var(--forest);
+  background: rgba(49, 72, 58, 0.045);
+}
+
+.admin-rehearsal__checks .has-blocker {
+  border-color: rgba(154, 99, 72, 0.28);
+  color: var(--cinnamon);
+  background: rgba(154, 99, 72, 0.055);
+}
+
 .admin-rehearsal__links {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -87,17 +155,27 @@
 }
 
 @media (max-width: 900px) {
+  .admin-rehearsal__checks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-rehearsal__links {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 560px) {
-  .admin-rehearsal__heading {
+  .admin-rehearsal__heading,
+  .admin-rehearsal__verdict {
     align-items: flex-start;
     flex-direction: column;
   }
 
+  .admin-rehearsal__verdict strong {
+    text-align: left;
+  }
+
+  .admin-rehearsal__checks,
   .admin-rehearsal__links {
     grid-template-columns: 1fr;
   }

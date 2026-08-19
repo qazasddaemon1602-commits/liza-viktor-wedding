@@ -267,7 +267,14 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
         </div>
       )}
 
-      <AdminRehearsalPanel />
+      <AdminRehearsalPanel
+        eventId={dashboard.event.id}
+        currentModule={dashboard.state?.currentModule ?? 'idle'}
+        currentScreenMode={dashboard.state?.screenMode ?? 'idle'}
+        expectedScreenCount={2}
+        premiere={dependencies.premiere}
+        couplePreanswers={dependencies.couplePreanswers}
+      />
 
       <section className="admin-operations" aria-label="Управление составом">
         {dashboard.event.compositionLocked ? (
