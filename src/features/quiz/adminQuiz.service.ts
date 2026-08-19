@@ -18,11 +18,26 @@ export type AdminQuizQuestion = {
   imagePath: string | null;
 };
 
+export type AdminQuizHistoryEntry = {
+  roundId: string;
+  questionId: string;
+  questionText: string;
+  questionType: QuizQuestionType;
+  closedAt: string;
+  answeredCount: number;
+  results: QuizResults;
+};
+
 type AdminQuizBase = {
   status: 'ok';
   currentQuestionId: string | null;
   answeredCount: number;
   questions: AdminQuizQuestion[];
+  history?: AdminQuizHistoryEntry[];
+  roundId?: string | null;
+  phaseStartedAt?: string | null;
+  phaseEndsAt?: string | null;
+  presentOnMainScreen?: boolean;
 };
 
 export type AdminQuizControl =
@@ -38,14 +53,29 @@ export type SeedQuizQuestionsResult = {
 export type ActivateQuizQuestionResult = {
   status: 'active';
   questionId: string;
+  roundId?: string;
   phase: 'voting';
+  phaseStartedAt?: string | null;
+  phaseEndsAt?: string | null;
 };
 
 export type RevealQuizResultsResult = {
   status: 'revealed';
   questionId: string;
+  roundId?: string;
+  phase?: 'results';
+  phaseStartedAt?: string | null;
+  phaseEndsAt?: string | null;
   results: QuizResults;
 };
+
+export type CloseQuizRoundResult = {
+  status: 'closed';
+  roundId: string | null;
+  questionId: string | null;
+};
+
+export type ReturnQuizMainResult = { status: 'main_screen' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -63,6 +93,19 @@ function parseQuestionType(value: unknown): QuizQuestionType {
     throw new Error('Unexpected quiz question type');
   }
   return value;
+}
+
+function parseTimestamp(value: unknown): string {
+  if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
+    throw new Error('Unexpected quiz timestamp');
+  }
+  return value;
+}
+
+function parseOptionalTimestamp(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return parseTimestamp(value);
 }
 
 function parseResults(value: unknown): QuizResults {
@@ -99,6 +142,29 @@ function parseQuestion(value: unknown): AdminQuizQuestion {
   };
 }
 
+function parseHistory(value: unknown): AdminQuizHistoryEntry[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new Error('Unexpected owner quiz history');
+  return value.map((entry) => {
+    if (!isRecord(entry)
+      || typeof entry.roundId !== 'string'
+      || typeof entry.questionId !== 'string'
+      || typeof entry.questionText !== 'string'
+    ) {
+      throw new Error('Unexpected owner quiz history');
+    }
+    return {
+      roundId: entry.roundId,
+      questionId: entry.questionId,
+      questionText: entry.questionText,
+      questionType: parseQuestionType(entry.questionType),
+      closedAt: parseTimestamp(entry.closedAt),
+      answeredCount: parseCount(entry.answeredCount),
+      results: parseResults(entry.results),
+    };
+  });
+}
+
 function throwRpcError(error: Exclude<AdminQuizRpcError, null>): never {
   if (error instanceof Error) throw error;
   const next = new Error(error.message || 'Owner quiz request failed');
@@ -129,6 +195,15 @@ export async function getOwnerQuizControl(
     currentQuestionId: data.currentQuestionId,
     answeredCount: parseCount(data.answeredCount),
     questions: data.questions.map(parseQuestion),
+    history: parseHistory(data.history),
+    roundId: data.roundId === null || data.roundId === undefined
+      ? data.roundId as null | undefined
+      : typeof data.roundId === 'string' ? data.roundId : undefined,
+    phaseStartedAt: parseOptionalTimestamp(data.phaseStartedAt),
+    phaseEndsAt: parseOptionalTimestamp(data.phaseEndsAt),
+    presentOnMainScreen: typeof data.presentOnMainScreen === 'boolean'
+      ? data.presentOnMainScreen
+      : undefined,
   };
 
   if (data.phase === 'results') {
@@ -150,16 +225,10 @@ export async function seedDefaultQuizQuestions(
     p_event_id: eventId,
   });
   if (error) throwRpcError(error);
-  if (
-    !isRecord(data)
-    || (data.status !== 'seeded' && data.status !== 'existing')
-  ) {
+  if (!isRecord(data) || (data.status !== 'seeded' && data.status !== 'existing')) {
     throw new Error('Unexpected quiz-seed response');
   }
-  return {
-    status: data.status,
-    insertedCount: parseCount(data.insertedCount),
-  };
+  return { status: data.status, insertedCount: parseCount(data.insertedCount) };
 }
 
 export async function activateOwnerQuizQuestion(
@@ -183,7 +252,10 @@ export async function activateOwnerQuizQuestion(
   return {
     status: 'active',
     questionId: data.questionId,
+    roundId: typeof data.roundId === 'string' ? data.roundId : undefined,
     phase: 'voting',
+    phaseStartedAt: parseOptionalTimestamp(data.phaseStartedAt),
+    phaseEndsAt: parseOptionalTimestamp(data.phaseEndsAt),
   };
 }
 
@@ -197,16 +269,42 @@ export async function revealOwnerQuizResults(
     p_question_id: questionId,
   });
   if (error) throwRpcError(error);
-  if (
-    !isRecord(data)
-    || data.status !== 'revealed'
-    || typeof data.questionId !== 'string'
-  ) {
+  if (!isRecord(data) || data.status !== 'revealed' || typeof data.questionId !== 'string') {
     throw new Error('Unexpected quiz-reveal response');
   }
   return {
     status: 'revealed',
     questionId: data.questionId,
+    roundId: typeof data.roundId === 'string' ? data.roundId : undefined,
+    phase: data.phase === 'results' ? 'results' : undefined,
+    phaseStartedAt: parseOptionalTimestamp(data.phaseStartedAt),
+    phaseEndsAt: parseOptionalTimestamp(data.phaseEndsAt),
     results: parseResults(data.results),
   };
+}
+
+export async function closeOwnerQuizRound(
+  client: AdminQuizRpcClient,
+  eventId: string,
+): Promise<CloseQuizRoundResult> {
+  const { data, error } = await client.rpc('owner_close_quiz_round', { p_event_id: eventId });
+  if (error) throwRpcError(error);
+  if (!isRecord(data) || data.status !== 'closed') throw new Error('Unexpected quiz-close response');
+  if (!(data.roundId === null || typeof data.roundId === 'string')
+    || !(data.questionId === null || typeof data.questionId === 'string')) {
+    throw new Error('Unexpected quiz-close response');
+  }
+  return { status: 'closed', roundId: data.roundId, questionId: data.questionId };
+}
+
+export async function returnOwnerQuizToMainScreen(
+  client: AdminQuizRpcClient,
+  eventId: string,
+): Promise<ReturnQuizMainResult> {
+  const { data, error } = await client.rpc('owner_return_quiz_to_main_screen', { p_event_id: eventId });
+  if (error) throwRpcError(error);
+  if (!isRecord(data) || data.status !== 'main_screen') {
+    throw new Error('Unexpected quiz-main-screen response');
+  }
+  return { status: 'main_screen' };
 }
