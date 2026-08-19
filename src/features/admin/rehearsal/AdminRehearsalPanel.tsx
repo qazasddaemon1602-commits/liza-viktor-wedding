@@ -30,6 +30,9 @@ type AdminRehearsalPanelProps = {
   currentModule?: string | null;
   currentScreenMode?: string | null;
   expectedScreenCount?: number;
+  registrationOpen?: boolean;
+  compositionLocked?: boolean;
+  guestCount?: number;
   premiere?: RehearsalPremiereDependencies;
   couplePreanswers?: RehearsalCoupleDependencies;
 };
@@ -44,6 +47,9 @@ export function AdminRehearsalPanel({
   currentModule,
   currentScreenMode,
   expectedScreenCount = 2,
+  registrationOpen,
+  compositionLocked,
+  guestCount,
   premiere,
   couplePreanswers,
 }: AdminRehearsalPanelProps = {}) {
@@ -55,6 +61,13 @@ export function AdminRehearsalPanel({
   const [presenceNowMs, setPresenceNowMs] = useState(() => Date.now());
 
   const showReadiness = Boolean(eventId && premiere && couplePreanswers);
+  const showEventStartReadiness = typeof registrationOpen === 'boolean'
+    && typeof compositionLocked === 'boolean'
+    && typeof guestCount === 'number';
+  const eventStartClean = showEventStartReadiness
+    && registrationOpen === true
+    && compositionLocked === false
+    && guestCount === 0;
 
   useEffect(() => {
     if (!eventId || !premiere || !couplePreanswers) return undefined;
@@ -144,7 +157,9 @@ export function AdminRehearsalPanel({
       ? 'ОТВЕТЫ ПАРЫ · ПРОВЕРЯЕМ'
       : coupleReady
         ? 'ОТВЕТЫ ПАРЫ · ГОТОВЫ'
-        : `ОТВЕТЫ ПАРЫ · ${coupleStatus.answeredCount} / ${coupleStatus.totalCount}`;
+        : coupleStatus.status === 'not_issued'
+          ? 'ОТВЕТЫ ПАРЫ · ССЫЛКА НЕ ВЫДАНА'
+          : `ОТВЕТЫ ПАРЫ · ${coupleStatus.answeredCount} / ${coupleStatus.totalCount}`;
 
   return (
     <section className="admin-rehearsal" aria-labelledby="admin-rehearsal-title">
@@ -172,6 +187,26 @@ export function AdminRehearsalPanel({
             <span className={bunkerActive ? 'has-blocker' : 'is-ready'}>БУНКЕР · {bunkerActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
             <span className={mortalKombatActive ? 'has-blocker' : 'is-ready'}>MK · {mortalKombatActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
           </div>
+
+          {showEventStartReadiness && (
+            <>
+              <div className={`admin-rehearsal__verdict ${eventStartClean ? 'is-ready' : 'has-blockers'}`}>
+                <span>СОСТОЯНИЕ ПЕРЕД ГОСТЯМИ</span>
+                <strong>{eventStartClean ? 'СТАРТ СОБЫТИЯ · ЧИСТО' : 'СТАРТ СОБЫТИЯ · ПРОВЕРИТЬ'}</strong>
+              </div>
+              <div className="admin-rehearsal__checks" aria-label="Чистота стартового состояния">
+                <span className={registrationOpen ? 'is-ready' : 'has-blocker'}>
+                  РЕГИСТРАЦИЯ · {registrationOpen ? 'ОТКРЫТА' : 'ЗАКРЫТА'}
+                </span>
+                <span className={guestCount === 0 ? 'is-ready' : 'has-blocker'}>
+                  ТЕСТОВЫЕ ГОСТИ · {guestCount}
+                </span>
+                <span className={!compositionLocked ? 'is-ready' : 'has-blocker'}>
+                  СОСТАВ · {compositionLocked ? 'ЗАФИКСИРОВАН' : 'СВОБОДЕН'}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       )}
 
