@@ -64,7 +64,12 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
         <span>30 · 08 · 2026</span>
       </div>
 
-      <div className="train-arrival__platform-ticket" data-testid="arrival-platform-ticket">
+      <div
+        className="train-arrival__platform-ticket"
+        data-testid="arrival-platform-ticket"
+        role="group"
+        aria-label={`Посадка ${event.payload.displayName}, ${event.payload.carriage.label}`}
+      >
         <div className="train-arrival__ticket-index" aria-hidden="true">
           <span>ARRIVAL</span>
           <strong>{event.payload.carriage.visualMark}</strong>
