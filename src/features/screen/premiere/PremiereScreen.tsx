@@ -8,6 +8,7 @@ import { PremiereStandbyScreen } from './PremiereStandbyScreen';
 type PremiereScreenProps = {
   state: PremiereScreenState;
   nowMs: number;
+  muted?: boolean;
   onCountdownTick?: (second: number) => void;
   onVideoReady?: () => void;
   onEnded?: () => void;
@@ -16,6 +17,7 @@ type PremiereScreenProps = {
 export function PremiereScreen({
   state,
   nowMs,
+  muted = false,
   onCountdownTick,
   onVideoReady,
   onEnded,
@@ -92,6 +94,7 @@ export function PremiereScreen({
         src={state.mediaUrl}
         shouldPlay={shouldPlay || state.status === 'playing'}
         positionSeconds={state.positionSeconds}
+        muted={muted}
         onReady={onVideoReady}
         onEnded={handleEnded}
       />
