@@ -38,13 +38,14 @@ describe('premiere readiness', () => {
     expect(getPremiereReadiness(readyFixture).autoStart).toBe(false);
   });
 
-  it('renders the advisory guest and technical status for the owner', () => {
+  it('renders advisory status and explicitly says it cannot block owner launch', () => {
     render(<PremiereReadiness inputs={readyFixture} />);
 
     expect(screen.getByText('32 / ~40')).toBeInTheDocument();
     expect(screen.getByText('7 мин назад')).toBeInTheDocument();
     expect(screen.getByText('ОСНОВНОЙ СОСТАВ СОБРАН')).toBeInTheDocument();
     expect(screen.getByText('ПРЕМЬЕРА ГОТОВА')).toBeInTheDocument();
-    expect(screen.getByText(/запуск только вручную/i)).toBeInTheDocument();
+    expect(screen.getByText(/НЕ БЛОКИРУЕТ ЗАПУСК/i)).toBeInTheDocument();
+    expect(screen.getByText(/владелец вручную/i)).toBeInTheDocument();
   });
 });
