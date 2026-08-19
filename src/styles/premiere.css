@@ -207,6 +207,8 @@
 
 .premiere-countdown-caption {
   align-self: end;
+  position: relative;
+  z-index: 3;
   margin-bottom: clamp(1rem, 3vh, 2.4rem);
   color: rgba(243, 236, 223, 0.58);
   font-size: clamp(0.7rem, 1.2vw, 1rem);
@@ -216,36 +218,70 @@
 }
 
 .premiere-countdown-number-wrap {
+  position: relative;
+  z-index: 3;
   display: grid;
   place-items: center;
   width: min(58vw, 34rem);
   aspect-ratio: 1;
-  border: 1px solid rgba(243, 236, 223, 0.11);
-  border-radius: 50%;
+}
+
+.premiere-film-leader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: rgba(233, 229, 219, 0.13);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.premiere-film-leader__sweep {
+  fill: rgba(233, 229, 219, 0.035);
+  stroke: none;
+  transform-origin: 50% 50%;
+  animation: premiere-leader-sweep 1s linear infinite;
 }
 
 .premiere-countdown-number {
+  position: relative;
+  z-index: 4;
   color: var(--ivory);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(11rem, 31vw, 28rem);
+  font-size: clamp(9rem, 26vw, 24rem);
   font-weight: 400;
   line-height: 0.75;
   letter-spacing: -0.08em;
+  font-variant-numeric: tabular-nums;
   text-shadow: 0 0 4rem rgba(232, 221, 202, 0.08);
   transform-origin: center;
   animation: premiere-countdown-pulse 820ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.premiere-countdown-line {
+.premiere-countdown-meta {
   align-self: start;
+  position: relative;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: clamp(0.7rem, 2vh, 1.4rem);
+  margin-top: clamp(1.6rem, 4vh, 3.2rem);
+  color: rgba(233, 229, 219, 0.36);
+  font-size: clamp(0.55rem, 0.8vw, 0.9rem);
+  font-weight: 700;
+  letter-spacing: 0.36em;
+  text-align: center;
+}
+
+.premiere-countdown-line {
   width: min(18rem, 42vw);
   height: 1px;
-  margin-top: clamp(2rem, 5vh, 4rem);
   background: linear-gradient(90deg, transparent, rgba(243, 236, 223, 0.42), transparent);
 }
 
-.premiere-countdown-final .premiere-countdown-number-wrap {
-  border-color: rgba(180, 155, 126, 0.22);
+.premiere-countdown-final .premiere-film-leader {
+  stroke: rgba(210, 189, 120, 0.24);
 }
 
 .premiere-countdown-final .premiere-countdown-number {
@@ -268,12 +304,26 @@
   }
 }
 
+@keyframes premiere-leader-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .premiere-frame__index {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .premiere-player {
     transition: none;
   }
 
-  .premiere-countdown-number {
+  .premiere-countdown-number,
+  .premiere-film-leader__sweep,
+  .premiere-frame__grain,
+  .premiere-standby__locomotive {
     animation: none;
   }
 }
