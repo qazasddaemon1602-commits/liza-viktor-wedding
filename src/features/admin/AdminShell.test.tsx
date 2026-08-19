@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminShell, type AdminShellDependencies } from './AdminShell';
@@ -72,6 +72,12 @@ describe('AdminShell', () => {
     render(<AdminShell dependencies={deps} />);
 
     expect(await screen.findByText('Лиза × Виктор')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'РЕПЕТИЦИЯ' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ОТКРЫТЬ ТВ' })).toHaveAttribute('href', '/screen');
+    expect(screen.getByRole('link', { name: 'РЕГИСТРАЦИЯ ГОСТЯ' })).toHaveAttribute('href', '/join');
+    expect(screen.getByRole('link', { name: 'КВИЗ' })).toHaveAttribute('href', '/play');
+    expect(screen.getByRole('link', { name: 'MK' })).toHaveAttribute('href', '/mortal-kombat');
+    expect(screen.getByRole('link', { name: 'MK НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
     expect(screen.getByText('Иван Петров')).toBeInTheDocument();
     expect(screen.getByText(/зарегистрировано: 1/i)).toBeInTheDocument();
     expect(screen.getByText(/регистрация открыта/i)).toBeInTheDocument();
@@ -161,5 +167,43 @@ describe('AdminShell', () => {
     expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
     expect(screen.getAllByText('ВАГОН №4').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Со стороны Лизы').length).toBeGreaterThan(0);
+  });
+
+  it('recovers a registration missed during realtime subscription by background polling', async () => {
+    const load = vi.fn()
+      .mockResolvedValueOnce(structuredClone(dashboard))
+      .mockResolvedValue({ ...structuredClone(dashboard), guests: [...dashboard.guests, newGuest] });
+
+    render(
+      <AdminShell
+        dependencies={dependencies({ load })}
+        refreshIntervalMs={15}
+      />,
+    );
+
+    await screen.findByText('Иван Петров');
+    await waitFor(
+      () => expect(screen.getByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeInTheDocument(),
+      { timeout: 500 },
+    );
+    expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
+  });
+
+  it('keeps the last valid owner dashboard visible during a temporary background refresh failure', async () => {
+    const load = vi.fn()
+      .mockResolvedValueOnce(structuredClone(dashboard))
+      .mockRejectedValue(new Error('temporary network failure'));
+
+    render(
+      <AdminShell
+        dependencies={dependencies({ load })}
+        refreshIntervalMs={15}
+      />,
+    );
+
+    await screen.findByText('Иван Петров');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('СВЯЗЬ С АДМИНКОЙ · ПЕРЕПОДКЛЮЧЕНИЕ'), { timeout: 500 });
+    expect(screen.getByText('Иван Петров')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'РЕПЕТИЦИЯ' })).toBeInTheDocument();
   });
 });

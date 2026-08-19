@@ -30,4 +30,13 @@ describe('TrainArrivalScene', () => {
     expect(screen.getByTestId('train-arrival-scene')).toHaveStyle({ '--arrival-accent': '#78806A' });
     expect(onSignal).toHaveBeenCalledTimes(1);
   });
+
+  it('renders a recognizable locomotive, passenger consist, track and steam layer', () => {
+    render(<TrainArrivalScene event={event} />);
+
+    expect(screen.getByTestId('arrival-locomotive')).toBeInTheDocument();
+    expect(screen.getByTestId('arrival-passenger-consist')).toBeInTheDocument();
+    expect(screen.getByTestId('arrival-track')).toBeInTheDocument();
+    expect(screen.getByTestId('arrival-steam')).toBeInTheDocument();
+  });
 });

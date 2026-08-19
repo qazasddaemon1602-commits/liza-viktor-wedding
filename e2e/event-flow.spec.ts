@@ -3,6 +3,20 @@ import { expect, test, type Page } from '@playwright/test';
 
 const OWNER_EMAIL = 'owner@wedding.test';
 const OWNER_PASSWORD = 'WeddingTest!2026';
+const EVENT_SLUG = 'liza-viktor';
+
+type DashboardGuest = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  ticketNumber: string;
+  carriage: { id: string };
+};
+
+type OwnerDashboardState = {
+  event: { id: string };
+  guests: DashboardGuest[];
+};
 
 async function ownerClient() {
   const url = process.env.VITE_SUPABASE_URL!;
@@ -13,14 +27,26 @@ async function ownerClient() {
   return client;
 }
 
-async function eventId(client: Awaited<ReturnType<typeof ownerClient>>): Promise<string> {
-  const { data: event, error } = await client
-    .from('events')
-    .select('id')
-    .eq('slug', 'liza-viktor')
-    .single();
+async function ownerDashboard(
+  client: Awaited<ReturnType<typeof ownerClient>>,
+): Promise<OwnerDashboardState> {
+  const { data, error } = await client.rpc('owner_get_dashboard', {
+    p_event_slug: EVENT_SLUG,
+  });
   if (error) throw error;
-  return event.id;
+  if (
+    typeof data !== 'object'
+    || data === null
+    || !('event' in data)
+    || !('guests' in data)
+  ) {
+    throw new Error('Unexpected owner dashboard in E2E');
+  }
+  return data as unknown as OwnerDashboardState;
+}
+
+async function eventId(client: Awaited<ReturnType<typeof ownerClient>>): Promise<string> {
+  return (await ownerDashboard(client)).event.id;
 }
 
 async function resetRuntime() {
@@ -78,8 +104,9 @@ test('guest registration updates owner and queues the train moment on an idle pr
 
   await registerGuest(guest, 'Анна', 'Смирнова');
 
-  await expect(owner.getByText('Анна Смирнова')).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeVisible();
   await expect(projector.getByTestId('train-arrival-scene')).toBeVisible();
+  await expect(projector.getByTestId('arrival-locomotive')).toBeVisible();
   await expect(projector.getByText('Анна Смирнова')).toBeVisible();
 
   await ownerContext.close();
@@ -103,7 +130,7 @@ test('composition lock keeps registration open for a late guest', async ({ brows
 
   await registerGuest(lateGuest, 'Поздний', 'Гость');
 
-  await expect(owner.getByText('Поздний Гость')).toBeVisible();
+  await expect(owner.getByRole('heading', { name: 'Поздний Гость', level: 3 })).toBeVisible();
   await expect(lateGuest.getByText('Поздний Гость')).toBeVisible();
 
   await ownerContext.close();
@@ -132,7 +159,7 @@ test('registration during premiere countdown never interrupts the protected proj
   const guest = await guestContext.newPage();
 
   await projector.goto('/screen');
-  await expect(projector.getByText(/ПРЕМЬЕРА|10|9|8/)).toBeVisible();
+  await expect(projector.getByRole('region', { name: /Премьера через \d+/i })).toBeVisible();
 
   await registerGuest(guest, 'Во Время', 'Премьеры');
   await expect(projector.getByText('Во Время Премьеры')).toHaveCount(0);
@@ -160,14 +187,10 @@ test('late guest after premiere gets a normal ticket without changing earlier ca
 
   const client = await ownerClient();
   const id = await eventId(client);
-  const { data: firstBefore, error: firstBeforeError } = await client
-    .from('guests')
-    .select('id, carriage_id, ticket_number')
-    .eq('event_id', id)
-    .eq('first_name', 'До')
-    .eq('last_name', 'Премьеры')
-    .single();
-  if (firstBeforeError) throw firstBeforeError;
+  const firstBefore = (await ownerDashboard(client)).guests.find(
+    (guest) => guest.firstName === 'До' && guest.lastName === 'Премьеры',
+  );
+  if (!firstBefore) throw new Error('First guest is missing before premiere');
 
   const { error: mediaError } = await client.rpc('owner_set_premiere_media', {
     p_event_id: id,
@@ -177,13 +200,13 @@ test('late guest after premiere gets a normal ticket without changing earlier ca
   if (mediaError) throw mediaError;
   const { error: startError } = await client.rpc('owner_start_premiere', {
     p_event_id: id,
-    p_countdown_seconds: 1,
+    p_countdown_seconds: 3,
   });
   if (startError) throw startError;
 
   await projector.goto('/screen');
-  await expect(projector.getByText(/ПРЕМЬЕРА|1/)).toBeVisible();
-  await new Promise((resolve) => setTimeout(resolve, 1_250));
+  await expect(projector.getByRole('region', { name: /Премьера через \d+/i })).toBeVisible();
+  await new Promise((resolve) => setTimeout(resolve, 3_250));
 
   const { error: returnError } = await client.rpc('owner_return_main_screen', { p_event_id: id });
   if (returnError) throw returnError;
@@ -192,24 +215,17 @@ test('late guest after premiere gets a normal ticket without changing earlier ca
 
   await registerGuest(lateGuest, 'После', 'Премьеры');
 
-  const { data: firstAfter, error: firstAfterError } = await client
-    .from('guests')
-    .select('id, carriage_id, ticket_number')
-    .eq('id', firstBefore.id)
-    .single();
-  if (firstAfterError) throw firstAfterError;
-  expect(firstAfter.carriage_id).toBe(firstBefore.carriage_id);
-  expect(firstAfter.ticket_number).toBe(firstBefore.ticket_number);
+  const afterDashboard = await ownerDashboard(client);
+  const firstAfter = afterDashboard.guests.find((guest) => guest.id === firstBefore.id);
+  if (!firstAfter) throw new Error('First guest is missing after premiere');
+  expect(firstAfter.carriage.id).toBe(firstBefore.carriage.id);
+  expect(firstAfter.ticketNumber).toBe(firstBefore.ticketNumber);
 
-  const { data: lateRow, error: lateError } = await client
-    .from('guests')
-    .select('ticket_number')
-    .eq('event_id', id)
-    .eq('first_name', 'После')
-    .eq('last_name', 'Премьеры')
-    .single();
-  if (lateError) throw lateError;
-  expect(lateRow.ticket_number).toBe('LV-002');
+  const lateRow = afterDashboard.guests.find(
+    (guest) => guest.firstName === 'После' && guest.lastName === 'Премьеры',
+  );
+  if (!lateRow) throw new Error('Late guest is missing after premiere');
+  expect(lateRow.ticketNumber).toBe('LV-002');
 
   await client.auth.signOut();
   await firstContext.close();

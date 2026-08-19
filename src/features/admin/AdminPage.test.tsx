@@ -67,11 +67,14 @@ describe('AdminPage', () => {
     expect(screen.queryByText(/создать аккаунт/i)).not.toBeInTheDocument();
   });
 
-  it('signs in and opens the owner dashboard', async () => {
+  it('signs in and opens the owner dashboard after Supabase returns the new owner session', async () => {
     const user = userEvent.setup();
     const signIn = vi.fn().mockResolvedValue(undefined);
+    const getSession = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ userId: 'owner-1' });
     const loadDashboard = vi.fn().mockResolvedValue(dashboard);
-    render(<AdminPage dependencies={dependencies({ signIn, loadDashboard })} />);
+    render(<AdminPage dependencies={dependencies({ getSession, signIn, loadDashboard })} />);
 
     await screen.findByRole('button', { name: 'ВОЙТИ В АДМИНКУ' });
     await user.type(screen.getByLabelText('Email владельца'), 'ilya@example.test');
@@ -79,11 +82,12 @@ describe('AdminPage', () => {
     await user.click(screen.getByRole('button', { name: 'ВОЙТИ В АДМИНКУ' }));
 
     expect(signIn).toHaveBeenCalledWith('ilya@example.test', 'secret-password');
+    expect(getSession).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('Лиза × Виктор')).toBeInTheDocument();
     expect(loadDashboard).toHaveBeenCalled();
   });
 
-  it('shows access denied when an authenticated user is not the event owner', async () => {
+  it('keeps private dashboard data hidden when an authenticated user is not the event owner', async () => {
     const forbidden = Object.assign(new Error('owner access required'), { code: '42501' });
     render(
       <AdminPage
@@ -94,7 +98,8 @@ describe('AdminPage', () => {
       />,
     );
 
-    expect(await screen.findByText(/доступ запрещён/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'АДМИНКА НЕДОСТУПНА' })).toBeInTheDocument();
+    expect(screen.getByText(/проверьте связь и доступ владельца/i)).toBeInTheDocument();
     expect(screen.queryByText('Лиза × Виктор')).not.toBeInTheDocument();
   });
 
@@ -105,7 +110,6 @@ describe('AdminPage', () => {
       return vi.fn();
     });
     const loadDashboard = vi.fn()
-      .mockResolvedValueOnce(dashboard)
       .mockResolvedValueOnce(dashboard)
       .mockResolvedValueOnce(dashboardWithGuest);
 

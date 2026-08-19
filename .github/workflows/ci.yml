@@ -6,7 +6,7 @@ on:
       - main
   push:
     branches:
-      - feat/wedding-live-hub-mvp-ci
+      - feat/admin-rehearsal-links
 
 jobs:
   test:
@@ -16,7 +16,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm install --legacy-peer-deps
       - run: npm run typecheck
-      - run: npm test
+      - name: Run unit tests
+        shell: bash
+        run: |
+          set +e
+          npm test > vitest.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Vitest failure tail"
+            tail -n 220 vitest.log
+            echo "::endgroup::"
+            exit "$status"
+          fi
+          tail -n 40 vitest.log
       - run: npm run build

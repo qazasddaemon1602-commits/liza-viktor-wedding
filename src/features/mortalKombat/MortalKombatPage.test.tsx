@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MkTournamentProjection } from './mk.types';
 import { MortalKombatPage, type MortalKombatPageDependencies } from './MortalKombatPage';
 
-const openState: MkTournamentProjection = {
+type ActiveProjection = Extract<MkTournamentProjection, { status: 'active' }>;
+
+const openState: ActiveProjection = {
   status: 'active',
   tournamentId: 't1',
   state: 'registration',
@@ -20,9 +22,10 @@ const openState: MkTournamentProjection = {
   })),
   matches: [],
   championGuestId: null,
+  presentOnMainScreen: false,
 };
 
-const joinedState: MkTournamentProjection = {
+const joinedState: ActiveProjection = {
   ...openState,
   activeCount: 10,
   ownRegistrationStatus: 'active',

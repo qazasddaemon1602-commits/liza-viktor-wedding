@@ -22,6 +22,7 @@ const liveFight: MkTournamentProjection = {
     status: 'ready', current: true,
   }],
   championGuestId: null,
+  presentOnMainScreen: true,
 };
 
 describe('ScreenPage Mortal Kombat integration', () => {

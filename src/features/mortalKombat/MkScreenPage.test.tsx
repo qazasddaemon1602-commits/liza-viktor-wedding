@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MkTournamentProjection } from './mk.types';
 import { MkScreenPage, type MkScreenPageDependencies } from './MkScreenPage';
 
-const liveFight: MkTournamentProjection = {
+type ActiveProjection = Extract<MkTournamentProjection, { status: 'active' }>;
+
+const liveFight: ActiveProjection = {
   status: 'active',
   tournamentId: 't1',
   state: 'active',
@@ -21,9 +23,10 @@ const liveFight: MkTournamentProjection = {
     status: 'ready', current: true,
   }],
   championGuestId: null,
+  presentOnMainScreen: false,
 };
 
-const completed: MkTournamentProjection = {
+const completed: ActiveProjection = {
   ...liveFight,
   state: 'complete',
   championGuestId: 'g1',

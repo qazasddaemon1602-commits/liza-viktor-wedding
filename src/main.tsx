@@ -4,6 +4,8 @@ import { App } from './app/App';
 import { registerWeddingServiceWorker } from './pwa/registerServiceWorker';
 import './styles/globals.css';
 import './styles/admin.css';
+import './styles/admin-rehearsal.css';
+import './styles/admin-sync.css';
 import './styles/train-arrival.css';
 import './styles/screen-announcements.css';
 import './styles/screen-controls.css';
