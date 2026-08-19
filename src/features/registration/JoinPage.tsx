@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { GuestBunkerLiveDependencies } from '../bunker/useGuestBunkerLiveState';
+import { useGuestBunkerLiveState } from '../bunker/useGuestBunkerLiveState';
 import type { GuestActiveCarriageCalls, GuestCarriageCall } from '../carriages/carriageCalls.service';
 import { GuestHub } from '../guest/GuestHub';
 import { useGuestQuizLiveState, type GuestQuizLiveDependencies } from '../guest/useGuestQuizLiveState';
@@ -15,6 +17,7 @@ export type JoinPageDependencies = {
   loadCarriageCalls?: (deviceKey: string) => Promise<GuestActiveCarriageCalls>;
   subscribeToCarriageCalls?: (carriageId: string, callback: () => void) => () => void;
   quiz?: GuestQuizLiveDependencies;
+  bunker?: GuestBunkerLiveDependencies;
 };
 
 type JoinPageProps = {
@@ -33,6 +36,10 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   const quiz = useGuestQuizLiveState({
     dependencies: dependencies.quiz,
     enabled: Boolean(guest && dependencies.quiz),
+  });
+  const bunker = useGuestBunkerLiveState({
+    dependencies: dependencies.bunker,
+    enabled: Boolean(guest && dependencies.bunker),
   });
 
   const restore = useCallback(async () => {
@@ -147,6 +154,12 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
       <GuestHub
         guest={guest}
         activeCall={activeCall}
+        bunkerState={bunker.state}
+        bunkerFeedback={bunker.feedback}
+        bunkerError={bunker.error}
+        bunkerSubmitting={bunker.submitting}
+        onBunkerMission={(stage, answer) => void bunker.submitMission(stage, answer)}
+        onBunkerFinalCode={(code) => void bunker.submitFinalCode(code)}
         quizState={quiz.state}
         quizError={quiz.error}
         quizSubmitting={quiz.submitting}

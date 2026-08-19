@@ -1,4 +1,11 @@
 import { useMemo } from 'react';
+import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from '../bunker/bunker.realtime';
+import type { BunkerRpcClient } from '../bunker/bunker.service';
+import {
+  getGuestBunkerQuest,
+  submitBunkerFinalCode,
+  submitBunkerMission,
+} from '../bunker/bunkerQuest.service';
 import {
   subscribeToCarriageCallRefresh,
   type CarriageCallRealtimeClient,
@@ -30,6 +37,8 @@ type GuestJoinPageProps = {
   realtimeClient?: CarriageCallRealtimeClient;
   quizClient?: QuizRpcClient;
   quizRealtimeClient?: QuizRealtimeClient;
+  bunkerClient?: BunkerRpcClient;
+  bunkerRealtimeClient?: BunkerRealtimeClient;
   eventSlug?: string;
   deviceKey?: string;
   revealDelayMs?: number;
@@ -40,6 +49,8 @@ export function GuestJoinPage({
   realtimeClient,
   quizClient,
   quizRealtimeClient,
+  bunkerClient,
+  bunkerRealtimeClient,
   eventSlug = DEFAULT_EVENT_SLUG,
   deviceKey,
   revealDelayMs,
@@ -56,11 +67,17 @@ export function GuestJoinPage({
     const activeQuizClient = quizClient
       ?? (browserSupabase as unknown as QuizRpcClient | null)
       ?? undefined;
+    const activeBunkerClient = bunkerClient
+      ?? (browserSupabase as unknown as BunkerRpcClient | null)
+      ?? undefined;
     const activeCarriageRealtimeClient = realtimeClient
       ?? (browserSupabase as unknown as CarriageCallRealtimeClient | null)
       ?? undefined;
     const activeQuizRealtimeClient = quizRealtimeClient
       ?? (browserSupabase as unknown as QuizRealtimeClient | null)
+      ?? undefined;
+    const activeBunkerRealtimeClient = bunkerRealtimeClient
+      ?? (browserSupabase as unknown as BunkerRealtimeClient | null)
       ?? undefined;
     let cachedDeviceKey = deviceKey;
     const getDeviceKey = () => {
@@ -110,8 +127,37 @@ export function GuestJoinPage({
           ? (callback) => subscribeToQuizRefresh(activeQuizRealtimeClient, eventSlug, callback)
           : undefined,
       } : undefined,
+      bunker: activeBunkerClient ? {
+        getDeviceKey,
+        load: (key) => getGuestBunkerQuest(activeBunkerClient, eventSlug, key),
+        submitMission: (key, stage, answer) => submitBunkerMission(
+          activeBunkerClient,
+          eventSlug,
+          key,
+          stage,
+          answer,
+        ),
+        submitFinalCode: (key, code) => submitBunkerFinalCode(
+          activeBunkerClient,
+          eventSlug,
+          key,
+          code,
+        ),
+        subscribeToRefresh: activeBunkerRealtimeClient
+          ? (callback) => subscribeToBunkerRefresh(activeBunkerRealtimeClient, eventSlug, callback)
+          : undefined,
+      } : undefined,
     };
-  }, [client, deviceKey, eventSlug, quizClient, quizRealtimeClient, realtimeClient]);
+  }, [
+    bunkerClient,
+    bunkerRealtimeClient,
+    client,
+    deviceKey,
+    eventSlug,
+    quizClient,
+    quizRealtimeClient,
+    realtimeClient,
+  ]);
 
   return <JoinPage dependencies={dependencies} revealDelayMs={revealDelayMs} />;
 }

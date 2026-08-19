@@ -29,6 +29,35 @@ describe('bunker service', () => {
     expect(client.rpc).toHaveBeenCalledWith('get_bunker_screen_state', { p_event_slug: 'liza-viktor' });
   });
 
+  it('parses safe quest phase and carriage progress without secret fragments', async () => {
+    const client = clientWith({
+      status: 'active',
+      startedAt: '2026-08-30T18:00:00.000Z',
+      durationSeconds: 1800,
+      remainingSeconds: 1200,
+      soundEnabled: false,
+      phase: 'mission_b',
+      unlocked: false,
+      teams: [
+        { carriageNumber: 1, label: 'ВАГОН №1', missionAComplete: true, missionBComplete: true },
+        { carriageNumber: 2, label: 'ВАГОН №2', missionAComplete: true, missionBComplete: false },
+      ],
+      serverNow: '2026-08-30T18:10:00.000Z',
+    });
+
+    const state = await getBunkerScreenState(client, 'liza-viktor');
+    expect(state).toMatchObject({
+      status: 'active',
+      phase: 'mission_b',
+      unlocked: false,
+      teams: [
+        { carriageNumber: 1, missionBComplete: true },
+        { carriageNumber: 2, missionBComplete: false },
+      ],
+    });
+    expect(JSON.stringify(state)).not.toContain('fragment');
+  });
+
   it('wires owner start/stop commands with the 30 minute default', async () => {
     const client = clientWith({ status: 'active' });
     await startBunker(client, 'event-1');

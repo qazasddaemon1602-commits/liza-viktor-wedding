@@ -21,6 +21,7 @@ import './styles/admin-reset.css';
 import './styles/mortal-kombat.css';
 import './styles/mk-milestones.css';
 import './styles/bunker.css';
+import './styles/bunker-quest.css';
 
 const root = document.getElementById('root');
 

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
+import { BunkerQuestScene } from './BunkerQuestScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
 import { setBunkerPresentationProtected } from './bunkerProtection';
 import {
@@ -36,7 +37,6 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
       audio: createBunkerAudioController(),
     };
   } catch {
-    // Route/unit tests without a configured backend keep rendering their original screen.
     return null;
   }
 }
@@ -107,23 +107,23 @@ export function BunkerScreenGuard({
   const remainingSeconds = state?.status === 'active'
     ? remainingFromState(state, nowMs, serverOffsetRef.current)
     : 0;
-  const emergencyActive = state?.status === 'active';
+  const bunkerActive = state?.status === 'active';
+  const activePhase = state?.status === 'active' ? (state.phase ?? 'emergency') : null;
+  const emergencyPhase = bunkerActive && activePhase === 'emergency';
 
   useEffect(() => {
-    setBunkerPresentationProtected(emergencyActive);
+    setBunkerPresentationProtected(bunkerActive);
     return () => {
       setBunkerPresentationProtected(false);
     };
-  }, [emergencyActive]);
+  }, [bunkerActive]);
 
   useEffect(() => {
-    if (!emergencyActive || remainingSeconds <= 0) return;
+    if (!bunkerActive || remainingSeconds <= 0) return;
     const interval = window.setInterval(() => setNowMs(Date.now()), 250);
     return () => window.clearInterval(interval);
-  }, [emergencyActive, remainingSeconds <= 0]);
+  }, [bunkerActive, remainingSeconds <= 0]);
 
-  // Broadcast can be missed if a TV is still reconnecting when the owner presses START/STOP.
-  // Poll in both idle and active states so a projector always converges to authoritative state.
   useEffect(() => {
     if (!deps) return;
     let active = true;
@@ -135,18 +135,18 @@ export function BunkerScreenGuard({
         .catch(() => {
           // Keep the last valid screen state until connectivity returns.
         });
-    }, emergencyActive ? 2_000 : 1_500);
+    }, bunkerActive ? 2_000 : 1_500);
     return () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [deps, emergencyActive]);
+  }, [deps, bunkerActive]);
 
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
     if (
-      !emergencyActive
+      !emergencyPhase
       || remainingSeconds <= 0
       || state?.status !== 'active'
       || !state.soundEnabled
@@ -162,13 +162,13 @@ export function BunkerScreenGuard({
     });
 
     return () => audio.stopAlarm();
-  }, [deps, emergencyActive, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [deps, emergencyPhase, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => () => deps?.audio?.dispose(), [deps]);
 
   const armSound = () => {
     const audio = deps?.audio;
-    if (!audio || remainingSeconds <= 0) return;
+    if (!audio || !emergencyPhase || remainingSeconds <= 0) return;
     void audio.arm().then((armed) => {
       if (!activeRef.current) return;
       setSoundArmed(armed);
@@ -179,13 +179,16 @@ export function BunkerScreenGuard({
   return (
     <>
       {children}
-      {emergencyActive && state?.status === 'active' && (
+      {bunkerActive && state?.status === 'active' && activePhase === 'emergency' && (
         <BunkerEmergencyScene
           remainingSeconds={remainingSeconds}
           soundEnabled={state.soundEnabled && remainingSeconds > 0}
           soundArmed={soundArmed}
           onArmSound={armSound}
         />
+      )}
+      {bunkerActive && state?.status === 'active' && activePhase !== 'emergency' && (
+        <BunkerQuestScene state={state} remainingSeconds={remainingSeconds} />
       )}
     </>
   );
