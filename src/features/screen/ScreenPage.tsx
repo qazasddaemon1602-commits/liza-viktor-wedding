@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
 import {
   getBunkerPresentationProtected,
   subscribeToBunkerPresentationProtection,
@@ -213,7 +214,7 @@ export function ScreenPage({
   const [premiereState, setPremiereState] = useState<PremiereScreenState | null>(null);
   const [mkState, setMkState] = useState<MkTournamentProjection | null>(null);
   const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [audioSettings, setAudioSettings] = useState(() => siteAudio.getSettings());
   const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
   const [armingAudio, setArmingAudio] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
@@ -226,8 +227,8 @@ export function ScreenPage({
   const presentationProtectedRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
   const autoAudioAttemptedRef = useRef(false);
-  const soundEnabledRef = useRef(true);
 
+  const soundEnabled = audioSettings.enabled && audioSettings.volume > 0;
   const premiereProtected = isPremiereProtected(premiereState);
   const mortalKombatProtected = isMortalKombatProtected(mkState);
   const presentationProtected = premiereProtected || mortalKombatProtected || bunkerProtected;
@@ -241,17 +242,27 @@ export function ScreenPage({
 
   const armAudio = useCallback(async () => {
     if (!hasAudioArm || armingAudio) return;
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) {
+      setAudioArmed(false);
+      return;
+    }
+
     setArmingAudio(true);
     try {
       const [arrivalReady, premiereReady] = await Promise.all([
         armWithTimeout(deps.armArrivalAudio),
         armWithTimeout(deps.armPremiereAudio),
       ]);
-      setAudioArmed(soundEnabledRef.current && Boolean(arrivalReady && premiereReady));
+      setAudioArmed(Boolean(arrivalReady && premiereReady));
     } finally {
       setArmingAudio(false);
     }
   }, [armingAudio, deps, hasAudioArm]);
+
+  useEffect(() => siteAudio.subscribe((settings) => {
+    setAudioSettings(settings);
+    if (!settings.enabled || settings.volume <= 0) setAudioArmed(false);
+  }), []);
 
   useEffect(() => {
     if (!hasAudioArm || !soundEnabled || autoAudioAttemptedRef.current) return;
@@ -269,6 +280,12 @@ export function ScreenPage({
       window.removeEventListener('keydown', retry);
     };
   }, [armAudio, armingAudio, audioArmed, hasAudioArm, soundEnabled]);
+
+  useEffect(() => {
+    const rearm = () => void armAudio();
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
+    return () => window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
+  }, [armAudio]);
 
   useEffect(() => subscribeToBunkerPresentationProtection((active) => {
     setBunkerProtected(active);
@@ -487,27 +504,12 @@ export function ScreenPage({
   }, [activeEvent, presentationProtected, resolvedCarriageCallDurationMs, sceneDurationMs]);
 
   const playSignal = useCallback(() => {
-    if (!presentationProtectedRef.current && soundEnabled && audioArmed) {
-      deps.playArrivalSignal?.();
-    }
-  }, [audioArmed, deps, soundEnabled]);
+    if (!presentationProtectedRef.current) deps.playArrivalSignal?.();
+  }, [deps]);
 
   const playPremiereCountdownTick = useCallback((second: number) => {
-    if (soundEnabled && audioArmed) deps.playPremiereCountdownTick?.(second);
-  }, [audioArmed, deps, soundEnabled]);
-
-  const disableAudio = () => {
-    soundEnabledRef.current = false;
-    setSoundEnabled(false);
-    setAudioArmed(false);
-    deps.stopArrivalAudio?.();
-  };
-
-  const enableAudio = async () => {
-    soundEnabledRef.current = true;
-    setSoundEnabled(true);
-    await armAudio();
-  };
+    deps.playPremiereCountdownTick?.(second);
+  }, [deps]);
 
   const activeQuiz = quizState?.status === 'active' ? quizState : null;
   const finalFiveForCurrentQuestion = activeQuiz?.phase === 'results'
@@ -562,21 +564,6 @@ export function ScreenPage({
         <div className="screen-connection-indicator" role="status">
           СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ
         </div>
-      )}
-
-      {hasAudioArm && (!presentationProtected || premiereState?.status === 'standby') && (
-        <button
-          type="button"
-          className="screen-audio-arm"
-          disabled={!soundEnabled && armingAudio}
-          onClick={() => soundEnabled ? disableAudio() : void enableAudio()}
-        >
-          {soundEnabled
-            ? 'ВЫКЛЮЧИТЬ ЗВУК'
-            : armingAudio
-              ? 'ВКЛЮЧАЕМ…'
-              : 'ВКЛЮЧИТЬ ЗВУК'}
-        </button>
       )}
 
       {!presentationProtected && activeEvent?.kind === 'guest_registered' && (
