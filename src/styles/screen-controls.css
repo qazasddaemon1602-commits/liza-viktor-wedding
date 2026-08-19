@@ -12,7 +12,7 @@
 
 .screen-audio-control {
   position: fixed;
-  z-index: 120;
+  z-index: 1105;
   top: clamp(0.7rem, 1.5vw, 1.25rem);
   right: clamp(0.7rem, 1.5vw, 1.25rem);
   display: flex;
