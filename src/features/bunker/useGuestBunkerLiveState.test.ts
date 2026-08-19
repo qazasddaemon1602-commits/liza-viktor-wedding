@@ -52,7 +52,8 @@ describe('useGuestBunkerLiveState', () => {
   it('reloads after a carriage mission attempt and exposes retry feedback', async () => {
     const load = vi.fn().mockResolvedValue(emergency);
     const submitMission = vi.fn().mockResolvedValue({ status: 'incorrect', stage: 'mission_a', attemptCount: 2 });
-    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies: deps({ load, submitMission }) }));
+    const dependencies = deps({ load, submitMission });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.state).not.toBeNull());
 
     await act(async () => {
@@ -66,7 +67,8 @@ describe('useGuestBunkerLiveState', () => {
 
   it('reloads after final unlock and uses a neutral wrong-code message', async () => {
     const submitFinalCode = vi.fn().mockResolvedValue({ status: 'incorrect', unlocked: false });
-    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies: deps({ submitFinalCode }) }));
+    const dependencies = deps({ submitFinalCode });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.state).not.toBeNull());
 
     await act(async () => {
