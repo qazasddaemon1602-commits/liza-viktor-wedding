@@ -23,6 +23,7 @@ import './styles/mk-milestones.css';
 import './styles/mk-artbook.css';
 import './styles/bunker.css';
 import './styles/bunker-quest.css';
+import './styles/mobile-hardening.css';
 
 const root = document.getElementById('root');
 
