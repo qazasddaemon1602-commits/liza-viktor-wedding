@@ -78,6 +78,71 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByText('MK · ГОТОВ')).toBeInTheDocument();
   });
 
+  it('reports an unissued couple link explicitly and shows a clean production start state', async () => {
+    render(
+      <AdminRehearsalPanel
+        eventId="event-1"
+        currentModule="idle"
+        registrationOpen
+        compositionLocked={false}
+        guestCount={0}
+        premiere={{
+          load: vi.fn().mockResolvedValue(configuredPremiere),
+        }}
+        couplePreanswers={{
+          load: vi.fn().mockResolvedValue({
+            status: 'not_issued',
+            answeredCount: 0,
+            totalCount: 30,
+            issuedAt: null,
+            finalizedAt: null,
+          }),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('ОТВЕТЫ ПАРЫ · ССЫЛКА НЕ ВЫДАНА')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('СТАРТ СОБЫТИЯ · ЧИСТО')).toBeInTheDocument();
+    expect(screen.getByText('РЕГИСТРАЦИЯ · ОТКРЫТА')).toBeInTheDocument();
+    expect(screen.getByText('ТЕСТОВЫЕ ГОСТИ · 0')).toBeInTheDocument();
+    expect(screen.getByText('СОСТАВ · СВОБОДЕН')).toBeInTheDocument();
+  });
+
+  it('marks the production start state for review when rehearsal data remains', async () => {
+    render(
+      <AdminRehearsalPanel
+        eventId="event-1"
+        currentModule="idle"
+        registrationOpen={false}
+        compositionLocked
+        guestCount={3}
+        premiere={{
+          load: vi.fn().mockResolvedValue(configuredPremiere),
+        }}
+        couplePreanswers={{
+          load: vi.fn().mockResolvedValue({
+            status: 'finalized',
+            answeredCount: 5,
+            totalCount: 5,
+            issuedAt: serverNow,
+            finalizedAt: serverNow,
+          }),
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('СТАРТ СОБЫТИЯ · ПРОВЕРИТЬ')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('РЕГИСТРАЦИЯ · ЗАКРЫТА')).toBeInTheDocument();
+    expect(screen.getByText('ТЕСТОВЫЕ ГОСТИ · 3')).toBeInTheDocument();
+    expect(screen.getByText('СОСТАВ · ЗАФИКСИРОВАН')).toBeInTheDocument();
+  });
+
   it('reports ready when two screens, video, audio, premiere and couple answers are ready', async () => {
     let onPresence: ((presence: ScreenPresence) => void) | undefined;
 
