@@ -63,7 +63,6 @@ export function BunkerScreenGuard({
   );
   const [state, setState] = useState<BunkerScreenState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const activeRef = useRef(true);
   const serverOffsetRef = useRef(0);
 
   const applyServerState = (next: BunkerScreenState) => {
@@ -73,13 +72,6 @@ export function BunkerScreenGuard({
     setState(next);
     setNowMs(receivedAt);
   };
-
-  useEffect(() => {
-    activeRef.current = true;
-    return () => {
-      activeRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!deps) return;
