@@ -32,7 +32,7 @@ describe('ScreenPage premiere presence heartbeat', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('starts with sound enabled, auto-arms audio, and exposes a disable-first toggle', async () => {
+  it('starts with sound enabled, auto-arms audio, and exposes a disable-first toggle that mutes premiere media', async () => {
     const broadcastPremierePresence = vi.fn().mockResolvedValue(undefined);
     const dependencies = {
       subscribe: () => vi.fn(),
@@ -56,6 +56,8 @@ describe('ScreenPage premiere presence heartbeat', () => {
     );
     await flushPromises();
 
+    const video = container.querySelector('video')!;
+    expect(video.muted).toBe(false);
     expect(dependencies.armArrivalAudio).toHaveBeenCalledTimes(1);
     expect(dependencies.armPremiereAudio).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
@@ -65,7 +67,7 @@ describe('ScreenPage premiere presence heartbeat', () => {
       audioArmed: true,
     });
 
-    fireEvent.canPlay(container.querySelector('video')!);
+    fireEvent.canPlay(video);
     await flushPromises();
     expect(broadcastPremierePresence).toHaveBeenLastCalledWith({
       screenId: 'tv-room-1',
@@ -75,6 +77,7 @@ describe('ScreenPage premiere presence heartbeat', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' }));
     await flushPromises();
+    expect(video.muted).toBe(true);
     expect(dependencies.stopArrivalAudio).toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
     expect(broadcastPremierePresence).toHaveBeenLastCalledWith({
@@ -85,6 +88,7 @@ describe('ScreenPage premiere presence heartbeat', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' }));
     await flushPromises();
+    expect(video.muted).toBe(false);
     expect(screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
     expect(broadcastPremierePresence).toHaveBeenLastCalledWith({
       screenId: 'tv-room-1',
