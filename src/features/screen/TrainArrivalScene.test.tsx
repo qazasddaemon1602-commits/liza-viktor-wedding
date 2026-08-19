@@ -44,6 +44,7 @@ describe('TrainArrivalScene', () => {
     render(<TrainArrivalScene event={event} />);
 
     expect(screen.getByTestId('arrival-platform-ticket')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Посадка Анна Смирнова, ВАГОН №4' })).toBeInTheDocument();
     expect(screen.getByTestId('arrival-editorial-seal')).toBeInTheDocument();
     expect(screen.getByText('PLATFORM ANNOUNCEMENT')).toBeInTheDocument();
     expect(screen.getByText('PASSENGER ACCEPTED')).toBeInTheDocument();
