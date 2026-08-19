@@ -38,7 +38,7 @@ function browserDependencies(eventSlug: string): MortalKombatPageDependencies {
     load: () => getMkTournamentState(rpcClient, eventSlug, deviceKey),
     join: async () => {
       const result = await joinMkTournament(rpcClient, eventSlug, deviceKey);
-      await broadcastMkRefresh(realtimeClient, eventSlug).catch(() => undefined);
+      void broadcastMkRefresh(realtimeClient, eventSlug).catch(() => undefined);
       return result;
     },
     subscribeToRefresh: (callback) => subscribeToMkRefresh(realtimeClient, eventSlug, callback),

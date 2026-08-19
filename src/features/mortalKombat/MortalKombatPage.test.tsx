@@ -62,14 +62,30 @@ describe('MortalKombatPage', () => {
 
     render(<MortalKombatPage dependencies={dependencies({ load, join })} />);
 
-    expect(await screen.findByRole('button', { name: 'УЧАСТВОВАТЬ В MORTAL KOMBAT' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.getByText('9 / 16')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'УЧАСТВОВАТЬ В MORTAL KOMBAT' }));
+    await user.click(screen.getByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' }));
 
     expect(join).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ВЕРНУТЬСЯ К БИЛЕТУ' })).toHaveAttribute('href', '/join');
+  });
+
+  it('shows the return-to-ticket link for waitlisted guests', async () => {
+    const waitlistState: ActiveProjection = {
+      ...openState,
+      activeCount: 16,
+      ownRegistrationStatus: 'waitlist',
+      waitlistPosition: 3,
+    };
+    render(<MortalKombatPage dependencies={dependencies({ load: vi.fn().mockResolvedValue(waitlistState) })} />);
+
+    expect(await screen.findByText('ЛИСТ ОЖИДАНИЯ · №3')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ВЕРНУТЬСЯ К БИЛЕТУ' })).toHaveAttribute('href', '/join');
   });
 
   it('reloads the public bracket when a safe realtime refresh arrives', async () => {
