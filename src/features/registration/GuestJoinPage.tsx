@@ -7,6 +7,12 @@ import {
   getGuestActiveCarriageCalls,
   type CarriageCallRpcClient,
 } from '../carriages/carriageCalls.service';
+import { subscribeToQuizRefresh, type QuizRealtimeClient } from '../quiz/quiz.realtime';
+import {
+  getGuestQuizState,
+  submitGuestQuizVote,
+  type QuizRpcClient,
+} from '../quiz/quiz.service';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { JoinPage, type JoinPageDependencies } from './JoinPage';
@@ -43,9 +49,11 @@ export function GuestJoinPage({
       },
     };
     const carriageCallClient = registrationClient as unknown as CarriageCallRpcClient;
-    const activeRealtimeClient = realtimeClient
+    const quizClient = registrationClient as unknown as QuizRpcClient;
+    const activeCarriageRealtimeClient = realtimeClient
       ?? (browserSupabase as unknown as CarriageCallRealtimeClient | null)
       ?? undefined;
+    const activeQuizRealtimeClient = (browserSupabase as unknown as QuizRealtimeClient | null) ?? undefined;
     let cachedDeviceKey = deviceKey;
     const getDeviceKey = () => {
       cachedDeviceKey ??= getOrCreateDeviceKey();
@@ -73,13 +81,27 @@ export function GuestJoinPage({
         eventSlug,
         key,
       ),
-      subscribeToCarriageCalls: activeRealtimeClient
+      subscribeToCarriageCalls: activeCarriageRealtimeClient
         ? (carriageId, callback) => subscribeToCarriageCallRefresh(
-          activeRealtimeClient,
+          activeCarriageRealtimeClient,
           carriageId,
           callback,
         )
         : undefined,
+      quiz: {
+        getDeviceKey,
+        load: (key) => getGuestQuizState(quizClient, eventSlug, key),
+        vote: (key, questionId, choice) => submitGuestQuizVote(
+          quizClient,
+          eventSlug,
+          key,
+          questionId,
+          choice,
+        ),
+        subscribeToRefresh: activeQuizRealtimeClient
+          ? (callback) => subscribeToQuizRefresh(activeQuizRealtimeClient, eventSlug, callback)
+          : undefined,
+      },
     };
   }, [client, deviceKey, eventSlug, realtimeClient]);
 
