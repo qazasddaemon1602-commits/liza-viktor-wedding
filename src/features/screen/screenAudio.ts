@@ -1,3 +1,5 @@
+import { siteAudio } from '../../lib/siteAudio';
+
 type AudioParamLike = {
   setValueAtTime: (value: number, time: number) => unknown;
   linearRampToValueAtTime: (value: number, time: number) => unknown;
@@ -52,9 +54,27 @@ export function createScreenAudioController(
   factory: AudioContextFactory = browserAudioContextFactory,
 ): ScreenAudioController {
   let context: AudioContextLike | null = null;
+  const usesSharedBrowserContext = factory === browserAudioContextFactory;
   const activeOscillators = new Set<OscillatorLike>();
 
+  const stopOscillators = () => {
+    if (!context) return;
+    for (const oscillator of activeOscillators) {
+      try {
+        oscillator.stop(context.currentTime);
+      } catch {
+        // A naturally-ended oscillator is already silent; continue stopping the rest.
+      }
+    }
+    activeOscillators.clear();
+  };
+
+  const unsubscribeSettings = siteAudio.subscribe((settings) => {
+    if (!settings.enabled || settings.volume <= 0) stopOscillators();
+  });
+
   const arm = async (): Promise<boolean> => {
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
     try {
       context ??= factory();
       if (context.state !== 'running') await context.resume();
@@ -71,7 +91,8 @@ export function createScreenAudioController(
     peak = 0.024,
     type: OscillatorType = 'sine',
   ) => {
-    if (!context || context.state !== 'running') return;
+    const volume = siteAudio.getVolume();
+    if (!context || context.state !== 'running' || !siteAudio.isEnabled() || volume <= 0) return;
 
     const oscillator = context.createOscillator();
     const gain = context.createGain();
@@ -79,7 +100,7 @@ export function createScreenAudioController(
     oscillator.frequency.setValueAtTime(frequency, startAt);
 
     gain.gain.setValueAtTime(0.0001, startAt);
-    gain.gain.linearRampToValueAtTime(peak, startAt + Math.min(0.08, duration / 5));
+    gain.gain.linearRampToValueAtTime(peak * volume, startAt + Math.min(0.08, duration / 5));
     gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
 
     oscillator.connect(gain);
@@ -95,18 +116,6 @@ export function createScreenAudioController(
     const now = context.currentTime + 0.015;
     playTone(523.25, now, 0.16);
     playTone(659.25, now + 0.19, 0.2);
-  };
-
-  const stopOscillators = () => {
-    if (!context) return;
-    for (const oscillator of activeOscillators) {
-      try {
-        oscillator.stop(context.currentTime);
-      } catch {
-        // A naturally-ended oscillator is already silent; continue stopping the rest.
-      }
-    }
-    activeOscillators.clear();
   };
 
   const playCarriageCall = () => {
@@ -138,20 +147,15 @@ export function createScreenAudioController(
     playTone(73.42, start + 9.15, 1.55, 0.012, 'triangle');
   };
 
-  const stopArrival = () => {
-    stopOscillators();
-  };
-
-  const stopCarriageCall = () => {
-    stopOscillators();
-  };
+  const stopArrival = () => stopOscillators();
+  const stopCarriageCall = () => stopOscillators();
 
   const dispose = () => {
+    unsubscribeSettings();
     stopOscillators();
     const current = context;
     context = null;
-    if (current && current === sharedBrowserContext) sharedBrowserContext = null;
-    if (current) void current.close().catch(() => undefined);
+    if (!usesSharedBrowserContext && current) void current.close().catch(() => undefined);
   };
 
   return {
