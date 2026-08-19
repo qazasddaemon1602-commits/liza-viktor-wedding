@@ -14,13 +14,22 @@ const roundLabels = {
 } as const;
 
 export function PublicBracket({ state }: PublicBracketProps) {
-  const playerName = new Map(state.players.map((player) => [player.guestId, player.displayName]));
+  const playerById = new Map(state.players.map((player) => [player.guestId, player]));
+  const playerName = (guestId: string | null) => (
+    guestId ? playerById.get(guestId)?.displayName ?? 'ИГРОК' : '—'
+  );
+  const playerSeed = (guestId: string | null) => {
+    if (!guestId) return '—';
+    const seed = playerById.get(guestId)?.seed;
+    return seed ? String(seed).padStart(2, '0') : '—';
+  };
 
   if (state.matches.length === 0) {
     return (
       <section className="mk-public-bracket mk-public-bracket--waiting">
-        <p className="eyebrow">СЕТКА</p>
+        <p className="eyebrow">ARENA BOARD</p>
         <h2>ЖДЁМ ЖЕРЕБЬЁВКУ</h2>
+        <p className="mk-bracket-live-label">LIVE BRACKET</p>
         <p>Игроков в основной сетке: {state.activeCount} / 16.</p>
       </section>
     );
@@ -30,16 +39,23 @@ export function PublicBracket({ state }: PublicBracketProps) {
     <section className="mk-public-bracket">
       <div className="mk-section-heading">
         <div>
-          <p className="eyebrow">ТУРНИРНАЯ СЕТКА</p>
+          <p className="eyebrow">ARENA BOARD</p>
+          <span className="mk-bracket-russian">ТУРНИРНАЯ СЕТКА</span>
           <h2>MORTAL KOMBAT</h2>
         </div>
-        <span>{state.state === 'complete' ? 'ЗАВЕРШЁН' : 'LIVE'}</span>
+        <div className="mk-bracket-status">
+          <span>LIVE BRACKET</span>
+          <strong>{state.state === 'complete' ? 'ARCHIVE' : 'LIVE'}</strong>
+        </div>
       </div>
 
       <div className="mk-bracket-scroll">
-        {(['r16', 'qf', 'sf', 'final'] as const).map((round) => (
+        {(['r16', 'qf', 'sf', 'final'] as const).map((round, roundIndex) => (
           <div className="mk-bracket-round" key={round}>
-            <h3>{roundLabels[round]}</h3>
+            <div className="mk-bracket-round__heading">
+              <span>0{roundIndex + 1}</span>
+              <h3>{roundLabels[round]}</h3>
+            </div>
             {state.matches
               .filter((match) => match.round === round)
               .sort((a, b) => a.position - b.position)
@@ -48,14 +64,23 @@ export function PublicBracket({ state }: PublicBracketProps) {
                   className={`mk-bracket-match${match.current ? ' mk-bracket-match--current' : ''}`}
                   key={match.id}
                 >
-                  <span>БОЙ {match.position}</span>
-                  <strong className={match.winnerGuestId === match.player1GuestId ? 'is-winner' : ''}>
-                    {match.player1GuestId ? playerName.get(match.player1GuestId) ?? 'ИГРОК' : '—'}
-                  </strong>
-                  <i aria-hidden="true">×</i>
-                  <strong className={match.winnerGuestId === match.player2GuestId ? 'is-winner' : ''}>
-                    {match.player2GuestId ? playerName.get(match.player2GuestId) ?? 'ИГРОК' : '—'}
-                  </strong>
+                  <header>
+                    <span>БОЙ {match.position}</span>
+                    {match.current && <em>CURRENT BOUT</em>}
+                  </header>
+                  <div className="mk-bracket-fighter">
+                    <b>{playerSeed(match.player1GuestId)}</b>
+                    <strong className={match.winnerGuestId === match.player1GuestId ? 'is-winner' : ''}>
+                      {playerName(match.player1GuestId)}
+                    </strong>
+                  </div>
+                  <i aria-hidden="true">VS</i>
+                  <div className="mk-bracket-fighter">
+                    <b>{playerSeed(match.player2GuestId)}</b>
+                    <strong className={match.winnerGuestId === match.player2GuestId ? 'is-winner' : ''}>
+                      {playerName(match.player2GuestId)}
+                    </strong>
+                  </div>
                 </article>
               ))}
           </div>

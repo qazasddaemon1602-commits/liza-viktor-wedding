@@ -12,34 +12,58 @@ const roundLabels = {
   final: 'ФИНАЛ',
 } as const;
 
+function fighterMeta(player: MkPlayer | undefined, fallback: string) {
+  return {
+    name: player?.displayName ?? fallback,
+    seed: player?.seed ? String(player.seed).padStart(2, '0') : '—',
+  };
+}
+
 export function MkFightScene({ match, players }: MkFightSceneProps) {
-  const names = new Map(players.map((player) => [player.guestId, player.displayName]));
-  const player1 = match.player1GuestId ? names.get(match.player1GuestId) ?? 'ИГРОК 1' : '—';
-  const player2 = match.player2GuestId ? names.get(match.player2GuestId) ?? 'ИГРОК 2' : '—';
-  const winner = match.winnerGuestId ? names.get(match.winnerGuestId) ?? 'ИГРОК' : null;
+  const playerById = new Map(players.map((player) => [player.guestId, player]));
+  const player1 = fighterMeta(
+    match.player1GuestId ? playerById.get(match.player1GuestId) : undefined,
+    'ИГРОК 1',
+  );
+  const player2 = fighterMeta(
+    match.player2GuestId ? playerById.get(match.player2GuestId) : undefined,
+    'ИГРОК 2',
+  );
+  const winner = match.winnerGuestId
+    ? playerById.get(match.winnerGuestId)?.displayName ?? 'ИГРОК'
+    : null;
 
   return (
     <section className="mk-screen-scene mk-fight-scene">
       <div className="mk-fight-topline">
-        <span>ТЕКУЩИЙ БОЙ</span>
-        <strong>{roundLabels[match.round]} · БОЙ {match.position}</strong>
+        <div className="mk-fight-topline__label">
+          <span className="mk-fight-kicker">ARENA BOUT</span>
+          <em>ТЕКУЩИЙ БОЙ</em>
+        </div>
+        <strong>{roundLabels[match.round]} · BOUT {String(match.position).padStart(2, '0')}</strong>
       </div>
 
       <div className="mk-fight-versus">
-        <div className={`mk-fighter${match.winnerGuestId === match.player1GuestId ? ' is-winner' : ''}`}>
-          <span style={{ color: 'var(--mk-gold-dim)' }}>БОЕЦ 1</span>
-          <h2>{player1}</h2>
-        </div>
-        <div className="mk-vs-mark">VS</div>
-        <div className={`mk-fighter${match.winnerGuestId === match.player2GuestId ? ' is-winner' : ''}`}>
-          <span style={{ color: 'var(--mk-gold-dim)' }}>БОЕЦ 2</span>
-          <h2>{player2}</h2>
-        </div>
+        <article className={`mk-fighter${match.winnerGuestId === match.player1GuestId ? ' is-winner' : ''}`}>
+          <div className="mk-fighter-portrait mk-fighter-portrait--left" aria-hidden="true" />
+          <span>FIGHTER 01</span>
+          <small>БОЕЦ 1 · SEED {player1.seed}</small>
+          <h2>{player1.name}</h2>
+        </article>
+
+        <div className="mk-vs-mark" aria-label="versus">VS</div>
+
+        <article className={`mk-fighter mk-fighter--right${match.winnerGuestId === match.player2GuestId ? ' is-winner' : ''}`}>
+          <div className="mk-fighter-portrait mk-fighter-portrait--right" aria-hidden="true" />
+          <span>FIGHTER 02</span>
+          <small>БОЕЦ 2 · SEED {player2.seed}</small>
+          <h2>{player2.name}</h2>
+        </article>
       </div>
 
       {winner && (
         <div className="mk-fight-winner">
-          <span>ПОБЕДИТЕЛЬ</span>
+          <span>FINAL RESULT</span>
           <strong>{winner}</strong>
         </div>
       )}

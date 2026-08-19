@@ -143,14 +143,24 @@ export function MortalKombatPage({
   return (
     <main className="mk-page">
       <header className="mk-hero">
-        <div>
-          <p className="eyebrow">ЛИЗА × ВИКТОР · 30.08.2026</p>
-          <h1 style={{ color: 'var(--mk-gold)', textShadow: '0 0 20px rgba(193,154,91,0.4)' }}>
-            MORTAL<br />KOMBAT
-          </h1>
+        <div className="mk-hero-copy">
+          <div className="mk-hero-meta">
+            <p className="eyebrow">ЛИЗА × ВИКТОР · 30.08.2026</p>
+            <span>WEDDING FIGHT ARCHIVE · EDITION 001</span>
+          </div>
+          <h1>MORTAL<br /><span>KOMBAT</span></h1>
+          <p className="mk-hero-note">16 FIGHTERS · ONE BRACKET · LIVE ARENA</p>
         </div>
+
+        <div className="mk-hero-figure" aria-hidden="true">
+          <span className="mk-hero-figure__head" />
+          <span className="mk-hero-figure__body" />
+          <i>F-16</i>
+        </div>
+
         <div className="mk-hero-counter">
-          <strong style={{ color: 'var(--mk-gold)' }}>{state.activeCount}</strong>
+          <small>FIGHTERS LOCKED</small>
+          <strong>{state.activeCount}</strong>
           <span>/ 16 БОЙЦОВ</span>
         </div>
       </header>
