@@ -54,16 +54,16 @@ export function useGuestQuizLiveState({
   dependencies,
   enabled = true,
 }: UseGuestQuizLiveStateOptions = {}) {
-  const deps = useMemo(
-    () => dependencies ?? browserDependencies(eventSlug),
-    [dependencies, eventSlug],
+  const deps = useMemo<GuestQuizLiveDependencies | null>(
+    () => dependencies ?? (enabled ? browserDependencies(eventSlug) : null),
+    [dependencies, enabled, eventSlug],
   );
   const [state, setState] = useState<GuestQuizState | null>(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState<QuizChoice | null>(null);
 
   const reload = useCallback(async () => {
-    if (!enabled) return null;
+    if (!enabled || !deps) return null;
     try {
       const next = await deps.load(deps.getDeviceKey());
       setState(next);
@@ -76,23 +76,23 @@ export function useGuestQuizLiveState({
   }, [deps, enabled]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !deps) return;
     void reload();
     const unsubscribe = deps.subscribeToRefresh?.(() => { void reload(); });
     return () => unsubscribe?.();
   }, [deps, enabled, reload]);
 
   useEffect(() => {
-    if (!enabled || state?.status !== 'active' || !state.phaseEndsAt) return;
+    if (!enabled || !deps || state?.status !== 'active' || !state.phaseEndsAt) return;
     const deadline = Date.parse(state.phaseEndsAt);
     if (!Number.isFinite(deadline)) return;
     const delay = Math.max(0, deadline - Date.now()) + 120;
     const timer = window.setTimeout(() => { void reload(); }, delay);
     return () => window.clearTimeout(timer);
-  }, [enabled, reload, state]);
+  }, [deps, enabled, reload, state]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !deps) return;
     const refreshVisible = () => {
       if (document.visibilityState === 'visible') void reload();
     };
@@ -102,10 +102,10 @@ export function useGuestQuizLiveState({
       document.removeEventListener('visibilitychange', refreshVisible);
       window.removeEventListener('focus', refreshVisible);
     };
-  }, [enabled, reload]);
+  }, [deps, enabled, reload]);
 
   const vote = useCallback(async (choice: QuizChoice) => {
-    if (state?.status !== 'active' || state.phase !== 'voting' || state.selectedChoice || submitting) return;
+    if (!deps || state?.status !== 'active' || state.phase !== 'voting' || state.selectedChoice || submitting) return;
     if (state.phaseEndsAt && Date.parse(state.phaseEndsAt) <= Date.now()) {
       void reload();
       return;
