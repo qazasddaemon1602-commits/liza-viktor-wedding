@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { siteAudio } from '../../lib/siteAudio';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
 import { ScreenAudioControl } from './ScreenAudioControl';
 
 function renderControl(path = '/screen') {
@@ -49,7 +49,9 @@ describe('ScreenAudioControl', () => {
     expect(screen.getByRole('button', { name: 'Выключить звук' })).toBeInTheDocument();
   });
 
-  it('treats zero volume as mute and restores the last audible volume from the icon', () => {
+  it('treats zero volume as mute, restores the last audible volume and rearms projector contexts', () => {
+    const rearm = vi.fn();
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
     renderControl();
     const slider = screen.getByRole('slider', { name: 'Громкость' });
 
@@ -61,5 +63,7 @@ describe('ScreenAudioControl', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Включить звук' }));
     expect(siteAudio.isEnabled()).toBe(true);
     expect(siteAudio.getVolume()).toBeCloseTo(0.42);
+    expect(rearm).toHaveBeenCalled();
+    window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
   });
 });
