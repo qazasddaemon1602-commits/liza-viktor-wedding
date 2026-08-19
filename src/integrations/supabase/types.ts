@@ -1045,6 +1045,63 @@ export type Database = {
           },
         ]
       }
+      quiz_rounds: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          phase: string
+          question_id: string
+          results_ends_at: string | null
+          results_started_at: string | null
+          timed: boolean
+          voting_ends_at: string | null
+          voting_started_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          phase: string
+          question_id: string
+          results_ends_at?: string | null
+          results_started_at?: string | null
+          timed?: boolean
+          voting_ends_at?: string | null
+          voting_started_at: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          phase?: string
+          question_id?: string
+          results_ends_at?: string | null
+          results_started_at?: string | null
+          timed?: boolean
+          voting_ends_at?: string | null
+          voting_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_rounds_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_rounds_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_state: {
         Row: {
           activated_at: string | null
@@ -1053,6 +1110,7 @@ export type Database = {
           event_id: string
           final_five_revealed_at: string | null
           phase: string
+          present_on_main_screen: boolean
           revealed_at: string | null
           updated_at: string
         }
@@ -1063,6 +1121,7 @@ export type Database = {
           event_id: string
           final_five_revealed_at?: string | null
           phase?: string
+          present_on_main_screen?: boolean
           revealed_at?: string | null
           updated_at?: string
         }
@@ -1073,6 +1132,7 @@ export type Database = {
           event_id?: string
           final_five_revealed_at?: string | null
           phase?: string
+          present_on_main_screen?: boolean
           revealed_at?: string | null
           updated_at?: string
         }
@@ -1215,6 +1275,10 @@ export type Database = {
           next_slot: string
         }[]
       }
+      _normalize_current_quiz_round: {
+        Args: { p_event_id: string }
+        Returns: string
+      }
       _normalize_spaces: { Args: { value: string }; Returns: string }
       _premiere_clamp_position: {
         Args: { p_duration: number; p_position: number }
@@ -1287,6 +1351,7 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: Json
       }
+      owner_close_quiz_round: { Args: { p_event_id: string }; Returns: Json }
       owner_create_event: {
         Args: { p_name: string; p_slug: string }
         Returns: Json
@@ -1376,6 +1441,10 @@ export type Database = {
       owner_restart_premiere: { Args: { p_event_id: string }; Returns: Json }
       owner_resume_premiere: { Args: { p_event_id: string }; Returns: Json }
       owner_return_main_screen: { Args: { p_event_id: string }; Returns: Json }
+      owner_return_quiz_to_main_screen: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
       owner_reveal_couple_preanswer: {
         Args: { p_event_id: string; p_question_id: string }
         Returns: Json
