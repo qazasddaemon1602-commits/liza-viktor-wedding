@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import type {
-  ActivateQuizQuestionResult,
-  AdminQuizControl,
-  CloseQuizRoundResult,
-  RevealQuizResultsResult,
-  ReturnQuizMainResult,
-  SeedQuizQuestionsResult,
+import { getSupabaseClient } from '../../../lib/supabase';
+import {
+  closeOwnerQuizRound,
+  returnOwnerQuizToMainScreen,
+  type ActivateQuizQuestionResult,
+  type AdminQuizControl,
+  type AdminQuizRpcClient,
+  type CloseQuizRoundResult,
+  type RevealQuizResultsResult,
+  type ReturnQuizMainResult,
+  type SeedQuizQuestionsResult,
 } from '../../quiz/adminQuiz.service';
 import type {
   OwnerCoupleRevealStatus,
@@ -19,8 +23,8 @@ export type AdminQuizPanelDependencies = {
   seed: (eventId: string) => Promise<SeedQuizQuestionsResult>;
   activate: (eventId: string, questionId: string) => Promise<ActivateQuizQuestionResult>;
   reveal: (eventId: string, questionId: string) => Promise<RevealQuizResultsResult>;
-  close: (eventId: string) => Promise<CloseQuizRoundResult>;
-  returnMain: (eventId: string) => Promise<ReturnQuizMainResult>;
+  close?: (eventId: string) => Promise<CloseQuizRoundResult>;
+  returnMain?: (eventId: string) => Promise<ReturnQuizMainResult>;
   broadcastRefresh: () => Promise<void>;
   loadCoupleRevealStatus?: (eventId: string, questionId: string) => Promise<OwnerCoupleRevealStatus>;
   revealCoupleAnswer?: (eventId: string, questionId: string) => Promise<RevealOwnerCoupleAnswerResult>;
@@ -30,6 +34,10 @@ type AdminQuizPanelProps = {
   eventId: string;
   dependencies: AdminQuizPanelDependencies;
 };
+
+function directQuizClient(): AdminQuizRpcClient {
+  return getSupabaseClient() as unknown as AdminQuizRpcClient;
+}
 
 export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
   const deps = useMemo(() => dependencies, [dependencies]);
@@ -44,19 +52,20 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
     return next;
   };
 
+  const closeRound = () => deps.close
+    ? deps.close(eventId)
+    : closeOwnerQuizRound(directQuizClient(), eventId);
+  const returnMainScreen = () => deps.returnMain
+    ? deps.returnMain(eventId)
+    : returnOwnerQuizToMainScreen(directQuizClient(), eventId);
+
   useEffect(() => {
     let active = true;
     setError('');
     void deps.load(eventId)
-      .then((next) => {
-        if (active) setControl(next);
-      })
-      .catch(() => {
-        if (active) setError('Не удалось загрузить управление викториной.');
-      });
-    return () => {
-      active = false;
-    };
+      .then((next) => { if (active) setControl(next); })
+      .catch(() => { if (active) setError('Не удалось загрузить управление викториной.'); });
+    return () => { active = false; };
   }, [deps, eventId]);
 
   useEffect(() => {
@@ -75,15 +84,24 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
     }
 
     void deps.loadCoupleRevealStatus(eventId, current.id)
-      .then((next) => {
-        if (active) setCoupleRevealStatus(next);
-      })
-      .catch(() => {
-        if (active) setCoupleRevealStatus({ status: 'not_ready', revealed: false });
-      });
-
+      .then((next) => { if (active) setCoupleRevealStatus(next); })
+      .catch(() => { if (active) setCoupleRevealStatus({ status: 'not_ready', revealed: false }); });
     return () => { active = false; };
   }, [control, deps, eventId]);
+
+  const run = async (key: string, action: () => Promise<unknown>, failure: string) => {
+    setBusy(key);
+    setError('');
+    try {
+      await action();
+      await deps.broadcastRefresh();
+      await reload();
+    } catch {
+      setError(failure);
+    } finally {
+      setBusy('');
+    }
+  };
 
   const seed = async () => {
     setBusy('seed');
@@ -98,81 +116,43 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
     }
   };
 
-  const activate = async (questionId: string) => {
-    setBusy(`activate:${questionId}`);
-    setError('');
-    setCoupleRevealStatus(null);
-    try {
+  const activate = (questionId: string) => run(
+    `activate:${questionId}`,
+    async () => {
+      setCoupleRevealStatus(null);
       await deps.activate(eventId, questionId);
-      await deps.broadcastRefresh();
-      await reload();
-    } catch {
-      setError('Не удалось запустить вопрос.');
-    } finally {
-      setBusy('');
-    }
-  };
+    },
+    'Не удалось запустить вопрос.',
+  );
 
-  const reveal = async () => {
-    if (!control?.currentQuestionId || control.phase !== 'voting') return;
+  const reveal = () => {
+    if (!control?.currentQuestionId || control.phase !== 'voting') return Promise.resolve();
     const current = control.questions.find((question) => question.id === control.currentQuestionId);
-    if (!current || current.questionType !== 'standard') return;
-    setBusy('reveal');
-    setError('');
-    try {
-      await deps.reveal(eventId, control.currentQuestionId);
-      await deps.broadcastRefresh();
-      await reload();
-    } catch {
-      setError('Не удалось закрыть ответы и показать результат.');
-    } finally {
-      setBusy('');
-    }
+    if (!current || current.questionType !== 'standard') return Promise.resolve();
+    return run(
+      'reveal',
+      () => deps.reveal(eventId, control.currentQuestionId as string),
+      'Не удалось закрыть ответы и показать результат.',
+    );
   };
 
-  const close = async () => {
-    setBusy('close');
-    setError('');
-    try {
-      await deps.close(eventId);
-      await deps.broadcastRefresh();
-      await reload();
-    } catch {
-      setError('Не удалось закрыть текущий вопрос.');
-    } finally {
-      setBusy('');
-    }
-  };
+  const close = () => run('close', closeRound, 'Не удалось закрыть текущий вопрос.');
 
-  const next = async (questionId: string) => {
-    setBusy('next');
-    setError('');
-    setCoupleRevealStatus(null);
-    try {
-      await deps.close(eventId);
+  const next = (questionId: string) => run(
+    'next',
+    async () => {
+      setCoupleRevealStatus(null);
+      await closeRound();
       await deps.activate(eventId, questionId);
-      await deps.broadcastRefresh();
-      await reload();
-    } catch {
-      setError('Не удалось запустить следующий вопрос.');
-    } finally {
-      setBusy('');
-    }
-  };
+    },
+    'Не удалось запустить следующий вопрос.',
+  );
 
-  const returnMain = async () => {
-    setBusy('return-main');
-    setError('');
-    try {
-      await deps.returnMain(eventId);
-      await deps.broadcastRefresh();
-      await reload();
-    } catch {
-      setError('Не удалось вернуть ТВ на основной экран.');
-    } finally {
-      setBusy('');
-    }
-  };
+  const returnMain = () => run(
+    'return-main',
+    returnMainScreen,
+    'Не удалось вернуть ТВ на основной экран.',
+  );
 
   const deadline = async () => {
     try {
@@ -190,7 +170,6 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
       || coupleRevealStatus?.status !== 'ready'
       || !deps.revealCoupleAnswer
     ) return;
-
     setBusy('reveal-couple');
     setError('');
     try {
@@ -233,16 +212,12 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
   const currentQuestion = control.currentQuestionId
     ? standardQuestions.find((question) => question.id === control.currentQuestionId) ?? null
     : null;
-  const availableQuestions = standardQuestions.filter(
-    (question) => question.enabled
-      && question.id !== control.currentQuestionId
-      && !completedIds.has(question.id),
-  );
+  const availableQuestions = standardQuestions
+    .filter((question) => question.enabled && question.id !== control.currentQuestionId && !completedIds.has(question.id))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
   const nextQuestion = currentQuestion
-    ? availableQuestions
-      .filter((question) => question.sortOrder > currentQuestion.sortOrder)
-      .sort((a, b) => a.sortOrder - b.sortOrder)[0] ?? availableQuestions.sort((a, b) => a.sortOrder - b.sortOrder)[0]
-    : availableQuestions.sort((a, b) => a.sortOrder - b.sortOrder)[0];
+    ? availableQuestions.find((question) => question.sortOrder > currentQuestion.sortOrder) ?? availableQuestions[0]
+    : availableQuestions[0];
 
   return (
     <section className="admin-quiz-panel" aria-label="Управление викториной">
@@ -259,12 +234,7 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
       {standardQuestions.length === 0 ? (
         <div className="admin-quiz-empty">
           <p>Пул вопросов пока пуст.</p>
-          <button
-            type="button"
-            className="registration-submit"
-            disabled={busy === 'seed'}
-            onClick={() => void seed()}
-          >
+          <button type="button" className="registration-submit" disabled={busy === 'seed'} onClick={() => void seed()}>
             {busy === 'seed' ? 'ДОБАВЛЯЕМ…' : 'ДОБАВИТЬ 30 ВОПРОСОВ'}
           </button>
         </div>
