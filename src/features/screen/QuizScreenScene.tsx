@@ -1,3 +1,4 @@
+import { QuizPhaseTimer } from '../quiz/QuizPhaseTimer';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 
 type ActiveQuizScreenState = Extract<QuizScreenState, { status: 'active' }>;
@@ -34,7 +35,10 @@ export function QuizScreenScene({
 
         <header className="quiz-screen-header">
           <p className="eyebrow">ЛИЗА ИЛИ ВИКТОР?</p>
-          <span className="quiz-screen-counter">{answeredLabel}</span>
+          <div className="quiz-screen-header__status">
+            <QuizPhaseTimer endsAt={state.phaseEndsAt} className="quiz-screen-timer" />
+            <span className="quiz-screen-counter">{answeredLabel}</span>
+          </div>
         </header>
 
         <div className="quiz-screen-question-wrap">
@@ -45,7 +49,9 @@ export function QuizScreenScene({
               <span>V</span>
             </div>
             <h1>{state.question.text}</h1>
-            <p className="quiz-screen-question-note" aria-hidden="true">LOVE RAILWAY · QUESTION CARD</p>
+            <p className="quiz-screen-question-note" aria-hidden="true">
+              {state.phase === 'voting' ? '30 SECONDS · CHOOSE NOW' : 'RESULTS · 30 SECONDS'}
+            </p>
           </div>
           {state.question.imagePath && (
             <div className="quiz-screen-image-frame">
