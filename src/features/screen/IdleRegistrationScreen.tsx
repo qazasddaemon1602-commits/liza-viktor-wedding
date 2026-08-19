@@ -8,6 +8,9 @@ type IdleRegistrationScreenProps = {
 export function IdleRegistrationScreen({ joinUrl }: IdleRegistrationScreenProps) {
   return (
     <main className="event-screen event-screen--idle wedding-editorial-surface">
+      <div className="event-screen__ambient event-screen__ambient--left" />
+      <div className="event-screen__ambient event-screen__ambient--right" />
+      
       <section className="idle-ticket" aria-label="Свадебный железнодорожный билет">
         <div className="idle-ticket__body" data-testid="idle-ticket-body">
           <header className="idle-screen__masthead">
@@ -31,11 +34,13 @@ export function IdleRegistrationScreen({ joinUrl }: IdleRegistrationScreenProps)
 
             <div className="idle-ticket__art" aria-hidden="true">
               <span className="idle-ticket__art-kicker">THE LOVE RAILWAY</span>
-              <WeddingRailwayEmblem className="wedding-railway-emblem idle-ticket__locomotive" />
-              <div className="idle-ticket__stamp">
-                <span>LV</span>
-                <strong>30·08</strong>
-                <span>2026</span>
+              <div className="idle-ticket__art-container">
+                <WeddingRailwayEmblem className="wedding-railway-emblem idle-ticket__locomotive" />
+                <div className="idle-ticket__stamp">
+                  <span>LV</span>
+                  <strong>30·08</strong>
+                  <span>2026</span>
+                </div>
               </div>
             </div>
           </div>

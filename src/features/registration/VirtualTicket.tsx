@@ -31,7 +31,14 @@ export function VirtualTicket({ guest }: VirtualTicketProps) {
           <span>LOVE EXPRESS</span>
         </div>
 
-        <WeddingRailwayEmblem className="wedding-railway-emblem virtual-ticket__locomotive" />
+        <div className="virtual-ticket__art-container">
+          <WeddingRailwayEmblem className="wedding-railway-emblem virtual-ticket__locomotive" />
+          <div className="virtual-ticket__stamp">
+            <span>LV</span>
+            <strong>30·08</strong>
+            <span>2026</span>
+          </div>
+        </div>
 
         <div className="virtual-ticket__passenger">
           <span className="virtual-ticket__field-label">PASSENGER</span>

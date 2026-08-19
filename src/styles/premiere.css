@@ -5,8 +5,8 @@
   width: 100vw;
   height: 100dvh;
   overflow: hidden;
-  background: #050605;
-  color: var(--ivory);
+  background: var(--wedding-graphite);
+  color: var(--wedding-paper);
 }
 
 .premiere-player {
@@ -29,14 +29,60 @@
 .premiere-ended-black {
   position: absolute;
   inset: 0;
-  background: #050605;
+  background: var(--wedding-paper);
 }
 
 .premiere-standby {
-  z-index: 2;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 4rem;
+  text-align: center;
   background:
-    radial-gradient(circle at 50% 48%, rgba(180, 155, 126, 0.035), transparent 26rem),
-    #070807;
+    radial-gradient(circle at 50% 48%, rgba(165, 140, 91, 0.08), transparent 26rem),
+    var(--wedding-paper);
+}
+
+.premiere-standby__content {
+  display: grid;
+  gap: clamp(2rem, 6vh, 4.5rem);
+  max-width: 65rem;
+  color: var(--wedding-graphite);
+}
+
+.premiere-standby__header h1 {
+  font-family: Georgia, serif;
+  font-size: clamp(4.2rem, 8.5vw, 7.5rem);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+  line-height: 0.85;
+  margin-top: 1rem;
+}
+
+.premiere-standby__art {
+  display: grid;
+  place-items: center;
+  gap: 2.2rem;
+}
+
+.premiere-standby__locomotive {
+  width: 13rem;
+  color: var(--wedding-forest);
+  opacity: 0.85;
+  animation: idle-drift 18s ease-in-out infinite alternate;
+}
+
+.premiere-standby__line {
+  width: min(100%, 32rem);
+  height: 1px;
+  background: var(--wedding-line-strong);
+}
+
+.premiere-standby__footer {
+  font-size: clamp(0.65rem, 0.8vw, 0.9rem);
+  font-weight: 850;
+  letter-spacing: 0.22em;
+  color: var(--wedding-cinnamon);
 }
 
 .premiere-ended-black {

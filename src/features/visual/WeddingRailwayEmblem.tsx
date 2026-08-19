@@ -9,17 +9,46 @@ export function WeddingRailwayEmblem({ className = '' }: WeddingRailwayEmblemPro
       data-testid="wedding-railway-emblem"
       aria-hidden="true"
       focusable="false"
-      viewBox="0 0 240 96"
+      viewBox="0 0 240 100"
       fill="none"
     >
-      <path d="M18 69H221" stroke="currentColor" />
-      <path d="M44 61H177L190 69H36L44 61Z" stroke="currentColor" />
-      <rect x="71" y="34" width="74" height="27" rx="2" stroke="currentColor" />
-      <path d="M83 34V24H105V34M119 34V18H132V34" stroke="currentColor" />
-      <circle cx="68" cy="70" r="9" stroke="currentColor" />
-      <circle cx="151" cy="70" r="9" stroke="currentColor" />
-      <path d="M159 42H177L190 61H159V42Z" stroke="currentColor" />
-      <path d="M93 44H108M116 44H131" stroke="currentColor" />
+      {/* Detailed engraving-style locomotive */}
+      <path d="M20 85H220" stroke="currentColor" strokeWidth="0.5" />
+      <path d="M40 78H180L195 85H30L40 78Z" stroke="currentColor" strokeWidth="1" fill="currentColor" fillOpacity="0.05" />
+      
+      {/* Boiler */}
+      <rect x="65" y="35" width="80" height="35" rx="2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M65 40H145" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
+      <path d="M65 52H145" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
+      <path d="M65 64H145" stroke="currentColor" strokeWidth="0.5" strokeDasharray="2 2" />
+
+      {/* Chimney */}
+      <path d="M75 35V20H95V35" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M72 20H98" stroke="currentColor" strokeWidth="1.2" />
+      
+      {/* Dome */}
+      <path d="M110 35V28H125V35" stroke="currentColor" strokeWidth="1.2" />
+      
+      {/* Cab */}
+      <path d="M145 35H180V78H145V35Z" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.05" />
+      <rect x="152" y="42" width="18" height="20" stroke="currentColor" strokeWidth="1" />
+      <path d="M140 35H185" stroke="currentColor" strokeWidth="1.5" />
+
+      {/* Wheels */}
+      <circle cx="65" cy="78" r="10" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="65" cy="78" r="3" fill="currentColor" />
+      <circle cx="95" cy="78" r="10" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="95" cy="78" r="3" fill="currentColor" />
+      <circle cx="125" cy="78" r="10" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="125" cy="78" r="3" fill="currentColor" />
+      <circle cx="160" cy="78" r="12" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="160" cy="78" r="4" fill="currentColor" />
+      
+      {/* Cowcatcher */}
+      <path d="M30 78L20 85H40L30 78Z" stroke="currentColor" strokeWidth="1" />
+      
+      {/* Connectors */}
+      <path d="M65 78H160" stroke="currentColor" strokeWidth="2" opacity="0.3" />
     </svg>
   );
 }
