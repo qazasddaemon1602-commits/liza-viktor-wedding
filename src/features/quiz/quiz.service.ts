@@ -23,25 +23,43 @@ export type QuizResults = {
   total: number;
 };
 
+export type QuizHistoryEntry = {
+  roundId: string;
+  questionId: string;
+  questionText: string;
+  questionType: QuizQuestionType;
+  closedAt: string;
+  answeredCount: number;
+  results: QuizResults;
+  selectedChoice: QuizChoice | null;
+};
+
+type TimedProjection = {
+  roundId?: string;
+  phaseStartedAt?: string | null;
+  phaseEndsAt?: string | null;
+  history?: QuizHistoryEntry[];
+};
+
 export type GuestQuizState =
   | { status: 'not_found' }
   | { status: 'not_registered' }
-  | { status: 'idle' }
-  | {
+  | ({ status: 'idle'; history?: QuizHistoryEntry[] })
+  | (TimedProjection & {
       status: 'active';
       phase: 'voting';
       question: GuestQuizQuestion;
       selectedChoice: QuizChoice | null;
       answeredCount: number;
-    }
-  | {
+    })
+  | (TimedProjection & {
       status: 'active';
       phase: 'results';
       question: GuestQuizQuestion;
       selectedChoice: QuizChoice | null;
       answeredCount: number;
       results: QuizResults;
-    };
+    });
 
 export type SubmitQuizVoteResult = {
   status: 'accepted' | 'already_voted';
@@ -88,6 +106,57 @@ function parseCount(value: unknown): number {
   return value;
 }
 
+function parseTimestamp(value: unknown): string {
+  if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
+    throw new Error('Unexpected quiz timestamp');
+  }
+  return value;
+}
+
+function parseOptionalTimestamp(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return parseTimestamp(value);
+}
+
+function parseResults(value: unknown): QuizResults {
+  if (!isRecord(value)) throw new Error('Unexpected quiz results');
+  return {
+    liza: parseCount(value.liza),
+    viktor: parseCount(value.viktor),
+    total: parseCount(value.total),
+  };
+}
+
+function parseHistory(value: unknown): QuizHistoryEntry[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new Error('Unexpected quiz history');
+  return value.map((entry) => {
+    if (!isRecord(entry)
+      || typeof entry.roundId !== 'string'
+      || typeof entry.questionId !== 'string'
+      || typeof entry.questionText !== 'string'
+      || !isQuestionType(entry.questionType)
+    ) {
+      throw new Error('Unexpected quiz history');
+    }
+    const selectedChoice = entry.selectedChoice == null ? null : entry.selectedChoice;
+    if (selectedChoice !== null && !isChoice(selectedChoice)) {
+      throw new Error('Unexpected quiz history');
+    }
+    return {
+      roundId: entry.roundId,
+      questionId: entry.questionId,
+      questionText: entry.questionText,
+      questionType: entry.questionType,
+      closedAt: parseTimestamp(entry.closedAt),
+      answeredCount: parseCount(entry.answeredCount),
+      results: parseResults(entry.results),
+      selectedChoice,
+    };
+  });
+}
+
 function throwRpcError(error: Exclude<QuizRpcError, null>): never {
   if (error instanceof Error) throw error;
   const next = new Error(error.message || 'Quiz request failed');
@@ -111,7 +180,7 @@ export async function getGuestQuizState(
 
   if (data.status === 'not_found') return { status: 'not_found' };
   if (data.status === 'not_registered') return { status: 'not_registered' };
-  if (data.status === 'idle') return { status: 'idle' };
+  if (data.status === 'idle') return { status: 'idle', history: parseHistory(data.history) };
   if (data.status !== 'active') throw new Error('Unexpected quiz-state response');
 
   if (data.phase !== 'voting' && data.phase !== 'results') {
@@ -125,7 +194,15 @@ export async function getGuestQuizState(
     throw new Error('Unexpected selected quiz choice');
   }
 
+  const timed = {
+    roundId: typeof data.roundId === 'string' ? data.roundId : undefined,
+    phaseStartedAt: parseOptionalTimestamp(data.phaseStartedAt),
+    phaseEndsAt: parseOptionalTimestamp(data.phaseEndsAt),
+    history: parseHistory(data.history),
+  };
+
   const base = {
+    ...timed,
     status: 'active' as const,
     question: parseQuestion(data.question),
     selectedChoice,
@@ -136,15 +213,10 @@ export async function getGuestQuizState(
     return { ...base, phase: 'voting' };
   }
 
-  if (!isRecord(data.results)) throw new Error('Unexpected quiz results');
   return {
     ...base,
     phase: 'results',
-    results: {
-      liza: parseCount(data.results.liza),
-      viktor: parseCount(data.results.viktor),
-      total: parseCount(data.results.total),
-    },
+    results: parseResults(data.results),
   };
 }
 
