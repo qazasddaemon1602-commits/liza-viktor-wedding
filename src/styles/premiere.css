@@ -9,6 +9,10 @@
   color: var(--wedding-paper);
 }
 
+.premiere-black {
+  background: #000;
+}
+
 .premiere-player {
   position: absolute;
   inset: 0;
