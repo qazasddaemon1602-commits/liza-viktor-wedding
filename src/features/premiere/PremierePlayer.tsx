@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { siteAudio } from '../../lib/siteAudio';
 import { needsPremiereMediaResolution, resolvePremiereMediaUrl } from './premiereMedia';
 
 type PremierePlayerProps = {
@@ -21,9 +22,18 @@ export function PremierePlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const playedSourceRef = useRef<string | null>(null);
   const wasPlayingRef = useRef(false);
+  const [audioSettings, setAudioSettings] = useState(() => siteAudio.getSettings());
   const [playableSrc, setPlayableSrc] = useState(() => (
     needsPremiereMediaResolution(src) ? '' : src
   ));
+
+  useEffect(() => siteAudio.subscribe(setAudioSettings), []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = audioSettings.volume;
+  }, [audioSettings.volume]);
 
   useEffect(() => {
     let active = true;
@@ -93,6 +103,8 @@ export function PremierePlayer({
     });
   }, [shouldPlay, playableSrc]);
 
+  const deviceMuted = muted || !audioSettings.enabled || audioSettings.volume <= 0;
+
   return (
     <video
       ref={videoRef}
@@ -100,7 +112,7 @@ export function PremierePlayer({
       src={playableSrc || undefined}
       preload="auto"
       playsInline
-      muted={muted}
+      muted={deviceMuted}
       controls={false}
       onCanPlay={onReady}
       onEnded={onEnded}
