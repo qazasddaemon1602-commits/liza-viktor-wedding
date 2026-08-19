@@ -47,6 +47,13 @@ describe('GuestBunkerQuest', () => {
     expect(screen.getAllByText('СКРЫТО ДО КОМАНДЫ ВЕДУЩЕГО').length).toBeGreaterThanOrEqual(4);
   });
 
+  it('does not show an empty carriage placeholder while assignment is unresolved', () => {
+    render(<GuestBunkerQuest state={base} onMission={vi.fn()} onFinalCode={vi.fn()} />);
+
+    expect(screen.getByText('КОМАНДА')).toBeInTheDocument();
+    expect(screen.queryByText(/ВАГОН\s+—/)).not.toBeInTheDocument();
+  });
+
   it('submits the current carriage mission and keeps wrong-answer retries local', async () => {
     const user = userEvent.setup();
     const onMission = vi.fn().mockResolvedValue(undefined);
