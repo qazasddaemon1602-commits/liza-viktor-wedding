@@ -47,7 +47,7 @@ describe('siteAudio volume', () => {
 
     expect(await audio.arm()).toBe(true);
     expect(audio.play('tap')).toBe(true);
-    expect(ramps).toContainCloseTo(0.011 * 0.3, 6);
+    expect(ramps.some((value) => Math.abs(value - 0.011 * 0.3) < 0.000001)).toBe(true);
 
     audio.setEnabled(false);
     expect(audio.play('impact')).toBe(false);
