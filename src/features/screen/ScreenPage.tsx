@@ -168,6 +168,25 @@ function browserLooksOnline(): boolean {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
 }
 
+function armWithTimeout(
+  arm: (() => Promise<boolean>) | undefined,
+  timeoutMs = 1500,
+): Promise<boolean> {
+  if (!arm) return Promise.resolve(true);
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (ready: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(ready);
+    };
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+    void arm().then((ready) => finish(Boolean(ready))).catch(() => finish(false));
+  });
+}
+
 export function ScreenPage({
   joinUrl,
   eventSlug = 'liza-viktor',
@@ -203,6 +222,7 @@ export function ScreenPage({
   const presentationProtectedRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
   const autoAudioAttemptedRef = useRef(false);
+  const soundEnabledRef = useRef(true);
 
   const premiereProtected = isPremiereProtected(premiereState);
   const mortalKombatProtected = isMortalKombatProtected(mkState);
@@ -220,10 +240,10 @@ export function ScreenPage({
     setArmingAudio(true);
     try {
       const [arrivalReady, premiereReady] = await Promise.all([
-        deps.armArrivalAudio?.() ?? Promise.resolve(true),
-        deps.armPremiereAudio?.() ?? Promise.resolve(true),
+        armWithTimeout(deps.armArrivalAudio),
+        armWithTimeout(deps.armPremiereAudio),
       ]);
-      setAudioArmed(Boolean(arrivalReady && premiereReady));
+      setAudioArmed(soundEnabledRef.current && Boolean(arrivalReady && premiereReady));
     } finally {
       setArmingAudio(false);
     }
@@ -234,6 +254,17 @@ export function ScreenPage({
     autoAudioAttemptedRef.current = true;
     void armAudio();
   }, [armAudio, hasAudioArm, soundEnabled]);
+
+  useEffect(() => {
+    if (!hasAudioArm || !soundEnabled || audioArmed || armingAudio) return;
+    const retry = () => void armAudio();
+    window.addEventListener('pointerdown', retry, { once: true });
+    window.addEventListener('keydown', retry, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', retry);
+      window.removeEventListener('keydown', retry);
+    };
+  }, [armAudio, armingAudio, audioArmed, hasAudioArm, soundEnabled]);
 
   useEffect(() => subscribeToBunkerPresentationProtection((active) => {
     setBunkerProtected(active);
@@ -459,12 +490,14 @@ export function ScreenPage({
   }, [audioArmed, deps, soundEnabled]);
 
   const disableAudio = () => {
+    soundEnabledRef.current = false;
     setSoundEnabled(false);
     setAudioArmed(false);
     deps.stopArrivalAudio?.();
   };
 
   const enableAudio = async () => {
+    soundEnabledRef.current = true;
     setSoundEnabled(true);
     await armAudio();
   };
@@ -528,13 +561,13 @@ export function ScreenPage({
         <button
           type="button"
           className="screen-audio-arm"
-          disabled={armingAudio}
+          disabled={!soundEnabled && armingAudio}
           onClick={() => soundEnabled ? disableAudio() : void enableAudio()}
         >
-          {armingAudio
-            ? 'ВКЛЮЧАЕМ…'
-            : soundEnabled
-              ? 'ВЫКЛЮЧИТЬ ЗВУК'
+          {soundEnabled
+            ? 'ВЫКЛЮЧИТЬ ЗВУК'
+            : armingAudio
+              ? 'ВКЛЮЧАЕМ…'
               : 'ВКЛЮЧИТЬ ЗВУК'}
         </button>
       )}
