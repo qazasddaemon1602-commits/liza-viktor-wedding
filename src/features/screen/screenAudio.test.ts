@@ -98,4 +98,16 @@ describe('createScreenAudioController', () => {
     audio.playArrival();
     expect(context.createOscillator).toHaveBeenCalledTimes(4);
   });
+
+  it('schedules a long cinematic rail bed and horn for carriage calls', async () => {
+    const { context, oscillators } = fakeAudioContext();
+    const audio = createScreenAudioController(() => context);
+
+    await audio.arm();
+    audio.playCarriageCall();
+
+    expect(oscillators.length).toBeGreaterThan(10);
+    const scheduledStops = oscillators.flatMap((oscillator) => oscillator.stop.mock.calls.map(([when]) => when as number));
+    expect(Math.max(...scheduledStops)).toBeGreaterThan(context.currentTime + 10);
+  });
 });
