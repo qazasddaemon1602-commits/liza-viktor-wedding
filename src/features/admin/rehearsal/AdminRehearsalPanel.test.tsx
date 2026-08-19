@@ -44,7 +44,7 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByRole('link', { name: 'MK НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
   });
 
-  it('shows rehearsal blockers with live technical counts when readiness is missing', async () => {
+  it('shows missing readiness as advisory telemetry rather than blockers', async () => {
     render(
       <AdminRehearsalPanel
         eventId="event-1"
@@ -66,19 +66,20 @@ describe('AdminRehearsalPanel', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('ЕСТЬ БЛОКЕРЫ')).toBeInTheDocument();
+      expect(screen.getByText('ИНДИКАЦИЯ · НЕ БЛОКИРУЕТ')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('ТВ · 0 / 2')).toBeInTheDocument();
-    expect(screen.getByText('ВИДЕО · 0 / 2')).toBeInTheDocument();
-    expect(screen.getByText('ЗВУК · 0 / 2')).toBeInTheDocument();
+    expect(screen.queryByText('ЕСТЬ БЛОКЕРЫ')).not.toBeInTheDocument();
+    expect(screen.getByText('ТВ · 0')).toBeInTheDocument();
+    expect(screen.getByText('ВИДЕО · 0 / 0')).toBeInTheDocument();
+    expect(screen.getByText('ЗВУК · 0 / 0')).toBeInTheDocument();
     expect(screen.getByText('ПРЕМЬЕРА · НЕ НАСТРОЕНА')).toBeInTheDocument();
     expect(screen.getByText('ОТВЕТЫ ПАРЫ · 2 / 5')).toBeInTheDocument();
     expect(screen.getByText('БУНКЕР · ГОТОВ')).toBeInTheDocument();
     expect(screen.getByText('MK · ГОТОВ')).toBeInTheDocument();
   });
 
-  it('updates each readiness count as a projector heartbeat arrives', async () => {
+  it('updates each status as a single projector heartbeat arrives', async () => {
     let onPresence: ((presence: ScreenPresence) => void) | undefined;
 
     render(
@@ -111,9 +112,10 @@ describe('AdminRehearsalPanel', () => {
       onPresence?.({ screenId: 'tv-main', videoReady: false, audioArmed: true });
     });
 
-    expect(screen.getByText('ТВ · 1 / 2')).toBeInTheDocument();
-    expect(screen.getByText('ВИДЕО · 0 / 2')).toBeInTheDocument();
-    expect(screen.getByText('ЗВУК · 1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('ТВ · 1')).toBeInTheDocument();
+    expect(screen.getByText('ВИДЕО · 0 / 1')).toBeInTheDocument();
+    expect(screen.getByText('ЗВУК · 1 / 1')).toBeInTheDocument();
+    expect(screen.getByText('ИНДИКАЦИЯ · НЕ БЛОКИРУЕТ')).toBeInTheDocument();
   });
 
   it('reports an unissued couple link explicitly and shows a clean production start state', async () => {
@@ -149,7 +151,7 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByText('СОСТАВ · СВОБОДЕН')).toBeInTheDocument();
   });
 
-  it('marks the production start state for review when rehearsal data remains', async () => {
+  it('marks the production start state for review when rehearsal data remains without blocking controls', async () => {
     render(
       <AdminRehearsalPanel
         eventId="event-1"
@@ -181,7 +183,7 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByText('СОСТАВ · ЗАФИКСИРОВАН')).toBeInTheDocument();
   });
 
-  it('reports ready when two screens, video, audio, premiere and couple answers are ready', async () => {
+  it('keeps two ready screens visible as telemetry without making them a launch requirement', async () => {
     let onPresence: ((presence: ScreenPresence) => void) | undefined;
 
     render(
@@ -216,10 +218,10 @@ describe('AdminRehearsalPanel', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('ГОТОВО К РЕПЕТИЦИИ')).toBeInTheDocument();
+      expect(screen.getByText('ИНДИКАЦИЯ · НЕ БЛОКИРУЕТ')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('ТВ · 2 / 2')).toBeInTheDocument();
+    expect(screen.getByText('ТВ · 2')).toBeInTheDocument();
     expect(screen.getByText('ВИДЕО · 2 / 2')).toBeInTheDocument();
     expect(screen.getByText('ЗВУК · 2 / 2')).toBeInTheDocument();
     expect(screen.getByText('ПРЕМЬЕРА · ГОТОВА')).toBeInTheDocument();
