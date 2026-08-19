@@ -270,7 +270,9 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
 
   const subscribe = (callback: (settings: SiteAudioSettings) => void) => {
     listeners.add(callback);
-    return () => listeners.delete(callback);
+    return () => {
+      listeners.delete(callback);
+    };
   };
 
   const dispose = () => {
