@@ -35,7 +35,7 @@ describe('JoinPage', () => {
     render(<JoinPage dependencies={dependencies({ restore })} />);
 
     expect(await screen.findByText('Иван Петров')).toBeInTheDocument();
-    expect(screen.getByText('LV-031')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('LV-031');
     expect(restore).toHaveBeenCalledWith('lvw_device_1');
   });
 
@@ -43,7 +43,7 @@ describe('JoinPage', () => {
     const restore = vi.fn().mockResolvedValue({ status: 'restored', guest });
     render(<JoinPage dependencies={dependencies({ restore })} />);
 
-    await screen.findByText('LV-031');
+    await screen.findByTestId('virtual-ticket');
     const mkLink = screen.getByRole('link', { name: 'MORTAL KOMBAT · УЧАСТВОВАТЬ' });
     expect(mkLink).toHaveAttribute('href', '/mortal-kombat');
   });
@@ -68,7 +68,7 @@ describe('JoinPage', () => {
 
     expect(recover).toHaveBeenCalledWith('lvw_device_1', 'AB12-CD34');
     expect(await screen.findByText('Иван Петров')).toBeInTheDocument();
-    expect(screen.getByText('LV-031')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('LV-031');
   });
 
   it('keeps registration available when a recovery code is invalid or expired', async () => {
