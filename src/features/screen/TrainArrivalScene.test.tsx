@@ -39,4 +39,13 @@ describe('TrainArrivalScene', () => {
     expect(screen.getByTestId('arrival-track')).toBeInTheDocument();
     expect(screen.getByTestId('arrival-steam')).toBeInTheDocument();
   });
+
+  it('frames the arrival as an editorial platform ticket without changing the announcement data', () => {
+    render(<TrainArrivalScene event={event} />);
+
+    expect(screen.getByTestId('arrival-platform-ticket')).toBeInTheDocument();
+    expect(screen.getByTestId('arrival-editorial-seal')).toBeInTheDocument();
+    expect(screen.getByText('PLATFORM ANNOUNCEMENT')).toBeInTheDocument();
+    expect(screen.getByText('PASSENGER ACCEPTED')).toBeInTheDocument();
+  });
 });
