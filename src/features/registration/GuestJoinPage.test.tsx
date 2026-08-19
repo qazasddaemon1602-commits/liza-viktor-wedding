@@ -28,7 +28,7 @@ describe('GuestJoinPage', () => {
     render(<GuestJoinPage client={{ rpc }} eventSlug="liza-viktor" deviceKey="lvw_device_31" revealDelayMs={0} />);
 
     expect(screen.getByText(/проверяем билет/i)).toBeInTheDocument();
-    expect(await screen.findByText('LV-031')).toBeInTheDocument();
+    expect(await screen.findByTestId('virtual-ticket')).toHaveTextContent('LV-031');
     expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
   });
 
