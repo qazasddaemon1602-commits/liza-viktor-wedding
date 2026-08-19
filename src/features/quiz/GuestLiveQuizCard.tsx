@@ -67,7 +67,7 @@ export function GuestLiveQuizCard({
 
       {submitting && <p className="quiz-status">ФИКСИРУЕМ ОТВЕТ…</p>}
       {!submitting && state.phase === 'voting' && state.selectedChoice && (
-        <p className="quiz-status">ОТВЕТ ПРИНЯТ · ЖДЁМ РЕЗУЛЬТАТ</p>
+        <p className="quiz-status">ОТВЕТ ПРИНЯТ</p>
       )}
       {state.phase === 'voting' && !state.selectedChoice && !submitting && (
         <p className="quiz-status quiz-status-open">ВЫБЕРИТЕ ОТВЕТ ДО КОНЦА ТАЙМЕРА</p>
