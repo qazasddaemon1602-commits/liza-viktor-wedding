@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { requestProjectorAudioRearm, siteAudio } from '../../lib/siteAudio';
 import { ScreenPage, type ScreenPageDependencies } from './ScreenPage';
 import type { ScreenPresentationEvent } from './screenEvents.realtime';
 import type { GuestRegistrationScreenEvent } from './TrainArrivalScene';
@@ -39,8 +40,17 @@ const carriageCall: ScreenPresentationEvent = {
 };
 
 describe('ScreenPage', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => {
+    vi.useFakeTimers();
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
+  afterEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+    vi.useRealTimers();
+  });
 
   it('shows registration events sequentially and returns to the idle QR screen', async () => {
     let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
@@ -163,7 +173,7 @@ describe('ScreenPage', () => {
     expect(dependencies.playArrivalSignal).toHaveBeenCalledTimes(1);
   });
 
-  it('enables projector audio by default and exposes a disable-first toggle', async () => {
+  it('uses the shared projector control only and rearms scene audio after a global unmute', async () => {
     const armArrivalAudio = vi.fn().mockResolvedValue(true);
     const dependencies: ScreenPageDependencies = {
       subscribe: () => vi.fn(),
@@ -186,10 +196,17 @@ describe('ScreenPage', () => {
     });
 
     expect(armArrivalAudio).toHaveBeenCalledTimes(1);
-    const button = screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' });
-    fireEvent.click(button);
+    expect(screen.queryByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).not.toBeInTheDocument();
 
-    expect(dependencies.stopArrivalAudio).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
+    await act(async () => {
+      siteAudio.setEnabled(false);
+      siteAudio.setEnabled(true);
+      requestProjectorAudioRearm();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(armArrivalAudio).toHaveBeenCalledTimes(2);
   });
 });
