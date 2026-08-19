@@ -13,18 +13,20 @@ const players = [
 
 const match: MkMatch = {
   id: 'm1',
+  matchKey: 'qf-2',
   round: 'qf',
   position: 2,
   player1GuestId: 'g1',
   player2GuestId: 'g2',
   winnerGuestId: null,
+  status: 'ready',
   current: true,
 };
 
 const bracketState: ActiveProjection = {
   status: 'active',
   tournamentId: 't1',
-  state: 'playing',
+  state: 'active',
   activeCount: 16,
   maxPlayers: 16,
   ownRegistrationStatus: null,
