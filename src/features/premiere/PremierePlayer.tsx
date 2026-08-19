@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { needsPremiereMediaResolution, resolvePremiereMediaUrl } from './premiereMedia';
 
 type PremierePlayerProps = {
   src: string;
@@ -18,11 +19,43 @@ export function PremierePlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const playedSourceRef = useRef<string | null>(null);
   const wasPlayingRef = useRef(false);
+  const [playableSrc, setPlayableSrc] = useState(() => (
+    needsPremiereMediaResolution(src) ? '' : src
+  ));
+
+  useEffect(() => {
+    let active = true;
+    playedSourceRef.current = null;
+    wasPlayingRef.current = false;
+
+    if (!needsPremiereMediaResolution(src)) {
+      setPlayableSrc(src);
+      return () => {
+        active = false;
+      };
+    }
+
+    setPlayableSrc('');
+    void resolvePremiereMediaUrl(src)
+      .then((resolved) => {
+        if (active) setPlayableSrc(resolved);
+      })
+      .catch(() => {
+        // Preserve the previous behavior as a last-resort fallback. A later
+        // remount/reconnect will request a fresh direct URL again.
+        if (active) setPlayableSrc(src);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [src]);
 
   useEffect(() => {
     const video = videoRef.current;
     if (
       !video
+      || !playableSrc
       || positionSeconds === undefined
       || !Number.isFinite(positionSeconds)
       || positionSeconds < 0
@@ -33,11 +66,11 @@ export function PremierePlayer({
     if (Math.abs(video.currentTime - positionSeconds) > 0.75) {
       video.currentTime = positionSeconds;
     }
-  }, [positionSeconds, src]);
+  }, [positionSeconds, playableSrc]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !playableSrc) return;
 
     if (!shouldPlay) {
       if (wasPlayingRef.current) {
@@ -48,21 +81,21 @@ export function PremierePlayer({
       return;
     }
 
-    if (playedSourceRef.current === src) return;
+    if (playedSourceRef.current === playableSrc) return;
 
-    playedSourceRef.current = src;
+    playedSourceRef.current = playableSrc;
     wasPlayingRef.current = true;
     void video.play().catch(() => {
-      if (playedSourceRef.current === src) playedSourceRef.current = null;
+      if (playedSourceRef.current === playableSrc) playedSourceRef.current = null;
       wasPlayingRef.current = false;
     });
-  }, [shouldPlay, src]);
+  }, [shouldPlay, playableSrc]);
 
   return (
     <video
       ref={videoRef}
       className="premiere-player"
-      src={src}
+      src={playableSrc || undefined}
       preload="auto"
       playsInline
       controls={false}
