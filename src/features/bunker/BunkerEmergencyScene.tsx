@@ -25,29 +25,29 @@ export function BunkerEmergencyScene({
       <div className="bunker-emergency__scan" aria-hidden="true" />
       <header className="bunker-emergency__header">
         <span className="bunker-emergency__signal" aria-hidden="true" />
-        <strong>EMERGENCY BROADCAST</strong>
-        <span>NOCTRA SYSTEM · LIZA × VIKTOR</span>
+        <strong>ЭКСТРЕННОЕ СООБЩЕНИЕ</strong>
+        <span>ПОЕЗД ВИКТОРА · СИСТЕМА ОПОВЕЩЕНИЯ</span>
       </header>
 
       <div className="bunker-emergency__content">
-        <p>EVENT HORIZON REACHED.</p>
-        <h1>BUNKER</h1>
-        <p>ARCHIVAL CORE SECURED</p>
+        <p>ПОЕЗД ИЗМЕНИЛ МАРШРУТ.</p>
+        <h1>БУНКЕР</h1>
+        <p>ЕДИНСТВЕННАЯ БЕЗОПАСНАЯ ТОЧКА</p>
 
         <div className="bunker-emergency__timer-block">
-          <span>{arrived ? 'ARRIVAL · BUNKER' : 'TIME UNTIL ARRIVAL'}</span>
+          <span>{arrived ? 'ПРИБЫТИЕ · БУНКЕР' : 'ВРЕМЯ ДО ПРИБЫТИЯ'}</span>
           <strong data-testid="bunker-timer">{timerLabel(remainingSeconds)}</strong>
         </div>
       </div>
 
       <footer className="bunker-emergency__footer">
-        <span>OBSERVE CULTURE IN THE NIGHT SKY</span>
-        <span>{arrived ? 'CORE STABLE' : 'SHIFTING PERSPECTIVE'}</span>
+        <span>СОХРАНЯЙТЕ СПОКОЙСТВИЕ · СЛЕДУЙТЕ УКАЗАНИЯМ ВЕДУЩЕГО</span>
+        <span>{arrived ? 'ТОЧКА ДОСТИГНУТА' : 'МАРШРУТ ПЕРЕСТРОЕН'}</span>
       </footer>
 
       {soundEnabled && !soundArmed && onArmSound && (
         <button type="button" className="bunker-emergency__sound" onClick={onArmSound}>
-          ARM SYSTEM SOUND
+          ВКЛЮЧИТЬ ТРЕВОГУ
         </button>
       )}
     </section>
