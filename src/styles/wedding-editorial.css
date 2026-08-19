@@ -102,6 +102,7 @@
 
 /* Wedding idle TV: oversized collectible ticket */
 .event-screen--idle {
+  position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
@@ -114,11 +115,49 @@
     radial-gradient(circle at 88% 9%, rgba(155, 169, 180, 0.17), transparent 28rem),
     radial-gradient(circle at 5% 92%, rgba(154, 99, 72, 0.09), transparent 34rem),
     linear-gradient(135deg, #f6f1e9 0%, var(--wedding-paper) 48%, #eee6da 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.event-screen__ambient {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  opacity: 0.12;
+  filter: blur(60px);
+  pointer-events: none;
+  animation: idle-drift 20s ease-in-out infinite alternate;
+}
+
+.event-screen__ambient--left {
+  width: 40vw;
+  aspect-ratio: 1;
+  left: -10vw;
+  bottom: -10vw;
+  background: var(--wedding-forest);
+}
+
+.event-screen__ambient--right {
+  width: 30vw;
+  aspect-ratio: 1;
+  right: -5vw;
+  top: -5vw;
+  background: var(--wedding-cinnamon);
+  animation-delay: -7s;
+}
+
+@keyframes idle-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(4%, -4%) scale(1.05); }
 }
 
 .event-screen--idle::before {
+  content: "";
+  position: absolute;
   inset: clamp(0.8rem, 1.4vw, 1.45rem);
+  z-index: 2;
   border: 1px solid rgba(37, 39, 36, 0.11);
+  pointer-events: none;
 }
 
 .idle-ticket {
