@@ -1,6 +1,7 @@
 import Hls from 'hls.js';
 import { useEffect, useRef, useState } from 'react';
 import { siteAudio } from '../../lib/siteAudio';
+import { playWithMutedFallback } from './mediaPlayback';
 import { needsPremiereMediaResolution, resolvePremiereMediaUrl } from './premiereMedia';
 
 type PremierePlayerProps = {
@@ -159,7 +160,12 @@ export function PremierePlayer({
 
     playedSourceRef.current = playableSrc;
     wasPlayingRef.current = true;
-    void video.play().catch(() => {
+    void playWithMutedFallback(video, () => {
+      // Browsers can reject autonomous playback with sound. Keep the premiere
+      // moving by falling back to muted playback and reflect that state in the
+      // shared projector control; the next user tap can re-arm sound.
+      siteAudio.setEnabled(false);
+    }).catch(() => {
       if (playedSourceRef.current === playableSrc) playedSourceRef.current = null;
       wasPlayingRef.current = false;
     });
