@@ -1,4 +1,4 @@
-import { siteAudio } from '../../lib/siteAudio';
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
 
 type PremiereAudioParamLike = {
   setValueAtTime: (value: number, time: number) => unknown;
@@ -71,6 +71,13 @@ export function createPremiereAudioController(
     }
   };
 
+  const rearmFromProjectorControl = () => {
+    void arm();
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
+  }
+
   const playCountdownTick = (second: number) => {
     const cue = getCountdownCue(second);
     const volume = siteAudio.getVolume();
@@ -106,6 +113,9 @@ export function createPremiereAudioController(
   };
 
   const dispose = () => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
+    }
     if (!context) return;
     const current = context;
     context = null;
