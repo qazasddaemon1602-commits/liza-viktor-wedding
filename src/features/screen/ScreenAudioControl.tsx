@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { requestProjectorAudioRearm, siteAudio } from '../../lib/siteAudio';
+import { PREMIERE_MEDIA_AUTOPLAY_MUTED_EVENT } from '../premiere/mediaPlayback';
 
 const LAST_VOLUME_KEY = 'love-story-live:sound-last-volume';
 const DEFAULT_VOLUME = 0.75;
@@ -46,10 +47,21 @@ function SpeakerIcon({ muted }: { muted: boolean }) {
 export function ScreenAudioControl() {
   const { pathname } = useLocation();
   const [settings, setSettings] = useState(() => siteAudio.getSettings());
+  const [premiereAutoplayMuted, setPremiereAutoplayMuted] = useState(false);
   const visible = pathname === '/screen' || pathname === '/mortal-kombat/screen';
-  const muted = !settings.enabled || settings.volume <= 0;
+  const userMuted = !settings.enabled || settings.volume <= 0;
+  const muted = userMuted || premiereAutoplayMuted;
 
   useEffect(() => siteAudio.subscribe(setSettings), []);
+
+  useEffect(() => {
+    const updatePremiereMediaMute = (event: Event) => {
+      const detail = (event as CustomEvent<{ muted?: boolean }>).detail;
+      setPremiereAutoplayMuted(Boolean(detail?.muted));
+    };
+    window.addEventListener(PREMIERE_MEDIA_AUTOPLAY_MUTED_EVENT, updatePremiereMediaMute);
+    return () => window.removeEventListener(PREMIERE_MEDIA_AUTOPLAY_MUTED_EVENT, updatePremiereMediaMute);
+  }, []);
 
   useEffect(() => {
     if (settings.volume > 0) rememberVolume(settings.volume);
@@ -63,7 +75,12 @@ export function ScreenAudioControl() {
   };
 
   const toggleMuted = () => {
-    if (!muted) {
+    if (premiereAutoplayMuted && !userMuted) {
+      armAllProjectorAudio();
+      return;
+    }
+
+    if (!userMuted) {
       siteAudio.setEnabled(false);
       return;
     }
