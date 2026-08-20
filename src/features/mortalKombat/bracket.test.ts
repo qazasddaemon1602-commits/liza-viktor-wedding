@@ -16,18 +16,19 @@ describe('Mortal Kombat bracket model', () => {
     expect(bracket).toHaveLength(15);
   });
 
-  it('places the initial sixteen players in stable first-round pairs', () => {
+  it('places the initial sixteen players in standard seed slot pairs', () => {
     const bracket = buildBracket(Array.from({ length: 16 }, (_, index) => `p${index + 1}`));
 
     expect(bracket.find((match) => match.matchKey === 'r16-1')).toMatchObject({
       player1GuestId: 'p1',
-      player2GuestId: 'p2',
-    });
-    expect(bracket.find((match) => match.matchKey === 'r16-8')).toMatchObject({
-      player1GuestId: 'p15',
       player2GuestId: 'p16',
     });
+    expect(bracket.find((match) => match.matchKey === 'r16-8')).toMatchObject({
+      player1GuestId: 'p2',
+      player2GuestId: 'p15',
+    });
   });
+
 
   it('maps adjacent upstream matches into alternating downstream slots', () => {
     expect(nextMatchSlot({ round: 'r16', position: 1 })).toEqual({ matchKey: 'qf-1', slot: 'player1' });
