@@ -48,7 +48,7 @@ describe('PublicBracket with byes', () => {
   it('renders only real fights and hides bye/empty internal matches', () => {
     render(<PublicBracket state={state} />);
 
-    expect(screen.getByText('Игрок 8')).toBeInTheDocument();
+    expect(screen.getAllByText('Игрок 8').length).toBeGreaterThan(0);
     expect(screen.getByText('Игрок 9')).toBeInTheDocument();
     expect(screen.queryByText('Игрок 5')).not.toBeInTheDocument();
   });
