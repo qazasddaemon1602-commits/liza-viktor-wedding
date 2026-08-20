@@ -14,29 +14,34 @@ const ROUND_SIZES: Array<{ round: MkRound; count: number }> = [
   { round: 'final', count: 1 },
 ];
 
+export const SEED_SLOT_ORDER = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15] as const;
+
 export function buildBracket(playerIds: string[]): BracketMatch[] {
-  if (playerIds.length !== 16) {
-    throw new Error('Mortal Kombat bracket requires exactly 16 players');
+  if (playerIds.length < 2 || playerIds.length > 16) {
+    throw new Error('Mortal Kombat bracket requires between 2 and 16 players');
   }
-  if (new Set(playerIds).size !== 16 || playerIds.some((playerId) => !playerId.trim())) {
-    throw new Error('Mortal Kombat bracket requires 16 unique player ids');
+  if (new Set(playerIds).size !== playerIds.length || playerIds.some((playerId) => !playerId.trim())) {
+    throw new Error('Mortal Kombat bracket requires unique player ids');
   }
+
+  const bySeed = (seed: number): string | null => playerIds[seed - 1] ?? null;
 
   const matches: BracketMatch[] = [];
   for (const { round, count } of ROUND_SIZES) {
     for (let position = 1; position <= count; position += 1) {
-      const firstIndex = (position - 1) * 2;
+      const slotIndex = (position - 1) * 2;
       matches.push({
         matchKey: `${round}-${position}`,
         round,
         position,
-        player1GuestId: round === 'r16' ? playerIds[firstIndex] : null,
-        player2GuestId: round === 'r16' ? playerIds[firstIndex + 1] : null,
+        player1GuestId: round === 'r16' ? bySeed(SEED_SLOT_ORDER[slotIndex]) : null,
+        player2GuestId: round === 'r16' ? bySeed(SEED_SLOT_ORDER[slotIndex + 1]) : null,
       });
     }
   }
   return matches;
 }
+
 
 export function nextMatchSlot(match: MatchAddress): NextSlot | null {
   if (match.position < 1) return null;
