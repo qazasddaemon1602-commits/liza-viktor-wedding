@@ -24,7 +24,13 @@ export function PublicBracket({ state }: PublicBracketProps) {
     return seed ? String(seed).padStart(2, '0') : '—';
   };
 
-  if (state.matches.length === 0) {
+  const realMatches = state.matches.filter(
+    (match) => Boolean(match.player1GuestId) && Boolean(match.player2GuestId),
+  );
+  const visibleRounds = (['r16', 'qf', 'sf', 'final'] as const)
+    .filter((round) => realMatches.some((match) => match.round === round));
+
+  if (realMatches.length === 0) {
     return (
       <section className="mk-public-bracket mk-public-bracket--waiting">
         <p className="eyebrow">ARENA BOARD</p>
@@ -34,6 +40,7 @@ export function PublicBracket({ state }: PublicBracketProps) {
       </section>
     );
   }
+
 
   return (
     <section className="mk-public-bracket">
