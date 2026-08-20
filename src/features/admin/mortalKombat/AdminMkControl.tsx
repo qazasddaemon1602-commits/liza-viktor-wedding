@@ -157,7 +157,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <div className="admin-mk-stats">
         <div><span>ОСНОВНАЯ СЕТКА</span><strong>{state.activeCount} / 16</strong></div>
         <div><span>ЛИСТ ОЖИДАНИЯ</span><strong>{state.waitlistCount}</strong></div>
-        <div><span>МАТЧЕЙ</span><strong>{state.matches.length} / {Math.max(state.activeCount - 1, 0)}</strong></div>
+        <div><span>БОЁВ</span><strong>{Math.max(state.activeCount - 1, 0)}</strong></div>
       </div>
 
       {setupOpen && (
