@@ -119,7 +119,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <section className="admin-mk-control">
         <div className="admin-mk-heading">
           <div>
-            <p className="eyebrow">16 ИГРОКОВ · OWNER CONTROL</p>
+            <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
             <h2>MORTAL KOMBAT · ПУЛЬТ</h2>
           </div>
           <span>НЕ ОТКРЫТ</span>
@@ -138,15 +138,17 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
 
   const active = state.registrations.filter((registration) => registration.status === 'active');
   const waitlist = state.registrations.filter((registration) => registration.status === 'waitlist');
-  const allSeeded = active.length === 16 && active.every((registration) => registration.seed !== null);
+  const allSeeded = active.length >= 2
+    && active.length <= 16
+    && active.every((registration) => registration.seed !== null);
   const setupOpen = state.state === 'registration' || state.state === 'draw_ready';
-  const needsReseed = state.state === 'draw_ready' && active.length === 16 && !allSeeded;
+  const needsReseed = state.state === 'draw_ready' && active.length >= 2 && !allSeeded;
 
   return (
     <section className="admin-mk-control">
       <div className="admin-mk-heading">
         <div>
-          <p className="eyebrow">16 ИГРОКОВ · OWNER CONTROL</p>
+          <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
           <h2>MORTAL KOMBAT · ПУЛЬТ</h2>
         </div>
         <span>{state.state.toUpperCase()}</span>
@@ -155,7 +157,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <div className="admin-mk-stats">
         <div><span>ОСНОВНАЯ СЕТКА</span><strong>{state.activeCount} / 16</strong></div>
         <div><span>ЛИСТ ОЖИДАНИЯ</span><strong>{state.waitlistCount}</strong></div>
-        <div><span>МАТЧЕЙ</span><strong>{state.matches.length} / 15</strong></div>
+        <div><span>МАТЧЕЙ</span><strong>{state.matches.length} / {Math.max(state.activeCount - 1, 0)}</strong></div>
       </div>
 
       {setupOpen && (
@@ -167,7 +169,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               disabled={busy || active.length < 2}
               onClick={() => void run(() => dependencies.randomize(eventId))}
             >
-              ПЕРЕМЕШАТЬ 16 ИГРОКОВ
+              ПЕРЕМЕШАТЬ {active.length} ИГРОКОВ
             </button>
             {state.state === 'registration' && (
               <button
@@ -183,7 +185,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
 
           {needsReseed && (
             <p className="admin-mk-reseed-note" role="status">
-              СОСТАВ ИЗМЕНИЛСЯ · нажмите «ПЕРЕМЕШАТЬ 16 ИГРОКОВ» или расставьте позиции заново перед стартом.
+              СОСТАВ ИЗМЕНИЛСЯ · нажмите «ПЕРЕМЕШАТЬ {active.length} ИГРОКОВ» или расставьте позиции заново перед стартом.
             </p>
           )}
 
@@ -226,8 +228,8 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
             <div className="admin-mk-launch">
               <p>
                 {allSeeded
-                  ? '16 игроков расставлены. Старт создаст 15 серверных матчей и выведет сетку на главный ТВ.'
-                  : 'Для старта нужны ровно 16 игроков и позиции #1–#16.'}
+                  ? `${active.length} игроков расставлены. Старт создаст сетку (${Math.max(active.length - 1, 0)} реальных боёв) и выведет её на главный ТВ.`
+                  : 'Для старта нужно от 2 до 16 игроков и расставленные позиции.'}
               </p>
               <button
                 type="button"
@@ -235,7 +237,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
                 disabled={busy || !allSeeded}
                 onClick={() => void run(startTournament)}
               >
-                ЗАПУСТИТЬ ТУРНИР
+                ЗАПУСТИТЬ ТУРНИР · {active.length} ИГРОКОВ
               </button>
             </div>
           )}
