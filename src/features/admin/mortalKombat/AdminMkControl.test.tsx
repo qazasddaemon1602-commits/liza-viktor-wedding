@@ -83,7 +83,7 @@ describe('AdminMkControl', () => {
     expect(randomize).toHaveBeenCalledWith('event-1');
     expect(broadcastRefresh).toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР' }));
+    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 16 ИГРОКОВ' }));
     expect(finalize).toHaveBeenCalledWith('event-1');
     expect(setMainScreen).toHaveBeenCalledWith('event-1', true);
     expect(broadcastRefresh).toHaveBeenCalledTimes(2);
@@ -158,5 +158,43 @@ describe('AdminMkControl', () => {
 
     await user.click(screen.getByRole('button', { name: 'ВЕРНУТЬ ГЛАВНЫЙ ЭКРАН' }));
     expect(setMainScreen).toHaveBeenLastCalledWith('event-1', false);
+  });
+});
+
+describe('AdminMkControl with fewer than sixteen players', () => {
+  const nine: MkOwnerControl = {
+    ...ready,
+    activeCount: 9,
+    waitlistCount: 0,
+    registrations: Array.from({ length: 9 }, (_, index) => ({
+      registrationId: `r${index + 1}`,
+      guestId: `g${index + 1}`,
+      displayName: `Игрок ${index + 1}`,
+      status: 'active' as const,
+      seed: index + 1,
+      registeredAt: '2026-08-30T12:00:00.000Z',
+    })),
+  };
+
+  it('allows launching with nine seeded players and uses dynamic wording', async () => {
+    const user = userEvent.setup();
+    const finalize = vi.fn().mockResolvedValue(undefined);
+    render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(nine), finalize })} />);
+
+    expect(await screen.findByText('9 / 16')).toBeInTheDocument();
+    expect(screen.getAllByText('ДО 16 ИГРОКОВ · OWNER CONTROL').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'ПЕРЕМЕШАТЬ 9 ИГРОКОВ' })).toBeEnabled();
+
+    const launch = screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 9 ИГРОКОВ' });
+    expect(launch).toBeEnabled();
+    await user.click(launch);
+    expect(finalize).toHaveBeenCalledWith('event-1');
+  });
+
+  it('keeps the launch disabled with fewer than two players', async () => {
+    const one: MkOwnerControl = { ...nine, activeCount: 1, registrations: [nine.registrations[0]] };
+    render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(one) })} />);
+
+    expect(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 1 ИГРОКОВ' })).toBeDisabled();
   });
 });

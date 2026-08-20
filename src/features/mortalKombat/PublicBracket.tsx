@@ -24,7 +24,13 @@ export function PublicBracket({ state }: PublicBracketProps) {
     return seed ? String(seed).padStart(2, '0') : '—';
   };
 
-  if (state.matches.length === 0) {
+  const realMatches = state.matches.filter(
+    (match) => Boolean(match.player1GuestId) && Boolean(match.player2GuestId),
+  );
+  const visibleRounds = (['r16', 'qf', 'sf', 'final'] as const)
+    .filter((round) => realMatches.some((match) => match.round === round));
+
+  if (realMatches.length === 0) {
     return (
       <section className="mk-public-bracket mk-public-bracket--waiting">
         <p className="eyebrow">ARENA BOARD</p>
@@ -34,6 +40,7 @@ export function PublicBracket({ state }: PublicBracketProps) {
       </section>
     );
   }
+
 
   return (
     <section className="mk-public-bracket">
@@ -50,15 +57,16 @@ export function PublicBracket({ state }: PublicBracketProps) {
       </div>
 
       <div className="mk-bracket-scroll">
-        {(['r16', 'qf', 'sf', 'final'] as const).map((round, roundIndex) => (
+        {visibleRounds.map((round, roundIndex) => (
           <div className="mk-bracket-round" key={round}>
             <div className="mk-bracket-round__heading">
               <span>0{roundIndex + 1}</span>
               <h3>{roundLabels[round]}</h3>
             </div>
-            {state.matches
+            {realMatches
               .filter((match) => match.round === round)
               .sort((a, b) => a.position - b.position)
+
               .map((match) => (
                 <article
                   className={`mk-bracket-match${match.current ? ' mk-bracket-match--current' : ''}`}

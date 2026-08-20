@@ -149,7 +149,7 @@ export function MortalKombatPage({
             <span>WEDDING FIGHT ARCHIVE · EDITION 001</span>
           </div>
           <h1>MORTAL<br /><span>KOMBAT</span></h1>
-          <p className="mk-hero-note">16 FIGHTERS · ONE BRACKET · LIVE ARENA</p>
+          <p className="mk-hero-note">ДО 16 БОЙЦОВ · ONE BRACKET · LIVE ARENA</p>
         </div>
 
         <div className="mk-hero-figure" aria-hidden="true">

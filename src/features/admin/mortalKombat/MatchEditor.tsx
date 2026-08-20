@@ -35,8 +35,11 @@ export function MatchEditor({
   const [correction, setCorrection] = useState<PendingCorrection | null>(null);
   const [error, setError] = useState('');
   const names = new Map(registrations.map((registration) => [registration.guestId, registration.displayName]));
-  const current = matches.find((match) => match.current)
-    ?? matches.find((match) => match.status === 'ready')
+  const realMatches = matches.filter(
+    (match) => Boolean(match.player1GuestId) && Boolean(match.player2GuestId),
+  );
+  const current = realMatches.find((match) => match.current)
+    ?? realMatches.find((match) => match.status === 'ready')
     ?? null;
 
   const mutate = async (action: () => Promise<MkResultResponse>) => {
@@ -88,7 +91,7 @@ export function MatchEditor({
     }
   };
 
-  if (matches.length === 0) return null;
+  if (realMatches.length === 0) return null;
 
   return (
     <div className="admin-mk-matches">
@@ -132,7 +135,7 @@ export function MatchEditor({
       )}
 
       <div className="admin-mk-match-list">
-        {matches.map((match) => (
+        {realMatches.map((match) => (
           <article key={match.id} className={match.current ? 'is-current' : ''}>
             <span>{roundLabels[match.round]} · БОЙ {match.position}</span>
             <strong>
