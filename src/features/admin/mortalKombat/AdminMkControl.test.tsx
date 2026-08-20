@@ -83,7 +83,7 @@ describe('AdminMkControl', () => {
     expect(randomize).toHaveBeenCalledWith('event-1');
     expect(broadcastRefresh).toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР' }));
+    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 16 ИГРОКОВ' }));
     expect(finalize).toHaveBeenCalledWith('event-1');
     expect(setMainScreen).toHaveBeenCalledWith('event-1', true);
     expect(broadcastRefresh).toHaveBeenCalledTimes(2);
