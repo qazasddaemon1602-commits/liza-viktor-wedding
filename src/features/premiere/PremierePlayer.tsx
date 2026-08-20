@@ -1,7 +1,10 @@
 import Hls from 'hls.js';
 import { useEffect, useRef, useState } from 'react';
-import { siteAudio } from '../../lib/siteAudio';
-import { playWithMutedFallback } from './mediaPlayback';
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
+import {
+  playWithMutedFallback,
+  reportPremiereMediaAutoplayMuted,
+} from './mediaPlayback';
 import { needsPremiereMediaResolution, resolvePremiereMediaUrl } from './premiereMedia';
 
 type PremierePlayerProps = {
@@ -35,9 +38,13 @@ export function PremierePlayer({
   const wasPlayingRef = useRef(false);
   const [sourceReadyVersion, setSourceReadyVersion] = useState(0);
   const [audioSettings, setAudioSettings] = useState(() => siteAudio.getSettings());
+  const [autoplayMuted, setAutoplayMuted] = useState(false);
   const [playableSrc, setPlayableSrc] = useState(() => (
     needsPremiereMediaResolution(src) ? '' : src
   ));
+
+  const userMuted = muted || !audioSettings.enabled || audioSettings.volume <= 0;
+  const deviceMuted = userMuted || autoplayMuted;
 
   useEffect(() => siteAudio.subscribe(setAudioSettings), []);
 
@@ -79,6 +86,8 @@ export function PremierePlayer({
     const video = videoRef.current;
     if (!video) return;
 
+    setAutoplayMuted(false);
+    reportPremiereMediaAutoplayMuted(false);
     hlsRef.current?.destroy();
     hlsRef.current = null;
     playedSourceRef.current = null;
@@ -144,6 +153,29 @@ export function PremierePlayer({
   }, [positionSeconds, playableSrc, sourceReadyVersion]);
 
   useEffect(() => {
+    const unlockVideoAudio = () => {
+      const video = videoRef.current;
+      if (!video || userMuted) return;
+
+      video.muted = false;
+      setAutoplayMuted(false);
+      reportPremiereMediaAutoplayMuted(false);
+
+      if (shouldPlay && video.paused) {
+        playedSourceRef.current = playableSrc;
+        wasPlayingRef.current = true;
+        void video.play().catch(() => {
+          if (playedSourceRef.current === playableSrc) playedSourceRef.current = null;
+          wasPlayingRef.current = false;
+        });
+      }
+    };
+
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, unlockVideoAudio);
+    return () => window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, unlockVideoAudio);
+  }, [playableSrc, shouldPlay, userMuted]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video || !playableSrc) return;
 
@@ -161,17 +193,20 @@ export function PremierePlayer({
     playedSourceRef.current = playableSrc;
     wasPlayingRef.current = true;
     void playWithMutedFallback(video, () => {
-      // Browsers can reject autonomous playback with sound. Keep the premiere
-      // moving by falling back to muted playback and reflect that state in the
-      // shared projector control; the next user tap can re-arm sound.
-      siteAudio.setEnabled(false);
+      // Keep this mute local to the media element. Do not change the saved
+      // projector sound preference: the speaker control can rearm the same
+      // playing video on the next user gesture.
+      setAutoplayMuted(true);
+      reportPremiereMediaAutoplayMuted(true);
     }).catch(() => {
       if (playedSourceRef.current === playableSrc) playedSourceRef.current = null;
       wasPlayingRef.current = false;
     });
   }, [shouldPlay, playableSrc, sourceReadyVersion]);
 
-  const deviceMuted = muted || !audioSettings.enabled || audioSettings.volume <= 0;
+  useEffect(() => () => {
+    reportPremiereMediaAutoplayMuted(false);
+  }, []);
 
   return (
     <video
