@@ -131,41 +131,48 @@ export function BunkerScreenGuard({
     return () => query.removeEventListener?.('change', updateMotionPreference);
   }, []);
 
+  const applyMissionOne = (next: MissionOneServiceScreenReadModel | null) => {
+    if (!next) return;
+    setMissionOneContractVersion(next.contractVersion ?? null);
+    setMissionOne(
+      next.status === 'active'
+        ? { model: next, receivedAt: Date.now() }
+        : null,
+    );
+  };
+
+  // Базовое состояние Бункера и проекция «Задания 1» запрашиваются независимо:
+  // сбой или задержка одного запроса не должны оставлять общий экран пустым.
+  const refresh = () => {
+    if (!deps) return;
+    void deps.load()
+      .then((next) => { applyServerState(next); })
+      .catch(() => {
+        // Сохраняем последнее авторитетное состояние на время обрыва сети.
+      });
+    void Promise.resolve(deps.loadMissionOne?.() ?? null)
+      .then(applyMissionOne)
+      .catch(() => {
+        // Проекция задания догрузится следующим опросом.
+      });
+  };
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+
   useEffect(() => {
     if (!deps) return;
-    let active = true;
-    const reload = () => {
-      void Promise.all([
-        deps.load(),
-        deps.loadMissionOne?.() ?? Promise.resolve(null),
-      ])
-        .then(([next, nextMissionOne]) => {
-          if (!active) return;
-          if (applyServerState(next)) {
-            setMissionOneContractVersion(nextMissionOne?.contractVersion ?? null);
-            setMissionOne(
-              nextMissionOne?.status === 'active'
-                ? { model: nextMissionOne, receivedAt: Date.now() }
-                : null,
-            );
-          }
-        })
-        .catch(() => {
-          // Keep last authoritative bunker state during a short network drop.
-        });
-    };
-
+    const reload = () => refreshRef.current();
     reload();
     const unsubscribe = deps.subscribe?.(reload);
     window.addEventListener('focus', reload);
     window.addEventListener('online', reload);
     return () => {
-      active = false;
       unsubscribe?.();
       window.removeEventListener('focus', reload);
       window.removeEventListener('online', reload);
     };
   }, [deps]);
+
 
   const remainingSeconds = state?.status === 'active'
     ? remainingFromState(state, nowMs, serverOffsetRef.current)
