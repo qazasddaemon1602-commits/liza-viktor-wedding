@@ -43,6 +43,7 @@ describe('PremiereScreen', () => {
     pause.mockReset();
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(play);
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(pause);
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
   });
 
   afterEach(() => vi.restoreAllMocks());

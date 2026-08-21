@@ -55,7 +55,7 @@ async function flushPromises() {
   });
 }
 
-describe('AdminPremiereControl live projector preflight', () => {
+describe('AdminPremiereControl live projector telemetry', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(serverNow));
@@ -92,7 +92,7 @@ describe('AdminPremiereControl live projector preflight', () => {
     expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeEnabled();
   });
 
-  it('blocks manual start until every live projector is video-ready and audio-armed', async () => {
+  it('keeps manual start enabled while projector/video/audio telemetry is incomplete', async () => {
     const live = liveDependencies();
 
     render(
@@ -108,28 +108,29 @@ describe('AdminPremiereControl live projector preflight', () => {
     await flushPromises();
 
     const startButton = screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' });
-    expect(startButton).toBeDisabled();
-    expect(screen.getByText(/СТАРТ ЗАБЛОКИРОВАН/i)).toBeInTheDocument();
+    expect(startButton).toBeEnabled();
+    expect(screen.queryByText(/СТАРТ ЗАБЛОКИРОВАН/i)).not.toBeInTheDocument();
 
     act(() => {
       live.emit({ screenId: 'tv-room-1', videoReady: true, audioArmed: true });
       live.emit({ screenId: 'tv-room-2', videoReady: false, audioArmed: true });
     });
-    expect(startButton).toBeDisabled();
+    expect(screen.getByText('ВИДЕО НЕ ГОТОВО · 1/2')).toBeInTheDocument();
+    expect(startButton).toBeEnabled();
 
     act(() => {
       live.emit({ screenId: 'tv-room-2', videoReady: true, audioArmed: false });
     });
-    expect(startButton).toBeDisabled();
+    expect(screen.getByText('ЗВУК НЕ ГОТОВ · 1/2')).toBeInTheDocument();
+    expect(startButton).toBeEnabled();
 
     act(() => {
       live.emit({ screenId: 'tv-room-2', videoReady: true, audioArmed: true });
     });
     expect(startButton).toBeEnabled();
-    expect(screen.queryByText(/СТАРТ ЗАБЛОКИРОВАН/i)).not.toBeInTheDocument();
   });
 
-  it('marks a TV offline automatically after the heartbeat freshness window expires', async () => {
+  it('marks a TV offline after heartbeat expiry without disabling owner start', async () => {
     const live = liveDependencies();
 
     render(
@@ -156,6 +157,7 @@ describe('AdminPremiereControl live projector preflight', () => {
 
     expect(screen.getByText('ЭКРАНЫ НА СВЯЗИ · 0')).toBeInTheDocument();
     expect(screen.getByText('ТЕХНИКА ЕЩЁ НЕ ГОТОВА')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeEnabled();
   });
 });
+

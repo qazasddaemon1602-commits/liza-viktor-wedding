@@ -60,6 +60,13 @@ export type EventTestResetResult = {
   nextTicketSequence: number;
 };
 
+export type CarriageDistributionResult = {
+  activeCarriageCount: number;
+  registeredGuestCount: number;
+  carriageSizes: number[];
+  registrationOpen: boolean;
+};
+
 function throwRpcError(error: Exclude<AdminRpcError, null>): never {
   if (error instanceof Error) throw error;
   const next = new Error(error.message || 'Owner request failed');
@@ -127,6 +134,35 @@ export async function lockComposition(
     throw new Error('Unexpected composition-lock response');
   }
   return { registrationOpen: data.registrationOpen };
+}
+
+export async function applyCarriageDistribution(
+  client: AdminRpcClient,
+  eventId: string,
+  carriageCount: number,
+): Promise<CarriageDistributionResult> {
+  const { data, error } = await client.rpc('owner_apply_carriage_distribution', {
+    p_event_id: eventId,
+    p_carriage_count: carriageCount,
+  });
+  if (error) throwRpcError(error);
+  if (
+    !isRecord(data)
+    || data.status !== 'locked'
+    || typeof data.activeCarriageCount !== 'number'
+    || typeof data.registeredGuestCount !== 'number'
+    || !Array.isArray(data.carriageSizes)
+    || data.carriageSizes.some((size) => typeof size !== 'number')
+    || typeof data.registrationOpen !== 'boolean'
+  ) {
+    throw new Error('Unexpected carriage-distribution response');
+  }
+  return {
+    activeCarriageCount: data.activeCarriageCount,
+    registeredGuestCount: data.registeredGuestCount,
+    carriageSizes: data.carriageSizes as number[],
+    registrationOpen: data.registrationOpen,
+  };
 }
 
 export async function issueGuestRecovery(

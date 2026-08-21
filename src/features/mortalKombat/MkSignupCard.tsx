@@ -13,20 +13,22 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
 
   if (ownStatus === 'active') {
     return (
-      <section className="mk-signup-card mk-signup-card--confirmed">
+      <section className="mk-signup-card mk-signup-card--confirmed" role="status" aria-live="polite">
         <p className="eyebrow">БОЕЦ ПОДТВЕРЖДЁН</p>
         <strong>ВЫ В ТУРНИРЕ · {state.activeCount} / 16</strong>
         <p>Ждите жеребьёвку. Имя и вагон уже взяты из вашей регистрации на свадьбе.</p>
+        <a className="mk-primary-button" href="/join">ВЕРНУТЬСЯ К БИЛЕТУ</a>
       </section>
     );
   }
 
   if (ownStatus === 'waitlist') {
     return (
-      <section className="mk-signup-card mk-signup-card--waitlist">
+      <section className="mk-signup-card mk-signup-card--waitlist" role="status" aria-live="polite">
         <p className="eyebrow">16 / 16</p>
         <strong>ЛИСТ ОЖИДАНИЯ · №{state.waitlistPosition ?? '—'}</strong>
         <p>Если освободится место, админ сможет поднять вас в основную сетку.</p>
+        <a className="mk-primary-button" href="/join">ВЕРНУТЬСЯ К БИЛЕТУ</a>
       </section>
     );
   }
@@ -43,7 +45,7 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
 
   return (
     <section className="mk-signup-card">
-      <p className="eyebrow">MORTAL KOMBAT · 16 МЕСТ</p>
+      <p className="eyebrow">ПОСЛЕДНИЙ КРУГ · 16 МЕСТ</p>
       <strong>{state.activeCount} / 16</strong>
       <p>
         Первые 16 зарегистрированных гостей попадают в основную сетку. Дальше — лист ожидания.
@@ -54,8 +56,9 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
         disabled={joining}
         onClick={onJoin}
       >
-        {joining ? 'ДОБАВЛЯЕМ В СЕТКУ…' : 'УЧАСТВОВАТЬ В MORTAL KOMBAT'}
+        {joining ? 'ДОБАВЛЯЕМ В СЕТКУ…' : 'УЧАСТВОВАТЬ В БИТВЕ'}
       </button>
     </section>
   );
 }
+

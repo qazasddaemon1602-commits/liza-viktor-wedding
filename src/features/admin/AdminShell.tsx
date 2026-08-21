@@ -1,7 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OwnerCarriageCall } from '../carriages/carriageCalls.service';
-import type { AdminDashboard, EventTestResetResult } from './admin.service';
+import type {
+  AdminDashboard,
+  CarriageDistributionResult,
+  EventTestResetResult,
+} from './admin.service';
 import { AdminCarriageCalls } from './carriages/AdminCarriageCalls';
+import { AdminCarriageDistribution } from './carriages/AdminCarriageDistribution';
 import { AdminGuestsPage } from './guests/AdminGuestsPage';
 import { AdminMkControl, type AdminMkControlDependencies } from './mortalKombat/AdminMkControl';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
@@ -10,6 +15,7 @@ import {
   AdminPremiereControl,
   type AdminPremiereControlDependencies,
 } from './premiere/AdminPremiereControl';
+import { AdminRehearsalPanel } from './rehearsal/AdminRehearsalPanel';
 import { AdminTestResetPanel } from './reset/AdminTestResetPanel';
 import {
   AdminCouplePreanswersPanel,
@@ -23,6 +29,10 @@ export type AdminShellDependencies = {
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  applyCarriageDistribution?: (
+    eventId: string,
+    carriageCount: number,
+  ) => Promise<CarriageDistributionResult>;
   issueGuestRecovery?: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   resetEventTestData?: (eventId: string, confirmation: string) => Promise<EventTestResetResult>;
   subscribeToRegistrations?: (callback: (guestId: string) => void) => () => void;
@@ -41,6 +51,7 @@ export type AdminShellDependencies = {
 
 type AdminShellProps = {
   dependencies: AdminShellDependencies;
+  refreshIntervalMs?: number;
 };
 
 const affiliationLabels: Record<string, string> = {
@@ -66,23 +77,63 @@ function latestRegistrationAt(dashboard: AdminDashboard): string | null {
   return latest;
 }
 
-export function AdminShell({ dependencies }: AdminShellProps) {
+function registrationNotices(
+  previous: AdminDashboard | null,
+  fresh: AdminDashboard,
+): RegistrationNotice[] {
+  if (!previous) return [];
+  const previousIds = new Set(previous.guests.map((guest) => guest.id));
+  return fresh.guests
+    .filter((guest) => !previousIds.has(guest.id))
+    .map((guest) => ({
+      guestId: guest.id,
+      fullName: `${guest.firstName} ${guest.lastName}`,
+      carriageLabel: guest.carriage.label,
+      carriageAccent: guest.carriage.accentHex,
+      affiliationLabel: affiliationLabels[guest.affiliationType] ?? guest.affiliationType,
+      createdAt: guest.registeredAt,
+    }));
+}
+
+export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShellProps) {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const dashboardRef = useRef<AdminDashboard | null>(null);
   const [error, setError] = useState('');
+  const [syncWarning, setSyncWarning] = useState(false);
   const [locking, setLocking] = useState(false);
   const [notices, setNotices] = useState<RegistrationNotice[]>([]);
 
-  const storeDashboard = (next: AdminDashboard) => {
+  const storeDashboard = useCallback((next: AdminDashboard) => {
     dashboardRef.current = next;
     setDashboard(next);
-  };
+  }, []);
+
+  const storeFreshDashboard = useCallback((fresh: AdminDashboard, announceNewGuests: boolean) => {
+    const nextNotices = announceNewGuests ? registrationNotices(dashboardRef.current, fresh) : [];
+    storeDashboard(fresh);
+    if (nextNotices.length > 0) {
+      setNotices((current) => enqueueNotices(current, nextNotices));
+    }
+    setSyncWarning(false);
+  }, [storeDashboard]);
+
+  const refreshBackground = useCallback(async () => {
+    try {
+      const fresh = await dependencies.load();
+      storeFreshDashboard(fresh, true);
+    } catch {
+      setSyncWarning(true);
+    }
+  }, [dependencies, storeFreshDashboard]);
 
   useEffect(() => {
     let cancelled = false;
     void dependencies.load()
       .then((next) => {
-        if (!cancelled) storeDashboard(next);
+        if (!cancelled) {
+          storeFreshDashboard(next, false);
+          setError('');
+        }
       })
       .catch(() => {
         if (!cancelled) setError('Не удалось загрузить админку. Проверьте связь и доступ владельца.');
@@ -91,37 +142,22 @@ export function AdminShell({ dependencies }: AdminShellProps) {
     return () => {
       cancelled = true;
     };
-  }, [dependencies]);
+  }, [dependencies, storeFreshDashboard]);
 
   useEffect(() => {
-    if (!dashboard?.event.id || !dependencies.subscribeToRegistrations) return;
-    let active = true;
-
+    if (!dashboard?.event.id || !dependencies.subscribeToRegistrations) return undefined;
     return dependencies.subscribeToRegistrations(() => {
-      void dependencies.load()
-        .then((fresh) => {
-          if (!active) return;
-          const previousIds = new Set((dashboardRef.current?.guests ?? []).map((guest) => guest.id));
-          const newlyRegistered = fresh.guests.filter((guest) => !previousIds.has(guest.id));
-          storeDashboard(fresh);
-
-          if (newlyRegistered.length > 0) {
-            const nextNotices = newlyRegistered.map<RegistrationNotice>((guest) => ({
-              guestId: guest.id,
-              fullName: `${guest.firstName} ${guest.lastName}`,
-              carriageLabel: guest.carriage.label,
-              carriageAccent: guest.carriage.accentHex,
-              affiliationLabel: affiliationLabels[guest.affiliationType] ?? guest.affiliationType,
-              createdAt: guest.registeredAt,
-            }));
-            setNotices((current) => enqueueNotices(current, nextNotices));
-          }
-        })
-        .catch(() => {
-          if (active) setError('Связь с регистрациями прервалась. Обновите админку или проверьте интернет.');
-        });
+      void refreshBackground();
     });
-  }, [dashboard?.event.id, dependencies]);
+  }, [dashboard?.event.id, dependencies, refreshBackground]);
+
+  useEffect(() => {
+    if (!dashboard?.event.id || refreshIntervalMs <= 0) return undefined;
+    const interval = window.setInterval(() => {
+      void refreshBackground();
+    }, refreshIntervalMs);
+    return () => window.clearInterval(interval);
+  }, [dashboard?.event.id, refreshBackground, refreshIntervalMs]);
 
   if (error) {
     return (
@@ -205,6 +241,30 @@ export function AdminShell({ dependencies }: AdminShellProps) {
     }
   };
 
+  const handleApplyCarriageDistribution = async (carriageCount: number) => {
+    if (!dependencies.applyCarriageDistribution) {
+      await handleLockComposition();
+      return;
+    }
+
+    await dependencies.applyCarriageDistribution(dashboard.event.id, carriageCount);
+    try {
+      const fresh = await dependencies.load();
+      storeFreshDashboard(fresh, false);
+    } catch {
+      setDashboard((current) => {
+        if (!current) return current;
+        const next = {
+          ...current,
+          event: { ...current.event, compositionLocked: true, registrationOpen: true },
+        };
+        dashboardRef.current = next;
+        return next;
+      });
+      setSyncWarning(true);
+    }
+  };
+
   const handleTestReset = async (confirmation: string): Promise<EventTestResetResult> => {
     if (!dependencies.resetEventTestData) {
       throw new Error('Test reset is not configured');
@@ -212,7 +272,7 @@ export function AdminShell({ dependencies }: AdminShellProps) {
     const result = await dependencies.resetEventTestData(dashboard.event.id, confirmation);
     const fresh = await dependencies.load();
     setNotices([]);
-    storeDashboard(fresh);
+    storeFreshDashboard(fresh, false);
     return result;
   };
 
@@ -234,19 +294,34 @@ export function AdminShell({ dependencies }: AdminShellProps) {
         </div>
       </header>
 
+      {syncWarning && (
+        <div className="admin-sync-warning" role="status">
+          СВЯЗЬ С АДМИНКОЙ · ПЕРЕПОДКЛЮЧЕНИЕ
+        </div>
+      )}
+
+      <AdminRehearsalPanel
+        eventId={dashboard.event.id}
+        currentModule={dashboard.state?.currentModule ?? 'idle'}
+        currentScreenMode={dashboard.state?.screenMode ?? 'idle'}
+        expectedScreenCount={2}
+        registrationOpen={dashboard.event.registrationOpen}
+        compositionLocked={dashboard.event.compositionLocked}
+        guestCount={dashboard.guests.length}
+        premiere={dependencies.premiere}
+        couplePreanswers={dependencies.couplePreanswers}
+      />
+
       <section className="admin-operations" aria-label="Управление составом">
-        {dashboard.event.compositionLocked ? (
-          <strong>СОСТАВ ЗАФИКСИРОВАН</strong>
-        ) : (
-          <button
-            type="button"
-            className="registration-secondary"
-            disabled={locking}
-            onClick={() => void handleLockComposition()}
-          >
-            {locking ? 'ФИКСИРУЕМ…' : 'ЗАФИКСИРОВАТЬ СОСТАВ'}
-          </button>
-        )}
+        <AdminCarriageDistribution
+          guestCount={dashboard.guests.length}
+          compositionLocked={dashboard.event.compositionLocked}
+          activeCarriageCount={(() => {
+            const count = dashboard.carriages.filter((carriage) => carriage.enabled).length;
+            return count >= 2 && count <= 5 ? count as 2 | 3 | 4 | 5 : undefined;
+          })()}
+          onAccept={handleApplyCarriageDistribution}
+        />
         <p>Фиксация не закрывает регистрацию: опоздавшие гости продолжат получать свободный подходящий вагон.</p>
       </section>
 

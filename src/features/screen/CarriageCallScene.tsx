@@ -1,4 +1,6 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties } from 'react';
+import { siteAudio } from '../../lib/siteAudio';
+import { createScreenAudioController } from './screenAudio';
 import type { CarriageCallScreenEvent } from './screenEvents.realtime';
 
 type CarriageCallSceneProps = {
@@ -6,6 +8,20 @@ type CarriageCallSceneProps = {
 };
 
 export function CarriageCallScene({ event }: CarriageCallSceneProps) {
+  useEffect(() => {
+    siteAudio.beginPriority('scene');
+    const audio = createScreenAudioController();
+
+    void audio.arm().then((ready) => {
+      if (ready) audio.playCarriageCall();
+    });
+
+    return () => {
+      audio.dispose();
+      siteAudio.endPriority('scene');
+    };
+  }, [event.id]);
+
   return (
     <section className="carriage-call-scene" aria-live="assertive" aria-atomic="true">
       <div className="carriage-call-scene__frame" aria-hidden="true" />
@@ -42,3 +58,4 @@ export function CarriageCallScene({ event }: CarriageCallSceneProps) {
     </section>
   );
 }
+

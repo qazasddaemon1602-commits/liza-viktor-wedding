@@ -1,23 +1,38 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getMkTournamentScreenState, getMkTournamentState, joinMkTournament, type MkRpcClient } from './mk.service';
+import {
+  getMkTournamentDedicatedScreenState,
+  getMkTournamentScreenState,
+  getMkTournamentState,
+  joinMkTournament,
+  type MkRpcClient,
+} from './mk.service';
 
 function clientWith(data: unknown): MkRpcClient {
   return { rpc: vi.fn().mockResolvedValue({ data, error: null }) };
 }
 
+const hiddenActiveTournament = {
+  status: 'active',
+  tournamentId: 't1',
+  state: 'active',
+  activeCount: 16,
+  maxPlayers: 16,
+  ownRegistrationStatus: null,
+  waitlistPosition: null,
+  players: [{ registrationId: 'r1', guestId: 'g1', displayName: 'Иван Петров', seed: 1 }],
+  matches: [],
+  championGuestId: null,
+  presentOnMainScreen: false,
+};
+
 describe('Mortal Kombat service', () => {
   it('loads only the safe public tournament projection for the current device', async () => {
     const client = clientWith({
-      status: 'active',
-      tournamentId: 't1',
+      ...hiddenActiveTournament,
       state: 'registration',
       activeCount: 9,
-      maxPlayers: 16,
       ownRegistrationStatus: 'active',
-      waitlistPosition: null,
       players: [{ registrationId: 'r1', guestId: 'g1', displayName: 'Иван Петров', seed: null }],
-      matches: [],
-      championGuestId: null,
     });
 
     const state = await getMkTournamentState(client, 'liza-viktor', 'device-123456');
@@ -26,18 +41,50 @@ describe('Mortal Kombat service', () => {
       p_event_slug: 'liza-viktor',
       p_device_key: 'device-123456',
     });
-    expect(state).toMatchObject({ status: 'active', state: 'registration', activeCount: 9 });
+    expect(state).toMatchObject({
+      status: 'active',
+      state: 'registration',
+      activeCount: 9,
+      presentOnMainScreen: false,
+    });
   });
 
-  it('loads the same safe projection for a projector without a guest identity', async () => {
-    const client = clientWith({ status: 'idle' });
+  it('hides an active tournament from the main projector when owner presentation is off', async () => {
+    const client = clientWith(hiddenActiveTournament);
 
-    await getMkTournamentScreenState(client, 'liza-viktor');
+    const result = await getMkTournamentScreenState(client, 'liza-viktor');
 
     expect(client.rpc).toHaveBeenCalledWith('get_mk_tournament_state', {
       p_event_slug: 'liza-viktor',
       p_device_key: null,
     });
+    expect(result).toEqual({ status: 'idle' });
+  });
+
+  it('keeps the dedicated MK projector on the tournament even when main-screen presentation is off', async () => {
+    const client = clientWith(hiddenActiveTournament);
+
+    const result = await getMkTournamentDedicatedScreenState(client, 'liza-viktor');
+
+    expect(result).toMatchObject({ status: 'active', state: 'active', presentOnMainScreen: false });
+  });
+
+  it('rejects active tournament payloads that omit the main-screen presentation flag', async () => {
+    const client = clientWith({
+      status: 'active',
+      tournamentId: 't1',
+      state: 'active',
+      activeCount: 16,
+      maxPlayers: 16,
+      ownRegistrationStatus: null,
+      waitlistPosition: null,
+      players: [],
+      matches: [],
+      championGuestId: null,
+    });
+
+    await expect(getMkTournamentDedicatedScreenState(client, 'liza-viktor'))
+      .rejects.toThrow('Unexpected MK tournament payload');
   });
 
   it('joins with event/device identity instead of accepting a caller-supplied guest id', async () => {
@@ -58,3 +105,4 @@ describe('Mortal Kombat service', () => {
     expect(result).toMatchObject({ registrationStatus: 'waitlist', waitlistPosition: 1 });
   });
 });
+

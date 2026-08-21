@@ -110,8 +110,9 @@ export function PremiereReadiness({ inputs }: { inputs: PremiereReadinessInputs 
         <p className="premiere-readiness-main">ОСНОВНОЙ СОСТАВ СОБРАН</p>
       )}
       <p className="premiere-readiness-note">
-        Это только рекомендация — запуск только вручную из панели владельца.
+        ИНДИКАЦИЯ · НЕ БЛОКИРУЕТ ЗАПУСК. Момент старта всегда выбирает владелец вручную.
       </p>
     </section>
   );
 }
+

@@ -5,6 +5,17 @@ type ScreenEventsRealtimePayload = {
   new?: Record<string, unknown>;
 };
 
+type ScreenEventsQueryResult = {
+  data: unknown[] | null;
+  error: { message?: string } | null;
+};
+
+type ScreenEventsQuery = {
+  eq: (column: string, value: string) => ScreenEventsQuery;
+  gt: (column: string, value: string) => ScreenEventsQuery;
+  order: (column: string, options: { ascending: boolean }) => PromiseLike<ScreenEventsQueryResult>;
+};
+
 export type CarriageCallScreenEvent = {
   id: string;
   kind: 'carriage_call';
@@ -35,6 +46,9 @@ export type ScreenEventsRealtimeChannel = {
 
 export type ScreenEventsRealtimeClient = {
   channel: (name: string) => ScreenEventsRealtimeChannel;
+  from?: (table: string) => {
+    select: (columns: string) => ScreenEventsQuery;
+  };
 };
 
 function nonEmptyString(value: unknown): value is string {
@@ -121,7 +135,7 @@ function parseCarriageCallEvent(row: Record<string, unknown>): CarriageCallScree
   };
 }
 
-function parseScreenEvent(row: Record<string, unknown>): ScreenPresentationEvent | null {
+export function parseScreenEvent(row: Record<string, unknown>): ScreenPresentationEvent | null {
   if (row.kind === 'guest_registered') return parseGuestRegistrationEvent(row);
   if (row.kind === 'carriage_call') return parseCarriageCallEvent(row);
   return null;
@@ -133,6 +147,17 @@ export function subscribeToScreenEvents(
   onEvent: (event: ScreenPresentationEvent) => void,
 ): () => void {
   const channel = client.channel(`screen-events:${eventSlug}`);
+  const delivered = new Set<string>();
+  let active = true;
+
+  const deliver = (row: Record<string, unknown>) => {
+    const event = parseScreenEvent(row);
+    if (!event || delivered.has(event.id)) return;
+    // Mark before handing off so events intentionally dropped by a protected projector
+    // are not replayed after Premiere/MK/Bunker protection ends.
+    delivered.add(event.id);
+    onEvent(event);
+  };
 
   channel
     .on(
@@ -144,15 +169,39 @@ export function subscribeToScreenEvents(
         filter: `event_slug=eq.${eventSlug}`,
       },
       (payload) => {
-        const row = payload.new;
-        if (!row) return;
-        const event = parseScreenEvent(row);
-        if (event) onEvent(event);
+        if (payload.new) deliver(payload.new);
       },
     )
     .subscribe();
 
+  const catchUp = async () => {
+    if (!active || !client.from) return;
+    try {
+      const { data, error } = await client
+        .from('screen_events')
+        .select('id,kind,created_at,payload')
+        .eq('event_slug', eventSlug)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: true });
+      if (error || !active || !Array.isArray(data)) return;
+      for (const raw of data) {
+        if (typeof raw === 'object' && raw !== null) deliver(raw as Record<string, unknown>);
+      }
+    } catch {
+      // Realtime remains primary; a later catch-up attempt can recover a missed event.
+    }
+  };
+
+  let interval: ReturnType<typeof setInterval> | undefined;
+  if (client.from) {
+    void catchUp();
+    interval = setInterval(() => { void catchUp(); }, 1_500);
+  }
+
   return () => {
+    active = false;
+    if (interval !== undefined) clearInterval(interval);
     void channel.unsubscribe();
   };
 }
+

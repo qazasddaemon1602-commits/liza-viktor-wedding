@@ -24,6 +24,7 @@ import {
   recordMkWinner,
   removeMkPlayer,
   setCurrentMkMatch,
+  setMkMainScreen,
   swapMkSeeds,
   undoMkResult,
   type MkOwnerRpcClient,
@@ -83,6 +84,7 @@ import {
 } from '../quiz/quiz.realtime';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
+  applyCarriageDistribution as applyCarriageDistributionRpc,
   deleteGuest as deleteGuestRpc,
   issueGuestRecovery as issueGuestRecoveryRpc,
   loadOwnerDashboard,
@@ -90,6 +92,7 @@ import {
   reassignGuest as reassignGuestRpc,
   resetEventTestData as resetEventTestDataRpc,
   type AdminDashboard,
+  type CarriageDistributionResult,
   type EventTestResetResult,
 } from './admin.service';
 import {
@@ -115,6 +118,10 @@ export type AdminPageDependencies = {
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  applyCarriageDistribution?: (
+    eventId: string,
+    carriageCount: number,
+  ) => Promise<CarriageDistributionResult>;
   issueGuestRecovery: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   resetEventTestData?: (eventId: string, confirmation: string) => Promise<EventTestResetResult>;
   subscribeToRegistrations: (callback: (guestId: string) => void) => () => void;
@@ -189,6 +196,8 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     deleteGuest: (guestId) => deleteGuestRpc(client, guestId),
     reassignGuest: (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
     lockComposition: (eventId) => lockCompositionRpc(client, eventId),
+    applyCarriageDistribution: (eventId, carriageCount) =>
+      applyCarriageDistributionRpc(client, eventId, carriageCount),
     issueGuestRecovery: (guestId) => issueGuestRecoveryRpc(client, guestId),
     resetEventTestData: async (eventId, confirmation) => {
       const result = await resetEventTestDataRpc(client, eventId, confirmation);
@@ -315,6 +324,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       promote: (registrationId) => promoteMkWaitlist(mkRpcClient, registrationId),
       finalize: (eventId) => finalizeMkDraw(mkRpcClient, eventId),
       setCurrent: (matchId) => setCurrentMkMatch(mkRpcClient, matchId),
+      setMainScreen: (eventId, enabled) => setMkMainScreen(mkRpcClient, eventId, enabled),
       recordWinner: (matchId, winnerGuestId, clearDownstream) => recordMkWinner(
         mkRpcClient,
         matchId,
@@ -331,150 +341,130 @@ type AdminPageProps = {
   dependencies?: AdminPageDependencies;
 };
 
-type AdminPageState =
-  | { status: 'checking' }
-  | { status: 'login'; message: string }
-  | { status: 'denied' }
-  | { status: 'ready'; dashboard: AdminDashboard };
-
 export function AdminPage({ dependencies }: AdminPageProps) {
   const deps = useMemo(() => dependencies ?? createAdminPageDependencies(), [dependencies]);
-  const [state, setState] = useState<AdminPageState>({ status: 'checking' });
+  const [checking, setChecking] = useState(true);
+  const [session, setSession] = useState<AdminSession | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const bootstrapOwner = async () => {
-    try {
-      const dashboard = await deps.loadDashboard();
-      setState({ status: 'ready', dashboard });
-    } catch (error) {
-      if (errorCode(error) === '42501') {
-        setState({ status: 'denied' });
-        return;
-      }
-      throw error;
-    }
-  };
-
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
     void deps.getSession()
-      .then(async (session) => {
-        if (cancelled) return;
-        if (!session) {
-          setState({ status: 'login', message: '' });
-          return;
-        }
-        try {
-          const dashboard = await deps.loadDashboard();
-          if (!cancelled) setState({ status: 'ready', dashboard });
-        } catch (error) {
-          if (cancelled) return;
-          if (errorCode(error) === '42501') {
-            setState({ status: 'denied' });
-          } else {
-            setState({ status: 'login', message: 'Не удалось проверить доступ. Попробуйте ещё раз.' });
-          }
-        }
+      .then((nextSession) => {
+        if (active) setSession(nextSession);
       })
       .catch(() => {
-        if (!cancelled) setState({ status: 'login', message: 'Не удалось проверить сессию.' });
+        if (active) setError('Не удалось проверить owner-сессию.');
+      })
+      .finally(() => {
+        if (active) setChecking(false);
       });
-
     return () => {
-      cancelled = true;
+      active = false;
     };
   }, [deps]);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  if (checking) {
+    return (
+      <main className="page-shell">
+        <section className="placeholder-card" aria-live="polite">
+          <p className="eyebrow">OWNER ONLY</p>
+          <h1>ПРОВЕРЯЕМ ДОСТУП…</h1>
+        </section>
+      </main>
+    );
+  }
+
+  if (session) {
+    return (
+      <>
+        <button
+          type="button"
+          className="admin-signout"
+          onClick={() => void deps.signOut().then(() => setSession(null))}
+        >
+          ВЫЙТИ ИЗ АДМИНКИ
+        </button>
+        <AdminShell
+          dependencies={{
+            load: deps.loadDashboard,
+            deleteGuest: deps.deleteGuest,
+            reassignGuest: deps.reassignGuest,
+            lockComposition: deps.lockComposition,
+            applyCarriageDistribution: deps.applyCarriageDistribution,
+            issueGuestRecovery: deps.issueGuestRecovery,
+            resetEventTestData: deps.resetEventTestData,
+            subscribeToRegistrations: deps.subscribeToRegistrations,
+            sendCarriageCall: deps.sendCarriageCall,
+            clearCarriageCall: deps.clearCarriageCall,
+            couplePreanswers: deps.couplePreanswers,
+            premiere: deps.premiere,
+            quiz: deps.quiz,
+            finalFive: deps.finalFive,
+            mortalKombat: deps.mortalKombat,
+          }}
+        />
+      </>
+    );
+  }
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!email.trim() || !password) return;
+    if (!email.trim() || !password) {
+      setError('Введите email и пароль владельца.');
+      return;
+    }
     setSubmitting(true);
+    setError('');
     try {
       await deps.signIn(email.trim(), password);
-      await bootstrapOwner();
-    } catch (error) {
-      if (errorCode(error) === '42501') {
-        setState({ status: 'denied' });
-      } else {
-        setState({ status: 'login', message: 'Неверный логин/пароль или нет связи.' });
-      }
+      const nextSession = await deps.getSession();
+      setSession(nextSession);
+      if (!nextSession) setError('Owner-сессия не создана.');
+    } catch (signInError) {
+      const code = errorCode(signInError);
+      setError(code === 'invalid_credentials'
+        ? 'Неверный email или пароль.'
+        : 'Не удалось войти в owner-панель.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (state.status === 'checking') {
-    return (
-      <main className="page-shell">
-        <section className="placeholder-card" aria-live="polite">
-          <p className="eyebrow">OWNER ONLY</p>
-          <h1>ПРОВЕРЯЕМ СЕССИЮ…</h1>
-        </section>
-      </main>
-    );
-  }
-
-  if (state.status === 'denied') {
-    return (
-      <main className="page-shell">
-        <section className="placeholder-card" role="alert">
-          <p className="eyebrow">OWNER ONLY</p>
-          <h1>ДОСТУП ЗАПРЕЩЁН</h1>
-          <p>Эта панель открывается только аккаунту владельца события.</p>
-          <button type="button" className="registration-secondary" onClick={() => void deps.signOut().then(() => setState({ status: 'login', message: '' }))}>
-            ВЫЙТИ ИЗ АККАУНТА
-          </button>
-        </section>
-      </main>
-    );
-  }
-
-  if (state.status === 'login') {
-    return (
-      <main className="page-shell admin-login-shell">
-        <section className="placeholder-card admin-login-card">
-          <p className="eyebrow">ЛИЗА × ВИКТОР · OWNER ONLY</p>
-          <h1>ВХОД В АДМИНКУ</h1>
-          <p>Регистрация администраторов отключена. Войти может только заранее созданный аккаунт владельца.</p>
-          <form onSubmit={submit} className="registration-form">
-            <label>
-              <span>Email владельца</span>
-              <input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} />
-            </label>
-            <label>
-              <span>Пароль</span>
-              <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-            </label>
-            {state.message && <p role="alert">{state.message}</p>}
-            <button type="submit" className="registration-submit" disabled={submitting}>
-              {submitting ? 'ВХОДИМ…' : 'ВОЙТИ В АДМИНКУ'}
-            </button>
-          </form>
-        </section>
-      </main>
-    );
-  }
-
   return (
-    <AdminShell
-      dependencies={{
-        load: deps.loadDashboard,
-        deleteGuest: deps.deleteGuest,
-        reassignGuest: deps.reassignGuest,
-        lockComposition: deps.lockComposition,
-        issueGuestRecovery: deps.issueGuestRecovery,
-        resetEventTestData: deps.resetEventTestData,
-        subscribeToRegistrations: deps.subscribeToRegistrations,
-        sendCarriageCall: deps.sendCarriageCall,
-        clearCarriageCall: deps.clearCarriageCall,
-        couplePreanswers: deps.couplePreanswers,
-        premiere: deps.premiere,
-        quiz: deps.quiz,
-        finalFive: deps.finalFive,
-        mortalKombat: deps.mortalKombat,
-      }}
-    />
+    <main className="page-shell">
+      <section className="placeholder-card admin-login-card">
+        <p className="eyebrow">OWNER ONLY</p>
+        <h1>ВХОД В АДМИНКУ</h1>
+        <p>Гостевые устройства не получают доступ к списку гостей и управляющим командам.</p>
+        <form onSubmit={(event) => void submit(event)}>
+          <label>
+            <span>Email владельца</span>
+            <input
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>Пароль</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          {error && <p className="registration-error" role="alert">{error}</p>}
+          <button type="submit" className="registration-submit" disabled={submitting}>
+            {submitting ? 'ПРОВЕРЯЕМ…' : 'ВОЙТИ В АДМИНКУ'}
+          </button>
+        </form>
+      </section>
+    </main>
   );
 }

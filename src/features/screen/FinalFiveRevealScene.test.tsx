@@ -54,4 +54,24 @@ describe('FinalFiveRevealScene', () => {
     act(() => vi.advanceTimersByTime(3000));
     expect(screen.getByText('СОВПАЛИ. НЕВЕРОЯТНО.')).toBeInTheDocument();
   });
+
+  it('uses the wedding editorial final-five spread without altering staged reveal timing', () => {
+    render(
+      <FinalFiveRevealScene
+        state={{
+          status: 'revealed',
+          question: { id: 'f3', text: 'Кто дольше собирается?' },
+          results: { liza: 15, viktor: 15, total: 30 },
+          lizaAnswer: 'liza',
+          viktorAnswer: 'viktor',
+        }}
+        stepMs={1000}
+      />,
+    );
+
+    expect(screen.getByTestId('final-five-editorial-spread')).toBeInTheDocument();
+    expect(screen.getByText('PRIVATE EDITION · FINAL FIVE')).toBeInTheDocument();
+    expect(screen.queryByText('ОТВЕТ ЛИЗЫ')).not.toBeInTheDocument();
+  });
 });
+

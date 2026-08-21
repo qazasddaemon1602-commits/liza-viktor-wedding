@@ -39,8 +39,9 @@ jobs:
         with:
           version: 2.111.0
           github-token: ${{ github.token }}
-      - run: npm install
-      - run: npx playwright install --with-deps chromium
+      - run: npm install --legacy-peer-deps
+      - name: Verify preinstalled Chrome
+        run: google-chrome --version
       - name: Start full local Supabase stack
         run: supabase start
       - name: Export local Supabase environment
@@ -63,3 +64,4 @@ jobs:
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
+

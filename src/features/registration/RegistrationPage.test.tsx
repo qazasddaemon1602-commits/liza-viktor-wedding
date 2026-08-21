@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { RegistrationPage } from './RegistrationPage';
@@ -61,8 +61,15 @@ describe('RegistrationPage', () => {
       />,
     );
 
-    expect(screen.getByText('Иван Петров')).toBeInTheDocument();
-    expect(screen.getByText('LV-031')).toBeInTheDocument();
+    const ticket = screen.getByTestId('virtual-ticket');
+
+    expect(within(ticket).getByText('Иван Петров')).toBeInTheDocument();
+    expect(within(ticket).getByText('LV-031')).toBeInTheDocument();
+    expect(within(ticket).getByText('ВАГОН №3')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket-stub')).toBeInTheDocument();
+    expect(screen.getByText('PASSENGER')).toBeInTheDocument();
+    expect(screen.getByText('VALID · 30 AUG 2026')).toBeInTheDocument();
+    expect(screen.queryByTestId('wedding-railway-emblem')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
   });
 

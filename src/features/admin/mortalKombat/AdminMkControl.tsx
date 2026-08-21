@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
 import {
+  setMkMainScreen,
   showMkBracket,
   type MkOwnerRpcClient,
   type MkResultResponse,
@@ -20,6 +21,7 @@ export type AdminMkControlDependencies = {
   finalize: (eventId: string) => Promise<void>;
   setCurrent: (matchId: string) => Promise<void>;
   showBracket?: (eventId: string) => Promise<void>;
+  setMainScreen?: (eventId: string, enabled: boolean) => Promise<void>;
   recordWinner: (matchId: string, winnerGuestId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   undo: (matchId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   broadcastRefresh: () => Promise<void>;
@@ -45,13 +47,33 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     await reload();
   };
 
-  const showBracketOnProjector = async () => {
-    if (dependencies.showBracket) {
-      await dependencies.showBracket(eventId);
+  const setSharedProjector = async (enabled: boolean) => {
+    if (dependencies.setMainScreen) {
+      await dependencies.setMainScreen(eventId, enabled);
       return;
     }
     const client = getSupabaseClient() as unknown as MkOwnerRpcClient;
-    await showMkBracket(client, eventId);
+    await setMkMainScreen(client, eventId, enabled);
+  };
+
+  const showBracketOnProjector = async () => {
+    if (dependencies.showBracket) {
+      await dependencies.showBracket(eventId);
+    } else {
+      const client = getSupabaseClient() as unknown as MkOwnerRpcClient;
+      await showMkBracket(client, eventId);
+    }
+    await setSharedProjector(true);
+  };
+
+  const startTournament = async () => {
+    await dependencies.finalize(eventId);
+    await setSharedProjector(true);
+  };
+
+  const setCurrentOnProjector = async (matchId: string) => {
+    await dependencies.setCurrent(matchId);
+    await setSharedProjector(true);
   };
 
   useEffect(() => {
@@ -61,7 +83,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
         if (active) setState(next);
       })
       .catch(() => {
-        if (active) setError('Не удалось загрузить Mortal Kombat.');
+        if (active) setError('Не удалось загрузить турнирную арену.');
       });
     return () => {
       active = false;
@@ -76,7 +98,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       await command();
       await refreshAll();
     } catch {
-      setError('Команда MK не выполнена. Проверьте состояние турнира и попробуйте ещё раз.');
+      setError('Команда турнира не выполнена. Проверьте состояние и попробуйте ещё раз.');
     } finally {
       setBusy(false);
     }
@@ -85,7 +107,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   if (!state) {
     return (
       <section className="admin-mk-control">
-        <p className="eyebrow">MORTAL KOMBAT</p>
+        <p className="eyebrow">АРЕНА · ПОСЛЕДНИЙ КРУГ</p>
         <h2>ЗАГРУЖАЕМ АРЕНУ…</h2>
         {error && <p role="alert">{error}</p>}
       </section>
@@ -97,8 +119,8 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <section className="admin-mk-control">
         <div className="admin-mk-heading">
           <div>
-            <p className="eyebrow">16 ИГРОКОВ · OWNER CONTROL</p>
-            <h2>MORTAL KOMBAT · ПУЛЬТ</h2>
+            <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
+            <h2>ТУРНИРНЫЙ ПУЛЬТ</h2>
           </div>
           <span>НЕ ОТКРЫТ</span>
         </div>
@@ -108,7 +130,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
           disabled={busy}
           onClick={() => void run(() => dependencies.open(eventId))}
         >
-          ОТКРЫТЬ РЕГИСТРАЦИЮ MK
+          ОТКРЫТЬ РЕГИСТРАЦИЮ ТУРНИРА
         </button>
       </section>
     );
@@ -116,16 +138,18 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
 
   const active = state.registrations.filter((registration) => registration.status === 'active');
   const waitlist = state.registrations.filter((registration) => registration.status === 'waitlist');
-  const allSeeded = active.length === 16 && active.every((registration) => registration.seed !== null);
+  const allSeeded = active.length >= 2
+    && active.length <= 16
+    && active.every((registration) => registration.seed !== null);
   const setupOpen = state.state === 'registration' || state.state === 'draw_ready';
-  const needsReseed = state.state === 'draw_ready' && active.length === 16 && !allSeeded;
+  const needsReseed = state.state === 'draw_ready' && active.length >= 2 && !allSeeded;
 
   return (
     <section className="admin-mk-control">
       <div className="admin-mk-heading">
         <div>
-          <p className="eyebrow">16 ИГРОКОВ · OWNER CONTROL</p>
-          <h2>MORTAL KOMBAT · ПУЛЬТ</h2>
+          <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
+          <h2>ТУРНИРНЫЙ ПУЛЬТ</h2>
         </div>
         <span>{state.state.toUpperCase()}</span>
       </div>
@@ -133,7 +157,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <div className="admin-mk-stats">
         <div><span>ОСНОВНАЯ СЕТКА</span><strong>{state.activeCount} / 16</strong></div>
         <div><span>ЛИСТ ОЖИДАНИЯ</span><strong>{state.waitlistCount}</strong></div>
-        <div><span>МАТЧЕЙ</span><strong>{state.matches.length} / 15</strong></div>
+        <div><span>БОЁВ</span><strong>{Math.max(state.activeCount - 1, 0)}</strong></div>
       </div>
 
       {setupOpen && (
@@ -145,7 +169,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               disabled={busy || active.length < 2}
               onClick={() => void run(() => dependencies.randomize(eventId))}
             >
-              ПЕРЕМЕШАТЬ 16 ИГРОКОВ
+              ПЕРЕМЕШАТЬ {active.length} ИГРОКОВ
             </button>
             {state.state === 'registration' && (
               <button
@@ -154,14 +178,14 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
                 disabled={busy}
                 onClick={() => void run(() => dependencies.close(eventId))}
               >
-                ЗАКРЫТЬ РЕГИСТРАЦИЮ MK
+                ЗАКРЫТЬ РЕГИСТРАЦИЮ ТУРНИРА
               </button>
             )}
           </div>
 
           {needsReseed && (
             <p className="admin-mk-reseed-note" role="status">
-              СОСТАВ ИЗМЕНИЛСЯ · нажмите «ПЕРЕМЕШАТЬ 16 ИГРОКОВ» или расставьте позиции заново перед стартом.
+              СОСТАВ ИЗМЕНИЛСЯ · нажмите «ПЕРЕМЕШАТЬ {active.length} ИГРОКОВ» или расставьте позиции заново перед стартом.
             </p>
           )}
 
@@ -204,16 +228,16 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
             <div className="admin-mk-launch">
               <p>
                 {allSeeded
-                  ? '16 игроков расставлены. Старт создаст 15 серверных матчей и зафиксирует сетку.'
-                  : 'Для старта нужны ровно 16 игроков и позиции #1–#16.'}
+                  ? `${active.length} игроков расставлены. Старт создаст сетку (${Math.max(active.length - 1, 0)} реальных боёв) и выведет её на главный ТВ.`
+                  : 'Для старта нужно от 2 до 16 игроков и расставленные позиции.'}
               </p>
               <button
                 type="button"
                 className="registration-submit"
                 disabled={busy || !allSeeded}
-                onClick={() => void run(() => dependencies.finalize(eventId))}
+                onClick={() => void run(startTournament)}
               >
-                ЗАПУСТИТЬ ТУРНИР
+                ЗАПУСТИТЬ ТУРНИР · {active.length} ИГРОКОВ
               </button>
             </div>
           )}
@@ -224,8 +248,8 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
         <>
           <div className="admin-mk-live-note">
             <strong>{state.state === 'complete' ? 'ТУРНИР ЗАВЕРШЁН' : 'СЕТКА ЗАФИКСИРОВАНА'}</strong>
-            <p>Выберите текущий бой, затем отметьте победителя. Исправления защищены проверкой downstream-матчей.</p>
-            {state.state === 'active' && (
+            <p>Арену можно показывать на общем ТВ только в нужный момент. Отдельный экран турнира продолжает работать независимо.</p>
+            <div className="admin-mk-actions">
               <button
                 type="button"
                 className="registration-secondary"
@@ -234,12 +258,20 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               >
                 ВЫВЕСТИ СЕТКУ НА ЭКРАНЫ
               </button>
-            )}
+              <button
+                type="button"
+                className="registration-secondary"
+                disabled={busy}
+                onClick={() => void run(() => setSharedProjector(false))}
+              >
+                ВЕРНУТЬ ГЛАВНЫЙ ЭКРАН
+              </button>
+            </div>
           </div>
           <MatchEditor
             matches={state.matches}
             registrations={state.registrations}
-            onSetCurrent={dependencies.setCurrent}
+            onSetCurrent={setCurrentOnProjector}
             onRecordWinner={dependencies.recordWinner}
             onUndo={dependencies.undo}
             onChanged={refreshAll}
@@ -251,3 +283,4 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     </section>
   );
 }
+

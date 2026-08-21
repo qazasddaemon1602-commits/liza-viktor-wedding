@@ -1,0 +1,734 @@
+/* Railway registration and guest ticket with generated print artwork. */
+
+.registration-shell {
+  --ticket-paper: #f4ead8;
+  --ticket-paper-deep: #eadcc5;
+  --ticket-stub: #c7d4dd;
+  --ticket-ink: var(--wedding-rail-blue, #173b5d);
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow-x: hidden;
+  padding: clamp(1rem, 4vw, 3.5rem);
+  color: var(--ticket-ink);
+  background:
+    radial-gradient(circle at 84% 12%, rgba(116, 143, 163, 0.2), transparent 27rem),
+    linear-gradient(145deg, #f7f1e7 0%, #eee4d5 100%);
+}
+
+.registration-shell::before {
+  content: "";
+  position: fixed;
+  inset: clamp(0.6rem, 1.2vw, 1rem);
+  border: 1px solid rgba(23, 59, 93, 0.13);
+  pointer-events: none;
+}
+
+.registration-card,
+.registration-routing {
+  position: relative;
+  width: min(100%, 38rem);
+  padding: clamp(1.8rem, 5vw, 3.2rem);
+  border: 2px solid var(--ticket-ink);
+  color: var(--ticket-ink);
+  background: var(--ticket-paper);
+  box-shadow: 0 2rem 6rem rgba(23, 59, 93, 0.14);
+}
+
+.registration-card::before,
+.registration-routing::before {
+  content: "";
+  position: absolute;
+  inset: 0.48rem;
+  border: 1px solid rgba(23, 59, 93, 0.62);
+  pointer-events: none;
+}
+
+.registration-card--form {
+  width: min(100%, 61rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13.5rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.registration-card--form::before {
+  right: calc(13.5rem + 0.48rem);
+}
+
+.registration-card__body {
+  min-width: 0;
+  padding: clamp(2rem, 5vw, 3.8rem);
+}
+
+.registration-card__stub {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: space-between;
+  justify-items: center;
+  gap: 1.5rem;
+  min-width: 0;
+  padding: clamp(2.2rem, 4vw, 3.4rem) 1.4rem;
+  border-left: 1px dashed rgba(23, 59, 93, 0.62);
+  color: var(--ticket-ink);
+  background: var(--ticket-stub);
+  text-align: center;
+}
+
+.registration-card__stub::before,
+.virtual-ticket__stub::before {
+  content: "";
+  position: absolute;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: -0.55rem;
+  width: 1.05rem;
+  background: radial-gradient(circle, #f1e7d8 0 0.25rem, transparent 0.28rem) center top / 100% 1rem repeat-y;
+  pointer-events: none;
+}
+
+.registration-card__stub > span {
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.2em;
+}
+
+.registration-card__stub > strong {
+  display: grid;
+  width: 5.8rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(23, 59, 93, 0.5);
+  border-radius: 50%;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.2rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.registration-card__stub dl,
+.registration-card__stub dl > div {
+  width: 100%;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.registration-card__stub dl {
+  gap: 1.05rem;
+}
+
+.registration-card__stub dt {
+  color: rgba(23, 59, 93, 0.62);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.registration-card__stub dd {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+}
+
+.registration-heading {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: clamp(1.6rem, 4vw, 2.4rem);
+  padding-bottom: 1.15rem;
+  border-bottom: 3px double rgba(23, 59, 93, 0.52);
+}
+
+.registration-heading .eyebrow,
+.registration-routing .eyebrow,
+.registration-success > .eyebrow {
+  color: var(--ticket-ink);
+}
+
+.registration-heading h1,
+.registration-routing h1 {
+  color: var(--ticket-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.045em;
+}
+
+.registration-heading > p:last-child,
+.registration-hint,
+.registration-card > p {
+  color: rgba(23, 59, 93, 0.72);
+}
+
+.registration-ticket-surface .registration-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.4rem;
+}
+
+.registration-ticket-surface .registration-form label {
+  min-width: 0;
+  color: var(--ticket-ink);
+}
+
+.registration-ticket-surface .registration-form input,
+.registration-ticket-surface .registration-form select,
+.registration-ticket-surface .registration-form textarea {
+  min-height: 44px;
+  border-bottom-color: rgba(23, 59, 93, 0.38);
+  color: var(--ticket-ink);
+}
+
+.registration-ticket-surface .registration-form input:focus,
+.registration-ticket-surface .registration-form select:focus,
+.registration-ticket-surface .registration-form textarea:focus {
+  border-color: var(--ticket-ink);
+}
+
+.registration-ticket-surface .registration-form input:focus-visible,
+.registration-ticket-surface .registration-form select:focus-visible,
+.registration-ticket-surface .registration-form textarea:focus-visible,
+.registration-ticket-surface .registration-submit:focus-visible,
+.registration-ticket-surface .registration-secondary:focus-visible {
+  outline: 3px solid rgba(23, 59, 93, 0.62);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+.registration-ticket-surface .registration-error,
+.registration-ticket-surface .registration-submit {
+  grid-column: 1 / -1;
+}
+
+.registration-ticket-surface .registration-submit,
+.registration-ticket-surface .registration-secondary {
+  min-height: 44px;
+}
+
+.registration-ticket-surface .registration-submit {
+  color: var(--ticket-paper);
+  background: var(--ticket-ink);
+}
+
+.registration-ticket-surface .registration-secondary {
+  border-color: rgba(23, 59, 93, 0.48);
+  color: var(--ticket-ink);
+}
+
+.registration-duplicate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.4rem;
+}
+
+.registration-routing {
+  min-height: 25rem;
+}
+
+.registration-route-line {
+  background: rgba(23, 59, 93, 0.18);
+}
+
+.registration-route-line span {
+  background: var(--ticket-ink);
+}
+
+.registration-shell--ticket {
+  align-items: center;
+}
+
+.registration-success {
+  width: min(100%, 68rem);
+  gap: 1.15rem;
+  padding: 0;
+}
+
+.registration-success > .eyebrow,
+.registration-success > .registration-hint {
+  padding-inline: 0.35rem;
+}
+
+.virtual-ticket {
+  --ticket-paper: #f4ead8;
+  --ticket-stub: #c7d4dd;
+  --ticket-ink: var(--wedding-rail-blue, #173b5d);
+  --ticket-accent: var(--wedding-rail-blue, #173b5d);
+  position: relative;
+  width: 100%;
+  min-height: 34rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.3fr);
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid var(--ticket-ink);
+  color: var(--ticket-ink);
+  background: var(--ticket-paper);
+  box-shadow: 0 2.2rem 6rem rgba(23, 59, 93, 0.17);
+  isolation: isolate;
+}
+
+.virtual-ticket::before {
+  content: "";
+  position: absolute;
+  inset: 0.5rem;
+  z-index: 4;
+  border: 1px solid rgba(23, 59, 93, 0.68);
+  pointer-events: none;
+}
+
+.virtual-ticket__paper-texture {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.48;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.virtual-ticket__main,
+.virtual-ticket__stub {
+  position: relative;
+  z-index: 1;
+}
+
+.virtual-ticket__main {
+  min-width: 0;
+  display: grid;
+  align-content: space-between;
+  gap: clamp(1rem, 2.5vw, 1.7rem);
+  padding: clamp(1.7rem, 4vw, 3.2rem);
+}
+
+.virtual-ticket__topline,
+.virtual-ticket__route,
+.virtual-ticket__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: rgba(23, 59, 93, 0.7);
+  font-size: clamp(0.56rem, 1.2vw, 0.7rem);
+  font-weight: 850;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.virtual-ticket__topline {
+  padding-bottom: 0.8rem;
+  border-bottom: 3px double rgba(23, 59, 93, 0.5);
+}
+
+.virtual-ticket__hero {
+  display: grid;
+  grid-template-columns: clamp(4.7rem, 9vw, 6.4rem) minmax(0, 1fr) clamp(8rem, 19vw, 13rem);
+  align-items: center;
+  gap: clamp(1.1rem, 3vw, 2rem);
+}
+
+.virtual-ticket__seal {
+  width: 100%;
+  height: auto;
+  opacity: 0.86;
+  filter: saturate(0.82);
+}
+
+.virtual-ticket__locomotive {
+  width: 100%;
+  height: auto;
+  max-height: 7rem;
+  object-fit: contain;
+  object-position: center right;
+  filter: saturate(0.8);
+}
+
+.virtual-ticket__title-lockup {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.virtual-ticket__title-lockup > span,
+.virtual-ticket__title-lockup > small {
+  font-size: clamp(0.55rem, 1.3vw, 0.75rem);
+  font-weight: 850;
+  letter-spacing: 0.22em;
+}
+
+.virtual-ticket__title-lockup > strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 6.2vw, 4.8rem);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.05em;
+}
+
+.virtual-ticket__title-lockup > small {
+  margin-top: 0.4rem;
+  font-size: clamp(0.45rem, 0.9vw, 0.6rem);
+}
+
+.virtual-ticket__route {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  padding: 0.75rem 0;
+  border-block: 1px solid rgba(23, 59, 93, 0.34);
+}
+
+.virtual-ticket__line {
+  position: relative;
+  height: 1px;
+  background: rgba(23, 59, 93, 0.5);
+}
+
+.virtual-ticket__line::before,
+.virtual-ticket__line::after {
+  content: "✦";
+  position: absolute;
+  top: 50%;
+  color: var(--ticket-ink);
+  background: var(--ticket-paper);
+  font-size: 0.7rem;
+  transform: translateY(-50%);
+}
+
+.virtual-ticket__line::before { left: 0; }
+.virtual-ticket__line::after { right: 0; }
+
+.virtual-ticket__skyline {
+  width: 100%;
+  height: clamp(3.8rem, 8vw, 5.8rem);
+  margin-block: -0.7rem;
+  object-fit: cover;
+  object-position: center 78%;
+  opacity: 0.72;
+  filter: saturate(0.72);
+  pointer-events: none;
+}
+
+.virtual-ticket__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: clamp(1.2rem, 3vw, 2.4rem);
+  padding: 0.8rem 0;
+}
+
+.virtual-ticket__passenger {
+  min-width: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.virtual-ticket__field-label,
+.virtual-ticket__stub-label,
+.virtual-ticket__valid,
+.virtual-ticket__admit {
+  color: rgba(23, 59, 93, 0.62);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.virtual-ticket h2 {
+  max-width: 14ch;
+  margin: 0;
+  color: var(--ticket-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 6vw, 4.4rem);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.virtual-ticket__carriage {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.8rem;
+  color: var(--ticket-accent);
+}
+
+.virtual-ticket__carriage > div {
+  display: grid;
+  gap: 0.25rem;
+  padding-bottom: 0.15rem;
+}
+
+.virtual-ticket__mark {
+  color: var(--ticket-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3rem, 7vw, 4.8rem);
+  font-weight: 400;
+  line-height: 0.78;
+}
+
+.virtual-ticket__carriage strong {
+  color: var(--ticket-ink);
+  font-size: clamp(0.76rem, 1.8vw, 1rem);
+  letter-spacing: 0.11em;
+  white-space: nowrap;
+}
+
+.virtual-ticket__footer {
+  justify-content: flex-start;
+  padding-top: 0.85rem;
+  border-top: 3px double rgba(23, 59, 93, 0.46);
+}
+
+.virtual-ticket__footer span:nth-child(2) {
+  color: var(--ticket-accent);
+}
+
+.virtual-ticket__stub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: clamp(1.7rem, 3.5vw, 3rem) clamp(1rem, 2vw, 1.7rem);
+  border-left: 1px dashed rgba(23, 59, 93, 0.62);
+  color: var(--ticket-ink);
+  background: var(--ticket-stub);
+  text-align: center;
+}
+
+.virtual-ticket__valid {
+  padding-bottom: 1rem;
+  border-bottom: 3px double rgba(23, 59, 93, 0.38);
+  line-height: 1.5;
+}
+
+.virtual-ticket__number {
+  color: var(--ticket-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+.virtual-ticket__stub-mark {
+  margin-block: 0.5rem;
+  color: var(--ticket-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.5rem, 7vw, 5rem);
+  line-height: 0.8;
+}
+
+.virtual-ticket__stub-route {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.6rem;
+  padding-block: 1rem;
+  border-block: 1px solid rgba(23, 59, 93, 0.3);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-align: left;
+}
+
+.virtual-ticket__stub-route span {
+  color: rgba(23, 59, 93, 0.58);
+  font-weight: 850;
+}
+
+.virtual-ticket__stub-route strong {
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .registration-shell {
+    place-items: start center;
+    padding: 0.8rem;
+  }
+
+  .registration-shell::before {
+    display: none;
+  }
+
+  .registration-card--form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .registration-card--form::before {
+    right: 0.48rem;
+    bottom: calc(9.8rem + 0.48rem);
+  }
+
+  .registration-card__body {
+    padding: 1.55rem;
+  }
+
+  .registration-card__stub {
+    min-height: 9.8rem;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    align-content: center;
+    justify-items: start;
+    gap: 0.8rem;
+    padding: 1.45rem;
+    border-top: 1px dashed rgba(23, 59, 93, 0.62);
+    border-left: 0;
+    text-align: left;
+  }
+
+  .registration-card__stub::before,
+  .virtual-ticket__stub::before {
+    top: -0.55rem;
+    right: 0.75rem;
+    bottom: auto;
+    left: 0.75rem;
+    width: auto;
+    height: 1.05rem;
+    background: radial-gradient(circle, #f1e7d8 0 0.25rem, transparent 0.28rem) left center / 1rem 100% repeat-x;
+  }
+
+  .registration-card__stub > strong {
+    width: 3.8rem;
+  }
+
+  .registration-card__stub dl {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.7rem;
+  }
+
+  .registration-card__stub > span:last-child {
+    display: none;
+  }
+
+  .registration-ticket-surface .registration-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .registration-ticket-surface .registration-error,
+  .registration-ticket-surface .registration-submit {
+    grid-column: auto;
+  }
+
+  .registration-success {
+    width: 100%;
+  }
+
+  .virtual-ticket {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .virtual-ticket::before {
+    inset: 0.5rem;
+  }
+
+  .virtual-ticket__main {
+    gap: 1.1rem;
+    padding: 1.45rem;
+  }
+
+  .virtual-ticket__topline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .virtual-ticket__hero {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .virtual-ticket__seal {
+    width: 4.4rem;
+  }
+
+  .virtual-ticket__locomotive {
+    grid-column: 1 / -1;
+    width: min(100%, 14rem);
+    max-height: 6.2rem;
+    justify-self: end;
+  }
+
+  .virtual-ticket__title-lockup > strong {
+    font-size: clamp(2rem, 12vw, 3.3rem);
+  }
+
+  .virtual-ticket__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .virtual-ticket__skyline {
+    height: 4.4rem;
+    margin-block: -0.45rem;
+    object-position: center 80%;
+  }
+
+  .virtual-ticket h2 {
+    font-size: clamp(2.5rem, 12vw, 4rem);
+  }
+
+  .virtual-ticket__stub {
+    min-height: 13.5rem;
+    grid-template-columns: 1fr auto auto;
+    justify-items: start;
+    align-items: center;
+    align-content: center;
+    gap: 0.55rem 0.8rem;
+    padding: 1.45rem;
+    border-top: 1px dashed rgba(23, 59, 93, 0.62);
+    border-left: 0;
+    text-align: left;
+  }
+
+  .virtual-ticket__valid,
+  .virtual-ticket__stub-route,
+  .virtual-ticket__admit {
+    grid-column: 1 / -1;
+  }
+
+  .virtual-ticket__valid {
+    width: 100%;
+    padding-bottom: 0.6rem;
+  }
+
+  .virtual-ticket__stub-mark {
+    grid-row: 2 / 4;
+    grid-column: 3;
+    margin: 0;
+    font-size: 3.4rem;
+  }
+
+  .virtual-ticket__stub-route {
+    padding-block: 0.65rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .registration-card__stub {
+    grid-template-columns: auto 1fr;
+  }
+
+  .registration-card__stub dl {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .virtual-ticket__seal {
+    width: 4rem;
+  }
+
+  .virtual-ticket__route {
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .registration-shell *,
+  .registration-shell *::before,
+  .registration-shell *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

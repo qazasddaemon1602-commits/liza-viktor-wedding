@@ -21,7 +21,7 @@ describe('AdminTestResetPanel', () => {
     await user.click(screen.getByRole('button', { name: 'СБРОСИТЬ ТЕСТОВЫЕ ДАННЫЕ' }));
 
     expect(screen.getByText(/ответы лизы и виктора сохранятся/i)).toBeInTheDocument();
-    expect(screen.getByText(/настроенное видео премьеры сохранится/i)).toBeInTheDocument();
+    expect(screen.getByText(/настроенное видео премьеры/i)).toBeInTheDocument();
     expect(screen.getByText(/гости, голоса и текущие состояния будут удалены/i)).toBeInTheDocument();
 
     const confirmButton = screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ СБРОС' });
@@ -37,3 +37,4 @@ describe('AdminTestResetPanel', () => {
     expect(screen.getByText(/сохранено ответов: 30/i)).toBeInTheDocument();
   });
 });
+

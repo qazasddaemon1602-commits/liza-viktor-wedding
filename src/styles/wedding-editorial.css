@@ -1,0 +1,624 @@
+:root {
+  --wedding-paper: #f3eee5;
+  --wedding-cream: #e9dfd0;
+  --wedding-mist: #d9d2c7;
+  --wedding-graphite: #252724;
+  --wedding-forest: #31483a;
+  --wedding-blue-grey: #9ba9b4;
+  --wedding-rail-blue: #173b5d;
+  --wedding-ticket-stub: #c7d4dd;
+  --wedding-brass: #a58c5b;
+  --wedding-cinnamon: #9a6348;
+  --wedding-line-soft: rgba(37, 39, 36, 0.14);
+  --wedding-line-strong: rgba(37, 39, 36, 0.28);
+  --wedding-paper-shadow: 0 2rem 6rem rgba(37, 39, 36, 0.09);
+}
+
+.wedding-editorial-surface {
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(155, 169, 180, 0.12), transparent 30rem),
+    radial-gradient(circle at 8% 88%, rgba(154, 99, 72, 0.08), transparent 34rem),
+    var(--wedding-paper);
+}
+
+.wedding-editorial-title {
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.045em;
+}
+
+.wedding-editorial-meta {
+  color: rgba(37, 39, 36, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.wedding-railway-emblem {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.wedding-railway-emblem img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.wedding-ticket-rule {
+  position: relative;
+  border: 1px solid var(--wedding-line-strong);
+  background: var(--wedding-paper);
+  box-shadow: var(--wedding-paper-shadow);
+}
+
+.wedding-ticket-rule::before {
+  content: "";
+  position: absolute;
+  inset: 0.55rem;
+  border: 1px solid var(--wedding-line-soft);
+  pointer-events: none;
+}
+
+.wedding-route-rule {
+  display: grid;
+  grid-template-columns: auto minmax(2.5rem, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--wedding-forest);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.wedding-route-rule > i {
+  position: relative;
+  height: 1px;
+  background: var(--wedding-line-strong);
+}
+
+.wedding-route-rule > i::before,
+.wedding-route-rule > i::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0.38rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--wedding-line-strong);
+  border-radius: 50%;
+  background: var(--wedding-paper);
+  transform: translateY(-50%);
+}
+
+.wedding-route-rule > i::before { left: 0; }
+.wedding-route-rule > i::after { right: 0; }
+
+/* Wedding idle TV: a large horizontal ticket with a perforated QR stub. */
+.event-screen--idle {
+  --idle-paper: #f4ead8;
+  --idle-stub: var(--wedding-ticket-stub);
+  --idle-ink: var(--wedding-rail-blue);
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  place-items: center;
+  gap: clamp(0.8rem, 2vh, 1.5rem);
+  padding: clamp(1.2rem, 2.4vw, 2.8rem);
+  color: var(--idle-ink);
+  background:
+    radial-gradient(circle at 88% 9%, rgba(110, 138, 159, 0.24), transparent 29rem),
+    linear-gradient(135deg, #f8f2e8 0%, #ede2d2 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.event-screen__ambient {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  opacity: 0.1;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.event-screen__ambient--left {
+  width: 40vw;
+  aspect-ratio: 1;
+  left: -10vw;
+  bottom: -10vw;
+  background: var(--idle-ink);
+}
+
+.event-screen__ambient--right {
+  width: 30vw;
+  aspect-ratio: 1;
+  right: -5vw;
+  top: -5vw;
+  background: #8097a8;
+}
+
+.event-screen--idle::before {
+  content: "";
+  position: absolute;
+  inset: clamp(0.7rem, 1.4vw, 1.35rem);
+  z-index: 2;
+  border: 1px solid rgba(23, 59, 93, 0.14);
+  pointer-events: none;
+}
+
+.idle-ticket {
+  position: relative;
+  width: min(94vw, 112rem);
+  min-height: min(76vh, 49rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.34fr);
+  overflow: hidden;
+  border: 2px solid var(--idle-ink);
+  color: var(--idle-ink);
+  background: var(--idle-paper);
+  box-shadow:
+    0 2.8rem 8rem rgba(23, 59, 93, 0.17),
+    0 0 0 0.45rem rgba(244, 234, 216, 0.58);
+  isolation: isolate;
+}
+
+.idle-ticket::before {
+  content: "";
+  position: absolute;
+  inset: 0.68rem;
+  z-index: 4;
+  border: 1px solid rgba(23, 59, 93, 0.68);
+  pointer-events: none;
+}
+
+.idle-ticket__paper-texture {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.48;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.idle-ticket__body,
+.idle-ticket__stub {
+  position: relative;
+  z-index: 1;
+}
+
+.idle-ticket__body {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: clamp(1.25rem, 3vh, 2.8rem);
+  padding: clamp(2.2rem, 3.5vw, 4.7rem);
+}
+
+.idle-screen__masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: clamp(0.8rem, 1.4vh, 1.25rem);
+  border-bottom: 3px double rgba(23, 59, 93, 0.5);
+  font-size: clamp(0.62rem, 0.72vw, 0.82rem);
+  font-weight: 850;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.idle-screen__brand {
+  color: var(--idle-ink);
+}
+
+.idle-screen__brand::before {
+  content: "✦";
+  margin-right: 0.75rem;
+}
+
+.idle-screen__date {
+  color: rgba(23, 59, 93, 0.68);
+}
+
+.idle-ticket__body-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 0.64fr);
+  align-items: center;
+  gap: clamp(2rem, 4vw, 5rem);
+}
+
+.idle-screen__copy {
+  min-width: 0;
+  display: grid;
+  gap: clamp(0.9rem, 1.8vh, 1.6rem);
+  padding: 0;
+}
+
+.idle-screen__copy::before {
+  display: none;
+}
+
+.idle-screen__copy .eyebrow {
+  color: rgba(23, 59, 93, 0.72);
+  font-size: clamp(0.62rem, 0.72vw, 0.82rem);
+  letter-spacing: 0.18em;
+}
+
+.idle-screen__copy h1 {
+  max-width: 8.6ch;
+  color: var(--idle-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4.2rem, 6.4vw, 8.4rem);
+  font-weight: 400;
+  line-height: 0.84;
+  letter-spacing: -0.052em;
+  text-wrap: balance;
+}
+
+.idle-screen__lead {
+  max-width: 34rem;
+  color: rgba(23, 59, 93, 0.72);
+  font-size: clamp(0.95rem, 1.1vw, 1.24rem);
+  line-height: 1.55;
+}
+
+.idle-screen__route {
+  width: min(100%, 34rem);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  margin-top: clamp(0.4rem, 1vh, 0.9rem);
+  color: var(--idle-ink);
+  font-size: clamp(0.62rem, 0.7vw, 0.8rem);
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.idle-screen__route i {
+  position: relative;
+  height: 1px;
+  background: rgba(23, 59, 93, 0.55);
+}
+
+.idle-screen__route i::before,
+.idle-screen__route i::after {
+  content: "✦";
+  position: absolute;
+  top: 50%;
+  color: var(--idle-ink);
+  background: var(--idle-paper);
+  font-size: 0.72rem;
+  transform: translateY(-50%);
+}
+
+.idle-screen__route i::before { left: 0; }
+.idle-screen__route i::after { right: 0; }
+
+.idle-ticket__title-lockup {
+  position: relative;
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-items: center;
+  padding: 1.5rem 1rem 1rem;
+  border-block: 3px double rgba(23, 59, 93, 0.45);
+  text-align: center;
+}
+
+.idle-ticket__title-lockup > span,
+.idle-ticket__title-lockup > i {
+  font-size: clamp(0.58rem, 0.72vw, 0.8rem);
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.22em;
+}
+
+.idle-ticket__title-lockup > strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.2rem, 5vw, 6rem);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.045em;
+}
+
+.idle-ticket__title-lockup > i {
+  margin-top: 0.5rem;
+  font-size: clamp(0.48rem, 0.58vw, 0.64rem);
+}
+
+.idle-ticket__seal {
+  position: absolute;
+  top: 0.45rem;
+  right: -0.25rem;
+  width: clamp(4.8rem, 6vw, 6.8rem);
+  height: auto;
+  opacity: 0.82;
+  filter: saturate(0.78);
+}
+
+.idle-ticket__locomotive {
+  width: min(100%, 19rem);
+  height: auto;
+  max-height: 8.6rem;
+  margin-top: 0.75rem;
+  object-fit: contain;
+  filter: saturate(0.78);
+}
+
+.idle-ticket__skyline {
+  width: 100%;
+  height: clamp(5rem, 8vh, 7.6rem);
+  margin-top: clamp(-1.6rem, -2vh, -0.7rem);
+  object-fit: cover;
+  object-position: center 78%;
+  opacity: 0.68;
+  filter: saturate(0.7);
+  pointer-events: none;
+}
+
+.idle-ticket__serial {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  justify-content: start;
+  gap: 1.2rem;
+  padding-top: 1rem;
+  border-top: 3px double rgba(23, 59, 93, 0.44);
+  color: rgba(23, 59, 93, 0.62);
+  font-size: clamp(0.51rem, 0.58vw, 0.66rem);
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.idle-ticket__stub {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(0.9rem, 1.8vh, 1.6rem);
+  min-width: 0;
+  padding: clamp(2rem, 3vw, 3.8rem);
+  border-left: 1px dashed rgba(23, 59, 93, 0.62);
+  color: var(--idle-ink);
+  background: var(--idle-stub);
+}
+
+.idle-ticket__stub::before {
+  content: "";
+  position: absolute;
+  top: 0.9rem;
+  bottom: 0.9rem;
+  left: -0.58rem;
+  width: 1.15rem;
+  background: radial-gradient(circle, #f2e7d7 0 0.28rem, transparent 0.31rem) center top / 100% 1.15rem repeat-y;
+  pointer-events: none;
+}
+
+.idle-ticket__stub-head {
+  width: 100%;
+  display: grid;
+  gap: 0.4rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 3px double rgba(23, 59, 93, 0.38);
+  text-align: left;
+}
+
+.idle-ticket__stub-head span {
+  color: rgba(23, 59, 93, 0.62);
+  font-size: clamp(0.5rem, 0.58vw, 0.65rem);
+  font-weight: 850;
+  letter-spacing: 0.2em;
+}
+
+.idle-ticket__stub-head strong {
+  color: var(--idle-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.2rem, 1.45vw, 1.7rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.idle-screen__qr-frame {
+  position: relative;
+  width: min(100%, 23rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 1.1vw, 1.15rem);
+  border: 3px double rgba(23, 59, 93, 0.58);
+  background: var(--idle-paper);
+  box-shadow: 0 1.4rem 3.2rem rgba(23, 59, 93, 0.11);
+}
+
+.idle-screen__qr {
+  width: 100%;
+  height: 100%;
+}
+
+.idle-screen__scan-label {
+  margin: 0;
+  color: var(--idle-ink);
+  font-size: clamp(0.55rem, 0.64vw, 0.72rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+.idle-screen__join-url {
+  max-width: 100%;
+  margin: -0.35rem 0 0;
+  color: rgba(23, 59, 93, 0.72);
+  font-size: clamp(0.55rem, 0.66vw, 0.74rem);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.idle-ticket__stub-meta {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.44rem 1rem;
+  padding-top: 0.9rem;
+  border-top: 3px double rgba(23, 59, 93, 0.36);
+  font-size: clamp(0.48rem, 0.54vw, 0.61rem);
+  letter-spacing: 0.13em;
+}
+
+.idle-ticket__stub-meta span {
+  color: rgba(23, 59, 93, 0.56);
+  font-weight: 850;
+}
+
+.idle-ticket__stub-meta strong {
+  color: rgba(23, 59, 93, 0.84);
+  font-weight: 850;
+  text-align: right;
+}
+
+.idle-screen__footer {
+  width: min(94vw, 112rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  color: rgba(23, 59, 93, 0.62);
+  font-size: clamp(0.54rem, 0.6vw, 0.68rem);
+  font-weight: 850;
+  letter-spacing: 0.17em;
+}
+
+@media (max-width: 1100px) {
+  .idle-ticket {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.38fr);
+  }
+
+  .idle-ticket__body-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.48fr);
+  }
+
+  .idle-screen__copy h1 {
+    font-size: clamp(3.8rem, 7vw, 6.5rem);
+  }
+}
+
+@media (max-width: 900px) {
+  .event-screen--idle {
+    min-height: 100dvh;
+    overflow: auto;
+    padding: 1rem;
+  }
+
+  .event-screen--idle::before {
+    display: none;
+  }
+
+  .idle-ticket {
+    width: min(100%, 42rem);
+    min-height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .idle-ticket::before {
+    inset: 0.68rem;
+  }
+
+  .idle-ticket__body {
+    padding: clamp(1.7rem, 6vw, 3rem);
+  }
+
+  .idle-ticket__body-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .idle-ticket__title-lockup {
+    min-height: 18rem;
+  }
+
+  .idle-ticket__seal {
+    right: 0.25rem;
+    width: 5.1rem;
+  }
+
+  .idle-ticket__locomotive {
+    width: min(100%, 18rem);
+    max-height: 8rem;
+  }
+
+  .idle-ticket__skyline {
+    height: 5.4rem;
+    margin-top: -0.6rem;
+  }
+
+  .idle-ticket__stub {
+    min-height: 35rem;
+    border-top: 1px dashed rgba(23, 59, 93, 0.62);
+    border-left: 0;
+  }
+
+  .idle-ticket__stub::before {
+    top: -0.58rem;
+    right: 1rem;
+    bottom: auto;
+    left: 1rem;
+    width: auto;
+    height: 1.15rem;
+    background: radial-gradient(circle, #f2e7d7 0 0.28rem, transparent 0.31rem) left center / 1.15rem 100% repeat-x;
+  }
+
+  .idle-screen__footer {
+    width: min(100%, 42rem);
+    flex-wrap: wrap;
+    padding: 0.5rem 0.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .idle-screen__masthead {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .idle-screen__copy h1 {
+    font-size: clamp(3.2rem, 17vw, 4.8rem);
+  }
+
+  .idle-ticket__serial {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .idle-ticket__serial span:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wedding-editorial-surface *,
+  .wedding-editorial-surface *::before,
+  .wedding-editorial-surface *::after,
+  .event-screen--idle *,
+  .event-screen--idle *::before,
+  .event-screen--idle *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* Let responsive <picture> wrappers preserve the established layout role of
+   their decorative image children. */
+.generated-artwork-picture {
+  display: contents;
+}

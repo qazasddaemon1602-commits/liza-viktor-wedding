@@ -9,7 +9,7 @@ on:
       - '.github/workflows/db-tests.yml'
   push:
     branches:
-      - feat/wedding-live-hub-mvp-ci
+      - feat/admin-rehearsal-links
     paths:
       - 'supabase/**'
       - '.github/workflows/db-tests.yml'
@@ -34,3 +34,4 @@ jobs:
       - name: Stop local Supabase database
         if: always()
         run: supabase stop --no-backup
+

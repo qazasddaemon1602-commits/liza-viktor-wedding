@@ -56,4 +56,13 @@ describe('QuizScreenScene', () => {
 
     expect(screen.getByRole('presentation')).toHaveAttribute('src', '/quiz/chief.webp');
   });
+
+  it('uses the wedding editorial spread and route mark for the TV composition', () => {
+    render(<QuizScreenScene state={votingState} expectedGuestCount={40} />);
+
+    expect(screen.getByTestId('quiz-editorial-spread')).toBeInTheDocument();
+    expect(screen.getByTestId('quiz-route-mark')).toBeInTheDocument();
+    expect(screen.getByText('WEDDING EDITION · LV')).toBeInTheDocument();
+  });
 });
+

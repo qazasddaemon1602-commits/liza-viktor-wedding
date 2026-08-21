@@ -1,6 +1,7 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
+import { BunkerQuestScene, phaseForGlobalGameState } from './BunkerQuestScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
 import { setBunkerPresentationProtected } from './bunkerProtection';
 import {
@@ -36,7 +37,6 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
       audio: createBunkerAudioController(),
     };
   } catch {
-    // Route/unit tests without a configured backend keep rendering their original screen.
     return null;
   }
 }
@@ -57,29 +57,48 @@ export function BunkerScreenGuard({
   dependencies,
   children,
 }: BunkerScreenGuardProps) {
-  const deps = useMemo(
-    () => dependencies ?? browserDependencies(eventSlug),
-    [dependencies, eventSlug],
-  );
+  const [browserDeps, setBrowserDeps] = useState<BunkerScreenGuardDependencies | null>(null);
+  const deps = dependencies ?? browserDeps;
   const [state, setState] = useState<BunkerScreenState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [soundArmed, setSoundArmed] = useState(false);
-  const activeRef = useRef(true);
+  const [motionPreference, setMotionPreference] = useState<'full' | 'reduced'>(() => (
+    typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'reduced'
+      : 'full'
+  ));
   const serverOffsetRef = useRef(0);
+  const latestServerMsRef = useRef(Number.NEGATIVE_INFINITY);
+  const previousUnlockRef = useRef<boolean | null>(null);
 
   const applyServerState = (next: BunkerScreenState) => {
     const receivedAt = Date.now();
     const serverMs = Date.parse(next.serverNow);
+    if (Number.isFinite(serverMs) && serverMs < latestServerMsRef.current) return;
+    if (Number.isFinite(serverMs)) latestServerMsRef.current = serverMs;
     serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
     setState(next);
     setNowMs(receivedAt);
   };
 
   useEffect(() => {
-    activeRef.current = true;
-    return () => {
-      activeRef.current = false;
-    };
+    if (dependencies) {
+      setBrowserDeps(null);
+      return;
+    }
+    const next = browserDependencies(eventSlug);
+    setBrowserDeps(next);
+    return () => next?.audio?.dispose();
+  }, [dependencies, eventSlug]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotionPreference = () => setMotionPreference(query.matches ? 'reduced' : 'full');
+    updateMotionPreference();
+    query.addEventListener?.('change', updateMotionPreference);
+    return () => query.removeEventListener?.('change', updateMotionPreference);
   }, []);
 
   useEffect(() => {
@@ -107,25 +126,27 @@ export function BunkerScreenGuard({
   const remainingSeconds = state?.status === 'active'
     ? remainingFromState(state, nowMs, serverOffsetRef.current)
     : 0;
-  const emergencyActive = state?.status === 'active';
+  const bunkerActive = state?.status === 'active';
+  const activePhase = state?.status === 'active'
+    ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency')
+    : null;
+  const emergencyPhase = bunkerActive && activePhase === 'emergency';
 
   useEffect(() => {
-    setBunkerPresentationProtected(emergencyActive);
+    setBunkerPresentationProtected(bunkerActive);
     return () => {
       setBunkerPresentationProtected(false);
     };
-  }, [emergencyActive]);
+  }, [bunkerActive]);
 
   useEffect(() => {
-    if (!emergencyActive || remainingSeconds <= 0) return;
+    if (!bunkerActive || remainingSeconds <= 0) return;
     const interval = window.setInterval(() => setNowMs(Date.now()), 250);
     return () => window.clearInterval(interval);
-  }, [emergencyActive, remainingSeconds <= 0]);
+  }, [bunkerActive, remainingSeconds <= 0]);
 
-  // Re-check authoritative state while the emergency is active. This is a fallback for
-  // reset/stop commands if a realtime broadcast is lost on venue Wi-Fi.
   useEffect(() => {
-    if (!deps || !emergencyActive) return;
+    if (!deps) return;
     let active = true;
     const interval = window.setInterval(() => {
       void deps.load()
@@ -133,20 +154,20 @@ export function BunkerScreenGuard({
           if (active) applyServerState(next);
         })
         .catch(() => {
-          // Keep the emergency visible from the last known server state until connectivity returns.
+          // Keep the last valid screen state until connectivity returns.
         });
-    }, 2_000);
+    }, bunkerActive ? 2_000 : 1_500);
     return () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [deps, emergencyActive]);
+  }, [deps, bunkerActive]);
 
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
     if (
-      !emergencyActive
+      !emergencyPhase
       || remainingSeconds <= 0
       || state?.status !== 'active'
       || !state.soundEnabled
@@ -155,36 +176,63 @@ export function BunkerScreenGuard({
       return;
     }
 
-    void audio.arm().then((armed) => {
-      if (!activeRef.current) return;
-      setSoundArmed(armed);
-      if (armed) audio.startAlarm();
-    });
+    // Schedule the alarm even if autoplay initially blocks AudioContext.resume().
+    // The shared projector icon/slider can re-arm the context later without losing the scene.
+    audio.startAlarm();
+    void audio.arm();
 
     return () => audio.stopAlarm();
-  }, [deps, emergencyActive, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [deps, emergencyPhase, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
 
-  useEffect(() => () => deps?.audio?.dispose(), [deps]);
-
-  const armSound = () => {
+  useEffect(() => {
     const audio = deps?.audio;
-    if (!audio || remainingSeconds <= 0) return;
-    void audio.arm().then((armed) => {
-      if (!activeRef.current) return;
-      setSoundArmed(armed);
-      if (armed) audio.startAlarm();
-    });
-  };
+    if (!audio) return;
+    if (!bunkerActive || state?.status !== 'active' || !state.soundEnabled) {
+      audio.stopAmbience();
+      return;
+    }
+
+    audio.startAmbience();
+    void audio.arm();
+    return () => audio.stopAmbience();
+  }, [deps, bunkerActive, state?.status === 'active' ? state.soundEnabled : false]);
+
+  useEffect(() => {
+    const audio = deps?.audio;
+    if (!bunkerActive || state?.status !== 'active') {
+      previousUnlockRef.current = null;
+      return;
+    }
+
+    const finalPhase = activePhase === 'final' || activePhase === 'completed';
+    const wasUnlocked = previousUnlockRef.current;
+    if (
+      finalPhase
+      && state.soundEnabled
+      && wasUnlocked === false
+      && state.unlocked
+    ) {
+      audio?.playDoorUnlock();
+      void audio?.arm();
+    }
+    previousUnlockRef.current = state.unlocked;
+  }, [deps, bunkerActive, activePhase, state?.status === 'active' ? state.unlocked : false, state?.status === 'active' ? state.soundEnabled : false]);
 
   return (
     <>
       {children}
-      {emergencyActive && state?.status === 'active' && (
+      {bunkerActive && state?.status === 'active' && activePhase === 'emergency' && (
         <BunkerEmergencyScene
           remainingSeconds={remainingSeconds}
-          soundEnabled={state.soundEnabled && remainingSeconds > 0}
-          soundArmed={soundArmed}
-          onArmSound={armSound}
+          motionPreference={motionPreference}
+        />
+      )}
+      {bunkerActive && state?.status === 'active' && activePhase !== 'emergency' && (
+        <BunkerQuestScene
+          key={activePhase}
+          state={state}
+          remainingSeconds={remainingSeconds}
+          motionPreference={motionPreference}
         />
       )}
     </>

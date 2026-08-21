@@ -1,0 +1,979 @@
+/* Event-day Wedding Editorial scenes: train arrival, quiz and couple reveals. */
+
+/* -------------------------------------------------------------------------- */
+/* Train arrival                                                              */
+/* -------------------------------------------------------------------------- */
+
+.train-arrival--editorial {
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 88% 14%, rgba(155, 169, 180, 0.28), transparent 28vw),
+    radial-gradient(circle at 6% 88%, color-mix(in srgb, var(--arrival-accent) 16%, transparent), transparent 31vw),
+    linear-gradient(128deg, #f5f0e8 0%, var(--wedding-paper) 46%, #e7ddcf 100%);
+}
+
+.train-arrival--editorial::before {
+  inset: clamp(1rem, 1.7vw, 2rem);
+  border: 1px solid rgba(37, 39, 36, 0.2);
+  box-shadow: inset 0 0 0 clamp(0.3rem, 0.55vw, 0.65rem) rgba(243, 238, 229, 0.62);
+}
+
+.train-arrival--editorial::after {
+  content: "";
+  position: absolute;
+  inset: clamp(1.55rem, 2.25vw, 2.75rem);
+  z-index: -1;
+  border: 1px solid rgba(37, 39, 36, 0.08);
+  pointer-events: none;
+}
+
+.train-arrival__paper-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.3;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.train-arrival--editorial .train-arrival__wash {
+  opacity: 0.64;
+  background:
+    linear-gradient(90deg, transparent 0 56%, color-mix(in srgb, var(--arrival-accent) 11%, transparent) 78%, transparent 100%);
+}
+
+.train-arrival--editorial .train-arrival__meta,
+.train-arrival--editorial .train-arrival__destination {
+  color: rgba(37, 39, 36, 0.6);
+}
+
+.train-arrival--editorial .train-arrival__meta span:first-child,
+.train-arrival--editorial .train-arrival__destination span:first-child {
+  color: var(--wedding-forest);
+}
+
+.train-arrival__platform-ticket {
+  position: relative;
+  z-index: 5;
+  align-self: center;
+  justify-self: start;
+  width: min(57vw, 67rem);
+  min-height: min(43vh, 29rem);
+  display: grid;
+  grid-template-columns: clamp(4.6rem, 6.2vw, 7rem) minmax(0, 1fr) clamp(8rem, 10vw, 11rem);
+  grid-template-rows: 1fr auto;
+  margin-top: clamp(-5rem, -6vh, -2rem);
+  border: 1px solid rgba(37, 39, 36, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.08)),
+    color-mix(in srgb, var(--wedding-paper) 92%, white 8%);
+  box-shadow: 0 2rem 6rem rgba(37, 39, 36, 0.12);
+}
+
+.train-arrival__platform-ticket::before {
+  content: "";
+  position: absolute;
+  inset: 0.65rem;
+  border: 1px solid rgba(37, 39, 36, 0.09);
+  pointer-events: none;
+}
+
+.train-arrival__platform-ticket::after {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  bottom: 1rem;
+  right: clamp(7.6rem, 9.55vw, 10.5rem);
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(37,39,36,0.24) 0 0.35rem,
+    transparent 0.35rem 0.75rem
+  );
+  pointer-events: none;
+}
+
+.train-arrival__ticket-index {
+  grid-row: 1 / 3;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: center;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 1.25rem 0.55rem;
+  border-right: 1px solid rgba(37,39,36,0.12);
+  color: rgba(37,39,36,0.52);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: clamp(0.5rem, 0.58vw, 0.68rem);
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.train-arrival__ticket-index strong {
+  color: var(--arrival-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 3.5vw, 4.6rem);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+}
+
+.train-arrival--editorial .train-arrival__copy {
+  width: auto;
+  align-self: center;
+  gap: clamp(0.8rem, 1.4vh, 1.35rem);
+  padding: clamp(2rem, 3.2vw, 3.75rem) clamp(1.7rem, 3vw, 3.25rem);
+  transform: none;
+}
+
+.train-arrival--editorial .train-arrival__eyebrow {
+  color: color-mix(in srgb, var(--arrival-accent) 68%, var(--wedding-forest));
+  font-size: clamp(0.66rem, 0.78vw, 0.9rem);
+}
+
+.train-arrival--editorial .train-arrival__copy h2 {
+  max-width: 10ch;
+  color: var(--wedding-forest);
+  font-size: clamp(4.7rem, 7.4vw, 9.2rem);
+  line-height: 0.84;
+  text-shadow: none;
+}
+
+.train-arrival--editorial .train-arrival__assignment {
+  margin-top: 0.45rem;
+  padding-top: 1rem;
+  border-top-color: rgba(37,39,36,0.14);
+}
+
+.train-arrival--editorial .train-arrival__assignment small {
+  color: rgba(37,39,36,0.48);
+}
+
+.train-arrival--editorial .train-arrival__assignment strong {
+  color: var(--wedding-graphite);
+}
+
+.train-arrival__editorial-seal {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.2rem 0.9rem;
+  color: rgba(37,39,36,0.56);
+  text-align: center;
+  font-size: clamp(0.46rem, 0.55vw, 0.62rem);
+  font-weight: 850;
+  line-height: 1.35;
+  letter-spacing: 0.12em;
+}
+
+.train-arrival__seal-emblem {
+  width: clamp(4.5rem, 6.8vw, 7.5rem);
+  height: auto;
+  opacity: 0.82;
+  filter: saturate(0.78);
+}
+
+.train-arrival__editorial-seal > i {
+  width: 70%;
+  height: 1px;
+  background: rgba(37,39,36,0.14);
+}
+
+.train-arrival__ticket-route {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.3rem;
+  border-top: 1px solid rgba(37,39,36,0.12);
+  color: rgba(37,39,36,0.54);
+  font-size: clamp(0.52rem, 0.63vw, 0.72rem);
+  font-weight: 850;
+  letter-spacing: 0.15em;
+}
+
+.train-arrival__ticket-route i {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(37,39,36,0.08), rgba(37,39,36,0.28), rgba(37,39,36,0.08));
+}
+
+.train-arrival--editorial .train-arrival__plate {
+  right: -3vw;
+  bottom: 6vh;
+  width: min(67vw, 88rem);
+  height: min(33vh, 25rem);
+  object-position: 82% center;
+  opacity: 0.88;
+  filter: sepia(0.08) saturate(0.78) contrast(0.94) drop-shadow(0 1.55rem 1.8rem rgba(37,39,36,0.22));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.52) 16%, #000 34%);
+  mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.52) 16%, #000 34%);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Quiz screen                                                                */
+/* -------------------------------------------------------------------------- */
+
+.quiz-screen-scene--editorial {
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 87% 10%, rgba(155,169,180,0.2), transparent 29vw),
+    radial-gradient(circle at 8% 91%, rgba(154,99,72,0.1), transparent 31vw),
+    linear-gradient(136deg, #f4efe7 0%, var(--wedding-paper) 54%, #e7ded2 100%);
+}
+
+.quiz-screen-scene--editorial::before {
+  inset: clamp(1rem, 1.65vw, 1.9rem);
+  border-color: rgba(37,39,36,0.18);
+  box-shadow: inset 0 0 0 clamp(0.32rem, 0.55vw, 0.62rem) rgba(255,255,255,0.16);
+}
+
+.quiz-screen-scene--editorial::after {
+  content: "";
+  position: absolute;
+  inset: clamp(1.55rem, 2.2vw, 2.6rem);
+  border: 1px solid rgba(37,39,36,0.07);
+  pointer-events: none;
+}
+
+.quiz-screen-scene--editorial .quiz-screen-frame {
+  grid-template-rows: auto auto 1fr auto auto;
+  gap: clamp(1rem, 2.1vh, 2rem);
+  padding: clamp(2rem, 3.3vw, 4rem) clamp(2.8rem, 5.2vw, 6.6rem) clamp(1.8rem, 3vw, 3.5rem);
+}
+
+.quiz-screen-editorial-meta,
+.quiz-screen-editorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  color: rgba(37,39,36,0.5);
+  font-size: clamp(0.52rem, 0.62vw, 0.72rem);
+  font-weight: 850;
+  letter-spacing: 0.17em;
+}
+
+.quiz-screen-editorial-meta span:first-child {
+  color: var(--wedding-forest);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-header {
+  padding-bottom: clamp(0.7rem, 1.2vh, 1.2rem);
+  border-bottom: 1px solid rgba(37,39,36,0.1);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-header .eyebrow {
+  color: var(--wedding-cinnamon);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-counter {
+  color: rgba(37,39,36,0.56);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-question-wrap {
+  width: min(100%, 108rem);
+  gap: clamp(2rem, 4vw, 5rem);
+}
+
+.quiz-screen-question-copy {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: clamp(0.9rem, 1.7vh, 1.6rem);
+  padding-left: clamp(3.2rem, 5vw, 6rem);
+}
+
+.quiz-screen-route-mark {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: clamp(2.1rem, 3.1vw, 3.8rem);
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  color: var(--wedding-brass);
+  transform: translateY(-50%);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.9rem, 1.2vw, 1.35rem);
+}
+
+.quiz-screen-route-mark i {
+  width: 1px;
+  height: clamp(4rem, 8vh, 7rem);
+  background: linear-gradient(180deg, transparent, rgba(165,140,91,0.65), transparent);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-question-wrap h1 {
+  max-width: 13ch;
+  color: var(--wedding-forest);
+  font-size: clamp(5.2rem, 8.1vw, 10.5rem);
+  line-height: 0.84;
+}
+
+.quiz-screen-question-note {
+  color: rgba(37,39,36,0.43);
+  font-size: clamp(0.54rem, 0.66vw, 0.75rem);
+  font-weight: 850;
+  letter-spacing: 0.18em;
+}
+
+.quiz-screen-image-frame {
+  position: relative;
+  padding: clamp(0.65rem, 1vw, 1rem);
+  border: 1px solid rgba(37,39,36,0.16);
+  background: rgba(255,255,255,0.22);
+  box-shadow: 0 2rem 5rem rgba(37,39,36,0.1);
+}
+
+.quiz-screen-image-frame::before,
+.quiz-screen-image-frame::after {
+  content: "";
+  position: absolute;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-color: var(--wedding-brass);
+  opacity: 0.75;
+}
+
+.quiz-screen-image-frame::before {
+  top: 0.3rem;
+  left: 0.3rem;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+
+.quiz-screen-image-frame::after {
+  right: 0.3rem;
+  bottom: 0.3rem;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+}
+
+.quiz-screen-image-frame > span {
+  display: block;
+  padding-top: 0.55rem;
+  color: rgba(37,39,36,0.43);
+  font-size: clamp(0.46rem, 0.55vw, 0.62rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.quiz-screen-scene--editorial .quiz-screen-question-image {
+  max-height: 48vh;
+  border: 0;
+  box-shadow: none;
+  filter: saturate(0.78) contrast(0.96);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-voting-hint,
+.quiz-screen-scene--editorial .quiz-screen-results {
+  border: 1px solid rgba(37,39,36,0.13);
+  padding: clamp(1rem, 1.8vh, 1.8rem) clamp(1.2rem, 2vw, 2.2rem);
+  background: rgba(255,255,255,0.2);
+  box-shadow: inset 0 0 0 0.35rem rgba(243,238,229,0.38);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-voting-hint {
+  color: var(--wedding-forest);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-voting-hint span:nth-child(2) {
+  color: var(--wedding-brass);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-result {
+  min-width: 0;
+}
+
+.quiz-screen-scene--editorial .quiz-screen-result strong {
+  color: var(--wedding-forest);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-result-liza strong {
+  color: var(--wedding-cinnamon);
+}
+
+.quiz-screen-scene--editorial .quiz-screen-result-divider {
+  color: var(--wedding-brass);
+}
+
+.quiz-screen-editorial-footer {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto;
+  padding-top: 0.25rem;
+  font-size: clamp(0.45rem, 0.52vw, 0.6rem);
+}
+
+.quiz-screen-editorial-footer i {
+  height: 1px;
+  background: rgba(37,39,36,0.13);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Couple answer reveal                                                       */
+/* -------------------------------------------------------------------------- */
+
+.couple-answer-reveal-scene--editorial {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.6rem, 3vw, 3.5rem);
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 86% 16%, rgba(155,169,180,0.22), transparent 27vw),
+    radial-gradient(circle at 11% 90%, rgba(154,99,72,0.1), transparent 30vw),
+    linear-gradient(135deg, #f5f0e8, var(--wedding-paper) 55%, #e8ded0);
+}
+
+.couple-answer-reveal-scene--editorial::before {
+  content: "";
+  position: absolute;
+  inset: clamp(1rem, 1.7vw, 2rem);
+  border: 1px solid rgba(37,39,36,0.18);
+  pointer-events: none;
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-frame {
+  position: relative;
+  width: min(88vw, 94rem);
+  min-height: min(78vh, 50rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.72fr);
+  grid-template-rows: auto auto 1fr auto auto;
+  column-gap: clamp(2rem, 5vw, 6rem);
+  row-gap: clamp(0.9rem, 1.8vh, 1.7rem);
+  align-content: center;
+  padding: clamp(2.4rem, 4vw, 5rem);
+  border: 1px solid rgba(37,39,36,0.17);
+  background: rgba(247,243,235,0.78);
+  box-shadow: 0 2rem 7rem rgba(37,39,36,0.1);
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0.7rem;
+  border: 1px solid rgba(37,39,36,0.07);
+  pointer-events: none;
+}
+
+.couple-answer-reveal-meta {
+  grid-column: 1 / 3;
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(37,39,36,0.1);
+  color: rgba(37,39,36,0.48);
+  font-size: clamp(0.5rem, 0.62vw, 0.72rem);
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.couple-answer-reveal-scene--editorial .eyebrow {
+  grid-column: 1;
+  align-self: end;
+  color: var(--wedding-cinnamon);
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-question {
+  grid-column: 1;
+  max-width: 17ch;
+  align-self: start;
+  color: var(--wedding-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 3.2vw, 4.2rem);
+  line-height: 0.98;
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-choice {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.7rem;
+  min-height: 18rem;
+  padding: clamp(1.4rem, 2vw, 2.3rem);
+  border: 1px solid rgba(37,39,36,0.14);
+  background: color-mix(in srgb, var(--wedding-blue-grey) 13%, rgba(255,255,255,0.25));
+  text-align: center;
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-choice > span {
+  color: rgba(37,39,36,0.48);
+  font-size: clamp(0.55rem, 0.68vw, 0.78rem);
+  font-weight: 850;
+  letter-spacing: 0.17em;
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-choice h1 {
+  color: var(--wedding-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(5.5rem, 8.2vw, 10rem);
+  font-weight: 400;
+  line-height: 0.8;
+  letter-spacing: -0.065em;
+}
+
+.couple-answer-reveal-choice-rule {
+  width: 58%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--wedding-brass), transparent);
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-results {
+  grid-column: 1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-top: 1px solid rgba(37,39,36,0.12);
+  border-bottom: 1px solid rgba(37,39,36,0.12);
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-results strong {
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.3rem, 2.1vw, 2.6rem);
+  font-weight: 400;
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-results strong:last-child {
+  text-align: right;
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-results > span {
+  color: var(--wedding-brass);
+}
+
+.couple-answer-reveal-scene--editorial .couple-answer-reveal-verdict {
+  grid-column: 1 / 3;
+  width: fit-content;
+  padding: 0.75rem 1rem;
+  color: var(--wedding-paper);
+  background: var(--wedding-forest);
+  font-size: clamp(0.78rem, 1vw, 1.1rem);
+  letter-spacing: 0.13em;
+}
+
+.couple-answer-reveal-stamp {
+  position: absolute;
+  right: clamp(1.2rem, 2vw, 2.5rem);
+  bottom: clamp(4.2rem, 6vw, 6rem);
+  width: clamp(4.8rem, 6.4vw, 7rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.18rem;
+  border: 1px solid rgba(165,140,91,0.65);
+  border-radius: 50%;
+  color: var(--wedding-brass);
+  transform: rotate(-8deg);
+  font-size: clamp(0.42rem, 0.54vw, 0.62rem);
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.couple-answer-reveal-stamp span:first-child {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.2rem, 1.8vw, 2rem);
+}
+
+.couple-answer-reveal-footer {
+  grid-column: 1 / 3;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.6rem;
+  color: rgba(37,39,36,0.42);
+  font-size: clamp(0.46rem, 0.54vw, 0.62rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.couple-answer-reveal-footer i {
+  height: 1px;
+  background: rgba(37,39,36,0.12);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Final Five                                                                 */
+/* -------------------------------------------------------------------------- */
+
+.final-five-reveal-scene--editorial {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.6rem, 3vw, 3.5rem);
+  color: var(--wedding-graphite);
+  background:
+    radial-gradient(circle at 82% 12%, rgba(155,169,180,0.19), transparent 27vw),
+    radial-gradient(circle at 8% 92%, rgba(165,140,91,0.11), transparent 29vw),
+    linear-gradient(138deg, #f4efe7, var(--wedding-paper) 52%, #e5dbcd);
+}
+
+.final-five-reveal-scene--editorial::before {
+  content: "";
+  position: absolute;
+  inset: clamp(1rem, 1.7vw, 2rem);
+  border: 1px solid rgba(37,39,36,0.18);
+  pointer-events: none;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-frame {
+  position: relative;
+  width: min(90vw, 102rem);
+  min-height: min(82vh, 54rem);
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  grid-template-rows: auto auto auto 1fr auto auto;
+  column-gap: clamp(2.5rem, 5vw, 6rem);
+  row-gap: clamp(0.8rem, 1.6vh, 1.55rem);
+  align-content: center;
+  padding: clamp(2.5rem, 4.3vw, 5.2rem);
+  border: 1px solid rgba(37,39,36,0.17);
+  background: rgba(247,243,235,0.76);
+  box-shadow: 0 2rem 7rem rgba(37,39,36,0.1);
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0.72rem;
+  border: 1px solid rgba(37,39,36,0.07);
+  pointer-events: none;
+}
+
+.final-five-reveal-meta {
+  grid-column: 1 / 3;
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(37,39,36,0.1);
+  color: rgba(37,39,36,0.46);
+  font-size: clamp(0.5rem, 0.62vw, 0.72rem);
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.final-five-reveal-scene--editorial .eyebrow {
+  grid-column: 1 / 3;
+  color: var(--wedding-cinnamon);
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-frame > h1 {
+  grid-column: 1;
+  grid-row: 3 / 5;
+  align-self: center;
+  max-width: 10ch;
+  color: var(--wedding-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4.2rem, 6.6vw, 8.5rem);
+  font-weight: 400;
+  line-height: 0.84;
+  letter-spacing: -0.06em;
+  text-wrap: balance;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-guest-results {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  border: 1px solid rgba(37,39,36,0.12);
+  background: rgba(255,255,255,0.2);
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-guest-results strong {
+  color: var(--wedding-graphite);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 1.9vw, 2.4rem);
+  font-weight: 400;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-guest-results strong:last-child {
+  text-align: right;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-guest-results > span {
+  color: var(--wedding-brass);
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-private-answers {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.2vw, 1.25rem);
+  align-self: stretch;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-answer {
+  position: relative;
+  min-height: clamp(12rem, 23vh, 18rem);
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 0.65rem;
+  padding: clamp(1.2rem, 2vw, 2.2rem);
+  border: 1px solid rgba(37,39,36,0.14);
+  background: rgba(255,255,255,0.22);
+  overflow: hidden;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-answer::after {
+  content: "";
+  position: absolute;
+  width: 7rem;
+  aspect-ratio: 1;
+  right: -2.5rem;
+  bottom: -3rem;
+  border: 1px solid rgba(165,140,91,0.28);
+  border-radius: 50%;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-answer > span,
+.final-five-reveal-scene--editorial .final-five-reveal-answer > small {
+  color: rgba(37,39,36,0.48);
+  font-size: clamp(0.5rem, 0.6vw, 0.7rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-answer-value {
+  color: var(--wedding-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4rem, 5.6vw, 7rem);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.06em;
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-answer--liza .final-five-reveal-answer-value {
+  color: var(--wedding-cinnamon);
+}
+
+.final-five-reveal-scene--editorial .final-five-reveal-verdict {
+  grid-column: 2;
+  width: fit-content;
+  padding: 0.75rem 1rem;
+  color: var(--wedding-paper);
+  background: var(--wedding-forest);
+  font-size: clamp(0.72rem, 0.9vw, 1rem);
+  letter-spacing: 0.12em;
+}
+
+.final-five-reveal-seal {
+  position: absolute;
+  left: clamp(1.3rem, 2vw, 2.5rem);
+  bottom: clamp(4.2rem, 6vw, 6.2rem);
+  width: clamp(4.7rem, 6.2vw, 6.8rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.12rem;
+  border: 1px solid rgba(165,140,91,0.62);
+  border-radius: 50%;
+  color: var(--wedding-brass);
+  transform: rotate(7deg);
+  font-size: clamp(0.46rem, 0.55vw, 0.62rem);
+  font-weight: 850;
+}
+
+.final-five-reveal-seal span:first-child {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.2rem, 1.8vw, 2rem);
+}
+
+.final-five-reveal-footer {
+  grid-column: 1 / 3;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.65rem;
+  color: rgba(37,39,36,0.42);
+  font-size: clamp(0.46rem, 0.54vw, 0.62rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.final-five-reveal-footer i {
+  height: 1px;
+  background: rgba(37,39,36,0.12);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsive / motion                                                        */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 1100px), (max-aspect-ratio: 4 / 3) {
+  .train-arrival__platform-ticket {
+    width: min(72vw, 52rem);
+    grid-template-columns: clamp(3.6rem, 5vw, 5rem) minmax(0, 1fr);
+  }
+
+  .train-arrival__editorial-seal {
+    display: none;
+  }
+
+  .train-arrival__platform-ticket::after {
+    display: none;
+  }
+
+  .train-arrival__ticket-route {
+    grid-column: 2;
+  }
+
+  .train-arrival--editorial .train-arrival__copy h2 {
+    font-size: clamp(4rem, 8vw, 7rem);
+  }
+
+  .quiz-screen-scene--editorial .quiz-screen-frame {
+    padding-inline: clamp(2rem, 4vw, 4rem);
+  }
+
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-frame,
+  .final-five-reveal-scene--editorial .final-five-reveal-frame {
+    width: min(94vw, 84rem);
+  }
+}
+
+@media (max-width: 760px) {
+  .train-arrival--editorial {
+    padding: 1.2rem;
+  }
+
+  .train-arrival__platform-ticket {
+    width: 92vw;
+    min-height: auto;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    margin-top: -12vh;
+  }
+
+  .train-arrival--editorial .train-arrival__copy {
+    padding: 1.4rem 1.2rem;
+  }
+
+  .train-arrival--editorial .train-arrival__copy h2 {
+    font-size: clamp(3.2rem, 13vw, 5.5rem);
+  }
+
+  .train-arrival--editorial .train-arrival__plate {
+    width: 94vw;
+    height: 27vh;
+    object-position: 82% center;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.7) 10%, #000 24%);
+    mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.7) 10%, #000 24%);
+  }
+
+  .quiz-screen-editorial-meta,
+  .quiz-screen-editorial-footer {
+    display: none;
+  }
+
+  .quiz-screen-scene--editorial .quiz-screen-frame {
+    grid-template-rows: auto 1fr auto;
+    padding: 1.6rem;
+  }
+
+  .quiz-screen-question-copy {
+    padding-left: 2.7rem;
+  }
+
+  .quiz-screen-scene--editorial .quiz-screen-question-wrap h1 {
+    font-size: clamp(3.6rem, 12vw, 6rem);
+  }
+
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-frame,
+  .final-five-reveal-scene--editorial .final-five-reveal-frame {
+    width: 100%;
+    min-height: auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+
+  .couple-answer-reveal-meta,
+  .couple-answer-reveal-scene--editorial .eyebrow,
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-question,
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-choice,
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-results,
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-verdict,
+  .couple-answer-reveal-footer,
+  .final-five-reveal-meta,
+  .final-five-reveal-scene--editorial .eyebrow,
+  .final-five-reveal-scene--editorial .final-five-reveal-frame > h1,
+  .final-five-reveal-scene--editorial .final-five-reveal-guest-results,
+  .final-five-reveal-scene--editorial .final-five-reveal-private-answers,
+  .final-five-reveal-scene--editorial .final-five-reveal-verdict,
+  .final-five-reveal-footer {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .couple-answer-reveal-meta,
+  .final-five-reveal-meta {
+    display: none;
+  }
+
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-choice {
+    min-height: 11rem;
+  }
+
+  .couple-answer-reveal-scene--editorial .couple-answer-reveal-choice h1,
+  .final-five-reveal-scene--editorial .final-five-reveal-answer-value {
+    font-size: clamp(3.4rem, 14vw, 5.8rem);
+  }
+
+  .final-five-reveal-scene--editorial .final-five-reveal-frame > h1 {
+    font-size: clamp(3.4rem, 11vw, 5.8rem);
+  }
+
+  .couple-answer-reveal-stamp,
+  .final-five-reveal-seal {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .train-arrival--editorial,
+  .train-arrival--editorial *,
+  .quiz-screen-scene--editorial,
+  .quiz-screen-scene--editorial *,
+  .couple-answer-reveal-scene--editorial,
+  .couple-answer-reveal-scene--editorial *,
+  .final-five-reveal-scene--editorial,
+  .final-five-reveal-scene--editorial * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
