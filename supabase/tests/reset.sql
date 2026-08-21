@@ -11,17 +11,22 @@ select ok(
   and pg_get_functiondef(
     'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure
   ) !~ E'for[\\s\\n]+update'
-  and coalesce('search_path=public' = any((
+  and (select prosecdef from pg_proc
+       where oid = 'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure)
+  and coalesce('search_path=""' = any((
     select proconfig from pg_proc
     where oid = 'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure
   )), false)
+  and pg_get_functiondef(
+    'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure
+  ) !~ E'(from|join|update|insert into)[\\s\\n]+(events|guests|guest_device_bindings|carriages)\\b'
   and has_function_privilege(
     'anon', 'public.register_guest(text,text,text,text,text,text,boolean)', 'EXECUTE'
   )
   and has_function_privilege(
     'authenticated', 'public.register_guest(text,text,text,text,text,text,boolean)', 'EXECUTE'
   ),
-  'registration serializes with NO KEY UPDATE so event FK KEY SHARE remains compatible'
+  'registration is an empty-path hardened definer with qualified relations and compatible NO KEY UPDATE locking'
 );
 
 select ok(
