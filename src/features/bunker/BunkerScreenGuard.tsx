@@ -4,15 +4,8 @@ import { BunkerEmergencyScene } from './BunkerEmergencyScene';
 import { BunkerQuestScene, phaseForGlobalGameState } from './BunkerQuestScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
 import { setBunkerPresentationProtected } from './bunkerProtection';
-import {
-  subscribeToBunkerRefresh,
-  type BunkerRealtimeClient,
-} from './bunker.realtime';
-import {
-  getBunkerScreenState,
-  type BunkerRpcClient,
-  type BunkerScreenState,
-} from './bunker.service';
+import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
+import { getBunkerScreenState, type BunkerRpcClient, type BunkerScreenState } from './bunker.service';
 import {
   getMissionOneScreenReadModel,
   type MissionOneRpcClient,
@@ -27,11 +20,7 @@ export type BunkerScreenGuardDependencies = {
   audio?: BunkerAudioController;
 };
 
-type BunkerScreenGuardProps = {
-  eventSlug?: string;
-  dependencies?: BunkerScreenGuardDependencies;
-  children: ReactNode;
-};
+type BunkerScreenGuardProps = { eventSlug?: string; dependencies?: BunkerScreenGuardDependencies; children: ReactNode };
 
 function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies | null {
   try {
@@ -44,20 +33,12 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
       subscribe: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
       audio: createBunkerAudioController(),
     };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-type TimedMissionOne = {
-  model: Extract<MissionOneServiceScreenReadModel, { status: 'active' }>;
-  receivedAt: number;
-};
+type TimedMissionOne = { model: Extract<MissionOneServiceScreenReadModel, { status: 'active' }>; receivedAt: number };
 
-function missionOneScreenModel(
-  value: TimedMissionOne | null,
-  nowMs: number,
-): MissionOneScreenReadModel | undefined {
+function missionOneScreenModel(value: TimedMissionOne | null, nowMs: number): MissionOneScreenReadModel | undefined {
   if (!value) return undefined;
   const initialSeconds = (Date.parse(value.model.deadlineAt) - Date.parse(value.model.serverNow)) / 1000;
   return {
@@ -68,22 +49,14 @@ function missionOneScreenModel(
   };
 }
 
-function remainingFromState(
-  state: Extract<BunkerScreenState, { status: 'active' }>,
-  nowMs: number,
-  serverOffsetMs: number,
-): number {
+function remainingFromState(state: Extract<BunkerScreenState, { status: 'active' }>, nowMs: number, serverOffsetMs: number): number {
   const startedMs = Date.parse(state.startedAt);
   if (!Number.isFinite(startedMs)) return state.remainingSeconds;
   const effectiveNow = nowMs + serverOffsetMs;
   return Math.max(0, Math.ceil(state.durationSeconds - (effectiveNow - startedMs) / 1000));
 }
 
-export function BunkerScreenGuard({
-  eventSlug = 'liza-viktor',
-  dependencies,
-  children,
-}: BunkerScreenGuardProps) {
+export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, children }: BunkerScreenGuardProps) {
   const [browserDeps, setBrowserDeps] = useState<BunkerScreenGuardDependencies | null>(null);
   const deps = dependencies ?? browserDeps;
   const [state, setState] = useState<BunkerScreenState | null>(null);
@@ -91,11 +64,8 @@ export function BunkerScreenGuard({
   const [missionOneContractVersion, setMissionOneContractVersion] = useState<1 | 2 | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [motionPreference, setMotionPreference] = useState<'full' | 'reduced'>(() => (
-    typeof window !== 'undefined'
-      && typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? 'reduced'
-      : 'full'
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'reduced' : 'full'
   ));
   const serverOffsetRef = useRef(0);
   const latestServerMsRef = useRef(Number.NEGATIVE_INFINITY);
@@ -113,10 +83,7 @@ export function BunkerScreenGuard({
   };
 
   useEffect(() => {
-    if (dependencies) {
-      setBrowserDeps(null);
-      return;
-    }
+    if (dependencies) { setBrowserDeps(null); return; }
     const next = browserDependencies(eventSlug);
     setBrowserDeps(next);
     return () => next?.audio?.dispose();
@@ -125,62 +92,54 @@ export function BunkerScreenGuard({
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updateMotionPreference = () => setMotionPreference(query.matches ? 'reduced' : 'full');
-    updateMotionPreference();
-    query.addEventListener?.('change', updateMotionPreference);
-    return () => query.removeEventListener?.('change', updateMotionPreference);
+    const update = () => setMotionPreference(query.matches ? 'reduced' : 'full');
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
   }, []);
+
+  const applyMissionOne = (next: MissionOneServiceScreenReadModel | null) => {
+    if (!next) return;
+    setMissionOneContractVersion(next.contractVersion);
+    setMissionOne(next.status === 'active' ? { model: next, receivedAt: Date.now() } : null);
+  };
+
+  // Важно: базовое состояние и проекция M01 независимы. Падение проекции не
+  // должно отменять уже полученную сцену общего экрана.
+  const refresh = () => {
+    if (!deps) return;
+    void deps.load().then((next) => { applyServerState(next); }).catch(() => {
+      // Сохраняем последний валидный серверный снимок до восстановления сети.
+    });
+    void Promise.resolve(deps.loadMissionOne?.() ?? null).then(applyMissionOne).catch(() => {
+      // Проекция задания догрузится следующим realtime/poll/focus обновлением.
+    });
+  };
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
 
   useEffect(() => {
     if (!deps) return;
-    let active = true;
-    const reload = () => {
-      void Promise.all([
-        deps.load(),
-        deps.loadMissionOne?.() ?? Promise.resolve(null),
-      ])
-        .then(([next, nextMissionOne]) => {
-          if (!active) return;
-          if (applyServerState(next)) {
-            setMissionOneContractVersion(nextMissionOne?.contractVersion ?? null);
-            setMissionOne(
-              nextMissionOne?.status === 'active'
-                ? { model: nextMissionOne, receivedAt: Date.now() }
-                : null,
-            );
-          }
-        })
-        .catch(() => {
-          // Keep last authoritative bunker state during a short network drop.
-        });
-    };
-
+    const reload = () => refreshRef.current();
     reload();
     const unsubscribe = deps.subscribe?.(reload);
     window.addEventListener('focus', reload);
     window.addEventListener('online', reload);
     return () => {
-      active = false;
       unsubscribe?.();
       window.removeEventListener('focus', reload);
       window.removeEventListener('online', reload);
     };
   }, [deps]);
 
-  const remainingSeconds = state?.status === 'active'
-    ? remainingFromState(state, nowMs, serverOffsetRef.current)
-    : 0;
+  const remainingSeconds = state?.status === 'active' ? remainingFromState(state, nowMs, serverOffsetRef.current) : 0;
   const bunkerActive = state?.status === 'active';
-  const activePhase = state?.status === 'active'
-    ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency')
-    : null;
+  const activePhase = state?.status === 'active' ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency') : null;
   const emergencyPhase = bunkerActive && activePhase === 'emergency';
 
   useEffect(() => {
     setBunkerPresentationProtected(bunkerActive);
-    return () => {
-      setBunkerPresentationProtected(false);
-    };
+    return () => setBunkerPresentationProtected(false);
   }, [bunkerActive]);
 
   useEffect(() => {
@@ -191,50 +150,19 @@ export function BunkerScreenGuard({
 
   useEffect(() => {
     if (!deps) return;
-    let active = true;
-    const interval = window.setInterval(() => {
-      void Promise.all([
-        deps.load(),
-        deps.loadMissionOne?.() ?? Promise.resolve(null),
-      ])
-        .then(([next, nextMissionOne]) => {
-          if (active && applyServerState(next)) {
-            setMissionOneContractVersion(nextMissionOne?.contractVersion ?? null);
-            setMissionOne(
-              nextMissionOne?.status === 'active'
-                ? { model: nextMissionOne, receivedAt: Date.now() }
-                : null,
-            );
-          }
-        })
-        .catch(() => {
-          // Keep the last valid screen state until connectivity returns.
-        });
-    }, bunkerActive ? 2_000 : 1_500);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
+    const interval = window.setInterval(() => refreshRef.current(), bunkerActive ? 2_000 : 1_500);
+    return () => window.clearInterval(interval);
   }, [deps, bunkerActive]);
 
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
-    if (
-      !emergencyPhase
-      || remainingSeconds <= 0
-      || state?.status !== 'active'
-      || !state.soundEnabled
-    ) {
+    if (!emergencyPhase || remainingSeconds <= 0 || state?.status !== 'active' || !state.soundEnabled) {
       audio.stopAlarm();
       return;
     }
-
-    // Schedule the alarm even if autoplay initially blocks AudioContext.resume().
-    // The shared projector icon/slider can re-arm the context later without losing the scene.
     audio.startAlarm();
     void audio.arm();
-
     return () => audio.stopAlarm();
   }, [deps, emergencyPhase, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
 
@@ -245,7 +173,6 @@ export function BunkerScreenGuard({
       audio.stopAmbience();
       return;
     }
-
     audio.startAmbience();
     void audio.arm();
     return () => audio.stopAmbience();
@@ -257,15 +184,9 @@ export function BunkerScreenGuard({
       previousUnlockRef.current = null;
       return;
     }
-
     const finalPhase = activePhase === 'final' || activePhase === 'completed';
     const wasUnlocked = previousUnlockRef.current;
-    if (
-      finalPhase
-      && state.soundEnabled
-      && wasUnlocked === false
-      && state.unlocked
-    ) {
+    if (finalPhase && state.soundEnabled && wasUnlocked === false && state.unlocked) {
       audio?.playDoorUnlock();
       void audio?.arm();
     }
@@ -276,10 +197,7 @@ export function BunkerScreenGuard({
     <>
       {children}
       {bunkerActive && state?.status === 'active' && activePhase === 'emergency' && (
-        <BunkerEmergencyScene
-          remainingSeconds={remainingSeconds}
-          motionPreference={motionPreference}
-        />
+        <BunkerEmergencyScene remainingSeconds={remainingSeconds} motionPreference={motionPreference} />
       )}
       {bunkerActive && state?.status === 'active' && activePhase !== 'emergency' && (
         <BunkerQuestScene
