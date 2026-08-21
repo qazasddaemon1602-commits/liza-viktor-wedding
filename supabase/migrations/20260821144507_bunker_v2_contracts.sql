@@ -5,6 +5,14 @@ alter table public.bunker_game_runs
   add column if not exists contract_version integer not null default 1,
   add column if not exists plan_version integer;
 
+alter table public.bunker_character_profiles
+  add column if not exists profile_version integer not null default 1
+    check (profile_version > 0);
+
+alter table public.bunker_guest_profiles
+  add column if not exists profile_version integer not null default 1
+    check (profile_version > 0);
+
 do $$
 begin
   if not exists (
@@ -33,6 +41,333 @@ begin
   end if;
 end;
 $$;
+
+-- Preserve the callable legacy signatures while putting every V1 body behind
+-- a contract-version gate. Renamed implementations are deliberately private.
+alter function public._refresh_bunker_run_guest_plan(uuid, uuid)
+  rename to _refresh_bunker_run_guest_plan_v1;
+alter function public._bunker_run_guest_plan_is_stale(uuid, uuid)
+  rename to _bunker_run_guest_plan_is_stale_v1;
+alter function public._ensure_late_bunker_guest(uuid, uuid, uuid)
+  rename to _ensure_late_bunker_guest_v1;
+alter function public._create_bunker_game_plan(uuid, uuid)
+  rename to _create_bunker_game_plan_v1;
+alter function public.owner_distribute_bunker_characters(uuid)
+  rename to _owner_distribute_bunker_characters_v1;
+
+alter function public._refresh_bunker_run_guest_plan_v1(uuid, uuid)
+  set search_path = '';
+alter function public._bunker_run_guest_plan_is_stale_v1(uuid, uuid)
+  set search_path = '';
+alter function public._ensure_late_bunker_guest_v1(uuid, uuid, uuid)
+  set search_path = '';
+alter function public._create_bunker_game_plan_v1(uuid, uuid)
+  set search_path = '';
+alter function public._owner_distribute_bunker_characters_v1(uuid)
+  set search_path = '';
+
+create function public._refresh_bunker_run_guest_plan(
+  p_event_id uuid,
+  p_run_nonce uuid
+)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_contract_version integer;
+begin
+  select run.contract_version into v_contract_version
+  from public.bunker_game_runs run
+  where run.event_id = p_event_id and run.run_nonce = p_run_nonce
+  for update;
+
+  if not found then
+    raise exception 'Bunker run plan is missing' using errcode = '55000';
+  end if;
+  if v_contract_version = 2 then
+    raise exception 'Bunker V2 run plan is frozen' using errcode = '55000';
+  end if;
+  if v_contract_version is distinct from 1 then
+    raise exception 'Bunker run contract is missing' using errcode = '55000';
+  end if;
+
+  perform public._refresh_bunker_run_guest_plan_v1(p_event_id, p_run_nonce);
+end;
+$$;
+
+create function public._bunker_run_guest_plan_is_stale(
+  p_event_id uuid,
+  p_run_nonce uuid
+)
+returns boolean
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+declare
+  v_contract_version integer;
+begin
+  select run.contract_version into v_contract_version
+  from public.bunker_game_runs run
+  where run.event_id = p_event_id and run.run_nonce = p_run_nonce;
+
+  if v_contract_version = 2 then
+    return false;
+  end if;
+  return public._bunker_run_guest_plan_is_stale_v1(p_event_id, p_run_nonce);
+end;
+$$;
+
+create function public._ensure_late_bunker_guest(
+  p_event_id uuid,
+  p_run_nonce uuid,
+  p_guest_id uuid
+)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_contract_version integer;
+begin
+  select run.contract_version into v_contract_version
+  from public.bunker_game_runs run
+  where run.event_id = p_event_id and run.run_nonce = p_run_nonce
+  for update;
+
+  if v_contract_version = 2 then
+    return false;
+  end if;
+  if v_contract_version is distinct from 1 then
+    raise exception 'Bunker run contract is missing' using errcode = '55000';
+  end if;
+  return public._ensure_late_bunker_guest_v1(
+    p_event_id, p_run_nonce, p_guest_id
+  );
+end;
+$$;
+
+create function public._create_bunker_game_plan(
+  p_event_id uuid,
+  p_run_nonce uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_contract_version integer;
+begin
+  select run.contract_version into v_contract_version
+  from public.bunker_game_runs run
+  where run.event_id = p_event_id and run.run_nonce = p_run_nonce
+  for update;
+
+  if v_contract_version = 2 then
+    raise exception 'Bunker V2 run plan is frozen' using errcode = '55000';
+  end if;
+  return public._create_bunker_game_plan_v1(p_event_id, p_run_nonce);
+end;
+$$;
+
+create function public.owner_distribute_bunker_characters(p_event_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_state public.bunker_state%rowtype;
+  v_contract_version integer;
+begin
+  perform public._require_bunker_owner(p_event_id);
+
+  select state.* into v_state
+  from public.bunker_state state
+  where state.event_id = p_event_id
+  for update;
+  if v_state.event_id is null or v_state.run_nonce is null then
+    raise exception 'Bunker game must be prepared before character distribution'
+      using errcode = '55000';
+  end if;
+
+  select run.contract_version into v_contract_version
+  from public.bunker_game_runs run
+  where run.event_id = p_event_id and run.run_nonce = v_state.run_nonce
+  for update;
+  if v_contract_version is distinct from 1 then
+    raise exception 'legacy character distribution requires contract version 1'
+      using errcode = '55000';
+  end if;
+
+  return public._owner_distribute_bunker_characters_v1(p_event_id);
+end;
+$$;
+
+-- This trigger function must be replaced in place so the existing trigger OID
+-- keeps pointing at the guarded body.
+create or replace function public._assign_late_bunker_guest()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_state public.bunker_state%rowtype;
+  v_contract_version integer;
+begin
+  select state.* into v_state
+  from public.bunker_state state
+  where state.event_id = new.event_id
+  for update;
+
+  if v_state.run_nonce is null
+    or v_state.global_game_state in ('LOBBY', 'FINISHED') then
+    return new;
+  end if;
+
+  select run.contract_version into v_contract_version
+  from public.bunker_game_runs run
+  where run.event_id = new.event_id and run.run_nonce = v_state.run_nonce;
+  if v_contract_version = 2 then
+    return new;
+  end if;
+  if v_contract_version is distinct from 1 then
+    raise exception 'Bunker run contract is missing' using errcode = '55000';
+  end if;
+
+  perform public._ensure_late_bunker_guest(
+    new.event_id, v_state.run_nonce, new.id
+  );
+  return new;
+end;
+$$;
+
+revoke all on function public._refresh_bunker_run_guest_plan_v1(uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._bunker_run_guest_plan_is_stale_v1(uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._ensure_late_bunker_guest_v1(uuid, uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._create_bunker_game_plan_v1(uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._owner_distribute_bunker_characters_v1(uuid)
+  from public, anon, authenticated;
+revoke all on function public._refresh_bunker_run_guest_plan(uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._bunker_run_guest_plan_is_stale(uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._ensure_late_bunker_guest(uuid, uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._create_bunker_game_plan(uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function public._assign_late_bunker_guest()
+  from public, anon, authenticated;
+revoke all on function public.owner_distribute_bunker_characters(uuid)
+  from public, anon, authenticated;
+grant execute on function public.owner_distribute_bunker_characters(uuid)
+  to authenticated;
+
+create function public._bunker_v2_match_repeats(
+  p_run_nonce uuid,
+  p_base_assignments jsonb,
+  p_repeat_guests jsonb
+)
+returns jsonb
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+declare
+  v_repeat_count integer;
+  v_result jsonb;
+begin
+  if jsonb_typeof(p_base_assignments) <> 'array'
+    or jsonb_typeof(p_repeat_guests) <> 'array' then
+    raise exception 'repeat matching inputs must be arrays' using errcode = '22023';
+  end if;
+
+  v_repeat_count := jsonb_array_length(p_repeat_guests);
+  if v_repeat_count = 0 then
+    return '[]'::jsonb;
+  end if;
+  if v_repeat_count > 4 then
+    raise exception 'at most four repeat assignments are supported'
+      using errcode = '22023';
+  end if;
+
+  with recursive
+  base as (
+    select
+      value->>'profileKey' as profile_key,
+      (value->>'carriageId')::uuid as carriage_id,
+      (value->>'ordinal')::integer as ordinal
+    from jsonb_array_elements(p_base_assignments)
+  ),
+  repeat_guest as (
+    select
+      value->>'guestId' as guest_id,
+      (value->>'carriageId')::uuid as carriage_id,
+      (value->>'repeatIndex')::integer as repeat_index
+    from jsonb_array_elements(p_repeat_guests)
+  ),
+  ranked_candidates as (
+    select
+      base.*,
+      row_number() over (
+        partition by base.carriage_id
+        order by md5(
+          p_run_nonce::text || ':candidate:' || base.profile_key
+        ), base.ordinal
+      ) as carriage_rank
+    from base
+  ),
+  candidate as (
+    select ranked.profile_key, ranked.carriage_id, ranked.ordinal
+    from ranked_candidates ranked
+    where ranked.carriage_rank <= v_repeat_count
+  ),
+  matching(step, used_keys, assignments, separated_count) as (
+    select 0, array[]::text[], '[]'::jsonb, 0
+    union all
+    select
+      matching.step + 1,
+      matching.used_keys || candidate.profile_key,
+      matching.assignments || jsonb_build_array(jsonb_build_object(
+        'guestId', repeat_guest.guest_id,
+        'profileKey', candidate.profile_key
+      )),
+      matching.separated_count
+        + (candidate.carriage_id <> repeat_guest.carriage_id)::integer
+    from matching
+    join repeat_guest
+      on repeat_guest.repeat_index = matching.step + 1
+    join candidate
+      on not candidate.profile_key = any(matching.used_keys)
+  )
+  select matching.assignments into v_result
+  from matching
+  where matching.step = v_repeat_count
+  order by matching.separated_count desc,
+    md5(p_run_nonce::text || ':matching:' || matching.assignments::text)
+  limit 1;
+
+  if v_result is null then
+    raise exception 'character pool cannot produce distinct repeat assignments'
+      using errcode = '55000';
+  end if;
+  return v_result;
+end;
+$$;
+
+revoke all on function public._bunker_v2_match_repeats(uuid, jsonb, jsonb)
+  from public, anon, authenticated;
 
 create or replace function public.owner_advance_bunker_game_state(
   p_event_id uuid,
@@ -725,32 +1060,42 @@ begin
     select
       guest.guest_id,
       guest.carriage_id,
-      guest.ordinal - 36 as repeat_index,
-      guest.total_count - 36 as repeat_count
+      guest.ordinal - 36 as repeat_index
     from ordered_guests guest
     where guest.ordinal > 36
   ),
+  matching_input as (
+    select
+      coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'profileKey', base.profile_key,
+          'carriageId', base.carriage_id,
+          'ordinal', base.ordinal
+        ) order by base.ordinal)
+        from base_assignments base
+      ), '[]'::jsonb) as base_assignments,
+      coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'guestId', repeat_guest.guest_id,
+          'carriageId', repeat_guest.carriage_id,
+          'repeatIndex', repeat_guest.repeat_index
+        ) order by repeat_guest.repeat_index)
+        from repeat_guests repeat_guest
+      ), '[]'::jsonb) as repeat_guests
+  ),
   repeat_assignments as (
     select
-      repeat_guest.guest_id,
+      (matched.value->>'guestId')::uuid as guest_id,
       repeat_guest.carriage_id,
-      candidate.profile_key
-    from repeat_guests repeat_guest
-    cross join lateral (
-      select base.profile_key
-      from base_assignments base
-      where mod(
-        base.ordinal - repeat_guest.repeat_index,
-        repeat_guest.repeat_count
-      ) = 0
-      order by
-        (base.carriage_id = repeat_guest.carriage_id),
-        md5(
-          v_run_nonce::text || ':repeat:' || repeat_guest.guest_id::text
-            || ':' || base.profile_key
-        )
-      limit 1
-    ) candidate
+      matched.value->>'profileKey' as profile_key
+    from matching_input input
+    cross join lateral jsonb_array_elements(
+      public._bunker_v2_match_repeats(
+        v_run_nonce, input.base_assignments, input.repeat_guests
+      )
+    ) matched(value)
+    join repeat_guests repeat_guest
+      on repeat_guest.guest_id = (matched.value->>'guestId')::uuid
   ),
   assignments as (
     select base.guest_id, base.carriage_id, base.profile_key
@@ -779,6 +1124,7 @@ begin
     character_status,
     hidden_trait_revealed,
     ability_uses_remaining,
+    profile_version,
     joined_late,
     assigned_at
   )
@@ -800,6 +1146,7 @@ begin
     'active',
     false,
     1,
+    profile.profile_version,
     false,
     now()
   from assignments assignment
@@ -963,6 +1310,7 @@ begin
       guest.id as guest_id,
       guest.carriage_id,
       profile.character_profile_key,
+      profile.profile_version,
       row_number() over (
         partition by instance.id, guest.carriage_id
         order by case
@@ -1018,7 +1366,8 @@ begin
     jsonb_build_object(
       'guestId', member.guest_id,
       'carriageId', member.carriage_id,
-      'characterProfileKey', member.character_profile_key
+      'characterProfileKey', member.character_profile_key,
+      'profileVersion', member.profile_version
     )
   from eligible_members member;
 
@@ -1118,6 +1467,15 @@ alter table public.bunker_state
     'STORY_BUNKER', 'UNKNOWN_PASSENGER', 'BREAK_BEFORE_FINAL',
     'FINAL_30', 'BUNKER_OPEN', 'FINISHED'
   ));
+
+create unique index carriages_id_event_uidx
+  on public.carriages(id, event_id);
+create unique index guests_id_event_uidx
+  on public.guests(id, event_id);
+create unique index bunker_inventory_lots_id_event_run_uidx
+  on public.bunker_inventory_lots(id, event_id, run_nonce);
+create unique index bunker_archive_entries_id_event_run_uidx
+  on public.bunker_archive_entries(id, event_id, run_nonce);
 
 create table public.bunker_mission_instances (
   id uuid primary key default gen_random_uuid(),
@@ -1227,11 +1585,11 @@ create table public.bunker_inventory_transfers (
   event_id uuid not null references public.events(id) on delete cascade,
   run_nonce uuid not null,
   instance_id uuid not null,
-  source_lot_id uuid not null references public.bunker_inventory_lots(id) on delete restrict,
-  accepted_lot_id uuid references public.bunker_inventory_lots(id) on delete restrict,
-  from_carriage_id uuid not null references public.carriages(id) on delete restrict,
-  to_carriage_id uuid not null references public.carriages(id) on delete restrict,
-  proposed_by_guest_id uuid not null references public.guests(id) on delete restrict,
+  source_lot_id uuid not null,
+  accepted_lot_id uuid,
+  from_carriage_id uuid not null,
+  to_carriage_id uuid not null,
+  proposed_by_guest_id uuid not null,
   item_key text not null check (item_key ~ '^[a-z][a-z0-9_]+$'),
   quantity integer not null check (quantity > 0),
   status text not null default 'proposed'
@@ -1239,11 +1597,29 @@ create table public.bunker_inventory_transfers (
   command_id uuid not null,
   offered_at timestamptz not null default clock_timestamp(),
   settled_at timestamptz,
+  unique (id, event_id, run_nonce),
   foreign key (event_id, run_nonce)
     references public.bunker_game_runs(event_id, run_nonce) on delete cascade,
   foreign key (instance_id, event_id, run_nonce)
     references public.bunker_mission_instances(id, event_id, run_nonce)
     on delete cascade,
+  constraint bunker_inventory_transfers_source_lot_run_fkey
+    foreign key (source_lot_id, event_id, run_nonce)
+    references public.bunker_inventory_lots(id, event_id, run_nonce)
+    on delete restrict,
+  constraint bunker_inventory_transfers_accepted_lot_run_fkey
+    foreign key (accepted_lot_id, event_id, run_nonce)
+    references public.bunker_inventory_lots(id, event_id, run_nonce)
+    on delete restrict,
+  constraint bunker_inventory_transfers_from_carriage_event_fkey
+    foreign key (from_carriage_id, event_id)
+    references public.carriages(id, event_id) on delete restrict,
+  constraint bunker_inventory_transfers_to_carriage_event_fkey
+    foreign key (to_carriage_id, event_id)
+    references public.carriages(id, event_id) on delete restrict,
+  constraint bunker_inventory_transfers_guest_event_fkey
+    foreign key (proposed_by_guest_id, event_id)
+    references public.guests(id, event_id) on delete restrict,
   check (from_carriage_id <> to_carriage_id),
   check ((status = 'proposed') = (settled_at is null)),
   check ((status = 'accepted') = (accepted_lot_id is not null))
@@ -1253,20 +1629,36 @@ create table public.bunker_archive_entitlements (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
   run_nonce uuid not null,
-  archive_entry_id uuid not null references public.bunker_archive_entries(id) on delete restrict,
-  carriage_id uuid references public.carriages(id) on delete restrict,
+  archive_entry_id uuid not null,
+  carriage_id uuid,
   owner_scope_kind text not null check (owner_scope_kind in ('wagon', 'global')),
   owner_scope_key text not null check (length(btrim(owner_scope_key)) > 0),
   status text not null default 'active'
     check (status in ('active', 'transferred', 'revoked')),
-  source_entitlement_id uuid references public.bunker_archive_entitlements(id) on delete restrict,
-  source_transfer_id uuid references public.bunker_inventory_transfers(id) on delete restrict,
+  source_entitlement_id uuid,
+  source_transfer_id uuid,
   provenance jsonb not null default '{}'::jsonb check (jsonb_typeof(provenance) = 'object'),
   granted_at timestamptz not null default clock_timestamp(),
   transferred_at timestamptz,
+  unique (id, event_id, run_nonce),
   unique (run_nonce, archive_entry_id, owner_scope_kind, owner_scope_key),
   foreign key (event_id, run_nonce)
     references public.bunker_game_runs(event_id, run_nonce) on delete cascade,
+  constraint bunker_archive_entitlements_archive_run_fkey
+    foreign key (archive_entry_id, event_id, run_nonce)
+    references public.bunker_archive_entries(id, event_id, run_nonce)
+    on delete restrict,
+  constraint bunker_archive_entitlements_carriage_event_fkey
+    foreign key (carriage_id, event_id)
+    references public.carriages(id, event_id) on delete restrict,
+  constraint bunker_archive_entitlements_source_run_fkey
+    foreign key (source_entitlement_id, event_id, run_nonce)
+    references public.bunker_archive_entitlements(id, event_id, run_nonce)
+    on delete restrict,
+  constraint bunker_archive_entitlements_transfer_run_fkey
+    foreign key (source_transfer_id, event_id, run_nonce)
+    references public.bunker_inventory_transfers(id, event_id, run_nonce)
+    on delete restrict,
   check ((owner_scope_kind = 'wagon') = (carriage_id is not null)),
   check ((status = 'transferred') = (transferred_at is not null))
 );
@@ -1282,13 +1674,17 @@ create table public.bunker_final_parameters (
   status text not null default 'locked'
     check (status in ('locked', 'partial', 'resolved')),
   source_kind text,
-  source_instance_id uuid references public.bunker_mission_instances(id) on delete set null,
+  source_instance_id uuid,
   public_hint jsonb not null default '{}'::jsonb check (jsonb_typeof(public_hint) = 'object'),
   resolved_at timestamptz,
   created_at timestamptz not null default clock_timestamp(),
   unique (run_nonce, parameter_key),
   foreign key (event_id, run_nonce)
     references public.bunker_game_runs(event_id, run_nonce) on delete cascade,
+  constraint bunker_final_parameters_source_instance_run_fkey
+    foreign key (source_instance_id, event_id, run_nonce)
+    references public.bunker_mission_instances(id, event_id, run_nonce)
+    on delete restrict,
   check ((status = 'resolved') = (resolved_at is not null))
 );
 
@@ -1674,6 +2070,7 @@ begin
   return jsonb_build_object(
     'contractVersion', 2,
     'planVersion', 1,
+    'catalogVersion', 1,
     'runNonce', p_run_nonce,
     'wagonCount', v_wagon_count,
     'guestCount', v_guest_count,

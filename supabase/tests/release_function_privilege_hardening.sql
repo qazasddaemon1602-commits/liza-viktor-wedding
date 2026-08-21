@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(16);
+select plan(17);
 
 select is(
   (
@@ -132,6 +132,32 @@ select ok(
     false
   ),
   'owner_transition_bunker_v2 has an immutable empty search path'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from pg_proc procedure
+    join pg_namespace namespace on namespace.oid = procedure.pronamespace
+    where namespace.nspname = 'public'
+      and procedure.proname = any(array[
+        '_refresh_bunker_run_guest_plan_v1',
+        '_bunker_run_guest_plan_is_stale_v1',
+        '_ensure_late_bunker_guest_v1',
+        '_create_bunker_game_plan_v1',
+        '_owner_distribute_bunker_characters_v1',
+        '_refresh_bunker_run_guest_plan',
+        '_bunker_run_guest_plan_is_stale',
+        '_ensure_late_bunker_guest',
+        '_create_bunker_game_plan',
+        '_assign_late_bunker_guest',
+        '_bunker_v2_match_repeats',
+        'owner_distribute_bunker_characters'
+      ])
+      and not coalesce('search_path=""' = any(procedure.proconfig), false)
+  ),
+  0,
+  'legacy guards, private V1 bodies and the repeat matcher use an empty search path'
 );
 
 select ok(
