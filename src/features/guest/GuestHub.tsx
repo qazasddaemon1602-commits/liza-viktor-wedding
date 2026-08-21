@@ -1,6 +1,9 @@
 import type { BunkerMissionStage, GuestBunkerQuestState } from '../bunker/bunkerQuest.types';
 import { BunkerPlayerDashboard } from '../bunker/BunkerPlayerDashboard';
-import type { GuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
+import {
+  isLegacyActiveGuestBunkerRuntime,
+  type GuestBunkerReadRuntime,
+} from '../bunker/bunkerRuntime.service';
 import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
 import type { RegisteredGuest } from '../registration/registration.types';
 import { VirtualTicket } from '../registration/VirtualTicket';
@@ -11,7 +14,7 @@ type GuestHubProps = {
   guest: RegisteredGuest;
   activeCall: GuestCarriageCall | null;
   bunkerState?: GuestBunkerQuestState | null;
-  bunkerRuntime?: GuestBunkerRuntime | null;
+  bunkerRuntime?: GuestBunkerReadRuntime | null;
   bunkerRuntimeLoading?: boolean;
   bunkerRuntimeError?: string;
   bunkerFeedback?: string;
@@ -66,7 +69,7 @@ export function GuestHub({
   onQuizVote,
   onQuizDeadline,
 }: GuestHubProps) {
-  if (bunkerRuntime?.status === 'active') {
+  if (bunkerRuntime && isLegacyActiveGuestBunkerRuntime(bunkerRuntime)) {
     return (
       <main className="bunker-player-shell theme-bunker">
         <BunkerPlayerDashboard runtime={bunkerRuntime} connectionError={bunkerRuntimeError} />

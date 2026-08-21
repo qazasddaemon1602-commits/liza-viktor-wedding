@@ -8,7 +8,10 @@ import {
   submitBunkerFinalCode,
   submitBunkerMission,
 } from './bunkerQuest.service';
-import { getGuestBunkerRuntime, type GuestBunkerRuntime } from './bunkerRuntime.service';
+import {
+  getGuestBunkerRuntime,
+  type GuestBunkerReadRuntime,
+} from './bunkerRuntime.service';
 import type {
   BunkerMissionStage,
   GuestBunkerQuestState,
@@ -19,7 +22,7 @@ import type {
 export type GuestBunkerLiveDependencies = {
   getDeviceKey: () => string;
   load: (deviceKey: string) => Promise<GuestBunkerQuestState>;
-  loadRuntime?: (deviceKey: string) => Promise<GuestBunkerRuntime>;
+  loadRuntime?: (deviceKey: string) => Promise<GuestBunkerReadRuntime>;
   submitMission: (
     deviceKey: string,
     stage: BunkerMissionStage,
@@ -64,7 +67,7 @@ export function useGuestBunkerLiveState({
     [dependencies, enabled, eventSlug],
   );
   const [state, setState] = useState<GuestBunkerQuestState | null>(null);
-  const [runtime, setRuntime] = useState<GuestBunkerRuntime | null>(null);
+  const [runtime, setRuntime] = useState<GuestBunkerReadRuntime | null>(null);
   const [runtimeLoading, setRuntimeLoading] = useState(Boolean(enabled && deps?.loadRuntime));
   const [runtimeError, setRuntimeError] = useState('');
   const [feedback, setFeedback] = useState('');

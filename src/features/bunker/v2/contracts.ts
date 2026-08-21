@@ -17,6 +17,19 @@ export const BUNKER_V2_GLOBAL_STATES = [
 
 export type BunkerV2GlobalState = typeof BUNKER_V2_GLOBAL_STATES[number];
 
+export const BUNKER_V2_MISSION_CODES = [
+  'MISSION_01',
+  'MISSION_02',
+  'MISSION_03',
+  'MISSION_04',
+  'MISSION_05',
+  'MISSION_06',
+  'UNKNOWN_PASSENGER',
+  'FINAL_30',
+] as const;
+
+export type BunkerV2MissionCode = typeof BUNKER_V2_MISSION_CODES[number];
+
 export type BunkerV2State = {
   contractVersion: 2;
   state: BunkerV2GlobalState;
@@ -85,12 +98,12 @@ export type BunkerV2Character =
 export type BunkerV2CurrentMission = {
   instanceId: string;
   instanceVersion: number;
-  code: BunkerV2GlobalState;
+  code: BunkerV2MissionCode;
   status: 'planned' | 'active' | 'completed';
   scope: 'wagon' | 'group' | 'global';
 };
 
-type BunkerV2InactiveRuntime = {
+export type BunkerV2InactiveRuntime = {
   contractVersion: 2;
   status: 'idle' | 'not_found' | 'guest_not_found';
   serverNow: string;
@@ -106,19 +119,25 @@ type BunkerV2ActiveRuntimeBase = {
   currentMission: BunkerV2CurrentMission | null;
 };
 
-export type BunkerV2Runtime =
-  | BunkerV2InactiveRuntime
-  | (BunkerV2ActiveRuntimeBase & { viewer: { kind: 'owner' } })
-  | (BunkerV2ActiveRuntimeBase & {
+export type BunkerV2ActiveOwnerRuntime = BunkerV2ActiveRuntimeBase & {
+  viewer: { kind: 'owner' };
+};
+
+export type BunkerV2ActiveGuestRuntime = BunkerV2ActiveRuntimeBase & {
       viewer: {
         kind: 'guest';
         guest: { id: string; realName: string };
         wagon: { number: number; label: string };
       };
       character: BunkerV2Character;
-    });
+    };
+
+export type BunkerV2GuestRuntime = BunkerV2InactiveRuntime | BunkerV2ActiveGuestRuntime;
+export type BunkerV2OwnerRuntime = BunkerV2InactiveRuntime | BunkerV2ActiveOwnerRuntime;
+export type BunkerV2Runtime = BunkerV2GuestRuntime | BunkerV2OwnerRuntime;
 
 const V2_STATES = new Set<string>(BUNKER_V2_GLOBAL_STATES);
+const V2_MISSION_CODES = new Set<string>(BUNKER_V2_MISSION_CODES);
 const COMMAND_TYPES = new Set<string>([
   'mission_confirm',
   'submit_answer',
@@ -189,6 +208,13 @@ function globalState(value: unknown): BunkerV2GlobalState {
     throw new Error('Unexpected Bunker V2 state');
   }
   return value as BunkerV2GlobalState;
+}
+
+function missionCode(value: unknown): BunkerV2MissionCode {
+  if (typeof value !== 'string' || !V2_MISSION_CODES.has(value)) {
+    throw new Error('Unexpected Bunker V2 mission code');
+  }
+  return value as BunkerV2MissionCode;
 }
 
 function commandType(value: unknown): BunkerCommandType {
@@ -411,7 +437,7 @@ function parseCurrentMission(value: unknown): BunkerV2CurrentMission | null {
   return {
     instanceId: text(mission.instanceId, 'mission instance id'),
     instanceVersion: positiveInteger(mission.instanceVersion, 'mission instance version'),
-    code: globalState(mission.code),
+    code: missionCode(mission.code),
     status: mission.status,
     scope: mission.scope,
   };
@@ -475,4 +501,20 @@ export function parseBunkerV2Runtime(value: unknown): BunkerV2Runtime {
     };
   }
   throw new Error('Unexpected Bunker V2 viewer kind');
+}
+
+export function parseBunkerV2GuestRuntime(value: unknown): BunkerV2GuestRuntime {
+  const runtime = parseBunkerV2Runtime(value);
+  if (runtime.status === 'active' && !('character' in runtime)) {
+    throw new Error('Unexpected Bunker V2 guest viewer');
+  }
+  return runtime;
+}
+
+export function parseBunkerV2OwnerRuntime(value: unknown): BunkerV2OwnerRuntime {
+  const runtime = parseBunkerV2Runtime(value);
+  if (runtime.status === 'active' && 'character' in runtime) {
+    throw new Error('Unexpected Bunker V2 owner viewer');
+  }
+  return runtime;
 }

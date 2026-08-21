@@ -6,6 +6,11 @@ import {
   type BunkerGameMode,
   type BunkerGlobalGameState,
 } from './bunkerSession.service';
+import { parseBunkerContractState } from './bunkerSession.service';
+import {
+  parseBunkerV2GuestRuntime,
+  type BunkerV2GuestRuntime,
+} from './v2/contracts';
 
 export type { BunkerCurrentMission } from './bunkerSession.service';
 
@@ -33,6 +38,7 @@ export type ActiveGuestBunkerRuntime = {
 };
 
 export type GuestBunkerRuntime = IdleRuntime | ActiveGuestBunkerRuntime;
+export type GuestBunkerReadRuntime = GuestBunkerRuntime | BunkerV2GuestRuntime;
 
 const GAME_STATES = new Set<BunkerGlobalGameState>(BUNKER_GLOBAL_GAME_STATES);
 
@@ -136,6 +142,39 @@ export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
   };
 }
 
+function responseContractVersion(data: unknown): 1 | 2 {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    throw new Error('Unexpected Bunker runtime contract version');
+  }
+  const version = (data as Record<string, unknown>).contractVersion;
+  if (version === undefined || version === 1) return 1;
+  if (version === 2) return 2;
+  throw new Error('Unexpected Bunker runtime contract version');
+}
+
+export function parseGuestBunkerReadRuntime(data: unknown): GuestBunkerReadRuntime {
+  const contractVersion = responseContractVersion(data);
+  if (contractVersion === 2) {
+    const runtime = parseBunkerV2GuestRuntime(data);
+    if (runtime.status === 'active') {
+      parseBunkerContractState({ contractVersion, state: runtime.state });
+    }
+    return runtime;
+  }
+
+  const runtime = parseGuestBunkerRuntime(data);
+  if (runtime.status === 'active') {
+    parseBunkerContractState({ contractVersion, state: runtime.game.state });
+  }
+  return runtime;
+}
+
+export function isLegacyActiveGuestBunkerRuntime(
+  runtime: GuestBunkerReadRuntime,
+): runtime is ActiveGuestBunkerRuntime {
+  return runtime.status === 'active' && !('contractVersion' in runtime);
+}
+
 function throwRpc(error: Exclude<BunkerRpcError, null>): never {
   if (error instanceof Error) throw error;
   throw new Error(error.message || 'Bunker runtime request failed');
@@ -143,10 +182,10 @@ function throwRpc(error: Exclude<BunkerRpcError, null>): never {
 
 export async function getGuestBunkerRuntime(
   client: BunkerRpcClient, eventSlug: string, deviceKey: string,
-): Promise<GuestBunkerRuntime> {
+): Promise<GuestBunkerReadRuntime> {
   const { data, error } = await client.rpc('get_guest_bunker_runtime', {
     p_event_slug: eventSlug, p_device_key: deviceKey,
   });
   if (error) throwRpc(error);
-  return parseGuestBunkerRuntime(data);
+  return parseGuestBunkerReadRuntime(data);
 }

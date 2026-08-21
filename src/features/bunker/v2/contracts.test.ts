@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   parseBunkerCommand,
   parseBunkerCommandReceipt,
+  parseBunkerV2GuestRuntime,
+  parseBunkerV2OwnerRuntime,
   parseBunkerV2Runtime,
   parseBunkerV2State,
 } from './contracts';
@@ -92,6 +94,39 @@ describe('strict Bunker V2 contracts', () => {
       ...activeGuestRuntime,
       currentMission: { ...activeGuestRuntime.currentMission, code: 'MISSION_02' },
     })).toThrow(/mission state/i);
+  });
+
+  it.each(['LOBBY', 'CHARACTERS_READY', 'BREAK', 'BUNKER_OPEN', 'FINISHED'])(
+    'rejects %s as a mission instance code even when the runtime state matches',
+    (state) => {
+      expect(() => parseBunkerV2Runtime({
+        ...activeGuestRuntime,
+        state,
+        currentMission: { ...activeGuestRuntime.currentMission, code: state },
+      })).toThrow(/mission code/i);
+    },
+  );
+
+  it('parses active runtimes through viewer-specific guest and owner boundaries', () => {
+    const ownerRuntime = {
+      contractVersion: 2,
+      status: 'active',
+      serverNow: '2026-08-21T18:00:00.000Z',
+      state: 'MISSION_01',
+      planVersion: 1,
+      runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+      viewer: { kind: 'owner' },
+      currentMission: activeGuestRuntime.currentMission,
+    };
+
+    expect(parseBunkerV2GuestRuntime(activeGuestRuntime)).toMatchObject({
+      status: 'active', viewer: { kind: 'guest' },
+    });
+    expect(parseBunkerV2OwnerRuntime(ownerRuntime)).toMatchObject({
+      status: 'active', viewer: { kind: 'owner' },
+    });
+    expect(() => parseBunkerV2GuestRuntime(ownerRuntime)).toThrow(/guest viewer/i);
+    expect(() => parseBunkerV2OwnerRuntime(activeGuestRuntime)).toThrow(/owner viewer/i);
   });
 
   it('parses every closed guest command variant', () => {
