@@ -1,0 +1,14 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(9);
+select has_function('public','get_guest_bunker_v2_unknown_passenger',array['text','text'],'unknown passenger guest read model');
+select has_function('public','get_bunker_v2_unknown_passenger_screen',array['text'],'unknown passenger TV read model');
+select has_function('public','get_owner_bunker_v2_unknown_passenger',array['uuid'],'unknown passenger owner read model');
+select has_function('public','_bunker_v2_unknown_passenger_transition',array[]::text[],'story transition trigger function exists');
+select has_trigger('public','bunker_state','bunker_v2_unknown_passenger_transition','story transition trigger attached');
+select ok(pg_get_functiondef('public._bunker_v2_unknown_passenger_transition()'::regprocedure)~'bunker_revealed = true','story state reveals Bunker authoritatively');
+select ok(pg_get_functiondef('public._bunker_v2_unknown_passenger_transition()'::regprocedure)~'bunker_final_parameters','story repairs required final parameters');
+select ok(pg_get_functiondef('public.get_bunker_v2_unknown_passenger_screen(text)'::regprocedure)!~'accessCode' and pg_get_functiondef('public.get_bunker_v2_unknown_passenger_screen(text)'::regprocedure)!~'4719','public TV never exposes access code');
+select ok(pg_get_functiondef('public.get_guest_bunker_v2_unknown_passenger(text,text)'::regprocedure)~'global_game_state <> ''UNKNOWN_PASSENGER''','story guest projection is current-state only');
+select * from finish();
+rollback;
