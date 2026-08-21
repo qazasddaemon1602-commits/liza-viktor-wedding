@@ -1,0 +1,14 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(9);
+select has_function('public','get_guest_bunker_v2_m05',array['text','text'],'M05 guest read model');
+select has_function('public','get_bunker_v2_m05_screen',array['text'],'M05 TV read model');
+select has_function('public','get_owner_bunker_v2_m05',array['uuid'],'M05 owner read model');
+select has_function('public','_bunker_v2_apply_m05_outcome',array['uuid','uuid','uuid','text','boolean'],'M05 applies route outcome once');
+select ok(pg_get_functiondef('public.submit_bunker_command(text,text,uuid,text,jsonb)'::regprocedure)~'_submit_bunker_command_m05','command router includes M05');
+select ok(pg_get_functiondef('public._submit_bunker_command_m05(text,text,uuid,text,jsonb)'::regprocedure)~'cast_vote','M05 accepts vote command');
+select ok(pg_get_functiondef('public._submit_bunker_command_m05(text,text,uuid,text,jsonb)'::regprocedure)~'for update','M05 serializes vote resolution');
+select has_trigger('public','bunker_state','bunker_v2_finalize_m05_on_transition','M05 fallback finalizer is attached');
+select ok(not has_function_privilege('anon','public._bunker_v2_apply_m05_outcome(uuid,uuid,uuid,text,boolean)','EXECUTE'),'M05 outcome helper is server-only');
+select * from finish();
+rollback;
