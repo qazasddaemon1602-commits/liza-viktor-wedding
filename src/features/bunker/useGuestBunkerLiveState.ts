@@ -200,9 +200,11 @@ export function useGuestBunkerLiveState({
     };
     document.addEventListener('visibilitychange', refresh);
     window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
     return () => {
       document.removeEventListener('visibilitychange', refresh);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('online', refresh);
     };
   }, [deps, enabled, reload]);
 

@@ -135,7 +135,7 @@ describe('MissionOneOwnerPanel', () => {
   it('requires an exact replacement selection and a reason before owner override', async () => {
     const user = userEvent.setup();
     const onOverride = vi.fn().mockResolvedValue(undefined);
-    render(<MissionOneOwnerPanel model={ownerModel} onOverride={onOverride} />);
+    const { container } = render(<MissionOneOwnerPanel model={ownerModel} onOverride={onOverride} />);
 
     await user.click(screen.getByRole('button', { name: 'ИЗМЕНИТЬ РЕШЕНИЕ · ВАГОН №1' }));
     const form = screen.getByRole('form', { name: 'Override · ВАГОН №1' });
@@ -149,6 +149,26 @@ describe('MissionOneOwnerPanel', () => {
     expect(apply).toBeEnabled();
 
     await user.click(apply);
+    const dialog = screen.getByRole('alertdialog', { name: 'Подтвердите изменение решения' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(within(dialog).getByRole('heading', { name: 'Подтвердите изменение решения' })).toHaveFocus();
+    expect(within(dialog).getByText('Александра-Мария Константинопольская')).toBeInTheDocument();
+    expect(within(dialog).getByText('Екатерина Воскресенская')).toBeInTheDocument();
+    expect(within(dialog).getByText(/исправляем ошибочный выбор команды/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/получат статус «исключён»/i)).toBeInTheDocument();
+    expect(container).toHaveAttribute('inert');
+    expect(onOverride).not.toHaveBeenCalled();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(apply).toHaveFocus();
+    expect(container).not.toHaveAttribute('inert');
+
+    await user.click(apply);
+    await user.click(
+      within(screen.getByRole('alertdialog', { name: 'Подтвердите изменение решения' }))
+        .getByRole('button', { name: 'ПОДТВЕРДИТЬ OVERRIDE' }),
+    );
     expect(onOverride).toHaveBeenCalledWith({
       wagonId: 'wagon-1',
       selectedGuestIds: ['guest-1', 'guest-3'],

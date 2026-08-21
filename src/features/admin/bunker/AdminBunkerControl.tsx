@@ -56,6 +56,13 @@ import {
   type MissionOneOwnerOverride,
   type MissionOneOwnerReadModel,
 } from './MissionOneOwnerPanel';
+import {
+  prepareOwnerBunkerV2,
+  transitionOwnerBunkerV2,
+  type PreparedOwnerBunkerV2,
+  type TransitionedOwnerBunkerV2,
+} from '../../bunker/v2/ownerControl.service';
+import type { BunkerV2GlobalState } from '../../bunker/v2/contracts';
 
 export type AdminBunkerControlDependencies = {
   load: (eventId: string) => Promise<OwnerBunkerControl>;
@@ -65,6 +72,11 @@ export type AdminBunkerControlDependencies = {
     eventId: string,
     nextState: BunkerGlobalGameState,
   ) => Promise<AdvancedBunkerGameState>;
+  prepareV2?: (eventId: string) => Promise<PreparedOwnerBunkerV2>;
+  transitionV2?: (
+    eventId: string,
+    nextState: BunkerV2GlobalState,
+  ) => Promise<TransitionedOwnerBunkerV2>;
   loadCharacters?: (eventId: string) => Promise<OwnerBunkerCharacters>;
   setCharacterStatus?: (
     eventId: string,
@@ -102,6 +114,12 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
       prepare: (eventId, gameMode) => prepareBunkerGame(rpcClient, eventId, gameMode),
       distribute: (eventId) => distributeBunkerCharacters(rpcClient, eventId),
       advance: (eventId, nextState) => advanceBunkerGameState(rpcClient, eventId, nextState),
+      prepareV2: (eventId) => prepareOwnerBunkerV2(rpcClient, eventId),
+      transitionV2: (eventId, nextState) => transitionOwnerBunkerV2(
+        rpcClient,
+        eventId,
+        nextState,
+      ),
       loadCharacters: (eventId) => getOwnerBunkerCharacters(rpcClient, eventId),
       setCharacterStatus: (eventId, guestId, status) => (
         setOwnerBunkerCharacterStatus(rpcClient, eventId, guestId, status)
@@ -156,6 +174,25 @@ const GLOBAL_STATE_NEXT: Partial<Record<BunkerGlobalGameState, {
   MISSION_05: { state: 'MISSION_06', label: 'НАЧАТЬ МИССИЮ 06' },
   MISSION_06: { state: 'STORY_BUNKER', label: 'ОТКРЫТЬ ИСТОРИЮ БУНКЕРА' },
   STORY_BUNKER: { state: 'BREAK_BEFORE_FINAL', label: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ' },
+  BREAK_BEFORE_FINAL: { state: 'FINAL_30', label: 'НАЧАТЬ ФИНАЛ · 30:00' },
+  FINAL_30: { state: 'BUNKER_OPEN', label: 'ОТКРЫТЬ БУНКЕР' },
+  BUNKER_OPEN: { state: 'FINISHED', label: 'ЗАВЕРШИТЬ ИГРУ' },
+};
+
+const V2_GLOBAL_STATE_NEXT: Partial<Record<BunkerV2GlobalState, {
+  state: BunkerV2GlobalState;
+  label: string;
+}>> = {
+  LOBBY: { state: 'CHARACTERS_READY', label: 'ПОДГОТОВИТЬ ПЕРСОНАЖЕЙ' },
+  CHARACTERS_READY: { state: 'MISSION_01', label: 'НАЧАТЬ МИССИЮ 01' },
+  MISSION_01: { state: 'BREAK', label: 'ПЕРЕЙТИ К ПЕРЕРЫВУ' },
+  BREAK: { state: 'MISSION_02', label: 'НАЧАТЬ МИССИЮ 02' },
+  MISSION_02: { state: 'MISSION_03', label: 'НАЧАТЬ МИССИЮ 03' },
+  MISSION_03: { state: 'MISSION_04', label: 'НАЧАТЬ МИССИЮ 04' },
+  MISSION_04: { state: 'MISSION_05', label: 'НАЧАТЬ МИССИЮ 05' },
+  MISSION_05: { state: 'MISSION_06', label: 'НАЧАТЬ МИССИЮ 06' },
+  MISSION_06: { state: 'UNKNOWN_PASSENGER', label: 'НЕИЗВЕСТНЫЙ ПАССАЖИР' },
+  UNKNOWN_PASSENGER: { state: 'BREAK_BEFORE_FINAL', label: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ' },
   BREAK_BEFORE_FINAL: { state: 'FINAL_30', label: 'НАЧАТЬ ФИНАЛ · 30:00' },
   FINAL_30: { state: 'BUNKER_OPEN', label: 'ОТКРЫТЬ БУНКЕР' },
   BUNKER_OPEN: { state: 'FINISHED', label: 'ЗАВЕРШИТЬ ИГРУ' },
@@ -260,7 +297,7 @@ export function AdminBunkerControl({
 
   useEffect(() => {
     const loadCharacters = deps?.loadCharacters;
-    if (state?.status !== 'active' || !loadCharacters) {
+    if (state?.status !== 'active' || bunkerContractVersion !== 1 || !loadCharacters) {
       setCharacters([]);
       return undefined;
     }
@@ -275,7 +312,7 @@ export function AdminBunkerControl({
     return () => {
       active = false;
     };
-  }, [deps, eventId, state?.status]);
+  }, [bunkerContractVersion, deps, eventId, state?.status]);
 
   if (!deps) return null;
 
@@ -338,17 +375,38 @@ export function AdminBunkerControl({
 
   const launch = async () => {
     await run(async () => {
-      let prepared: PreparedBunkerGame;
-      try {
-        prepared = await deps.prepare(eventId, 'production');
-      } catch (cause) {
-        throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ', cause);
-      }
-      if (prepared.globalGameState === 'LOBBY') {
+      if (bunkerContractVersion === 2) {
+        if (!deps.prepareV2 || !deps.transitionV2) {
+          throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ V2', new Error('V2 owner control unavailable'));
+        }
+        let currentState = state?.globalGameState;
+        if (!state?.runNonce) {
+          try {
+            currentState = (await deps.prepareV2(eventId)).globalGameState;
+          } catch (cause) {
+            throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ V2', cause);
+          }
+        }
+        if (currentState === 'LOBBY') {
+          try {
+            await deps.transitionV2(eventId, 'CHARACTERS_READY');
+          } catch (cause) {
+            throw new BunkerCommandFailure('ЭТАП ГОТОВНОСТИ ПЕРСОНАЖЕЙ V2', cause);
+          }
+        }
+      } else {
+        let prepared: PreparedBunkerGame;
         try {
-          await deps.distribute(eventId);
+          prepared = await deps.prepare(eventId, 'production');
         } catch (cause) {
-          throw new BunkerCommandFailure('ЭТАП РАСПРЕДЕЛЕНИЯ ПЕРСОНАЖЕЙ', cause);
+          throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ', cause);
+        }
+        if (prepared.globalGameState === 'LOBBY') {
+          try {
+            await deps.distribute(eventId);
+          } catch (cause) {
+            throw new BunkerCommandFailure('ЭТАП РАСПРЕДЕЛЕНИЯ ПЕРСОНАЖЕЙ', cause);
+          }
         }
       }
       try {
@@ -395,8 +453,29 @@ export function AdminBunkerControl({
       : state?.status === 'active'
         ? 'ПОЛУЧАЕМ СТАТУС'
         : 'ОЖИДАНИЕ ЗАПУСКА';
-  const nextGlobalState = globalState ? GLOBAL_STATE_NEXT[globalState] : undefined;
-  const advanceGlobalState = deps.advance;
+  const nextGlobalState = globalState
+    ? bunkerContractVersion === 2
+      ? V2_GLOBAL_STATE_NEXT[globalState as BunkerV2GlobalState]
+      : GLOBAL_STATE_NEXT[globalState]
+    : undefined;
+  const transitionV2 = deps.transitionV2;
+  const advanceV1 = deps.advance;
+  const advanceGlobalState: ((
+    targetEventId: string,
+    targetState: BunkerGlobalGameState | BunkerV2GlobalState,
+  ) => Promise<unknown>) | undefined = bunkerContractVersion === 2
+    ? transitionV2
+      ? (targetEventId, targetState) => transitionV2(
+          targetEventId,
+          targetState as BunkerV2GlobalState,
+        )
+      : undefined
+    : advanceV1
+      ? (targetEventId, targetState) => advanceV1(
+          targetEventId,
+          targetState as BunkerGlobalGameState,
+        )
+      : undefined;
 
   const confirmDangerCommand = async () => {
     if (dangerCommand === 'restart') {
@@ -632,7 +711,9 @@ export function AdminBunkerControl({
         </label>
       )}
 
-      {state?.status === 'active' && quest.state?.status === 'active' && (
+      {state?.status === 'active'
+        && bunkerContractVersion === 1
+        && quest.state?.status === 'active' && (
         <BunkerQuestOwnerPanel
           state={quest.state}
           busy={quest.busy}

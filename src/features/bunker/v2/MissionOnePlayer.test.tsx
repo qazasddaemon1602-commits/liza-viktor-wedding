@@ -152,6 +152,23 @@ describe('MissionOnePlayer', () => {
     expect(error.closest('[aria-modal="true"]')).toBe(dialog);
   });
 
+  it('moves focus to the resulting live status after a successful modal confirmation', async () => {
+    const user = userEvent.setup();
+    render(<MissionOnePlayer model={model()} onConfirm={vi.fn().mockResolvedValue(undefined)} />);
+
+    await user.click(screen.getByRole('checkbox', { name: /александра-мария/i }));
+    await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить решение' }));
+    await user.click(
+      within(screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' }))
+        .getByRole('button', { name: 'Подтвердить решение' }),
+    );
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(/решение отправлено/i);
+    expect(status).toHaveFocus();
+  });
+
   it('replaces reconnecting controls with the authoritative completed outcome', () => {
     const { rerender } = render(
       <MissionOnePlayer

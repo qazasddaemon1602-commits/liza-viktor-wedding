@@ -49,7 +49,10 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
   const confirmationRef = useRef<HTMLDivElement>(null);
   const confirmationHeadingRef = useRef<HTMLHeadingElement>(null);
   const selectionButtonRef = useRef<HTMLButtonElement>(null);
+  const outcomeStatusRef = useRef<HTMLDivElement>(null);
+  const submittedStatusRef = useRef<HTMLParagraphElement>(null);
   const restoreSelectionFocusRef = useRef(false);
+  const resultFocusRequestedRef = useRef(false);
   const authoritativeSelectionKey = model.selectedGuestIds.join('\u001f');
 
   useEffect(() => {
@@ -92,6 +95,14 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
       selectionButtonRef.current?.focus();
     }
   }, [reviewing]);
+
+  useEffect(() => {
+    const resultStatus = outcomeStatusRef.current ?? submittedStatusRef.current;
+    if (!reviewing && resultFocusRequestedRef.current && resultStatus) {
+      resultFocusRequestedRef.current = false;
+      resultStatus.focus();
+    }
+  }, [model.status, reviewing, submitted]);
 
   const selectedMembers = useMemo(() => {
     const selected = new Set(model.selectedGuestIds);
@@ -153,6 +164,7 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
     setError('');
     try {
       await onConfirm([...selectedGuestIds]);
+      resultFocusRequestedRef.current = true;
       setReviewing(false);
       setSubmitted(true);
     } catch {
@@ -186,7 +198,12 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
       </p>
 
       {model.status === 'completed' ? (
-        <div className="bunker-mission-one-player__outcome" role="status">
+        <div
+          ref={outcomeStatusRef}
+          className="bunker-mission-one-player__outcome"
+          role="status"
+          tabIndex={-1}
+        >
           <strong>РЕШЕНИЕ ПРИНЯТО</strong>
           <p>Сюжетные персонажи, которых не берёт вагон:</p>
           <ul>
@@ -195,7 +212,12 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
           <small>Гости остаются участниками свадьбы и следующих заданий.</small>
         </div>
       ) : submitted ? (
-        <p className="bunker-mission-one-player__sync" role="status">
+        <p
+          ref={submittedStatusRef}
+          className="bunker-mission-one-player__sync"
+          role="status"
+          tabIndex={-1}
+        >
           Решение отправлено. Получаем подтверждённый итог с сервера…
         </p>
       ) : reviewing ? createPortal(

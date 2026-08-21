@@ -371,6 +371,71 @@ describe('AdminBunkerControl', () => {
     expect((await screen.findAllByText('МИССИЯ 01')).length).toBeGreaterThan(0);
   });
 
+  it('uses only V2 prepare and transition commands through MISSION_01 for an authoritative V2 run', async () => {
+    const user = userEvent.setup();
+    const prepare = vi.fn();
+    const distribute = vi.fn();
+    const advance = vi.fn();
+    const prepareV2 = vi.fn().mockResolvedValue({
+      status: 'prepared', eventId: 'event-1',
+      runNonce: '41000000-0000-4000-8000-000000000002', contractVersion: 2,
+      planVersion: 1, globalGameState: 'LOBBY', wagonCount: 2, guestCount: 15,
+      missionInstanceCount: 12,
+    });
+    const transitionV2 = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'transitioned', runNonce: '41000000-0000-4000-8000-000000000002',
+        contractVersion: 2, previousState: 'LOBBY', globalGameState: 'CHARACTERS_READY',
+        changed: true,
+      })
+      .mockResolvedValueOnce({
+        status: 'transitioned', runNonce: '41000000-0000-4000-8000-000000000002',
+        contractVersion: 2, previousState: 'CHARACTERS_READY', globalGameState: 'MISSION_01',
+        changed: true,
+      });
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'idle', durationSeconds: 1800, soundEnabled: true,
+        globalGameState: 'LOBBY', serverNow: '2026-08-30T12:00:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+        remainingSeconds: 1800, soundEnabled: true,
+        runNonce: '41000000-0000-4000-8000-000000000002',
+        globalGameState: 'CHARACTERS_READY', serverNow: '2026-08-30T12:00:01.000Z',
+      })
+      .mockResolvedValueOnce({
+        status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+        remainingSeconds: 1799, soundEnabled: true,
+        runNonce: '41000000-0000-4000-8000-000000000002',
+        globalGameState: 'MISSION_01', serverNow: '2026-08-30T12:00:02.000Z',
+      });
+    const v2Dependencies = {
+      ...dependencies({ load, prepare, distribute, advance }),
+      prepareV2,
+      transitionV2,
+    } as AdminBunkerControlDependencies;
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={v2Dependencies}
+        bunkerContractVersion={2}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
+    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
+    await user.click(await screen.findByRole('button', { name: 'НАЧАТЬ МИССИЮ 01' }));
+
+    expect(prepareV2).toHaveBeenCalledWith('event-1');
+    expect(transitionV2).toHaveBeenNthCalledWith(1, 'event-1', 'CHARACTERS_READY');
+    expect(transitionV2).toHaveBeenNthCalledWith(2, 'event-1', 'MISSION_01');
+    expect(prepare).not.toHaveBeenCalled();
+    expect(distribute).not.toHaveBeenCalled();
+    expect(advance).not.toHaveBeenCalled();
+  });
+
   it('prepares the run and distributes characters before the first emergency start', async () => {
     const user = userEvent.setup();
     const commands: string[] = [];

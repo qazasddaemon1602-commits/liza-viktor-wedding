@@ -301,6 +301,19 @@ describe('useGuestBunkerLiveState', () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
+  it('reloads immediately when the browser reports that the network is online again', async () => {
+    const load = vi.fn().mockResolvedValue({
+      status: 'idle', serverNow: '2026-08-30T17:59:00.000Z',
+    });
+    const dependencies = deps({ load });
+    renderHook(() => useGuestBunkerLiveState({ dependencies }));
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+
+    act(() => window.dispatchEvent(new Event('online')));
+
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  });
+
   it('reloads after a carriage mission attempt and exposes retry feedback', async () => {
     const load = vi.fn().mockResolvedValue(emergency);
     const submitMission = vi.fn().mockResolvedValue({ status: 'incorrect', stage: 'mission_a', attemptCount: 2 });

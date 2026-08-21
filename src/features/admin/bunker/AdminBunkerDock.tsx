@@ -19,6 +19,10 @@ import {
   type MissionOneRpcClient,
   type OverrideMissionOneSelectionInput,
 } from '../../bunker/v2/m01.service';
+import {
+  broadcastBunkerRefresh,
+  type BunkerRealtimeClient,
+} from '../../bunker/bunker.realtime';
 
 const EVENT_SLUG = 'liza-viktor';
 
@@ -28,6 +32,7 @@ export type AdminBunkerDockDependencies = {
   bunkerControl?: AdminBunkerControlDependencies;
   loadMissionOne?: (eventId: string) => Promise<MissionOneOwnerReadModel>;
   overrideMissionOne?: (input: OverrideMissionOneSelectionInput) => Promise<unknown>;
+  broadcastRefresh?: () => Promise<void>;
 };
 
 type AdminBunkerDockProps = {
@@ -37,7 +42,9 @@ type AdminBunkerDockProps = {
 
 function browserDependencies(): AdminBunkerDockDependencies | null {
   try {
-    const client = getSupabaseClient() as unknown as AdminRpcClient & MissionOneRpcClient;
+    const client = getSupabaseClient() as unknown as AdminRpcClient
+      & MissionOneRpcClient
+      & BunkerRealtimeClient;
     return {
       loadDashboard: () => loadOwnerDashboard(client, EVENT_SLUG),
       applyDistribution: (eventId, carriageCount) => applyCarriageDistribution(
@@ -47,6 +54,7 @@ function browserDependencies(): AdminBunkerDockDependencies | null {
       ),
       loadMissionOne: (eventId) => getOwnerMissionOneReadModel(client, eventId),
       overrideMissionOne: (input) => overrideMissionOneSelection(client, input),
+      broadcastRefresh: () => broadcastBunkerRefresh(client, EVENT_SLUG),
     };
   } catch {
     return null;
@@ -140,12 +148,17 @@ export function AdminBunkerDock({
     mountedRef.current = true;
     void pollDashboard();
     const interval = window.setInterval(() => void pollDashboard(), pollIntervalMs);
+    const recover = () => void pollDashboard();
+    window.addEventListener('focus', recover);
+    window.addEventListener('online', recover);
 
     return () => {
       mountedRef.current = false;
       latestRequestRef.current += 1;
       activePollRequestRef.current = null;
       window.clearInterval(interval);
+      window.removeEventListener('focus', recover);
+      window.removeEventListener('online', recover);
     };
   }, [deps, pollDashboard, pollIntervalMs]);
 
@@ -195,6 +208,11 @@ export function AdminBunkerDock({
       selectedGuestIds: override.selectedGuestIds,
       reason: override.reason,
     });
+    try {
+      await deps.broadcastRefresh?.();
+    } catch {
+      // The authoritative read below still reconciles this owner console.
+    }
     const next = await deps.loadMissionOne?.(dashboardRef.current.event.id);
     if (mountedRef.current && next) setMissionOneRead(next);
   };
@@ -237,7 +255,7 @@ export function AdminBunkerDock({
         dependencies={deps.bunkerControl}
         dashboard={dashboard}
         onAcceptDistribution={acceptDistribution}
-        bunkerContractVersion={deps.loadMissionOne ? (missionOneRead?.contractVersion ?? 2) : 1}
+        bunkerContractVersion={missionOneRead?.contractVersion}
         missionOne={ownerPanelModel(missionOneRead)}
         onMissionOneOverride={deps.overrideMissionOne ? applyMissionOneOverride : undefined}
       />

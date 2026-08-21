@@ -157,9 +157,13 @@ export function BunkerScreenGuard({
 
     reload();
     const unsubscribe = deps.subscribe?.(reload);
+    window.addEventListener('focus', reload);
+    window.addEventListener('online', reload);
     return () => {
       active = false;
       unsubscribe?.();
+      window.removeEventListener('focus', reload);
+      window.removeEventListener('online', reload);
     };
   }, [deps]);
 

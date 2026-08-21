@@ -486,4 +486,24 @@ describe('BunkerScreenGuard', () => {
     expect(screen.queryByTestId('bunker-emergency-scene')).not.toBeInTheDocument();
     expect(screen.getByText('ОБЫЧНЫЙ ЭКРАН')).toBeInTheDocument();
   });
+
+  it('rereads the projector immediately after focus and online recovery', async () => {
+    const load = vi.fn().mockResolvedValue({
+      status: 'idle', serverNow: '2026-08-30T18:00:00.000Z',
+    });
+    render(
+      <BunkerScreenGuard dependencies={{ load }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+    expect(load).toHaveBeenCalledTimes(1);
+
+    act(() => window.dispatchEvent(new Event('focus')));
+    await flushLoadedState();
+    act(() => window.dispatchEvent(new Event('online')));
+    await flushLoadedState();
+
+    expect(load).toHaveBeenCalledTimes(3);
+  });
 });

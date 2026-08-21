@@ -112,6 +112,7 @@ describe('AdminBunkerDock dashboard scheduling', () => {
       commandId: '41000000-0000-4000-8000-000000000020',
       commandType: 'owner_m01_override',
     });
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
     const control = bunkerControlDependencies();
     control.load = vi.fn().mockResolvedValue({
       status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
@@ -128,6 +129,7 @@ describe('AdminBunkerDock dashboard scheduling', () => {
           bunkerControl: control,
           loadMissionOne,
           overrideMissionOne,
+          broadcastRefresh,
         }}
       />,
     );
@@ -142,6 +144,10 @@ describe('AdminBunkerDock dashboard scheduling', () => {
       target: { value: 'Исправляем подтверждённую ошибку команды' },
     });
     fireEvent.click(within(form).getByRole('button', { name: 'ПРИМЕНИТЬ OVERRIDE' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: 'Подтвердите изменение решения' }))
+        .getByRole('button', { name: 'ПОДТВЕРДИТЬ OVERRIDE' }),
+    );
     await flushPromises();
 
     expect(overrideMissionOne).toHaveBeenCalledWith(expect.objectContaining({
@@ -151,6 +157,35 @@ describe('AdminBunkerDock dashboard scheduling', () => {
       selectedGuestIds: ['guest-2'],
       reason: 'Исправляем подтверждённую ошибку команды',
     }));
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
+    expect(loadMissionOne).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes owner M01 progress immediately on focus and online recovery', async () => {
+    const loadDashboard = vi.fn().mockResolvedValue(
+      dashboard({ wagonCount: 2, guestCount: 15, locked: true }),
+    );
+    const loadMissionOne = vi.fn().mockResolvedValue({
+      contractVersion: 2, status: 'idle', serverNow: '2026-08-30T12:00:01.000Z',
+    });
+    render(
+      <AdminBunkerDock dependencies={{
+        loadDashboard,
+        applyDistribution: vi.fn(),
+        bunkerControl: bunkerControlDependencies(),
+        loadMissionOne,
+      }} />,
+    );
+    await flushPromises();
+    expect(loadMissionOne).toHaveBeenCalledTimes(1);
+
+    act(() => window.dispatchEvent(new Event('focus')));
+    await flushPromises();
+    act(() => window.dispatchEvent(new Event('online')));
+    await flushPromises();
+
+    expect(loadDashboard).toHaveBeenCalledTimes(3);
+    expect(loadMissionOne).toHaveBeenCalledTimes(3);
   });
 
   it('fails closed and removes owner-only counts when the latest dashboard read loses access', async () => {

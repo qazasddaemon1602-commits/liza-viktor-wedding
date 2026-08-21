@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export type MissionOneOwnerMember = {
   guestId: string;
@@ -45,12 +46,53 @@ function formatTimer(seconds: number): string {
 
 export function MissionOneOwnerPanel({ model, onOverride }: MissionOneOwnerPanelProps) {
   const [draft, setDraft] = useState<OverrideDraft | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const reviewRef = useRef<HTMLDivElement>(null);
+  const reviewHeadingRef = useRef<HTMLHeadingElement>(null);
+  const applyButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreApplyFocusRef = useRef(false);
   const completeCount = model.wagons.filter((wagon) => wagon.status === 'completed').length;
   const editedWagon = draft
     ? model.wagons.find((wagon) => wagon.wagonId === draft.wagonId) ?? null
     : null;
+  const selectedMembers = draft && editedWagon
+    ? editedWagon.members.filter((member) => draft.selectedGuestIds.includes(member.guestId))
+    : [];
+
+  useEffect(() => {
+    if (!reviewing) return undefined;
+    reviewHeadingRef.current?.focus();
+    const dialog = reviewRef.current;
+    const background = [...document.body.children].filter((element) => (
+      element instanceof HTMLElement && !element.contains(dialog)
+    ));
+    const previous = background.map((element) => ({
+      element,
+      inert: element.getAttribute('inert'),
+      ariaHidden: element.getAttribute('aria-hidden'),
+    }));
+    background.forEach((element) => {
+      element.setAttribute('inert', '');
+      element.setAttribute('aria-hidden', 'true');
+    });
+    return () => {
+      previous.forEach(({ element, inert, ariaHidden }) => {
+        if (inert === null) element.removeAttribute('inert');
+        else element.setAttribute('inert', inert);
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      });
+    };
+  }, [reviewing]);
+
+  useEffect(() => {
+    if (!reviewing && restoreApplyFocusRef.current) {
+      restoreApplyFocusRef.current = false;
+      applyButtonRef.current?.focus();
+    }
+  }, [reviewing]);
 
   const openOverride = (wagon: MissionOneOwnerWagon) => {
     setError('');
@@ -93,11 +135,56 @@ export function MissionOneOwnerPanel({ model, onOverride }: MissionOneOwnerPanel
         selectedGuestIds: [...draft.selectedGuestIds],
         reason: draft.reason.trim(),
       });
+      setReviewing(false);
       setDraft(null);
     } catch {
       setError('Override не применён. Перечитайте прогресс перед повтором.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const requestReview = () => {
+    if (
+      !draft
+      || !editedWagon
+      || draft.selectedGuestIds.length !== editedWagon.quota
+      || !draft.reason.trim()
+      || busy
+    ) return;
+    setError('');
+    setReviewing(true);
+  };
+
+  const closeReview = () => {
+    if (busy) return;
+    restoreApplyFocusRef.current = true;
+    setReviewing(false);
+  };
+
+  const handleReviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeReview();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const dialog = reviewRef.current;
+    if (!dialog) return;
+    const controls = [...dialog.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    )];
+    if (controls.length === 0) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && (
+      document.activeElement === first || document.activeElement === reviewHeadingRef.current
+    )) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
   };
 
@@ -141,7 +228,7 @@ export function MissionOneOwnerPanel({ model, onOverride }: MissionOneOwnerPanel
           aria-label={`Override · ${editedWagon.label}`}
           onSubmit={(event) => {
             event.preventDefault();
-            void submit();
+            requestReview();
           }}
         >
           <header>
@@ -183,6 +270,7 @@ export function MissionOneOwnerPanel({ model, onOverride }: MissionOneOwnerPanel
             />
           </label>
           <button
+            ref={applyButtonRef}
             type="submit"
             className="admin-bunker-primary"
             disabled={
@@ -196,7 +284,49 @@ export function MissionOneOwnerPanel({ model, onOverride }: MissionOneOwnerPanel
         </form>
       )}
 
-      {error && <p className="admin-bunker-error" role="alert">{error}</p>}
+      {reviewing && draft && editedWagon && createPortal(
+        <div className="bunker-mission-one-player__modal-layer admin-mission-one__modal-layer">
+          <div
+            ref={reviewRef}
+            className="bunker-mission-one-player__confirmation admin-mission-one__confirmation"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="admin-mission-one-override-review-title"
+            aria-describedby="admin-mission-one-override-review-effect"
+            onKeyDown={handleReviewKeyDown}
+          >
+            <h3
+              ref={reviewHeadingRef}
+              id="admin-mission-one-override-review-title"
+              tabIndex={-1}
+            >
+              Подтвердите изменение решения
+            </h3>
+            <p id="admin-mission-one-override-review-effect">
+              Эти персонажи получат статус «ИСКЛЮЧЁН». Остальные персонажи вагона получат статус «СПАСЁН».
+            </p>
+            <ul>
+              {selectedMembers.map((member) => <li key={member.guestId}>{member.realName}</li>)}
+            </ul>
+            <p><strong>Причина:</strong> {draft.reason.trim()}</p>
+            {error && <p className="admin-bunker-error" role="alert">{error}</p>}
+            <div>
+              <button type="button" disabled={busy} onClick={closeReview}>ВЕРНУТЬСЯ К ПРОВЕРКЕ</button>
+              <button
+                type="button"
+                className="admin-bunker-primary"
+                disabled={busy}
+                onClick={() => void submit()}
+              >
+                {busy ? 'ПРИМЕНЯЕМ…' : 'ПОДТВЕРДИТЬ OVERRIDE'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
+      {error && !reviewing && <p className="admin-bunker-error" role="alert">{error}</p>}
     </section>
   );
 }
