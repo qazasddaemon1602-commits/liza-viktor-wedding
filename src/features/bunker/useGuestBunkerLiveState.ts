@@ -20,6 +20,8 @@ import type { MissionSixPlayerReadModel } from './v2/MissionSixPlayer';
 import { castMissionSixVote as castM06VoteCommand, getGuestMissionSixReadModel, revealMissionSixFragment as revealM06FragmentCommand, useMissionSixAbility as useM06AbilityCommand, type MissionSixGuestReadModel } from './v2/m06.service';
 import type { UnknownPassengerPlayerModel } from './v2/UnknownPassengerPlayer';
 import { getGuestUnknownPassengerReadModel, type UnknownPassengerGuestReadModel } from './v2/unknownPassenger.service';
+import type { FinalPlayerModel } from './v2/FinalPlayer';
+import { getGuestFinalReadModel, requestFinalAccess as requestFinalAccessCommand, type FinalGuestReadModel, type FinalValues } from './v2/final.service';
 
 export type GuestBunkerLiveDependencies = {
   getDeviceKey: () => string;
@@ -46,304 +48,37 @@ export type GuestBunkerLiveDependencies = {
   castMissionSixVote?: (deviceKey: string, input: { commandId: string; instanceId: string; vote: 'A' | 'B' | 'C' }) => Promise<unknown>;
   useMissionSixAbility?: (deviceKey: string, input: { commandId: string; instanceId: string }) => Promise<unknown>;
   loadUnknownPassenger?: (deviceKey: string) => Promise<UnknownPassengerGuestReadModel>;
+  loadFinal?: (deviceKey: string) => Promise<FinalGuestReadModel>;
+  requestFinalAccess?: (deviceKey: string, input: { commandId: string; values: FinalValues }) => Promise<unknown>;
   broadcastRefresh?: () => Promise<void>;
   submitMission: (deviceKey: string, stage: BunkerMissionStage, answer: string) => Promise<SubmitBunkerMissionResult>;
   submitFinalCode: (deviceKey: string, code: string) => Promise<SubmitBunkerFinalResult>;
   subscribeToRefresh?: (callback: () => void) => () => void;
 };
-
 type Options = { eventSlug?: string; dependencies?: GuestBunkerLiveDependencies; enabled?: boolean };
 
 function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
-  const client = getSupabaseClient();
-  const rpc = client as unknown as BunkerRpcClient;
-  const realtime = client as unknown as BunkerRealtimeClient;
-  let deviceKey: string | undefined;
-  const getDeviceKey = () => { deviceKey ??= getOrCreateDeviceKey(); return deviceKey; };
-  return {
-    getDeviceKey,
-    load: (key) => getGuestBunkerQuest(rpc, eventSlug, key),
-    loadRuntime: (key) => getGuestBunkerRuntime(rpc, eventSlug, key),
-    loadMissionOne: (key) => getGuestMissionOneReadModel(rpc, eventSlug, key),
-    confirmMissionOne: (key, input) => confirmMissionOneSelection(rpc, { eventSlug, deviceKey: key, ...input }),
-    loadMissionTwo: (key) => getGuestMissionTwoReadModel(rpc, eventSlug, key),
-    submitMissionTwo: (key, input) => submitMissionTwoAnswers(rpc, { eventSlug, deviceKey: key, ...input }),
-    useMissionTwoAbility: (key, input) => useM02AbilityCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    loadMissionThree: (key) => getGuestMissionThreeReadModel(rpc, eventSlug, key),
-    confirmMissionThree: (key, input) => confirmM03Command(rpc, { eventSlug, deviceKey: key, ...input }),
-    useMissionThreeAbility: (key, input) => useM03AbilityCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    loadMissionFour: (key) => getGuestMissionFourReadModel(rpc, eventSlug, key),
-    sendMissionFourMessage: (key, input) => sendM04MessageCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    proposeMissionFourTrade: (key, input) => proposeM04TradeCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    respondMissionFourTrade: (key, input) => respondM04TradeCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    submitMissionFourAnswer: (key, input) => submitM04AnswerCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    loadMissionFive: (key) => getGuestMissionFiveReadModel(rpc, eventSlug, key),
-    castMissionFiveVote: (key, input) => castM05VoteCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    useMissionFiveAbility: (key, input) => useM05AbilityCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    loadMissionSix: (key) => getGuestMissionSixReadModel(rpc, eventSlug, key),
-    revealMissionSixFragment: (key, input) => revealM06FragmentCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    castMissionSixVote: (key, input) => castM06VoteCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    useMissionSixAbility: (key, input) => useM06AbilityCommand(rpc, { eventSlug, deviceKey: key, ...input }),
-    loadUnknownPassenger: (key) => getGuestUnknownPassengerReadModel(rpc, eventSlug, key),
-    submitMission: (key, stage, answer) => submitBunkerMission(rpc, eventSlug, key, stage, answer),
-    submitFinalCode: (key, code) => submitBunkerFinalCode(rpc, eventSlug, key, code),
-    broadcastRefresh: () => broadcastBunkerRefresh(realtime, eventSlug),
-    subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtime, eventSlug, callback),
-  };
+  const client=getSupabaseClient(),rpc=client as unknown as BunkerRpcClient,realtime=client as unknown as BunkerRealtimeClient;let deviceKey:string|undefined;const getDeviceKey=()=>{deviceKey??=getOrCreateDeviceKey();return deviceKey;};
+  return {getDeviceKey,load:(k)=>getGuestBunkerQuest(rpc,eventSlug,k),loadRuntime:(k)=>getGuestBunkerRuntime(rpc,eventSlug,k),loadMissionOne:(k)=>getGuestMissionOneReadModel(rpc,eventSlug,k),confirmMissionOne:(k,input)=>confirmMissionOneSelection(rpc,{eventSlug,deviceKey:k,...input}),loadMissionTwo:(k)=>getGuestMissionTwoReadModel(rpc,eventSlug,k),submitMissionTwo:(k,input)=>submitMissionTwoAnswers(rpc,{eventSlug,deviceKey:k,...input}),useMissionTwoAbility:(k,input)=>useM02AbilityCommand(rpc,{eventSlug,deviceKey:k,...input}),loadMissionThree:(k)=>getGuestMissionThreeReadModel(rpc,eventSlug,k),confirmMissionThree:(k,input)=>confirmM03Command(rpc,{eventSlug,deviceKey:k,...input}),useMissionThreeAbility:(k,input)=>useM03AbilityCommand(rpc,{eventSlug,deviceKey:k,...input}),loadMissionFour:(k)=>getGuestMissionFourReadModel(rpc,eventSlug,k),sendMissionFourMessage:(k,input)=>sendM04MessageCommand(rpc,{eventSlug,deviceKey:k,...input}),proposeMissionFourTrade:(k,input)=>proposeM04TradeCommand(rpc,{eventSlug,deviceKey:k,...input}),respondMissionFourTrade:(k,input)=>respondM04TradeCommand(rpc,{eventSlug,deviceKey:k,...input}),submitMissionFourAnswer:(k,input)=>submitM04AnswerCommand(rpc,{eventSlug,deviceKey:k,...input}),loadMissionFive:(k)=>getGuestMissionFiveReadModel(rpc,eventSlug,k),castMissionFiveVote:(k,input)=>castM05VoteCommand(rpc,{eventSlug,deviceKey:k,...input}),useMissionFiveAbility:(k,input)=>useM05AbilityCommand(rpc,{eventSlug,deviceKey:k,...input}),loadMissionSix:(k)=>getGuestMissionSixReadModel(rpc,eventSlug,k),revealMissionSixFragment:(k,input)=>revealM06FragmentCommand(rpc,{eventSlug,deviceKey:k,...input}),castMissionSixVote:(k,input)=>castM06VoteCommand(rpc,{eventSlug,deviceKey:k,...input}),useMissionSixAbility:(k,input)=>useM06AbilityCommand(rpc,{eventSlug,deviceKey:k,...input}),loadUnknownPassenger:(k)=>getGuestUnknownPassengerReadModel(rpc,eventSlug,k),loadFinal:(k)=>getGuestFinalReadModel(rpc,eventSlug,k),requestFinalAccess:(k,input)=>requestFinalAccessCommand(rpc,{eventSlug,deviceKey:k,...input}),submitMission:(k,stage,answer)=>submitBunkerMission(rpc,eventSlug,k,stage,answer),submitFinalCode:(k,code)=>submitBunkerFinalCode(rpc,eventSlug,k,code),broadcastRefresh:()=>broadcastBunkerRefresh(realtime,eventSlug),subscribeToRefresh:(cb)=>subscribeToBunkerRefresh(realtime,eventSlug,cb)};
 }
+function remaining(deadlineAt:string,serverNow:string){return Math.max(0,Math.ceil((Date.parse(deadlineAt)-Date.parse(serverNow))/1000));}
+function m01(m:MissionOneGuestReadModel,c:MissionOnePlayerReadModel['connection']='online'):MissionOnePlayerReadModel|undefined{return m.status==='active'||m.status==='completed'?{instanceId:m.instanceId,instanceVersion:m.instanceVersion,status:m.status,wagon:m.wagon,quota:m.quota,remainingSeconds:remaining(m.deadlineAt,m.serverNow),connection:c,members:m.members,selectedGuestIds:m.selectedGuestIds}:undefined;}
+function m02(m:MissionTwoGuestReadModel,c:MissionTwoPlayerReadModel['connection']='online'):MissionTwoPlayerReadModel|undefined{return m.status==='active'||m.status==='completed'?{instanceId:m.instanceId,instanceVersion:m.instanceVersion,status:m.status,remainingSeconds:remaining(m.deadlineAt,m.serverNow),title:m.title,subtitle:m.subtitle,intro:m.intro,evidence:m.evidence,questions:m.questions,attemptCount:m.attemptCount,attemptsRemaining:m.attemptsRemaining,selectedAnswers:m.selectedAnswers,connection:c,ability:m.ability,outcome:m.outcome,archiveUnlocked:m.archiveUnlocked}:undefined;}
+function m03(m:MissionThreeGuestReadModel,c:MissionThreePlayerReadModel['connection']='online'):MissionThreePlayerReadModel|undefined{return m.status==='active'||m.status==='completed'?{instanceId:m.instanceId,instanceVersion:m.instanceVersion,status:m.status,remainingSeconds:remaining(m.deadlineAt,m.serverNow),title:m.title,intro:m.intro,memberRole:m.memberRole,problems:m.problems,inventory:m.inventory,selectedProblems:m.selectedProblems,ability:m.ability,pendingCommitments:m.pendingCommitments,connection:c,outcome:m.outcome}:undefined;}
+function m04(m:MissionFourGuestReadModel,c:MissionFourPlayerReadModel['connection']='online'):MissionFourPlayerReadModel|undefined{return m.status==='active'||m.status==='completed'?{instanceId:m.instanceId,status:m.status,remainingSeconds:remaining(m.deadlineAt,m.serverNow),title:m.title,interactionPhase:m.interactionPhase,group:m.group,viewer:m.viewer,messageQuota:m.messageQuota,messagesRemaining:m.messagesRemaining,messages:m.messages,inventory:m.inventory,trades:m.trades,answer:m.answer,ability:m.ability,connection:c}:undefined;}
+function m05(m:MissionFiveGuestReadModel,c:MissionFivePlayerReadModel['connection']='online'):MissionFivePlayerReadModel|undefined{return m.status==='active'||m.status==='completed'?{instanceId:m.instanceId,status:m.status,remainingSeconds:remaining(m.deadlineAt,m.serverNow),title:m.title,intro:m.intro,routes:m.routes,selectedVote:m.selectedVote,voteCounts:m.voteCounts,ability:m.ability,connection:c,outcome:m.outcome}:undefined;}
+function m06(m:MissionSixGuestReadModel,c:MissionSixPlayerReadModel['connection']='online'):MissionSixPlayerReadModel|undefined{return m.status==='active'||m.status==='completed'?{instanceId:m.instanceId,status:m.status,remainingSeconds:remaining(m.deadlineAt,m.serverNow),title:m.title,intro:m.intro,viewer:m.viewer,privateFragment:m.privateFragment,fragmentShared:m.fragmentShared,revealedFragments:m.revealedFragments,fragmentsRevealed:m.fragmentsRevealed,fragmentsTotal:m.fragmentsTotal,options:m.options,selectedVote:m.selectedVote,wagonConsensus:m.wagonConsensus,ability:m.ability,connection:c,outcome:m.outcome}:undefined;}
+function unknown(m:UnknownPassengerGuestReadModel):UnknownPassengerPlayerModel|undefined{return m.status==='active'?{remainingSeconds:remaining(m.deadlineAt,m.serverNow),title:m.title,dossierId:m.dossierId,lead:m.lead,sector:m.sector,accessCode:m.accessCode,recoveredBy:m.recoveredBy,storyPoints:m.storyPoints}:undefined;}
+function finalModel(m:FinalGuestReadModel,c:FinalPlayerModel['connection']='online'):FinalPlayerModel|undefined{return m.status==='active'||m.status==='completed'?{remainingSeconds:remaining(m.deadlineAt,m.serverNow),title:m.title,wagon:m.wagon,fragments:m.fragments,terminal:m.terminal,hint:m.hint,connection:c,timeAdjustmentSeconds:m.timeAdjustmentSeconds}:undefined;}
+function commandId(prefix='bunker-v2'){return globalThis.crypto?.randomUUID?.()??`${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;}
 
-function remaining(deadlineAt: string, serverNow: string): number {
-  return Math.max(0, Math.ceil((Date.parse(deadlineAt) - Date.parse(serverNow)) / 1000));
-}
-
-function m01(model: MissionOneGuestReadModel, connection: MissionOnePlayerReadModel['connection'] = 'online'): MissionOnePlayerReadModel | undefined {
-  if (model.status !== 'active' && model.status !== 'completed') return undefined;
-  return { instanceId: model.instanceId, instanceVersion: model.instanceVersion, status: model.status, wagon: model.wagon, quota: model.quota, remainingSeconds: remaining(model.deadlineAt, model.serverNow), connection, members: model.members, selectedGuestIds: model.selectedGuestIds };
-}
-function m02(model: MissionTwoGuestReadModel, connection: MissionTwoPlayerReadModel['connection'] = 'online'): MissionTwoPlayerReadModel | undefined {
-  if (model.status !== 'active' && model.status !== 'completed') return undefined;
-  return { instanceId: model.instanceId, instanceVersion: model.instanceVersion, status: model.status, remainingSeconds: remaining(model.deadlineAt, model.serverNow), title: model.title, subtitle: model.subtitle, intro: model.intro, evidence: model.evidence, questions: model.questions, attemptCount: model.attemptCount, attemptsRemaining: model.attemptsRemaining, selectedAnswers: model.selectedAnswers, connection, ability: model.ability, outcome: model.outcome, archiveUnlocked: model.archiveUnlocked };
-}
-function m03(model: MissionThreeGuestReadModel, connection: MissionThreePlayerReadModel['connection'] = 'online'): MissionThreePlayerReadModel | undefined {
-  if (model.status !== 'active' && model.status !== 'completed') return undefined;
-  return { instanceId: model.instanceId, instanceVersion: model.instanceVersion, status: model.status, remainingSeconds: remaining(model.deadlineAt, model.serverNow), title: model.title, intro: model.intro, memberRole: model.memberRole, problems: model.problems, inventory: model.inventory, selectedProblems: model.selectedProblems, ability: model.ability, pendingCommitments: model.pendingCommitments, connection, outcome: model.outcome };
-}
-function m04(model: MissionFourGuestReadModel, connection: MissionFourPlayerReadModel['connection'] = 'online'): MissionFourPlayerReadModel | undefined {
-  if (model.status !== 'active' && model.status !== 'completed') return undefined;
-  return { instanceId: model.instanceId, status: model.status, remainingSeconds: remaining(model.deadlineAt, model.serverNow), title: model.title, interactionPhase: model.interactionPhase, group: model.group, viewer: model.viewer, messageQuota: model.messageQuota, messagesRemaining: model.messagesRemaining, messages: model.messages, inventory: model.inventory, trades: model.trades, answer: model.answer, ability: model.ability, connection };
-}
-function m05(model: MissionFiveGuestReadModel, connection: MissionFivePlayerReadModel['connection'] = 'online'): MissionFivePlayerReadModel | undefined {
-  if (model.status !== 'active' && model.status !== 'completed') return undefined;
-  return { instanceId: model.instanceId, status: model.status, remainingSeconds: remaining(model.deadlineAt, model.serverNow), title: model.title, intro: model.intro, routes: model.routes, selectedVote: model.selectedVote, voteCounts: model.voteCounts, ability: model.ability, connection, outcome: model.outcome };
-}
-function m06(model: MissionSixGuestReadModel, connection: MissionSixPlayerReadModel['connection'] = 'online'): MissionSixPlayerReadModel | undefined {
-  if (model.status !== 'active' && model.status !== 'completed') return undefined;
-  return { instanceId: model.instanceId, status: model.status, remainingSeconds: remaining(model.deadlineAt, model.serverNow), title: model.title, intro: model.intro, viewer: model.viewer, privateFragment: model.privateFragment, fragmentShared: model.fragmentShared, revealedFragments: model.revealedFragments, fragmentsRevealed: model.fragmentsRevealed, fragmentsTotal: model.fragmentsTotal, options: model.options, selectedVote: model.selectedVote, wagonConsensus: model.wagonConsensus, ability: model.ability, connection, outcome: model.outcome };
-}
-function unknown(model: UnknownPassengerGuestReadModel): UnknownPassengerPlayerModel | undefined {
-  if (model.status !== 'active') return undefined;
-  return { remainingSeconds: remaining(model.deadlineAt, model.serverNow), title: model.title, dossierId: model.dossierId, lead: model.lead, sector: model.sector, accessCode: model.accessCode, recoveredBy: model.recoveredBy, storyPoints: model.storyPoints };
-}
-function commandId(prefix = 'bunker-v2'): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencies, enabled = true }: Options = {}) {
-  const deps = useMemo<GuestBunkerLiveDependencies | null>(() => dependencies ?? (enabled ? browserDependencies(eventSlug) : null), [dependencies, enabled, eventSlug]);
-  const [state, setState] = useState<GuestBunkerQuestState | null>(null);
-  const [runtime, setRuntime] = useState<GuestBunkerReadRuntime | null>(null);
-  const [missionOne, setMissionOne] = useState<MissionOnePlayerReadModel>();
-  const [missionTwo, setMissionTwo] = useState<MissionTwoPlayerReadModel>();
-  const [missionThree, setMissionThree] = useState<MissionThreePlayerReadModel>();
-  const [missionFour, setMissionFour] = useState<MissionFourPlayerReadModel>();
-  const [missionFive, setMissionFive] = useState<MissionFivePlayerReadModel>();
-  const [missionSix, setMissionSix] = useState<MissionSixPlayerReadModel>();
-  const [unknownPassenger, setUnknownPassenger] = useState<UnknownPassengerPlayerModel>();
-  const [runtimeLoading, setRuntimeLoading] = useState(Boolean(enabled && deps?.loadRuntime));
-  const [runtimeError, setRuntimeError] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const generation = useRef(0);
-  const runtimeStage = useRef<string | null>(null);
-
-  const clearNonCurrent = useCallback((stage: string | null) => {
-    if (stage !== 'MISSION_01') setMissionOne(undefined);
-    if (stage !== 'MISSION_02') setMissionTwo(undefined);
-    if (stage !== 'MISSION_03') setMissionThree(undefined);
-    if (stage !== 'MISSION_04') setMissionFour(undefined);
-    if (stage !== 'MISSION_05') setMissionFive(undefined);
-    if (stage !== 'MISSION_06') setMissionSix(undefined);
-    if (stage !== 'UNKNOWN_PASSENGER') setUnknownPassenger(undefined);
-  }, []);
-
-  const reload = useCallback(async () => {
-    if (!enabled || !deps) return null;
-    const request = ++generation.current;
-    const latest = () => request === generation.current;
-    const key = deps.getDeviceKey();
-    if (deps.loadRuntime) setRuntimeLoading(true);
-
-    if (deps.loadRuntime) {
-      void Promise.resolve(deps.loadRuntime(key)).then((nextRuntime) => {
-        if (!latest()) return;
-        setRuntime(nextRuntime);
-        setRuntimeError('');
-        if (nextRuntime.status === 'active' && 'contractVersion' in nextRuntime && nextRuntime.contractVersion === 2) {
-          runtimeStage.current = nextRuntime.state;
-          clearNonCurrent(nextRuntime.state);
-        } else {
-          runtimeStage.current = null;
-        }
-      }).catch(() => {
-        if (latest()) setRuntimeError('Не удалось обновить защищённый архив. Показываем последние полученные данные.');
-      }).finally(() => {
-        if (latest()) setRuntimeLoading(false);
-      });
-    }
-
-    const projection = <T, R>(stage: string, loader: ((deviceKey: string) => Promise<T>) | undefined, map: (value: T) => R | undefined, set: (value: R | undefined | ((current: R | undefined) => R | undefined)) => void, reconnect?: (current: R) => R) => {
-      if (!loader) return;
-      void Promise.resolve(loader(key)).then((next) => {
-        if (!latest()) return;
-        if (runtimeStage.current && runtimeStage.current !== stage) {
-          set(undefined);
-          return;
-        }
-        set(map(next));
-      }).catch(() => {
-        if (!latest() || (runtimeStage.current && runtimeStage.current !== stage) || !reconnect) return;
-        set((current: R | undefined) => current ? reconnect(current) : current);
-      });
-    };
-
-    projection('MISSION_01', deps.loadMissionOne, m01, setMissionOne, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_02', deps.loadMissionTwo, m02, setMissionTwo, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_03', deps.loadMissionThree, m03, setMissionThree, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_04', deps.loadMissionFour, m04, setMissionFour, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_05', deps.loadMissionFive, m05, setMissionFive, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_06', deps.loadMissionSix, m06, setMissionSix, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('UNKNOWN_PASSENGER', deps.loadUnknownPassenger, unknown, setUnknownPassenger);
-
-    try {
-      const next = await deps.load(key);
-      if (latest()) { setState(next); setError(''); }
-      return next;
-    } catch {
-      if (latest()) setError('Не удалось обновить Бункер. Повторяем подключение автоматически.');
-      return null;
-    }
-  }, [clearNonCurrent, deps, enabled]);
-
-  useEffect(() => {
-    if (!enabled || !deps) return;
-    void reload();
-    const unsubscribe = deps.subscribeToRefresh?.(() => { void reload(); });
-    return () => { generation.current += 1; unsubscribe?.(); };
-  }, [deps, enabled, reload]);
-
-  useEffect(() => {
-    if (!enabled || !deps) return;
-    const intervalMs = state?.status === 'active' || runtime?.status === 'active' ? 2_000 : 5_000;
-    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void reload(); }, intervalMs);
-    return () => window.clearInterval(timer);
-  }, [deps, enabled, reload, runtime?.status, state?.status]);
-
-  useEffect(() => {
-    if (!enabled || !deps) return;
-    const refresh = () => { if (document.visibilityState === 'visible') void reload(); };
-    document.addEventListener('visibilitychange', refresh);
-    window.addEventListener('focus', refresh);
-    window.addEventListener('online', refresh);
-    return () => {
-      document.removeEventListener('visibilitychange', refresh);
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('online', refresh);
-    };
-  }, [deps, enabled, reload]);
-
-  const broadcast = useCallback(async () => { try { await deps?.broadcastRefresh?.(); } catch { /* polling is fallback */ } }, [deps]);
-  const authoritative = useCallback(async (action: () => Promise<unknown>, copy?: string) => {
-    if (submitting) throw new Error('Bunker command is already in progress');
-    setSubmitting(true);
-    setFeedback('');
-    try {
-      await action();
-      await broadcast();
-      await reload();
-      if (copy) setFeedback(copy);
-    } finally {
-      setSubmitting(false);
-    }
-  }, [broadcast, reload, submitting]);
-
-  const submitMission = useCallback(async (stage: BunkerMissionStage, answer: string) => {
-    if (!deps || submitting) return;
-    setSubmitting(true);
-    setFeedback('');
-    try {
-      const result = await deps.submitMission(deps.getDeviceKey(), stage, answer);
-      setFeedback(result.status === 'completed' ? result.successCopy || 'Задание выполнено.' : 'Ответ не подошёл. Попробуйте ещё раз вместе с вагоном.');
-      await reload();
-    } catch { setFeedback('Ответ не отправился. Попробуйте ещё раз.'); }
-    finally { setSubmitting(false); }
-  }, [deps, reload, submitting]);
-
-  const submitFinalCode = useCallback(async (code: string) => {
-    if (!deps || submitting) return;
-    setSubmitting(true);
-    setFeedback('');
-    try {
-      const result = await deps.submitFinalCode(deps.getDeviceKey(), code);
-      setFeedback(result.status === 'unlocked' ? 'Доступ получен.' : result.status === 'not_ready' ? 'Не все вагоны готовы.' : 'Код не подошёл.');
-      await reload();
-    } catch { setFeedback('Код не отправился. Попробуйте ещё раз.'); }
-    finally { setSubmitting(false); }
-  }, [deps, reload, submitting]);
-
-  const confirmMissionOne = useCallback((ids: string[]) => {
-    if (!deps?.confirmMissionOne || !missionOne) throw new Error('M01 unavailable');
-    return authoritative(() => deps.confirmMissionOne!(deps.getDeviceKey(), { commandId: commandId('m01'), instanceId: missionOne.instanceId, instanceVersion: missionOne.instanceVersion, selectedGuestIds: ids }));
-  }, [authoritative, deps, missionOne]);
-  const submitMissionTwo = useCallback((answers: string[]) => {
-    if (!deps?.submitMissionTwo || !missionTwo) throw new Error('M02 unavailable');
-    return authoritative(() => deps.submitMissionTwo!(deps.getDeviceKey(), { commandId: commandId('m02'), instanceId: missionTwo.instanceId, answers }));
-  }, [authoritative, deps, missionTwo]);
-  const useMissionTwoAbility = useCallback((abilityKey: 'system_access' | 'terminal_hack') => {
-    if (!deps?.useMissionTwoAbility || !missionTwo) throw new Error('M02 ability unavailable');
-    return authoritative(() => deps.useMissionTwoAbility!(deps.getDeviceKey(), { commandId: commandId('m02-ability'), instanceId: missionTwo.instanceId, abilityKey }));
-  }, [authoritative, deps, missionTwo]);
-  const confirmMissionThree = useCallback((selectedProblems: string[]) => {
-    if (!deps?.confirmMissionThree || !missionThree) throw new Error('M03 unavailable');
-    return authoritative(() => deps.confirmMissionThree!(deps.getDeviceKey(), { commandId: commandId('m03'), instanceId: missionThree.instanceId, instanceVersion: missionThree.instanceVersion, selectedProblems }));
-  }, [authoritative, deps, missionThree]);
-  const useMissionThreeAbility = useCallback((problemKey: string) => {
-    if (!deps?.useMissionThreeAbility || !missionThree) throw new Error('M03 ability unavailable');
-    return authoritative(() => deps.useMissionThreeAbility!(deps.getDeviceKey(), { commandId: commandId('m03-ability'), instanceId: missionThree.instanceId, problemKey }));
-  }, [authoritative, deps, missionThree]);
-  const sendMissionFourMessage = useCallback((message: string) => {
-    if (!deps?.sendMissionFourMessage || !missionFour) throw new Error('M04 unavailable');
-    return authoritative(() => deps.sendMissionFourMessage!(deps.getDeviceKey(), { commandId: commandId('m04-message'), instanceId: missionFour.instanceId, message }));
-  }, [authoritative, deps, missionFour]);
-  const proposeMissionFourTrade = useCallback((input: { targetWagonNumber: number; itemKey: string; quantity: number }) => {
-    if (!deps?.proposeMissionFourTrade || !missionFour) throw new Error('M04 trade unavailable');
-    return authoritative(() => deps.proposeMissionFourTrade!(deps.getDeviceKey(), { commandId: commandId('m04-trade'), instanceId: missionFour.instanceId, ...input }));
-  }, [authoritative, deps, missionFour]);
-  const respondMissionFourTrade = useCallback((transferId: string, response: 'accept' | 'reject') => {
-    if (!deps?.respondMissionFourTrade || !missionFour) throw new Error('M04 response unavailable');
-    return authoritative(() => deps.respondMissionFourTrade!(deps.getDeviceKey(), { commandId: commandId('m04-response'), instanceId: missionFour.instanceId, transferId, response }));
-  }, [authoritative, deps, missionFour]);
-  const submitMissionFourAnswer = useCallback((answer: string) => {
-    if (!deps?.submitMissionFourAnswer || !missionFour) throw new Error('M04 answer unavailable');
-    return authoritative(() => deps.submitMissionFourAnswer!(deps.getDeviceKey(), { commandId: commandId('m04-answer'), instanceId: missionFour.instanceId, answer }));
-  }, [authoritative, deps, missionFour]);
-  const castMissionFiveVote = useCallback((vote: 'A' | 'B') => {
-    if (!deps?.castMissionFiveVote || !missionFive) throw new Error('M05 unavailable');
-    return authoritative(() => deps.castMissionFiveVote!(deps.getDeviceKey(), { commandId: commandId('m05-vote'), instanceId: missionFive.instanceId, vote }));
-  }, [authoritative, deps, missionFive]);
-  const useMissionFiveAbility = useCallback(() => {
-    if (!deps?.useMissionFiveAbility || !missionFive) throw new Error('M05 ability unavailable');
-    return authoritative(() => deps.useMissionFiveAbility!(deps.getDeviceKey(), { commandId: commandId('m05-ability'), instanceId: missionFive.instanceId }));
-  }, [authoritative, deps, missionFive]);
-  const revealMissionSixFragment = useCallback(() => {
-    if (!deps?.revealMissionSixFragment || !missionSix) throw new Error('M06 reveal unavailable');
-    return authoritative(() => deps.revealMissionSixFragment!(deps.getDeviceKey(), { commandId: commandId('m06-fragment'), instanceId: missionSix.instanceId, fragmentKey: missionSix.privateFragment.key }));
-  }, [authoritative, deps, missionSix]);
-  const castMissionSixVote = useCallback((vote: 'A' | 'B' | 'C') => {
-    if (!deps?.castMissionSixVote || !missionSix) throw new Error('M06 vote unavailable');
-    return authoritative(() => deps.castMissionSixVote!(deps.getDeviceKey(), { commandId: commandId('m06-vote'), instanceId: missionSix.instanceId, vote }));
-  }, [authoritative, deps, missionSix]);
-  const useMissionSixAbility = useCallback(() => {
-    if (!deps?.useMissionSixAbility || !missionSix) throw new Error('M06 ability unavailable');
-    return authoritative(() => deps.useMissionSixAbility!(deps.getDeviceKey(), { commandId: commandId('m06-ability'), instanceId: missionSix.instanceId }));
-  }, [authoritative, deps, missionSix]);
-
-  return {
-    state, runtime, missionOne, missionTwo, missionThree, missionFour, missionFive, missionSix, unknownPassenger,
-    runtimeLoading, runtimeError, feedback, error, submitting, reload,
-    submitMission, submitFinalCode, confirmMissionOne, submitMissionTwo, useMissionTwoAbility,
-    confirmMissionThree, useMissionThreeAbility, sendMissionFourMessage, proposeMissionFourTrade,
-    respondMissionFourTrade, submitMissionFourAnswer, castMissionFiveVote, useMissionFiveAbility,
-    revealMissionSixFragment, castMissionSixVote, useMissionSixAbility,
-  };
+export function useGuestBunkerLiveState({eventSlug='liza-viktor',dependencies,enabled=true}:Options={}){
+ const deps=useMemo<GuestBunkerLiveDependencies|null>(()=>dependencies??(enabled?browserDependencies(eventSlug):null),[dependencies,enabled,eventSlug]);const[state,setState]=useState<GuestBunkerQuestState|null>(null),[runtime,setRuntime]=useState<GuestBunkerReadRuntime|null>(null),[missionOne,setMissionOne]=useState<MissionOnePlayerReadModel>(),[missionTwo,setMissionTwo]=useState<MissionTwoPlayerReadModel>(),[missionThree,setMissionThree]=useState<MissionThreePlayerReadModel>(),[missionFour,setMissionFour]=useState<MissionFourPlayerReadModel>(),[missionFive,setMissionFive]=useState<MissionFivePlayerReadModel>(),[missionSix,setMissionSix]=useState<MissionSixPlayerReadModel>(),[unknownPassenger,setUnknownPassenger]=useState<UnknownPassengerPlayerModel>(),[final,setFinal]=useState<FinalPlayerModel>(),[runtimeLoading,setRuntimeLoading]=useState(Boolean(enabled&&deps?.loadRuntime)),[runtimeError,setRuntimeError]=useState(''),[feedback,setFeedback]=useState(''),[error,setError]=useState(''),[submitting,setSubmitting]=useState(false);const generation=useRef(0),runtimeStage=useRef<string|null>(null);
+ const clearNonCurrent=useCallback((stage:string|null)=>{if(stage!=='MISSION_01')setMissionOne(undefined);if(stage!=='MISSION_02')setMissionTwo(undefined);if(stage!=='MISSION_03')setMissionThree(undefined);if(stage!=='MISSION_04')setMissionFour(undefined);if(stage!=='MISSION_05')setMissionFive(undefined);if(stage!=='MISSION_06')setMissionSix(undefined);if(stage!=='UNKNOWN_PASSENGER')setUnknownPassenger(undefined);if(stage!=='FINAL_30')setFinal(undefined);},[]);
+ const reload=useCallback(async()=>{if(!enabled||!deps)return null;const request=++generation.current,latest=()=>request===generation.current,key=deps.getDeviceKey();if(deps.loadRuntime)setRuntimeLoading(true);if(deps.loadRuntime)void Promise.resolve(deps.loadRuntime(key)).then(next=>{if(!latest())return;setRuntime(next);setRuntimeError('');if(next.status==='active'&&'contractVersion'in next&&next.contractVersion===2){runtimeStage.current=next.state;clearNonCurrent(next.state);}else runtimeStage.current=null;}).catch(()=>{if(latest())setRuntimeError('Не удалось обновить защищённый архив. Показываем последние полученные данные.');}).finally(()=>{if(latest())setRuntimeLoading(false);});const projection=<T,R>(stage:string,loader:((k:string)=>Promise<T>)|undefined,map:(v:T)=>R|undefined,setter:(v:R|undefined|((c:R|undefined)=>R|undefined))=>void,reconnect?:(c:R)=>R)=>{if(!loader)return;void Promise.resolve(loader(key)).then(next=>{if(!latest())return;if(runtimeStage.current&&runtimeStage.current!==stage){setter(undefined);return;}setter(map(next));}).catch(()=>{if(!latest()||(runtimeStage.current&&runtimeStage.current!==stage)||!reconnect)return;setter((current:R|undefined)=>current?reconnect(current):current);});};projection('MISSION_01',deps.loadMissionOne,m01,setMissionOne,c=>({...c,connection:'reconnecting'}));projection('MISSION_02',deps.loadMissionTwo,m02,setMissionTwo,c=>({...c,connection:'reconnecting'}));projection('MISSION_03',deps.loadMissionThree,m03,setMissionThree,c=>({...c,connection:'reconnecting'}));projection('MISSION_04',deps.loadMissionFour,m04,setMissionFour,c=>({...c,connection:'reconnecting'}));projection('MISSION_05',deps.loadMissionFive,m05,setMissionFive,c=>({...c,connection:'reconnecting'}));projection('MISSION_06',deps.loadMissionSix,m06,setMissionSix,c=>({...c,connection:'reconnecting'}));projection('UNKNOWN_PASSENGER',deps.loadUnknownPassenger,unknown,setUnknownPassenger);projection('FINAL_30',deps.loadFinal,finalModel,setFinal,c=>({...c,connection:'reconnecting'}));try{const next=await deps.load(key);if(latest()){setState(next);setError('');}return next;}catch{if(latest())setError('Не удалось обновить Бункер. Повторяем подключение автоматически.');return null;}},[clearNonCurrent,deps,enabled]);
+ useEffect(()=>{if(!enabled||!deps)return;void reload();const u=deps.subscribeToRefresh?.(()=>void reload());return()=>{generation.current+=1;u?.();};},[deps,enabled,reload]);useEffect(()=>{if(!enabled||!deps)return;const ms=state?.status==='active'||runtime?.status==='active'?2000:5000,i=window.setInterval(()=>{if(document.visibilityState==='visible')void reload();},ms);return()=>window.clearInterval(i);},[deps,enabled,reload,runtime?.status,state?.status]);useEffect(()=>{if(!enabled||!deps)return;const r=()=>{if(document.visibilityState==='visible')void reload();};document.addEventListener('visibilitychange',r);window.addEventListener('focus',r);window.addEventListener('online',r);return()=>{document.removeEventListener('visibilitychange',r);window.removeEventListener('focus',r);window.removeEventListener('online',r);};},[deps,enabled,reload]);
+ const broadcast=useCallback(async()=>{try{await deps?.broadcastRefresh?.();}catch{}},[deps]);const authoritative=useCallback(async(action:()=>Promise<unknown>,copy?:string)=>{if(submitting)throw new Error('Bunker command is already in progress');setSubmitting(true);setFeedback('');try{await action();await broadcast();await reload();if(copy)setFeedback(copy);}finally{setSubmitting(false);}},[broadcast,reload,submitting]);
+ const submitMission=useCallback(async(stage:BunkerMissionStage,answer:string)=>{if(!deps||submitting)return;setSubmitting(true);try{const r=await deps.submitMission(deps.getDeviceKey(),stage,answer);setFeedback(r.status==='completed'?r.successCopy||'Задание выполнено.':'Ответ не подошёл.');await reload();}catch{setFeedback('Ответ не отправился.');}finally{setSubmitting(false);}},[deps,reload,submitting]);const submitFinalCode=useCallback(async(code:string)=>{if(!deps||submitting)return;setSubmitting(true);try{const r=await deps.submitFinalCode(deps.getDeviceKey(),code);setFeedback(r.status==='unlocked'?'Доступ получен.':r.status==='not_ready'?'Не все вагоны готовы.':'Код не подошёл.');await reload();}catch{setFeedback('Код не отправился.');}finally{setSubmitting(false);}},[deps,reload,submitting]);
+ const confirmMissionOne=useCallback((ids:string[])=>{if(!deps?.confirmMissionOne||!missionOne)throw new Error('M01 unavailable');return authoritative(()=>deps.confirmMissionOne!(deps.getDeviceKey(),{commandId:commandId('m01'),instanceId:missionOne.instanceId,instanceVersion:missionOne.instanceVersion,selectedGuestIds:ids}));},[authoritative,deps,missionOne]);const submitMissionTwo=useCallback((answers:string[])=>{if(!deps?.submitMissionTwo||!missionTwo)throw new Error('M02 unavailable');return authoritative(()=>deps.submitMissionTwo!(deps.getDeviceKey(),{commandId:commandId('m02'),instanceId:missionTwo.instanceId,answers}));},[authoritative,deps,missionTwo]);const useMissionTwoAbility=useCallback((abilityKey:'system_access'|'terminal_hack')=>{if(!deps?.useMissionTwoAbility||!missionTwo)throw new Error('M02 ability unavailable');return authoritative(()=>deps.useMissionTwoAbility!(deps.getDeviceKey(),{commandId:commandId('m02-ability'),instanceId:missionTwo.instanceId,abilityKey}));},[authoritative,deps,missionTwo]);const confirmMissionThree=useCallback((selectedProblems:string[])=>{if(!deps?.confirmMissionThree||!missionThree)throw new Error('M03 unavailable');return authoritative(()=>deps.confirmMissionThree!(deps.getDeviceKey(),{commandId:commandId('m03'),instanceId:missionThree.instanceId,instanceVersion:missionThree.instanceVersion,selectedProblems}));},[authoritative,deps,missionThree]);const useMissionThreeAbility=useCallback((problemKey:string)=>{if(!deps?.useMissionThreeAbility||!missionThree)throw new Error('M03 ability unavailable');return authoritative(()=>deps.useMissionThreeAbility!(deps.getDeviceKey(),{commandId:commandId('m03-ability'),instanceId:missionThree.instanceId,problemKey}));},[authoritative,deps,missionThree]);const sendMissionFourMessage=useCallback((message:string)=>{if(!deps?.sendMissionFourMessage||!missionFour)throw new Error('M04 unavailable');return authoritative(()=>deps.sendMissionFourMessage!(deps.getDeviceKey(),{commandId:commandId('m04-message'),instanceId:missionFour.instanceId,message}));},[authoritative,deps,missionFour]);const proposeMissionFourTrade=useCallback((input:{targetWagonNumber:number;itemKey:string;quantity:number})=>{if(!deps?.proposeMissionFourTrade||!missionFour)throw new Error('M04 trade unavailable');return authoritative(()=>deps.proposeMissionFourTrade!(deps.getDeviceKey(),{commandId:commandId('m04-trade'),instanceId:missionFour.instanceId,...input}));},[authoritative,deps,missionFour]);const respondMissionFourTrade=useCallback((transferId:string,response:'accept'|'reject')=>{if(!deps?.respondMissionFourTrade||!missionFour)throw new Error('M04 response unavailable');return authoritative(()=>deps.respondMissionFourTrade!(deps.getDeviceKey(),{commandId:commandId('m04-response'),instanceId:missionFour.instanceId,transferId,response}));},[authoritative,deps,missionFour]);const submitMissionFourAnswer=useCallback((answer:string)=>{if(!deps?.submitMissionFourAnswer||!missionFour)throw new Error('M04 answer unavailable');return authoritative(()=>deps.submitMissionFourAnswer!(deps.getDeviceKey(),{commandId:commandId('m04-answer'),instanceId:missionFour.instanceId,answer}));},[authoritative,deps,missionFour]);const castMissionFiveVote=useCallback((vote:'A'|'B')=>{if(!deps?.castMissionFiveVote||!missionFive)throw new Error('M05 unavailable');return authoritative(()=>deps.castMissionFiveVote!(deps.getDeviceKey(),{commandId:commandId('m05-vote'),instanceId:missionFive.instanceId,vote}));},[authoritative,deps,missionFive]);const useMissionFiveAbility=useCallback(()=>{if(!deps?.useMissionFiveAbility||!missionFive)throw new Error('M05 ability unavailable');return authoritative(()=>deps.useMissionFiveAbility!(deps.getDeviceKey(),{commandId:commandId('m05-ability'),instanceId:missionFive.instanceId}));},[authoritative,deps,missionFive]);const revealMissionSixFragment=useCallback(()=>{if(!deps?.revealMissionSixFragment||!missionSix)throw new Error('M06 reveal unavailable');return authoritative(()=>deps.revealMissionSixFragment!(deps.getDeviceKey(),{commandId:commandId('m06-fragment'),instanceId:missionSix.instanceId,fragmentKey:missionSix.privateFragment.key}));},[authoritative,deps,missionSix]);const castMissionSixVote=useCallback((vote:'A'|'B'|'C')=>{if(!deps?.castMissionSixVote||!missionSix)throw new Error('M06 vote unavailable');return authoritative(()=>deps.castMissionSixVote!(deps.getDeviceKey(),{commandId:commandId('m06-vote'),instanceId:missionSix.instanceId,vote}));},[authoritative,deps,missionSix]);const useMissionSixAbility=useCallback(()=>{if(!deps?.useMissionSixAbility||!missionSix)throw new Error('M06 ability unavailable');return authoritative(()=>deps.useMissionSixAbility!(deps.getDeviceKey(),{commandId:commandId('m06-ability'),instanceId:missionSix.instanceId}));},[authoritative,deps,missionSix]);const requestFinalAccess=useCallback((values:FinalValues)=>{if(!deps?.requestFinalAccess||!final)throw new Error('Final unavailable');return authoritative(()=>deps.requestFinalAccess!(deps.getDeviceKey(),{commandId:commandId('final-access'),values}),'Версия отправлена. Терминал сохранил все подтверждённые параметры.');},[authoritative,deps,final]);
+ return{state,runtime,missionOne,missionTwo,missionThree,missionFour,missionFive,missionSix,unknownPassenger,final,runtimeLoading,runtimeError,feedback,error,submitting,reload,submitMission,submitFinalCode,confirmMissionOne,submitMissionTwo,useMissionTwoAbility,confirmMissionThree,useMissionThreeAbility,sendMissionFourMessage,proposeMissionFourTrade,respondMissionFourTrade,submitMissionFourAnswer,castMissionFiveVote,useMissionFiveAbility,revealMissionSixFragment,castMissionSixVote,useMissionSixAbility,requestFinalAccess};
 }
