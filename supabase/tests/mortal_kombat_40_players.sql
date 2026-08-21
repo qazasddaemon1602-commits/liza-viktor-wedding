@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(23);
+select plan(28);
 
 insert into auth.users(id)
 values ('00000000-0000-4000-8000-000000009401');
@@ -135,6 +135,54 @@ select throws_ok(
   'one player stays a preparation state'
 );
 
+do $$
+begin
+  perform pg_temp.prepare_mk_count(3);
+end;
+$$;
+
+select is(
+  (
+    select public.owner_swap_mk_seeds(
+      (array_agg(r.id order by r.id))[1],
+      (array_agg(r.id order by r.id))[2]
+    )->>'status'
+    from public.mk_registrations r
+    join public.mk_tournaments t on t.id = r.tournament_id
+    where t.event_id = '00000000-0000-4000-8000-000000009402'
+      and r.status = 'active'
+  ),
+  'swapped',
+  'owner can swap two seeded players before the draw'
+);
+
+select is(
+  (
+    select public.owner_replace_mk_player(
+      (array_agg(r.id order by r.id))[1],
+      '00000000-0000-4000-8000-000000000004'
+    )->>'status'
+    from public.mk_registrations r
+    join public.mk_tournaments t on t.id = r.tournament_id
+    where t.event_id = '00000000-0000-4000-8000-000000009402'
+      and r.status = 'active'
+  ),
+  'replaced',
+  'owner can replace a prepared player with another event guest'
+);
+
+select is(
+  (
+    select public.owner_remove_mk_player((array_agg(r.id order by r.id))[1])->>'status'
+    from public.mk_registrations r
+    join public.mk_tournaments t on t.id = r.tournament_id
+    where t.event_id = '00000000-0000-4000-8000-000000009402'
+      and r.status = 'active'
+  ),
+  'withdrawn',
+  'owner can remove a prepared player without a composite-row cast failure'
+);
+
 select is(pg_temp.finalize_mk_count(2)->>'matches', '1', 'two players build one final');
 select is(pg_temp.finalize_mk_count(3)->>'matches', '3', 'three players build a four-slot tree');
 select is(pg_temp.finalize_mk_count(9)->>'matches', '15', 'nine players build a sixteen-slot tree');
@@ -189,6 +237,12 @@ order by m.position
 limit 1;
 
 select is(
+  (select public.owner_set_current_mk_match(id)->>'status' from r64_probe),
+  'current',
+  'a real r64 fight can be selected on the projector'
+);
+
+select is(
   (select public.owner_record_mk_winner(id, player1_guest_id, false)->>'status' from r64_probe),
   'recorded',
   'a real r64 fight result propagates through the sixty-four-slot tree'
@@ -210,6 +264,26 @@ select is(
   (select m.status from public.mk_matches m join r64_probe p on p.id = m.id),
   'ready',
   'undo restores the r64 fight to its ready state'
+);
+
+select is(
+  (
+    select count(*)::text
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'owner_remove_mk_player',
+        'owner_swap_mk_seeds',
+        'owner_replace_mk_player',
+        'owner_set_current_mk_match',
+        'owner_record_mk_winner',
+        'owner_undo_mk_result'
+      )
+      and 'search_path=""' = any(p.proconfig)
+  ),
+  '6',
+  'all repaired SECURITY DEFINER functions keep an empty search_path'
 );
 
 do $$
