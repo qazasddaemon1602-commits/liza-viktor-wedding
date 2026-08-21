@@ -1,0 +1,16 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(11);
+select has_function('public','get_guest_bunker_v2_final',array['text','text'],'final guest read model');
+select has_function('public','get_bunker_v2_final_screen',array['text'],'final TV read model');
+select has_function('public','get_owner_bunker_v2_final',array['uuid'],'final owner read model');
+select has_function('public','owner_bunker_v2_add_final_time',array['uuid','integer'],'owner can add bounded final time');
+select has_function('public','owner_bunker_v2_final_hint',array['uuid'],'owner can advance hints');
+select has_function('public','owner_bunker_v2_emergency_open',array['uuid'],'owner can emergency-open final');
+select ok(pg_get_functiondef('public.submit_bunker_command(text,text,uuid,text,jsonb)'::regprocedure)~'_submit_bunker_command_final','command router includes final request_access');
+select ok(pg_get_functiondef('public._submit_bunker_command_final(text,text,uuid,text,jsonb)'::regprocedure)~'for update','final access is authoritative and serialized');
+select ok(pg_get_functiondef('public.get_bunker_v2_final_screen(text)'::regprocedure)!~'4719' and pg_get_functiondef('public.get_bunker_v2_final_screen(text)'::regprocedure)!~'LV0830','TV source does not contain final secrets');
+select ok(not has_function_privilege('anon','public.owner_bunker_v2_add_final_time(uuid,integer)','EXECUTE'),'anonymous users cannot change final time');
+select ok(not has_function_privilege('anon','public.owner_bunker_v2_emergency_open(uuid)','EXECUTE'),'anonymous users cannot force the bunker open');
+select * from finish();
+rollback;
