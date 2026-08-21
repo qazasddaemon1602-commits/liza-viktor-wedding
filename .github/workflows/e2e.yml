@@ -14,6 +14,7 @@ on:
   push:
     branches:
       - feat/wedding-live-hub-mvp-ci
+      - feat/bunker-v2-completion-20260822
     paths:
       - 'src/**'
       - 'e2e/**'
@@ -64,4 +65,3 @@ jobs:
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
-
