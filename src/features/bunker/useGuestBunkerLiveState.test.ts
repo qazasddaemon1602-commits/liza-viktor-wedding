@@ -98,7 +98,8 @@ describe('useGuestBunkerLiveState', () => {
     const confirmMissionOne = vi.fn().mockResolvedValue({
       contractVersion: 2, status: 'accepted', commandId: 'command-1', commandType: 'mission_confirm',
     });
-    const dependencies = deps({ loadMissionOne, confirmMissionOne });
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+    const dependencies = deps({ loadMissionOne, confirmMissionOne, broadcastRefresh });
     const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
 
     await waitFor(() => expect(result.current.missionOne).toMatchObject({
@@ -112,6 +113,7 @@ describe('useGuestBunkerLiveState', () => {
       selectedGuestIds: ['guest-1'],
       commandId: expect.any(String),
     }));
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('recovers a completed authoritative M01 outcome after an ambiguous confirm failure', async () => {
@@ -139,9 +141,11 @@ describe('useGuestBunkerLiveState', () => {
     const loadMissionOne = vi.fn()
       .mockResolvedValueOnce(active)
       .mockResolvedValueOnce(completed);
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
     const dependencies = deps({
       loadMissionOne,
       confirmMissionOne: vi.fn().mockRejectedValue(new Error('response lost')),
+      broadcastRefresh,
     });
     const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.missionOne?.status).toBe('active'));
@@ -152,6 +156,7 @@ describe('useGuestBunkerLiveState', () => {
     expect(result.current.missionOne).toMatchObject({
       status: 'completed', selectedGuestIds: ['guest-1'],
     });
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('rereads an active M01 after an ambiguous confirm failure before allowing retry', async () => {
@@ -172,9 +177,11 @@ describe('useGuestBunkerLiveState', () => {
     };
     const loadMissionOne = vi.fn().mockResolvedValue(active);
     const failure = new Error('response lost');
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
     const dependencies = deps({
       loadMissionOne,
       confirmMissionOne: vi.fn().mockRejectedValue(failure),
+      broadcastRefresh,
     });
     const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.missionOne?.status).toBe('active'));
@@ -184,6 +191,7 @@ describe('useGuestBunkerLiveState', () => {
 
     expect(loadMissionOne).toHaveBeenCalledTimes(2);
     expect(result.current.missionOne).toMatchObject({ status: 'active', connection: 'online' });
+    expect(broadcastRefresh).not.toHaveBeenCalled();
   });
 
   it('keeps a reconnected late V2 guest on the active polling cadence', async () => {

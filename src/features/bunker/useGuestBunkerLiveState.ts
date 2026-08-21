@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
-import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
+import {
+  broadcastBunkerRefresh,
+  subscribeToBunkerRefresh,
+  type BunkerRealtimeClient,
+} from './bunker.realtime';
 import type { BunkerRpcClient } from './bunker.service';
 import {
   getGuestBunkerQuest,
@@ -35,6 +39,7 @@ export type GuestBunkerLiveDependencies = {
     deviceKey: string,
     input: Omit<ConfirmMissionOneSelectionInput, 'eventSlug' | 'deviceKey'>,
   ) => Promise<unknown>;
+  broadcastRefresh?: () => Promise<void>;
   submitMission: (
     deviceKey: string,
     stage: BunkerMissionStage,
@@ -71,6 +76,7 @@ function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
     }),
     submitMission: (key, stage, answer) => submitBunkerMission(rpcClient, eventSlug, key, stage, answer),
     submitFinalCode: (key, code) => submitBunkerFinalCode(rpcClient, eventSlug, key, code),
+    broadcastRefresh: () => broadcastBunkerRefresh(realtimeClient, eventSlug),
     subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
   };
 }
@@ -253,6 +259,13 @@ export function useGuestBunkerLiveState({
       throw new Error('M01 confirmation is unavailable');
     }
     const deviceKey = deps.getDeviceKey();
+    const broadcastCompletion = async () => {
+      try {
+        await deps.broadcastRefresh?.();
+      } catch {
+        // Completion is authoritative; polling remains the fallback for a lost hint.
+      }
+    };
     try {
       await deps.confirmMissionOne(deviceKey, {
         commandId: commandId(),
@@ -260,6 +273,7 @@ export function useGuestBunkerLiveState({
         instanceVersion: missionOne.instanceVersion,
         selectedGuestIds,
       });
+      await broadcastCompletion();
       await reload();
     } catch (failure) {
       if (deps.loadMissionOne) {
@@ -270,7 +284,10 @@ export function useGuestBunkerLiveState({
           if (
             next?.status === 'completed'
             && next.instanceId === missionOne.instanceId
-          ) return;
+          ) {
+            await broadcastCompletion();
+            return;
+          }
         } catch {
           setMissionOne((current) => (
             current ? { ...current, connection: 'reconnecting' } : current
