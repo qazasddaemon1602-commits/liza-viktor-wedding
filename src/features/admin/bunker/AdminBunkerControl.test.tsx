@@ -151,7 +151,7 @@ describe('AdminBunkerControl', () => {
     expect(screen.getByRole('status')).toHaveTextContent('РЕКОМЕНДАЦИЯ · 3');
   });
 
-  it('shows authoritative connected-TV telemetry, current stage, and the stage primary action', async () => {
+  it('shows connected-TV telemetry without treating video or audio readiness as Bunker state', async () => {
     let emitPresence: ((presence: { screenId: string; videoReady: boolean; audioArmed: boolean }) => void) | undefined;
     const bunkerDependencies = dependencies({
       load: vi.fn().mockResolvedValue({
@@ -182,10 +182,13 @@ describe('AdminBunkerControl', () => {
     });
     const tv = screen.getByRole('listitem', { name: /tv-hall/i });
     expect(tv).toHaveTextContent('ОНЛАЙН');
-    expect(tv).toHaveTextContent('ЗВУК НЕ ГОТОВ');
+    expect(tv).not.toHaveTextContent('ВИДЕО ГОТОВО');
+    expect(tv).not.toHaveTextContent('ВИДЕО НЕ ГОТОВО');
+    expect(tv).not.toHaveTextContent('ЗВУК ГОТОВ');
+    expect(tv).not.toHaveTextContent('ЗВУК НЕ ГОТОВ');
   });
 
-  it('marks an expired TV heartbeat offline and presents readiness only as last-known data', async () => {
+  it('marks an expired TV heartbeat offline without retaining media readiness checks', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-30T12:00:00.000Z'));
     let emitPresence: ((presence: { screenId: string; videoReady: boolean; audioArmed: boolean }) => void) | undefined;
@@ -215,8 +218,8 @@ describe('AdminBunkerControl', () => {
     expect(expiredTv).toHaveTextContent('НЕ В СЕТИ');
     expect(expiredTv).toHaveTextContent('16 С НАЗАД');
     expect(expiredTv).toHaveTextContent('НЕИЗВЕСТНО СЕЙЧАС');
-    expect(expiredTv).toHaveTextContent('ПОСЛЕДНИЕ ДАННЫЕ · ВИДЕО ГОТОВО · ЗВУК ГОТОВ');
-    expect(within(expiredTv).queryByText('ВИДЕО ГОТОВО · ЗВУК ГОТОВ')).not.toBeInTheDocument();
+    expect(expiredTv).not.toHaveTextContent('ВИДЕО');
+    expect(expiredTv).not.toHaveTextContent('ЗВУК');
   });
 
   it('requires a deliberate second confirmation before starting the 30 minute emergency', async () => {

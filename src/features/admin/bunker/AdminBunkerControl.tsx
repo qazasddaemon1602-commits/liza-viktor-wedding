@@ -659,19 +659,15 @@ export function AdminBunkerControl({
               const ageMs = Math.max(0, presenceNowMs - screen.receivedAt);
               const ageSeconds = Math.floor(ageMs / 1_000);
               const online = ageMs <= PREMIERE_SCREEN_PRESENCE_TTL_MS;
-              const readiness = `${screen.videoReady ? 'ВИДЕО ГОТОВО' : 'ВИДЕО НЕ ГОТОВО'} · ${screen.audioArmed ? 'ЗВУК ГОТОВ' : 'ЗВУК НЕ ГОТОВ'}`;
               return (
                 <li key={screen.screenId} aria-label={screen.screenId}>
                   <div>
                     <strong>{screen.screenId}</strong>
                     <span>{online ? 'ОНЛАЙН' : 'НЕ В СЕТИ'}</span>
                   </div>
-                  {online ? (
-                    <p>{readiness}</p>
-                  ) : (
+                  {!online && (
                     <div className="admin-bunker-tv__stale">
                       <strong>НЕИЗВЕСТНО СЕЙЧАС</strong>
-                      <p>ПОСЛЕДНИЕ ДАННЫЕ · {readiness}</p>
                     </div>
                   )}
                   <time>ПОСЛЕДНИЙ СИГНАЛ · {ageSeconds} С НАЗАД</time>

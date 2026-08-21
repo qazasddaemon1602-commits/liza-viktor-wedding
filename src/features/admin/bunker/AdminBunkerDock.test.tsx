@@ -223,6 +223,56 @@ describe('AdminBunkerDock dashboard scheduling', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps authenticated owner data visible when the optional M01 read model is unavailable', async () => {
+    render(
+      <AdminBunkerDock dependencies={{
+        loadDashboard: vi.fn().mockResolvedValue(
+          dashboard({ wagonCount: 3, guestCount: 20, locked: true }),
+        ),
+        applyDistribution: vi.fn(),
+        bunkerControl: bunkerControlDependencies(),
+        loadMissionOne: vi.fn().mockRejectedValue(new Error('function is not deployed yet')),
+      }} />,
+    );
+    await flushPromises();
+
+    expect(screen.getByRole('heading', { name: 'БУНКЕР' })).toBeInTheDocument();
+    expect(screen.getByText('OWNER-ДАННЫЕ ПОДТВЕРЖДЕНЫ')).toBeInTheDocument();
+    expect(screen.getByText('20')).toBeInTheDocument();
+    expect(screen.queryByText('OWNER-ДАННЫЕ НЕДОСТУПНЫ')).not.toBeInTheDocument();
+  });
+
+  it('retains the last authenticated owner dashboard during a temporary poll failure', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-30T12:00:00.000Z'));
+    const loadDashboard = vi.fn()
+      .mockResolvedValueOnce(dashboard({ wagonCount: 3, guestCount: 20, locked: true }))
+      .mockRejectedValueOnce(new Error('network request failed'));
+
+    render(
+      <AdminBunkerDock
+        dependencies={{
+          loadDashboard,
+          applyDistribution: vi.fn(),
+          bunkerControl: bunkerControlDependencies(),
+        }}
+      />,
+    );
+    await flushPromises();
+
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('heading', { name: 'БУНКЕР' })).toBeInTheDocument();
+    expect(screen.getByText('20')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('OWNER-ДАННЫЕ СОХРАНЕНЫ');
+    expect(screen.getByRole('status')).toHaveTextContent('ПЕРЕПОДКЛЮЧЕНИЕ');
+    expect(screen.queryByText('OWNER-ДАННЫЕ НЕДОСТУПНЫ')).not.toBeInTheDocument();
+  });
+
   it('fails closed and removes owner-only counts when the latest dashboard read loses access', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-30T12:00:00.000Z'));

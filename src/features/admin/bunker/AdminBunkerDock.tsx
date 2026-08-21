@@ -24,6 +24,7 @@ import {
   subscribeToBunkerRefresh,
   type BunkerRealtimeClient,
 } from '../../bunker/bunker.realtime';
+import { isOwnerSessionExpired } from '../ownerSession';
 
 const EVENT_SLUG = 'liza-viktor';
 
@@ -92,7 +93,7 @@ export function AdminBunkerDock({
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [missionOneRead, setMissionOneRead] = useState<MissionOneOwnerReadModel | null>(null);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
-  const [availability, setAvailability] = useState<'loading' | 'current' | 'unavailable'>(
+  const [availability, setAvailability] = useState<'loading' | 'current' | 'stale' | 'unavailable'>(
     deps ? 'loading' : 'unavailable',
   );
   const dashboardRef = useRef<AdminDashboard | null>(null);
@@ -116,6 +117,14 @@ export function AdminBunkerDock({
     setMissionOneRead(null);
   }, []);
 
+  const handleDashboardFailure = useCallback((error: unknown) => {
+    if (isOwnerSessionExpired(error) || !dashboardRef.current) {
+      failClosed();
+      return;
+    }
+    setAvailability('stale');
+  }, [failClosed]);
+
   const loadMissionOne = useCallback(async (next: AdminDashboard) => {
     if (!deps?.loadMissionOne) return null;
     return deps.loadMissionOne(next.event.id);
@@ -130,21 +139,28 @@ export function AdminBunkerDock({
 
     try {
       const next = await deps.loadDashboard();
-      const nextMissionOne = await loadMissionOne(next);
       if (mountedRef.current && requestId === latestRequestRef.current) {
         storeDashboard(next);
-        setMissionOneRead(nextMissionOne);
       }
-    } catch {
+      try {
+        const nextMissionOne = await loadMissionOne(next);
+        if (mountedRef.current && requestId === latestRequestRef.current) {
+          setMissionOneRead(nextMissionOne);
+        }
+      } catch {
+        // M01 is an optional progressive enhancement. A missing or temporarily
+        // unavailable mission read model must not erase an authenticated owner dashboard.
+      }
+    } catch (error) {
       if (mountedRef.current && requestId === latestRequestRef.current) {
-        failClosed();
+        handleDashboardFailure(error);
       }
     } finally {
       if (activePollRequestRef.current === requestId) {
         activePollRequestRef.current = null;
       }
     }
-  }, [deps, failClosed, loadMissionOne, storeDashboard]);
+  }, [deps, handleDashboardFailure, loadMissionOne, storeDashboard]);
 
   const refreshMissionOne = useCallback(async () => {
     const currentDashboard = dashboardRef.current;
@@ -192,14 +208,20 @@ export function AdminBunkerDock({
       const requestId = ++latestRequestRef.current;
       try {
         const fresh = await deps.loadDashboard();
-        const freshMissionOne = await loadMissionOne(fresh);
         if (mountedRef.current && requestId === latestRequestRef.current) {
           storeDashboard(fresh);
-          setMissionOneRead(freshMissionOne);
+        }
+        try {
+          const freshMissionOne = await loadMissionOne(fresh);
+          if (mountedRef.current && requestId === latestRequestRef.current) {
+            setMissionOneRead(freshMissionOne);
+          }
+        } catch {
+          // Keep both the authenticated dashboard and the last known M01 model.
         }
       } catch (error) {
         if (mountedRef.current && requestId === latestRequestRef.current) {
-          failClosed();
+          handleDashboardFailure(error);
         }
         throw error;
       }
@@ -247,7 +269,7 @@ export function AdminBunkerDock({
     );
   }
 
-  if (!dashboard || availability !== 'current') {
+  if (!dashboard || availability === 'loading') {
     return (
       <aside id="admin-bunker" className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
         <div className="admin-bunker-dock__freshness" role="status">
@@ -261,7 +283,11 @@ export function AdminBunkerDock({
     <aside id="admin-bunker" className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
       {lastSuccessAt && (
         <div className="admin-bunker-dock__freshness" role="status">
-          <span>OWNER-ДАННЫЕ ПОДТВЕРЖДЕНЫ</span>
+          <span>
+            {availability === 'stale'
+              ? 'OWNER-ДАННЫЕ СОХРАНЕНЫ · ПЕРЕПОДКЛЮЧЕНИЕ'
+              : 'OWNER-ДАННЫЕ ПОДТВЕРЖДЕНЫ'}
+          </span>
           <time dateTime={lastSuccessAt}>
             {new Intl.DateTimeFormat('ru-RU', {
               hour: '2-digit', minute: '2-digit', second: '2-digit',
