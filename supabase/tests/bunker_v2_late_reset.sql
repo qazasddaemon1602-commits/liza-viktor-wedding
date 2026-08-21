@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(28);
+select plan(32);
 
 select function_returns(
   'public', 'get_guest_bunker_v2_runtime', array['text', 'text'], 'jsonb',
@@ -66,13 +66,40 @@ select ok(
   ) ~ 'character_status(.|\n)*saved'
     and pg_get_functiondef(
       'public._ensure_late_bunker_guest(uuid,uuid,uuid)'::regprocedure
-    ) !~ '_refresh_bunker_run_guest_plan',
-  'the V2 late-profile writer saves the character without refreshing the plan'
+    ) !~ '_refresh_bunker_run_guest_plan'
+    and pg_get_functiondef(
+      'public._ensure_late_bunker_guest(uuid,uuid,uuid)'::regprocedure
+    ) ~ 'same_wagon_usage_count'
+    and pg_get_functiondef(
+      'public._ensure_late_bunker_guest(uuid,uuid,uuid)'::regprocedure
+    ) ~ 'md5'
+    and pg_get_functiondef(
+      'public._ensure_late_bunker_guest(uuid,uuid,uuid)'::regprocedure
+    ) !~ 'random\(',
+  'the V2 late-profile writer is saved, frozen-plan-safe, wagon-aware and deterministic'
 );
 
 select has_trigger(
   'public', 'bunker_ability_uses', 'bunker_v2_ability_instance_incomplete',
   'ability use is guarded by the authoritative instance status'
+);
+
+select ok(
+  upper((
+    select pg_get_triggerdef(trigger.oid)
+    from pg_trigger trigger
+    where trigger.tgrelid = 'public.bunker_ability_uses'::regclass
+      and trigger.tgname = 'bunker_v2_ability_instance_incomplete'
+      and not trigger.tgisinternal
+  )) ~ 'BEFORE INSERT OR UPDATE ON'
+  and upper((
+    select pg_get_triggerdef(trigger.oid)
+    from pg_trigger trigger
+    where trigger.tgrelid = 'public.bunker_ability_uses'::regclass
+      and trigger.tgname = 'bunker_v2_ability_instance_incomplete'
+      and not trigger.tgisinternal
+  )) !~ 'UPDATE OF',
+  'ability guard fires for every INSERT and UPDATE, including status-only changes'
 );
 
 select ok(
@@ -356,8 +383,6 @@ select lives_ok(
   $ability$,
   'a late guest may use an ability in a future incomplete instance'
 );
-delete from public.bunker_ability_uses
-where command_id = '30000000-0000-4000-8000-000000000024';
 update public.bunker_mission_instances instance
 set status = 'completed', started_at = now(), completed_at = now()
 from bunker_v2_late_baseline baseline
@@ -389,6 +414,155 @@ select throws_ok(
   $ability$,
   '55000', 'Bunker ability instance is complete',
   'a late guest cannot use an ability in a completed instance'
+);
+
+select throws_ok(
+  $$ update public.bunker_ability_uses
+     set status = 'committed', committed_at = now()
+     where command_id = '30000000-0000-4000-8000-000000000024' $$,
+  '55000', 'Bunker ability instance is complete',
+  'a pending ability cannot commit after its instance completes'
+);
+
+insert into public.events(
+  id, slug, name, expected_guest_count, owner_user_id, next_ticket_sequence
+)
+values (
+  '32000000-0000-4000-8000-000000000002',
+  'bunker-v2-late-repeat-race', 'Bunker V2 late repeat race', 40,
+  '30000000-0000-4000-8000-000000000001', 37
+);
+insert into public.event_state(event_id)
+values ('32000000-0000-4000-8000-000000000002');
+insert into public.carriages(
+  id, event_id, number, label, accent_hex, visual_mark, sort_order, enabled
+)
+values
+  ('32000000-0000-4000-8000-000000000011', '32000000-0000-4000-8000-000000000002', 1, 'ВАГОН №1', '#333333', 'I', 1, true),
+  ('32000000-0000-4000-8000-000000000012', '32000000-0000-4000-8000-000000000002', 2, 'ВАГОН №2', '#444444', 'II', 2, true);
+insert into public.guests(
+  id, event_id, first_name, last_name, affiliation_type, carriage_id,
+  ticket_sequence, ticket_number
+)
+select
+  ('32000000-0000-4000-9000-' || lpad(sequence::text, 12, '0'))::uuid,
+  '32000000-0000-4000-8000-000000000002',
+  'Гость', sequence::text, 'common',
+  case when mod(sequence, 2) = 1
+    then '32000000-0000-4000-8000-000000000011'::uuid
+    else '32000000-0000-4000-8000-000000000012'::uuid
+  end,
+  sequence, 'AR-' || lpad(sequence::text, 3, '0')
+from generate_series(1, 36) registered(sequence);
+insert into public.bunker_state(event_id)
+values ('32000000-0000-4000-8000-000000000002');
+select public.owner_prepare_bunker_v2(
+  '32000000-0000-4000-8000-000000000002',
+  '32000000-0000-4000-8000-000000000020'
+);
+
+create temporary table bunker_v2_late_repeat_adversary(
+  guest_id uuid primary key,
+  forbidden_profile_key text not null,
+  carriage_id uuid not null
+) on commit drop;
+
+do $$
+declare
+  v_run_nonce uuid;
+  v_sequence integer;
+  v_guest_id uuid;
+  v_forbidden_profile_key text;
+  v_carriage_id uuid;
+begin
+  select state.run_nonce into v_run_nonce
+  from public.bunker_state state
+  where state.event_id = '32000000-0000-4000-8000-000000000002';
+
+  for v_sequence in 37..40 loop
+    v_guest_id := (
+      '32000000-0000-4000-9000-' || lpad(v_sequence::text, 12, '0')
+    )::uuid;
+
+    select candidate.key
+    into v_forbidden_profile_key
+    from public.bunker_character_profiles candidate
+    left join lateral (
+      select count(*)::integer as usage_count
+      from public.bunker_guest_profiles assigned
+      where assigned.run_nonce = v_run_nonce
+        and assigned.character_profile_key = candidate.key
+    ) usage on true
+    where candidate.enabled
+    order by usage.usage_count,
+      md5(v_run_nonce::text || ':late:' || v_guest_id::text || ':' || candidate.key)
+    limit 1;
+
+    select guest.carriage_id
+    into v_carriage_id
+    from public.bunker_guest_profiles assigned
+    join public.guests guest on guest.id = assigned.guest_id
+    where assigned.run_nonce = v_run_nonce
+      and assigned.character_profile_key = v_forbidden_profile_key
+    order by guest.id
+    limit 1;
+
+    insert into bunker_v2_late_repeat_adversary(
+      guest_id, forbidden_profile_key, carriage_id
+    ) values (v_guest_id, v_forbidden_profile_key, v_carriage_id);
+
+    insert into public.guests(
+      id, event_id, first_name, last_name, affiliation_type, carriage_id,
+      ticket_sequence, ticket_number
+    ) values (
+      v_guest_id, '32000000-0000-4000-8000-000000000002',
+      'Поздний', v_sequence::text, 'common', v_carriage_id,
+      v_sequence, 'AR-' || lpad(v_sequence::text, 3, '0')
+    );
+  end loop;
+end;
+$$;
+
+select ok(
+  not exists (
+    select 1
+    from bunker_v2_late_repeat_adversary adversary
+    join public.bunker_guest_profiles profile
+      on profile.guest_id = adversary.guest_id
+    where profile.character_profile_key = adversary.forbidden_profile_key
+  ),
+  'late guests 37..40 avoid a profile already present in their wagon when another repeat is valid'
+);
+select ok(
+  (
+    select count(*) = 40
+      and count(distinct profile.character_profile_key) = 36
+      and max(frequency.usage_count) = 2
+      and count(*) filter (where frequency.usage_count = 2) = 8
+    from public.bunker_guest_profiles profile
+    cross join lateral (
+      select count(*)::integer as usage_count
+      from public.bunker_guest_profiles same_profile
+      where same_profile.run_nonce = profile.run_nonce
+        and same_profile.character_profile_key = profile.character_profile_key
+    ) frequency
+    where profile.run_nonce = (
+      select state.run_nonce from public.bunker_state state
+      where state.event_id = '32000000-0000-4000-8000-000000000002'
+    )
+  )
+  and not exists (
+    select 1
+    from public.bunker_guest_profiles profile
+    join public.guests guest on guest.id = profile.guest_id
+    where profile.run_nonce = (
+      select state.run_nonce from public.bunker_state state
+      where state.event_id = '32000000-0000-4000-8000-000000000002'
+    )
+    group by profile.character_profile_key
+    having count(*) = 2 and count(distinct guest.carriage_id) < 2
+  ),
+  'late repeats stay distinct, deterministic, frequency-two and cross-wagon through guest 40'
 );
 
 insert into public.questions(id, event_id, text, sort_order, enabled)

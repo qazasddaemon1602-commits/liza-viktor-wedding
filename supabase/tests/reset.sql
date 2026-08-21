@@ -2,7 +2,43 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(27);
+select plan(29);
+
+select ok(
+  pg_get_functiondef(
+    'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure
+  ) ~ 'for no key update'
+  and pg_get_functiondef(
+    'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure
+  ) !~ E'for[\\s\\n]+update'
+  and coalesce('search_path=public' = any((
+    select proconfig from pg_proc
+    where oid = 'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure
+  )), false)
+  and has_function_privilege(
+    'anon', 'public.register_guest(text,text,text,text,text,text,boolean)', 'EXECUTE'
+  )
+  and has_function_privilege(
+    'authenticated', 'public.register_guest(text,text,text,text,text,text,boolean)', 'EXECUTE'
+  ),
+  'registration serializes with NO KEY UPDATE so event FK KEY SHARE remains compatible'
+);
+
+select ok(
+  pg_get_functiondef(
+    'public.owner_prepare_bunker_v2(uuid,uuid)'::regprocedure
+  ) ~ 'for update'
+  and pg_get_functiondef(
+    'public.owner_prepare_bunker_v2(uuid,uuid)'::regprocedure
+  ) ~ 'insert into public.bunker_game_runs'
+  and pg_get_functiondef(
+    'public.owner_transition_bunker_v2(uuid,text,uuid)'::regprocedure
+  ) ~ 'insert into public.bunker_command_receipts'
+  and pg_get_functiondef(
+    'public.owner_reset_bunker_progress(uuid,uuid)'::regprocedure
+  ) ~ 'insert into public.bunker_progress_reset_receipts',
+  'state-first owner commands are audited for event-FK child writes after their state lock'
+);
 
 select function_returns('public', 'owner_reset_bunker_progress', array['uuid', 'uuid'], 'jsonb', 'a dedicated owner RPC resets only Bunker progress');
 select ok(
