@@ -1,8 +1,9 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
+create extension if not exists dblink with schema extensions;
 
-select plan(23);
+select plan(29);
 
 select function_returns(
   'public', 'submit_bunker_command',
@@ -152,6 +153,28 @@ select throws_ok(
   ) $$,
   '22023', 'M01 selection must exactly match frozen quota',
   'mission confirmation rejects a selection below the frozen quota'
+);
+select throws_ok(
+  $$ select public.submit_bunker_command(
+    'bunker-v2-m01-m02', 'm01-device-one',
+    '41000000-0000-4000-8000-000000000039', 'mission_confirm',
+    jsonb_build_object(
+      'instanceId', (select instance_id from bunker_m01_fixture),
+      'instanceVersion', 1,
+      'selection', (
+        select jsonb_agg(member.guest_id order by member.guest_id)
+        from (
+          select frozen_member.guest_id
+          from public.bunker_mission_members frozen_member
+          where frozen_member.instance_id = (select instance_id from bunker_m01_fixture)
+          order by frozen_member.guest_id
+          limit 3
+        ) member
+      )
+    )
+  ) $$,
+  '22023', 'M01 selection must exactly match frozen quota',
+  'mission confirmation rejects an oversized distinct selection above frozen quota'
 );
 select throws_ok(
   $$ select public.submit_bunker_command(
@@ -385,6 +408,338 @@ select throws_ok(
   '55000', 'M01 decision is already confirmed',
   'a duplicate or concurrent contender cannot replace the completed decision'
 );
+
+-- A committed fixture is required because independent dblink sessions cannot
+-- observe the main pgTAP transaction. It is deleted through the same remote
+-- connection before this test file finishes.
+do $contention_setup$
+declare
+  v_connection_string text := 'dbname=' || current_database();
+begin
+  perform extensions.dblink_connect('bunker_m01_barrier', v_connection_string);
+  perform extensions.dblink_exec('bunker_m01_barrier', 'begin');
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      insert into auth.users(id)
+      values ('42000000-0000-4000-8000-000000000001')
+    $remote$
+  );
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      insert into public.events(
+        id, slug, name, owner_user_id, next_ticket_sequence
+      ) values (
+        '42000000-0000-4000-8000-000000000002',
+        'bunker-v2-m01-contention',
+        'Bunker V2 M01 contention',
+        '42000000-0000-4000-8000-000000000001',
+        16
+      )
+    $remote$
+  );
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      insert into public.event_state(event_id)
+      values ('42000000-0000-4000-8000-000000000002')
+    $remote$
+  );
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      insert into public.carriages(
+        id, event_id, number, label, accent_hex, visual_mark, sort_order, enabled
+      ) values
+        ('42000000-0000-4000-8000-000000000011', '42000000-0000-4000-8000-000000000002', 1, 'ВАГОН №1', '#111111', 'I', 1, true),
+        ('42000000-0000-4000-8000-000000000012', '42000000-0000-4000-8000-000000000002', 2, 'ВАГОН №2', '#222222', 'II', 2, true)
+    $remote$
+  );
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      insert into public.guests(
+        id, event_id, first_name, last_name, affiliation_type, carriage_id,
+        ticket_sequence, ticket_number
+      )
+      select
+        ('42000000-0000-4000-9000-' || lpad(sequence::text, 12, '0'))::uuid,
+        '42000000-0000-4000-8000-000000000002',
+        'Конкурент', sequence::text, 'common',
+        case when mod(sequence, 2) = 1
+          then '42000000-0000-4000-8000-000000000011'::uuid
+          else '42000000-0000-4000-8000-000000000012'::uuid
+        end,
+        sequence,
+        'RACE-' || lpad(sequence::text, 3, '0')
+      from generate_series(1, 15) registered(sequence)
+    $remote$
+  );
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      insert into public.guest_device_bindings(
+        event_id, guest_id, device_key_hash
+      ) values
+        ('42000000-0000-4000-8000-000000000002', '42000000-0000-4000-9000-000000000001', public._device_hash('m01-race-device-a')),
+        ('42000000-0000-4000-8000-000000000002', '42000000-0000-4000-9000-000000000003', public._device_hash('m01-race-device-b'))
+    $remote$
+  );
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      insert into public.bunker_state(event_id)
+      values ('42000000-0000-4000-8000-000000000002')
+    $remote$
+  );
+  perform configured.value
+  from extensions.dblink(
+    'bunker_m01_barrier',
+    $remote$
+      select set_config(
+        'request.jwt.claim.sub',
+        '42000000-0000-4000-8000-000000000001',
+        false
+      )
+    $remote$
+  ) as configured(value text);
+  perform prepared.result
+  from extensions.dblink(
+    'bunker_m01_barrier',
+    $remote$
+      select public.owner_prepare_bunker_v2(
+        '42000000-0000-4000-8000-000000000002',
+        '42000000-0000-4000-8000-000000000020'
+      )
+    $remote$
+  ) as prepared(result jsonb);
+  perform transitioned.result
+  from extensions.dblink(
+    'bunker_m01_barrier',
+    $remote$
+      select public.owner_transition_bunker_v2(
+        '42000000-0000-4000-8000-000000000002',
+        'CHARACTERS_READY',
+        '42000000-0000-4000-8000-000000000021'
+      )
+    $remote$
+  ) as transitioned(result jsonb);
+  perform transitioned.result
+  from extensions.dblink(
+    'bunker_m01_barrier',
+    $remote$
+      select public.owner_transition_bunker_v2(
+        '42000000-0000-4000-8000-000000000002',
+        'MISSION_01',
+        '42000000-0000-4000-8000-000000000022'
+      )
+    $remote$
+  ) as transitioned(result jsonb);
+  perform extensions.dblink_exec('bunker_m01_barrier', 'commit');
+  perform extensions.dblink_connect('bunker_m01_contender_a', v_connection_string);
+  perform extensions.dblink_connect('bunker_m01_contender_b', v_connection_string);
+exception when others then
+  begin
+    perform extensions.dblink_exec('bunker_m01_barrier', 'rollback');
+  exception when others then
+    null;
+  end;
+  raise;
+end;
+$contention_setup$;
+
+do $contention_barrier$
+begin
+  perform extensions.dblink_exec('bunker_m01_barrier', 'begin');
+  perform locked.event_id
+  from extensions.dblink(
+    'bunker_m01_barrier',
+    $remote$
+      select state.event_id
+      from public.bunker_state state
+      where state.event_id = '42000000-0000-4000-8000-000000000002'
+      for update
+    $remote$
+  ) as locked(event_id uuid);
+end;
+$contention_barrier$;
+
+create temporary table bunker_m01_send_status on commit drop as
+select
+  extensions.dblink_send_query(
+    'bunker_m01_contender_a',
+    $remote$
+      select public.submit_bunker_command(
+        'bunker-v2-m01-contention', 'm01-race-device-a',
+        '42000000-0000-4000-8000-000000000030', 'mission_confirm',
+        jsonb_build_object(
+          'instanceId', (
+            select instance.id
+            from public.bunker_mission_instances instance
+            where instance.event_id = '42000000-0000-4000-8000-000000000002'
+              and instance.mission_code = 'MISSION_01'
+              and instance.scope_key = '42000000-0000-4000-8000-000000000011'
+          ),
+          'instanceVersion', 1,
+          'selection', jsonb_build_array(
+            '42000000-0000-4000-9000-000000000001'::uuid,
+            '42000000-0000-4000-9000-000000000003'::uuid
+          )
+        )
+      )
+    $remote$
+  ) as contender_a_sent,
+  extensions.dblink_send_query(
+    'bunker_m01_contender_b',
+    $remote$
+      select public.submit_bunker_command(
+        'bunker-v2-m01-contention', 'm01-race-device-b',
+        '42000000-0000-4000-8000-000000000031', 'mission_confirm',
+        jsonb_build_object(
+          'instanceId', (
+            select instance.id
+            from public.bunker_mission_instances instance
+            where instance.event_id = '42000000-0000-4000-8000-000000000002'
+              and instance.mission_code = 'MISSION_01'
+              and instance.scope_key = '42000000-0000-4000-8000-000000000011'
+          ),
+          'instanceVersion', 1,
+          'selection', jsonb_build_array(
+            '42000000-0000-4000-9000-000000000001'::uuid,
+            '42000000-0000-4000-9000-000000000003'::uuid
+          )
+        )
+      )
+    $remote$
+  ) as contender_b_sent;
+
+select ok(
+  (select contender_a_sent = 1 and contender_b_sent = 1
+   from bunker_m01_send_status),
+  'two independent guest sessions accept asynchronous M01 confirm queries'
+);
+
+do $contention_wait$
+begin
+  perform pg_sleep(0.1);
+end;
+$contention_wait$;
+
+select ok(
+  extensions.dblink_is_busy('bunker_m01_contender_a') = 1
+  and extensions.dblink_is_busy('bunker_m01_contender_b') = 1,
+  'both M01 confirmations are concurrently in flight behind the state lock'
+);
+
+do $contention_release$
+begin
+  perform extensions.dblink_exec('bunker_m01_barrier', 'commit');
+end;
+$contention_release$;
+
+create temporary table bunker_m01_contention_results(
+  contender text primary key,
+  result jsonb,
+  error_message text
+) on commit drop;
+
+do $contention_collect$
+declare
+  v_result jsonb;
+  v_error text;
+begin
+  select response.result
+  into v_result
+  from extensions.dblink_get_result(
+    'bunker_m01_contender_a', false
+  ) as response(result jsonb);
+  v_error := extensions.dblink_error_message('bunker_m01_contender_a');
+  insert into bunker_m01_contention_results(contender, result, error_message)
+  values ('a', v_result, nullif(v_error, 'OK'));
+
+  v_result := null;
+  select response.result
+  into v_result
+  from extensions.dblink_get_result(
+    'bunker_m01_contender_b', false
+  ) as response(result jsonb);
+  v_error := extensions.dblink_error_message('bunker_m01_contender_b');
+  insert into bunker_m01_contention_results(contender, result, error_message)
+  values ('b', v_result, nullif(v_error, 'OK'));
+end;
+$contention_collect$;
+
+select is(
+  (select count(*)::integer
+   from bunker_m01_contention_results
+   where result @> jsonb_build_object(
+     'contractVersion', 2,
+     'status', 'accepted',
+     'commandType', 'mission_confirm'
+   )),
+  1,
+  'exactly one concurrent M01 confirmation receives the accepted receipt'
+);
+select is(
+  (select count(*)::integer
+   from bunker_m01_contention_results
+   where result is null
+     and error_message ~ 'M01 decision is already confirmed'),
+  1,
+  'the losing concurrent M01 confirmation receives the deterministic rejection'
+);
+select ok(
+  (select count(*) = 1
+   from public.bunker_mission_decisions decision
+   join public.bunker_mission_instances instance on instance.id = decision.instance_id
+   where instance.event_id = '42000000-0000-4000-8000-000000000002'
+     and instance.mission_code = 'MISSION_01'
+     and instance.scope_key = '42000000-0000-4000-8000-000000000011'
+     and decision.status = 'confirmed')
+  and (select count(*) = 1
+       from public.bunker_mission_instances instance
+       where instance.event_id = '42000000-0000-4000-8000-000000000002'
+         and instance.mission_code = 'MISSION_01'
+         and instance.scope_key = '42000000-0000-4000-8000-000000000011'
+         and instance.status = 'completed'
+         and instance.outcome is not null)
+  and (select count(*) = 1
+       from public.bunker_command_receipts receipt
+       where receipt.event_id = '42000000-0000-4000-8000-000000000002'
+         and receipt.command_type = 'mission_confirm')
+  and (select count(*) = 2 and count(distinct game_event.command_id) = 1
+       from public.bunker_game_events game_event
+       join public.bunker_mission_instances instance
+         on instance.id = game_event.instance_id
+       where instance.event_id = '42000000-0000-4000-8000-000000000002'
+         and instance.mission_code = 'MISSION_01'
+         and instance.scope_key = '42000000-0000-4000-8000-000000000011'
+         and game_event.event_type in ('decision_confirmed', 'mission_completed')),
+  'contention commits one decision, one outcome, one receipt and one completion event pair'
+);
+
+do $contention_cleanup$
+begin
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      delete from public.events
+      where id = '42000000-0000-4000-8000-000000000002'
+    $remote$
+  );
+  perform extensions.dblink_exec(
+    'bunker_m01_barrier',
+    $remote$
+      delete from auth.users
+      where id = '42000000-0000-4000-8000-000000000001'
+    $remote$
+  );
+  perform extensions.dblink_disconnect('bunker_m01_contender_a');
+  perform extensions.dblink_disconnect('bunker_m01_contender_b');
+  perform extensions.dblink_disconnect('bunker_m01_barrier');
+end;
+$contention_cleanup$;
 
 select * from finish();
 rollback;
