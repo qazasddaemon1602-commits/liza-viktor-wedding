@@ -1,0 +1,13 @@
+import { throwBunkerV2RpcError, type BunkerV2RpcClient } from './command.service';
+export type TestModeRpcClient=BunkerV2RpcClient;
+function uuid(){return globalThis.crypto?.randomUUID?.()??`00000000-0000-4000-8000-${Date.now().toString().padStart(12,'0').slice(-12)}`;}
+async function call(client:TestModeRpcClient,name:string,args:Record<string,unknown>){const{data,error}=await client.rpc(name,args);if(error)throwBunkerV2RpcError(error,'Bunker test mode request failed');return data;}
+export async function seedTestGuests(client:TestModeRpcClient,eventId:string,count:number){if(!Number.isInteger(count)||count<15||count>40)throw new Error('Test guest count must be between 15 and 40');return call(client,'owner_bunker_v2_seed_test_guests',{p_event_id:eventId,p_count:count});}
+export function prepareTestGame(client:TestModeRpcClient,eventId:string,commandId=uuid()){return call(client,'owner_prepare_bunker_v2_test',{p_event_id:eventId,p_command_id:commandId});}
+export async function accelerateTestTimer(client:TestModeRpcClient,eventId:string,seconds=60){if(!Number.isInteger(seconds)||seconds<1||seconds>600)throw new Error('Test acceleration must be 1..600 seconds');return call(client,'owner_bunker_v2_test_accelerate',{p_event_id:eventId,p_seconds:seconds});}
+export function simulateTestStage(client:TestModeRpcClient,eventId:string){return call(client,'owner_bunker_v2_test_simulate_current',{p_event_id:eventId});}
+export function setTestInventory(client:TestModeRpcClient,eventId:string,wagonNumber:number,itemKey:string,quantity:number){return call(client,'owner_bunker_v2_test_set_inventory',{p_event_id:eventId,p_wagon_number:wagonNumber,p_item_key:itemKey,p_quantity:quantity});}
+export function setTestWagonState(client:TestModeRpcClient,eventId:string,wagonNumber:number,state:{power:'stable'|'unstable'|'offline';communication:'working'|'degraded'|'offline';navigation:'working'|'degraded'|'offline'}){return call(client,'owner_bunker_v2_test_set_wagon_state',{p_event_id:eventId,p_wagon_number:wagonNumber,p_power:state.power,p_communication:state.communication,p_navigation:state.navigation});}
+export function resetBunkerProgress(client:TestModeRpcClient,eventId:string){return call(client,'owner_reset_bunker_progress',{p_event_id:eventId,p_command_id:uuid()});}
+export function resetGameAndRegistrations(client:TestModeRpcClient,eventId:string,confirmation:string){return call(client,'owner_bunker_v2_reset_game_and_registrations',{p_event_id:eventId,p_confirmation:confirmation});}
+export function fullEventReset(client:TestModeRpcClient,eventId:string,confirmation:string){return call(client,'owner_reset_event_test_data',{p_event_id:eventId,p_confirmation:confirmation});}
