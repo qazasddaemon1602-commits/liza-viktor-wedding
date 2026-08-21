@@ -126,12 +126,12 @@ export function useGuestBunkerLiveState({
 
   useEffect(() => {
     if (!enabled || !deps) return;
-    const intervalMs = state?.status === 'active' ? 2_000 : 5_000;
+    const intervalMs = state?.status === 'active' || runtime?.status === 'active' ? 2_000 : 5_000;
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void reload();
     }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [deps, enabled, reload, state?.status]);
+  }, [deps, enabled, reload, runtime?.status, state?.status]);
 
   useEffect(() => {
     if (!enabled || !deps) return;

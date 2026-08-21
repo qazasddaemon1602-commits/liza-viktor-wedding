@@ -649,14 +649,15 @@ select is(
   (select member_count from bunker_v2_frozen_baseline),
   'a V2 late guest cannot mutate frozen mission membership'
 );
-select is(
+select ok(
   (
-    select count(*)::integer
+    select count(*) = 1
+      and bool_and(profile.joined_late)
+      and bool_and(profile.character_status = 'saved')
     from public.bunker_guest_profiles profile
     where profile.guest_id = '00000000-0000-4000-9000-000000000016'
   ),
-  0,
-  'Task 2 leaves the V2 late guest unassigned without changing frozen data'
+  'Task 4 saves one V2 late-guest snapshot without changing frozen data'
 );
 select throws_ok(
   $$ select public.owner_transition_bunker_v2(

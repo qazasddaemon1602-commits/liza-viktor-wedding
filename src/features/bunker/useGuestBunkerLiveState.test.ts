@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { GuestBunkerQuestState } from './bunkerQuest.types';
 import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
+import type { BunkerV2ActiveGuestRuntime } from './v2/contracts';
 import { useGuestBunkerLiveState, type GuestBunkerLiveDependencies } from './useGuestBunkerLiveState';
 
 function deferred<T>() {
@@ -42,6 +43,30 @@ const runtime: ActiveGuestBunkerRuntime = {
   currentMission: null,
 };
 
+const lateGuestRuntime = {
+  contractVersion: 2,
+  status: 'active',
+  serverNow: '2026-08-21T18:00:00.000Z',
+  state: 'MISSION_03',
+  planVersion: 1,
+  runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+  viewer: {
+    kind: 'guest',
+    guest: { id: '2c352a2a-15ee-4e0e-b50e-90c9a4490f42', realName: 'Поздний Г.' },
+    wagon: { number: 2, label: 'Вагон №2' },
+  },
+  character: {
+    profileKey: 'mechanic', profileVersion: 2, profession: 'МЕХАНИК', health: 'отличное',
+    visibleSkill: 'ремонт', specialAbility: 'mechanical_fix', abilityDescription: 'Ремонт.',
+    abilityUsesRemaining: 1, status: 'saved', m01Eligibility: 'late_joiner',
+    hiddenTraitRevealed: false,
+  },
+  currentMission: {
+    instanceId: '9e7d6779-f551-4c83-8582-0523e7d02171', instanceVersion: 1,
+    code: 'MISSION_03', status: 'active', scope: 'wagon',
+  },
+} satisfies BunkerV2ActiveGuestRuntime;
+
 function deps(overrides: Partial<GuestBunkerLiveDependencies> = {}): GuestBunkerLiveDependencies {
   return {
     getDeviceKey: () => 'device-key-123',
@@ -54,6 +79,22 @@ function deps(overrides: Partial<GuestBunkerLiveDependencies> = {}): GuestBunker
 }
 
 describe('useGuestBunkerLiveState', () => {
+  it('keeps a reconnected late V2 guest on the active polling cadence', async () => {
+    const interval = vi.spyOn(window, 'setInterval');
+    const dependencies = deps({
+      loadRuntime: vi.fn().mockResolvedValue(lateGuestRuntime),
+    });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
+
+    await waitFor(() => expect(result.current.runtime).toEqual(lateGuestRuntime));
+
+    expect(result.current.runtime).toMatchObject({
+      character: { status: 'saved', m01Eligibility: 'late_joiner' },
+    });
+    expect(interval).toHaveBeenCalledWith(expect.any(Function), 2_000);
+    interval.mockRestore();
+  });
+
   it('keeps the newest quest, runtime, loading, and error state when an older reload settles last', async () => {
     const oldQuest = deferred<GuestBunkerQuestState>();
     const newQuest = deferred<GuestBunkerQuestState>();

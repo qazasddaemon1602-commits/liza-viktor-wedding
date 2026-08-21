@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(19);
 
 select ok(
   exists(
@@ -80,6 +80,39 @@ select ok(
 select ok(
   position('media_url = null' in lower(pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure))) = 0,
   'reset preserves configured premiere media URL'
+);
+
+select ok(
+  coalesce('search_path=""' = any(
+    (select proconfig from pg_proc where oid = 'public.owner_reset_event_test_data(uuid,text)'::regprocedure)
+  ), false),
+  'the owner reset RPC has an immutable empty search path'
+);
+
+select ok(
+  (select prosecdef from pg_proc where oid = 'public._clear_bunker_game_run_on_reset()'::regprocedure)
+    and coalesce('search_path=""' = any(
+      (select proconfig from pg_proc where oid = 'public._clear_bunker_game_run_on_reset()'::regprocedure)
+    ), false),
+  'the internal Bunker reset trigger is a hardened definer'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public._clear_bunker_game_run_on_reset()', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public._clear_bunker_game_run_on_reset()', 'EXECUTE'),
+  'API clients cannot invoke the internal reset trigger directly'
+);
+
+select ok(
+  pg_get_functiondef('public._clear_bunker_game_run_on_reset()'::regprocedure)
+    ~ 'run_nonce = old\.run_nonce',
+  'Bunker reset cleanup is scoped to the run being cleared'
+);
+
+select ok(
+  pg_get_functiondef('public._clear_bunker_game_run_on_reset()'::regprocedure)
+      !~ 'delete from public\.(guests|guest_device_bindings|carriages|couple_preanswers|couple_preanswer_access)',
+  'Bunker-only cleanup preserves guest identity, carriages and couple preanswers'
 );
 
 select * from finish();
