@@ -556,7 +556,7 @@ describe('AdminBunkerControl', () => {
     await user.click(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
     await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
 
-    const alert = await screen.findByRole('alert');
+    const alert = await screen.findByText(/Не выполнено ·/i);
     expect(alert).toHaveTextContent(
       failingCommand === 'prepare'
         ? /этап подготовки/i
@@ -684,11 +684,12 @@ describe('AdminBunkerControl', () => {
       })
       .mockResolvedValueOnce(active);
     const start = vi.fn().mockRejectedValue(new Error('connection closed after commit'));
+    const readProjectorStarted = vi.fn().mockResolvedValue(true);
 
     render(
       <AdminBunkerControl
         eventId="event-1"
-        dependencies={dependencies({ load, start })}
+        dependencies={dependencies({ load, start, readProjectorStarted })}
       />,
     );
 
@@ -696,7 +697,87 @@ describe('AdminBunkerControl', () => {
     await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
 
     expect(await screen.findByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' })).toBeInTheDocument();
+    expect(readProjectorStarted).toHaveBeenCalledWith('event-1');
     expect(await screen.findByText(/статус перечитан.*бункер активен/i)).toBeInTheDocument();
     expect(screen.queryByText(/не выполнено/i)).not.toBeInTheDocument();
+  });
+
+  it('does not treat a prepared V2 bunker row as a successful projector start', async () => {
+    const user = userEvent.setup();
+    const prepared = {
+      status: 'active' as const,
+      startedAt: '2026-08-30T12:00:00.000Z',
+      durationSeconds: 1800,
+      remainingSeconds: 1800,
+      soundEnabled: true,
+      runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+      globalGameState: 'CHARACTERS_READY' as const,
+      serverNow: '2026-08-30T12:00:00.000Z',
+    };
+    const start = vi.fn()
+      .mockRejectedValueOnce(new Error('connection closed before commit'))
+      .mockResolvedValueOnce({ status: 'active' });
+    const readProjectorStarted = vi.fn().mockResolvedValue(false);
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+    const prepareV2 = vi.fn().mockResolvedValue({
+      status: 'prepared',
+      eventId: 'event-1',
+      runNonce: prepared.runNonce,
+      contractVersion: 2,
+      planVersion: 1,
+      globalGameState: 'LOBBY',
+      wagonCount: 2,
+      guestCount: 15,
+      missionInstanceCount: 12,
+    });
+    const transitionV2 = vi.fn().mockResolvedValue({
+      status: 'transitioned',
+      runNonce: prepared.runNonce,
+      contractVersion: 2,
+      previousState: 'LOBBY',
+      globalGameState: 'CHARACTERS_READY',
+      changed: true,
+    });
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'idle' as const,
+        durationSeconds: 1800,
+        soundEnabled: true,
+        serverNow: '2026-08-30T11:59:59.000Z',
+      })
+      .mockResolvedValueOnce(prepared);
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        bunkerContractVersion={2}
+        dependencies={dependencies({
+          load,
+          prepareV2,
+          transitionV2,
+          start,
+          readProjectorStarted,
+          broadcastRefresh,
+        })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
+    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
+
+    expect(readProjectorStarted).toHaveBeenCalledWith('event-1');
+    expect(await screen.findByText(/Не выполнено ·/i)).toHaveTextContent(/этап запуска на тв/i);
+    const retry = screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' });
+    expect(retry).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' })).not.toBeInTheDocument();
+    expect(broadcastRefresh).not.toHaveBeenCalled();
+
+    await user.click(retry);
+
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(prepareV2).toHaveBeenCalledTimes(1);
+    expect(transitionV2).toHaveBeenCalledTimes(1);
+    expect(readProjectorStarted).toHaveBeenCalledTimes(3);
+    expect(screen.getByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' })).toBeInTheDocument();
   });
 });

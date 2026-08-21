@@ -21,6 +21,7 @@ import {
 } from '../../bunker/v2/m01.service';
 import {
   broadcastBunkerRefresh,
+  subscribeToBunkerRefresh,
   type BunkerRealtimeClient,
 } from '../../bunker/bunker.realtime';
 
@@ -33,6 +34,7 @@ export type AdminBunkerDockDependencies = {
   loadMissionOne?: (eventId: string) => Promise<MissionOneOwnerReadModel>;
   overrideMissionOne?: (input: OverrideMissionOneSelectionInput) => Promise<unknown>;
   broadcastRefresh?: () => Promise<void>;
+  subscribeRefresh?: (callback: () => void) => () => void;
 };
 
 type AdminBunkerDockProps = {
@@ -55,6 +57,7 @@ function browserDependencies(): AdminBunkerDockDependencies | null {
       loadMissionOne: (eventId) => getOwnerMissionOneReadModel(client, eventId),
       overrideMissionOne: (input) => overrideMissionOneSelection(client, input),
       broadcastRefresh: () => broadcastBunkerRefresh(client, EVENT_SLUG),
+      subscribeRefresh: (callback) => subscribeToBunkerRefresh(client, EVENT_SLUG, callback),
     };
   } catch {
     return null;
@@ -143,12 +146,27 @@ export function AdminBunkerDock({
     }
   }, [deps, failClosed, loadMissionOne, storeDashboard]);
 
+  const refreshMissionOne = useCallback(async () => {
+    const currentDashboard = dashboardRef.current;
+    if (!deps?.loadMissionOne || !currentDashboard) {
+      void pollDashboard();
+      return;
+    }
+    try {
+      const next = await deps.loadMissionOne(currentDashboard.event.id);
+      if (mountedRef.current) setMissionOneRead(next);
+    } catch {
+      // Realtime is an invalidation hint; polling/focus/online retain convergence.
+    }
+  }, [deps, pollDashboard]);
+
   useEffect(() => {
     if (!deps) return undefined;
     mountedRef.current = true;
     void pollDashboard();
     const interval = window.setInterval(() => void pollDashboard(), pollIntervalMs);
     const recover = () => void pollDashboard();
+    const unsubscribeRefresh = deps.subscribeRefresh?.(() => void refreshMissionOne());
     window.addEventListener('focus', recover);
     window.addEventListener('online', recover);
 
@@ -159,8 +177,9 @@ export function AdminBunkerDock({
       window.clearInterval(interval);
       window.removeEventListener('focus', recover);
       window.removeEventListener('online', recover);
+      unsubscribeRefresh?.();
     };
-  }, [deps, pollDashboard, pollIntervalMs]);
+  }, [deps, pollDashboard, pollIntervalMs, refreshMissionOne]);
 
   const acceptDistribution = async (carriageCount: SupportedCarriageCount) => {
     if (!deps || commandInFlightRef.current || !dashboardRef.current) return;

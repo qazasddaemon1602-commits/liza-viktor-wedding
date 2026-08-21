@@ -120,6 +120,7 @@ describe('AdminBunkerDock dashboard scheduling', () => {
       currentMission: { id: 'mission-01', state: 'MISSION_01', plan: null },
       serverNow: '2026-08-30T12:00:01.000Z',
     });
+    control.readProjectorStarted = vi.fn().mockResolvedValue(true);
 
     render(
       <AdminBunkerDock
@@ -186,6 +187,40 @@ describe('AdminBunkerDock dashboard scheduling', () => {
 
     expect(loadDashboard).toHaveBeenCalledTimes(3);
     expect(loadMissionOne).toHaveBeenCalledTimes(3);
+  });
+
+  it('refreshes owner M01 progress on Realtime invalidation and unsubscribes on unmount', async () => {
+    const loadDashboard = vi.fn().mockResolvedValue(
+      dashboard({ wagonCount: 2, guestCount: 15, locked: true }),
+    );
+    const loadMissionOne = vi.fn().mockResolvedValue({
+      contractVersion: 2, status: 'idle', serverNow: '2026-08-30T12:00:01.000Z',
+    });
+    let invalidate: (() => void) | undefined;
+    const unsubscribe = vi.fn();
+    const subscribeRefresh = vi.fn((callback: () => void) => {
+      invalidate = callback;
+      return unsubscribe;
+    });
+    const view = render(
+      <AdminBunkerDock dependencies={{
+        loadDashboard,
+        applyDistribution: vi.fn(),
+        bunkerControl: bunkerControlDependencies(),
+        loadMissionOne,
+        subscribeRefresh,
+      }} />,
+    );
+    await flushPromises();
+    expect(loadMissionOne).toHaveBeenCalledTimes(1);
+
+    act(() => invalidate?.());
+    await flushPromises();
+
+    expect(loadDashboard).toHaveBeenCalledTimes(1);
+    expect(loadMissionOne).toHaveBeenCalledTimes(2);
+    view.unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
   it('fails closed and removes owner-only counts when the latest dashboard read loses access', async () => {

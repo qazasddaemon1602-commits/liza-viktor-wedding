@@ -1,6 +1,10 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
-import type { AdminDashboard } from '../admin.service';
+import {
+  loadOwnerDashboard,
+  type AdminDashboard,
+  type AdminRpcClient,
+} from '../admin.service';
 import {
   balancedCarriageSizes,
   recommendCarriageCount,
@@ -84,6 +88,7 @@ export type AdminBunkerControlDependencies = {
     status: BunkerCharacterStatus,
   ) => Promise<UpdatedBunkerCharacterStatus>;
   start: (eventId: string, durationSeconds: number) => Promise<unknown>;
+  readProjectorStarted?: (eventId: string) => Promise<boolean>;
   stop: (eventId: string) => Promise<unknown>;
   setSound: (eventId: string, enabled: boolean) => Promise<unknown>;
   broadcastRefresh: () => Promise<void>;
@@ -107,6 +112,7 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
   try {
     const client = getSupabaseClient();
     const rpcClient = client as unknown as BunkerRpcClient;
+    const adminClient = client as unknown as AdminRpcClient;
     const realtimeClient = client as unknown as BunkerRealtimeClient;
     const presenceClient = client as unknown as PremierePresenceRealtimeClient;
     return {
@@ -125,6 +131,13 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
         setOwnerBunkerCharacterStatus(rpcClient, eventId, guestId, status)
       ),
       start: (eventId, durationSeconds) => startBunker(rpcClient, eventId, durationSeconds),
+      readProjectorStarted: async (eventId) => {
+        const dashboard = await loadOwnerDashboard(adminClient, 'liza-viktor');
+        return dashboard.event.id === eventId
+          && dashboard.state?.currentModule === 'bunker'
+          && dashboard.state.screenMode === 'bunker_emergency'
+          && dashboard.state.screenPinned === true;
+      },
       stop: (eventId) => stopBunker(rpcClient, eventId),
       setSound: (eventId, enabled) => setBunkerSound(rpcClient, eventId, enabled),
       broadcastRefresh: () => broadcastBunkerRefresh(realtimeClient, 'liza-viktor'),
@@ -219,6 +232,7 @@ export function AdminBunkerControl({
 }: AdminBunkerControlProps) {
   const deps = useMemo(() => dependencies ?? browserDependencies(), [dependencies]);
   const [state, setState] = useState<OwnerBunkerControl | null>(null);
+  const [projectorStarted, setProjectorStarted] = useState(false);
   const [armed, setArmed] = useState(false);
   const [dangerCommand, setDangerCommand] = useState<'restart' | 'stop' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -233,9 +247,13 @@ export function AdminBunkerControl({
   const [presenceNowMs, setPresenceNowMs] = useState(() => Date.now());
   const [screenPresence, setScreenPresence] = useState<PremiereScreenPresenceRecord[]>([]);
   const serverOffsetRef = useRef(0);
+  const v2PreparedStateRef = useRef<BunkerV2GlobalState | null>(null);
+  const emergencyStarted = bunkerContractVersion === 2
+    ? projectorStarted
+    : state?.status === 'active';
   const quest = useOwnerBunkerQuestState(eventId, {
     dependencies: questDependencies,
-    enabled: state?.status === 'active' && (!dependencies || Boolean(questDependencies)),
+    enabled: emergencyStarted && (!dependencies || Boolean(questDependencies)),
   });
 
   useEffect(() => {
@@ -269,17 +287,31 @@ export function AdminBunkerControl({
 
   const reload = async () => {
     if (!deps) return;
-    const next = await deps.load(eventId);
+    const [next, nextProjectorStarted] = await Promise.all([
+      deps.load(eventId),
+      bunkerContractVersion === 2 && deps.readProjectorStarted
+        ? deps.readProjectorStarted(eventId)
+        : Promise.resolve(undefined),
+    ]);
     storeState(next);
+    if (nextProjectorStarted !== undefined) setProjectorStarted(nextProjectorStarted);
     return next;
   };
 
   useEffect(() => {
     if (!deps) return;
     let active = true;
-    void deps.load(eventId)
-      .then((next) => {
-        if (active) storeState(next);
+    void Promise.all([
+      deps.load(eventId),
+      bunkerContractVersion === 2 && deps.readProjectorStarted
+        ? deps.readProjectorStarted(eventId)
+        : Promise.resolve(undefined),
+    ])
+      .then(([next, nextProjectorStarted]) => {
+        if (active) {
+          storeState(next);
+          if (nextProjectorStarted !== undefined) setProjectorStarted(nextProjectorStarted);
+        }
       })
       .catch(() => {
         if (active) setError('Не удалось проверить статус Бункера.');
@@ -287,17 +319,17 @@ export function AdminBunkerControl({
     return () => {
       active = false;
     };
-  }, [deps, eventId]);
+  }, [bunkerContractVersion, deps, eventId]);
 
   useEffect(() => {
-    if (state?.status !== 'active') return;
+    if (!emergencyStarted) return;
     const interval = window.setInterval(() => setNowMs(Date.now()), 500);
     return () => window.clearInterval(interval);
-  }, [state?.status]);
+  }, [emergencyStarted]);
 
   useEffect(() => {
     const loadCharacters = deps?.loadCharacters;
-    if (state?.status !== 'active' || bunkerContractVersion !== 1 || !loadCharacters) {
+    if (!emergencyStarted || bunkerContractVersion !== 1 || !loadCharacters) {
       setCharacters([]);
       return undefined;
     }
@@ -312,11 +344,11 @@ export function AdminBunkerControl({
     return () => {
       active = false;
     };
-  }, [bunkerContractVersion, deps, eventId, state?.status]);
+  }, [bunkerContractVersion, deps, emergencyStarted, eventId]);
 
   if (!deps) return null;
 
-  const remaining = state?.status === 'active'
+  const remaining = emergencyStarted && state?.status === 'active'
     ? Math.max(
         0,
         Math.ceil(
@@ -326,8 +358,8 @@ export function AdminBunkerControl({
       )
     : 0;
 
-  const run = async (command: () => Promise<unknown>) => {
-    if (busy) return;
+  const run = async (command: () => Promise<unknown>): Promise<boolean> => {
+    if (busy) return false;
     setBusy(true);
     setError('');
 
@@ -336,12 +368,16 @@ export function AdminBunkerControl({
         await command();
       } catch (commandError) {
         if (commandError instanceof BunkerCommandFailure
-          && commandError.stage === 'ЭТАП ЗАПУСКА НА ТВ') {
+          && commandError.stage === 'ЭТАП ЗАПУСКА НА ТВ'
+          && deps.readProjectorStarted) {
           try {
-            const authoritative = await reload();
-            if (authoritative?.status === 'active') {
+            const projectorStarted = await deps.readProjectorStarted(eventId);
+            if (projectorStarted) {
+              const authoritative = await deps.load(eventId);
+              storeState(authoritative);
+              setProjectorStarted(true);
               setError('Ответ запуска потерян, но статус перечитан · БУНКЕР АКТИВЕН. Повторный запуск не нужен.');
-              return;
+              return true;
             }
           } catch {
             // Keep the stage-specific failure below when the authoritative read also fails.
@@ -351,7 +387,7 @@ export function AdminBunkerControl({
           ? commandError.message
           : 'КОМАНДА БУНКЕРА: проверьте связь и owner-сессию';
         setError(`Не выполнено · ${detail}. Повторный запуск не отправлен.`);
-        return;
+        return false;
       }
 
       let warning = '';
@@ -368,28 +404,32 @@ export function AdminBunkerControl({
       }
 
       setError(warning);
+      return true;
     } finally {
       setBusy(false);
     }
   };
 
   const launch = async () => {
-    await run(async () => {
+    const launched = await run(async () => {
       if (bunkerContractVersion === 2) {
         if (!deps.prepareV2 || !deps.transitionV2) {
           throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ V2', new Error('V2 owner control unavailable'));
         }
-        let currentState = state?.globalGameState;
-        if (!state?.runNonce) {
+        let currentState = v2PreparedStateRef.current
+          ?? state?.globalGameState as BunkerV2GlobalState | undefined;
+        if (!state?.runNonce && !v2PreparedStateRef.current) {
           try {
             currentState = (await deps.prepareV2(eventId)).globalGameState;
+            v2PreparedStateRef.current = currentState;
           } catch (cause) {
             throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ V2', cause);
           }
         }
         if (currentState === 'LOBBY') {
           try {
-            await deps.transitionV2(eventId, 'CHARACTERS_READY');
+            currentState = (await deps.transitionV2(eventId, 'CHARACTERS_READY')).globalGameState;
+            v2PreparedStateRef.current = currentState;
           } catch (cause) {
             throw new BunkerCommandFailure('ЭТАП ГОТОВНОСТИ ПЕРСОНАЖЕЙ V2', cause);
           }
@@ -415,7 +455,11 @@ export function AdminBunkerControl({
         throw new BunkerCommandFailure('ЭТАП ЗАПУСКА НА ТВ', cause);
       }
     });
-    setArmed(false);
+    if (launched) {
+      setProjectorStarted(true);
+      v2PreparedStateRef.current = null;
+      setArmed(false);
+    }
   };
 
   const acceptDistribution = async () => {
@@ -481,7 +525,8 @@ export function AdminBunkerControl({
     if (dangerCommand === 'restart') {
       await run(() => deps.start(eventId, 1800));
     } else if (dangerCommand === 'stop') {
-      await run(() => deps.stop(eventId));
+      const stopped = await run(() => deps.stop(eventId));
+      if (stopped) setProjectorStarted(false);
     }
     setDangerCommand(null);
   };
@@ -513,13 +558,13 @@ export function AdminBunkerControl({
   };
 
   return (
-    <section className={`admin-bunker-control${state?.status === 'active' ? ' admin-bunker-control--active' : ''}`}>
+    <section className={`admin-bunker-control${emergencyStarted ? ' admin-bunker-control--active' : ''}`}>
       <div className="admin-bunker-control__heading">
         <div>
           <p className="eyebrow">ДИСПЕТЧЕРСКАЯ · OWNER ONLY</p>
           <h2 aria-label="БУНКЕР">БУНКЕР · ПУЛЬТ</h2>
         </div>
-        <strong>{state?.status === 'active' ? formatTimer(remaining) : 'ГОТОВ К ЗАПУСКУ'}</strong>
+        <strong>{emergencyStarted ? formatTimer(remaining) : 'ГОТОВ К ЗАПУСКУ'}</strong>
       </div>
 
       <div className="admin-bunker-dispatcher-summary" aria-label="Сводка диспетчера">
@@ -645,7 +690,7 @@ export function AdminBunkerControl({
         <span>ТЕКУЩИЙ ЭТАП · {currentStage}</span>
         <p>Все ТВ переключатся на «ЭКСТРЕННОЕ СООБЩЕНИЕ», маршрут изменится на Бункер и запустится общий таймер 30:00.</p>
 
-      {state?.status === 'active' ? (
+      {emergencyStarted ? (
         null
       ) : armed ? (
         <div className="admin-bunker-confirm" role="alert">
@@ -677,7 +722,7 @@ export function AdminBunkerControl({
 
       </section>
 
-      {state?.status === 'active' && globalState && (
+      {emergencyStarted && globalState && (
         <section className="admin-bunker-stage" aria-label="Авторитетный сюжет Бункера">
           <span>СЕРВЕРНЫЙ СЮЖЕТ</span>
           <h3>{GLOBAL_STATE_LABELS[globalState]}</h3>
@@ -711,7 +756,7 @@ export function AdminBunkerControl({
         </label>
       )}
 
-      {state?.status === 'active'
+      {emergencyStarted
         && bunkerContractVersion === 1
         && quest.state?.status === 'active' && (
         <BunkerQuestOwnerPanel
@@ -725,11 +770,11 @@ export function AdminBunkerControl({
         />
       )}
 
-      {state?.status === 'active' && globalState === 'MISSION_01' && missionOne && (
+      {emergencyStarted && globalState === 'MISSION_01' && missionOne && (
         <MissionOneOwnerPanel model={missionOne} onOverride={onMissionOneOverride} />
       )}
 
-      {state?.status === 'active'
+      {emergencyStarted
         && bunkerContractVersion === 1
         && globalState !== 'MISSION_01'
         && characters.length > 0 && (
@@ -772,7 +817,7 @@ export function AdminBunkerControl({
         </section>
       )}
 
-      {state?.status === 'active' && (
+      {emergencyStarted && (
         <section className="admin-bunker-danger" aria-labelledby="admin-bunker-danger-title">
           <div>
             <p className="eyebrow">ПОДТВЕРЖДАЕМАЯ ЗОНА</p>
