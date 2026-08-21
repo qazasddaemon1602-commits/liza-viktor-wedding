@@ -104,12 +104,14 @@ export function BunkerQuestScene({
   missionOne,
   bunkerContractVersion = 1,
 }: BunkerQuestSceneProps) {
-  if (state.globalGameState === 'MISSION_01' && bunkerContractVersion === 2) {
+  // Экран должен показывать «Задание 1» и тогда, когда версия контракта ещё не
+  // получена: иначе при задержке проекции ТВ оставался пустым.
+  if (state.globalGameState === 'MISSION_01' && bunkerContractVersion !== 1) {
     if (!missionOne) {
       return (
-        <section className="bunker-mission-one-screen" aria-label="Миссия 01 · экран">
+        <section className="bunker-mission-one-screen" aria-label="Задание 1 · общий экран">
           <p className="bunker-quest-scene__empty" role="status">
-            ПОЛУЧАЕМ СЕРВЕРНЫЙ ПРОГРЕСС ВАГОНОВ…
+            ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР — ЗАГРУЖАЕМ ДАННЫЕ ВАГОНОВ…
           </p>
         </section>
       );
@@ -120,6 +122,7 @@ export function BunkerQuestScene({
       />
     );
   }
+
 
   const phase = phaseForGlobalGameState(state.globalGameState, state.phase);
   const progress = progressLabel(state, phase);
