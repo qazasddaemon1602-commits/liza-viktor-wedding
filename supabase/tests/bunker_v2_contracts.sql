@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(90);
+select plan(92);
 
 select has_column(
   'public', 'bunker_game_runs', 'contract_version',
@@ -160,7 +160,7 @@ select is(
 
 select ok(
   (
-    select count(*) = 10
+    select count(*) = 14
     from pg_constraint constraint_row
     where constraint_row.contype = 'f'
       and constraint_row.conname = any(array[
@@ -173,7 +173,11 @@ select ok(
         'bunker_archive_entitlements_carriage_event_fkey',
         'bunker_archive_entitlements_source_run_fkey',
         'bunker_archive_entitlements_transfer_run_fkey',
-        'bunker_final_parameters_source_instance_run_fkey'
+        'bunker_final_parameters_source_instance_run_fkey',
+        'bunker_mission_members_guest_event_fkey',
+        'bunker_mission_members_carriage_event_fkey',
+        'bunker_ability_uses_guest_event_fkey',
+        'bunker_game_events_instance_run_fkey'
       ])
   ),
   'authoritative references declare named same-event/run foreign keys'
@@ -183,7 +187,15 @@ select ok(
   to_regclass('public.carriages_id_event_uidx') is not null
     and to_regclass('public.guests_id_event_uidx') is not null
     and to_regclass('public.bunker_inventory_lots_id_event_run_uidx') is not null
-    and to_regclass('public.bunker_archive_entries_id_event_run_uidx') is not null,
+    and to_regclass('public.bunker_archive_entries_id_event_run_uidx') is not null
+    and exists (
+      select 1
+      from pg_constraint constraint_row
+      where constraint_row.conrelid = 'public.bunker_mission_instances'::regclass
+        and constraint_row.contype = 'u'
+        and pg_get_constraintdef(constraint_row.oid)
+          = 'UNIQUE (id, event_id, run_nonce)'
+    ),
   'composite FK parents expose matching unique indexes'
 );
 
@@ -813,7 +825,7 @@ select ok(
     from bunker_v2_matrix matrix
     cross join lateral (values
       ('technical'::text, case when matrix.guest_count <= 20 then 2 else 3 end),
-      ('medical', case when matrix.guest_count <= 17 then 1 else 2 end),
+      ('medical', case when matrix.guest_count <= 18 then 1 else 2 end),
       ('information', case when matrix.guest_count <= 20 then 1 else 2 end),
       ('communication', case when matrix.guest_count <= 20 then 2 else 3 end),
       ('analytical', case when matrix.guest_count <= 20 then 2 else 3 end),
@@ -853,6 +865,52 @@ select ok(
     where actual.actual_count < target.target_count
   ),
   'every N=15..40 fixture satisfies its parameterized category quotas'
+);
+select is(
+  (
+    select count(*)::integer
+    from (
+      select
+        profile.character_profile_key,
+        row_number() over (
+          order by md5(matrix.run_nonce::text || ':guest:' || guest.id::text)
+        ) as assignment_ordinal
+      from bunker_v2_matrix matrix
+      join public.guests guest on guest.event_id = matrix.event_id
+      join public.bunker_guest_profiles profile
+        on profile.run_nonce = matrix.run_nonce and profile.guest_id = guest.id
+      where matrix.guest_count = 18
+    ) assignment
+    where assignment.assignment_ordinal <= 10
+      and assignment.character_profile_key = any(array[
+        'surgeon', 'paramedic'
+      ]::text[])
+  ),
+  1,
+  'N=18 deterministically reserves one medical profile in the quota prefix'
+);
+select is(
+  (
+    select count(*)::integer
+    from (
+      select
+        profile.character_profile_key,
+        row_number() over (
+          order by md5(matrix.run_nonce::text || ':guest:' || guest.id::text)
+        ) as assignment_ordinal
+      from bunker_v2_matrix matrix
+      join public.guests guest on guest.event_id = matrix.event_id
+      join public.bunker_guest_profiles profile
+        on profile.run_nonce = matrix.run_nonce and profile.guest_id = guest.id
+      where matrix.guest_count = 19
+    ) assignment
+    where assignment.assignment_ordinal <= 11
+      and assignment.character_profile_key = any(array[
+        'surgeon', 'paramedic'
+      ]::text[])
+  ),
+  2,
+  'N=19 deterministically reserves two medical profiles in the quota prefix'
 );
 select ok(
   not exists (

@@ -1511,8 +1511,8 @@ create table public.bunker_mission_members (
   event_id uuid not null references public.events(id) on delete cascade,
   run_nonce uuid not null,
   instance_id uuid not null,
-  guest_id uuid not null references public.guests(id) on delete cascade,
-  carriage_id uuid not null references public.carriages(id) on delete cascade,
+  guest_id uuid not null,
+  carriage_id uuid not null,
   member_role text not null default 'member'
     check (member_role in ('member', 'captain', 'operator', 'voter')),
   member_status text not null default 'planned'
@@ -1528,7 +1528,13 @@ create table public.bunker_mission_members (
     references public.bunker_game_runs(event_id, run_nonce) on delete cascade,
   foreign key (instance_id, event_id, run_nonce)
     references public.bunker_mission_instances(id, event_id, run_nonce)
-    on delete cascade
+    on delete cascade,
+  constraint bunker_mission_members_guest_event_fkey
+    foreign key (guest_id, event_id)
+    references public.guests(id, event_id) on delete cascade,
+  constraint bunker_mission_members_carriage_event_fkey
+    foreign key (carriage_id, event_id)
+    references public.carriages(id, event_id) on delete cascade
 );
 
 create table public.bunker_mission_decisions (
@@ -1562,7 +1568,7 @@ create table public.bunker_ability_uses (
   event_id uuid not null references public.events(id) on delete cascade,
   run_nonce uuid not null,
   instance_id uuid not null,
-  guest_id uuid not null references public.guests(id) on delete cascade,
+  guest_id uuid not null,
   ability_key text not null check (ability_key ~ '^[a-z][a-z0-9_]+$'),
   problem_key text check (problem_key is null or problem_key ~ '^[a-z][a-z0-9_]+$'),
   status text not null default 'pending'
@@ -1577,6 +1583,9 @@ create table public.bunker_ability_uses (
   foreign key (instance_id, event_id, run_nonce)
     references public.bunker_mission_instances(id, event_id, run_nonce)
     on delete cascade,
+  constraint bunker_ability_uses_guest_event_fkey
+    foreign key (guest_id, event_id)
+    references public.guests(id, event_id) on delete cascade,
   check ((status = 'committed') = (committed_at is not null))
 );
 
@@ -1707,11 +1716,17 @@ create table public.bunker_command_receipts (
 alter table public.bunker_game_events
   add column if not exists sequence bigint generated always as (id) stored,
   add column if not exists command_id uuid,
-  add column if not exists instance_id uuid references public.bunker_mission_instances(id) on delete set null,
+  add column if not exists instance_id uuid,
   add column if not exists actor_id uuid,
   add column if not exists correlation_id uuid,
   add column if not exists schema_version integer not null default 1
     check (schema_version > 0);
+
+alter table public.bunker_game_events
+  add constraint bunker_game_events_instance_run_fkey
+  foreign key (instance_id, event_id, run_nonce)
+  references public.bunker_mission_instances(id, event_id, run_nonce)
+  on delete set null (instance_id);
 
 create unique index bunker_game_events_run_sequence_idx
   on public.bunker_game_events(run_nonce, sequence);
