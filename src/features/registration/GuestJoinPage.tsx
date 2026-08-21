@@ -7,6 +7,7 @@ import { confirmMissionOneSelection, getGuestMissionOneReadModel } from '../bunk
 import { getGuestMissionTwoReadModel, submitMissionTwoAnswers, useMissionTwoAbility } from '../bunker/v2/m02.service';
 import { commitMissionThreeAbility, confirmMissionThree, getGuestMissionThreeReadModel } from '../bunker/v2/m03.service';
 import { getGuestMissionFourReadModel, proposeMissionFourTrade, respondMissionFourTrade, sendMissionFourMessage, submitMissionFourAnswer } from '../bunker/v2/m04.service';
+import { castMissionFiveVote, getGuestMissionFiveReadModel, useMissionFiveAbility } from '../bunker/v2/m05.service';
 import { subscribeToCarriageCallRefresh, type CarriageCallRealtimeClient } from '../carriages/carriageCalls.realtime';
 import { getGuestActiveCarriageCalls, type CarriageCallRpcClient } from '../carriages/carriageCalls.service';
 import { subscribeToQuizRefresh, type QuizRealtimeClient } from '../quiz/quiz.realtime';
@@ -17,50 +18,40 @@ import { JoinPage, type JoinPageDependencies } from './JoinPage';
 import { recoverGuest, registerGuest, restoreGuest, type RegistrationRpcClient } from './registration.service';
 
 const DEFAULT_EVENT_SLUG = 'liza-viktor';
-type GuestJoinPageProps = { client?: RegistrationRpcClient; realtimeClient?: CarriageCallRealtimeClient; quizClient?: QuizRpcClient; quizRealtimeClient?: QuizRealtimeClient; bunkerClient?: BunkerRpcClient; bunkerRealtimeClient?: BunkerRealtimeClient; eventSlug?: string; deviceKey?: string; revealDelayMs?: number };
-
-export function GuestJoinPage({ client, realtimeClient, quizClient, quizRealtimeClient, bunkerClient, bunkerRealtimeClient, eventSlug = DEFAULT_EVENT_SLUG, deviceKey, revealDelayMs }: GuestJoinPageProps) {
-  const dependencies = useMemo<JoinPageDependencies>(() => {
-    const browserSupabase = client ? null : getSupabaseClient();
-    const registrationClient: RegistrationRpcClient = client ?? { rpc: async (name, args) => { const { data, error } = await browserSupabase!.rpc(name as never, args as never); return { data, error }; } };
-    const carriageCallClient = registrationClient as unknown as CarriageCallRpcClient;
-    const activeQuizClient = quizClient ?? (browserSupabase as unknown as QuizRpcClient | null) ?? undefined;
-    const activeBunkerClient = bunkerClient ?? (browserSupabase as unknown as BunkerRpcClient | null) ?? undefined;
-    const activeCarriageRealtimeClient = realtimeClient ?? (browserSupabase as unknown as CarriageCallRealtimeClient | null) ?? undefined;
-    const activeQuizRealtimeClient = quizRealtimeClient ?? (browserSupabase as unknown as QuizRealtimeClient | null) ?? undefined;
-    const activeBunkerRealtimeClient = bunkerRealtimeClient ?? (browserSupabase as unknown as BunkerRealtimeClient | null) ?? undefined;
-    let cachedDeviceKey = deviceKey;
-    const getDeviceKey = () => { cachedDeviceKey ??= getOrCreateDeviceKey(); return cachedDeviceKey; };
-    return {
-      getDeviceKey,
-      restore: (key) => restoreGuest(registrationClient, eventSlug, key),
-      register: (draft, confirmDuplicate) => registerGuest(registrationClient, eventSlug, getDeviceKey(), draft, confirmDuplicate),
-      recover: (key, recoveryCode) => recoverGuest(registrationClient, eventSlug, key, recoveryCode),
-      loadCarriageCalls: (key) => getGuestActiveCarriageCalls(carriageCallClient, eventSlug, key),
-      subscribeToCarriageCalls: activeCarriageRealtimeClient ? (carriageId, callback) => subscribeToCarriageCallRefresh(activeCarriageRealtimeClient, carriageId, callback) : undefined,
-      quiz: activeQuizClient ? { getDeviceKey, load: (key) => getGuestQuizState(activeQuizClient, eventSlug, key), vote: (key, questionId, choice) => submitGuestQuizVote(activeQuizClient, eventSlug, key, questionId, choice), subscribeToRefresh: activeQuizRealtimeClient ? (callback) => subscribeToQuizRefresh(activeQuizRealtimeClient, eventSlug, callback) : undefined } : undefined,
-      bunker: activeBunkerClient ? {
-        getDeviceKey,
-        load: (key) => getGuestBunkerQuest(activeBunkerClient, eventSlug, key),
-        loadRuntime: (key) => getGuestBunkerRuntime(activeBunkerClient, eventSlug, key),
-        loadMissionOne: (key) => getGuestMissionOneReadModel(activeBunkerClient, eventSlug, key),
-        confirmMissionOne: (key, input) => confirmMissionOneSelection(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        loadMissionTwo: (key) => getGuestMissionTwoReadModel(activeBunkerClient, eventSlug, key),
-        submitMissionTwo: (key, input) => submitMissionTwoAnswers(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        useMissionTwoAbility: (key, input) => useMissionTwoAbility(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        loadMissionThree: (key) => getGuestMissionThreeReadModel(activeBunkerClient, eventSlug, key),
-        confirmMissionThree: (key, input) => confirmMissionThree(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        useMissionThreeAbility: (key, input) => commitMissionThreeAbility(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        loadMissionFour: (key) => getGuestMissionFourReadModel(activeBunkerClient, eventSlug, key),
-        sendMissionFourMessage: (key, input) => sendMissionFourMessage(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        proposeMissionFourTrade: (key, input) => proposeMissionFourTrade(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        respondMissionFourTrade: (key, input) => respondMissionFourTrade(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        submitMissionFourAnswer: (key, input) => submitMissionFourAnswer(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
-        submitMission: (key, stage, answer) => submitBunkerMission(activeBunkerClient, eventSlug, key, stage, answer),
-        submitFinalCode: (key, code) => submitBunkerFinalCode(activeBunkerClient, eventSlug, key, code),
-        subscribeToRefresh: activeBunkerRealtimeClient ? (callback) => subscribeToBunkerRefresh(activeBunkerRealtimeClient, eventSlug, callback) : undefined,
-      } : undefined,
-    };
-  }, [bunkerClient, bunkerRealtimeClient, client, deviceKey, eventSlug, quizClient, quizRealtimeClient, realtimeClient]);
-  return <JoinPage dependencies={dependencies} revealDelayMs={revealDelayMs} />;
+type GuestJoinPageProps={client?:RegistrationRpcClient;realtimeClient?:CarriageCallRealtimeClient;quizClient?:QuizRpcClient;quizRealtimeClient?:QuizRealtimeClient;bunkerClient?:BunkerRpcClient;bunkerRealtimeClient?:BunkerRealtimeClient;eventSlug?:string;deviceKey?:string;revealDelayMs?:number};
+export function GuestJoinPage({client,realtimeClient,quizClient,quizRealtimeClient,bunkerClient,bunkerRealtimeClient,eventSlug=DEFAULT_EVENT_SLUG,deviceKey,revealDelayMs}:GuestJoinPageProps){
+ const dependencies=useMemo<JoinPageDependencies>(()=>{const browserSupabase=client?null:getSupabaseClient();const registrationClient:RegistrationRpcClient=client??{rpc:async(name,args)=>{const{data,error}=await browserSupabase!.rpc(name as never,args as never);return{data,error};}};const carriageCallClient=registrationClient as unknown as CarriageCallRpcClient;const activeQuizClient=quizClient??(browserSupabase as unknown as QuizRpcClient|null)??undefined;const activeBunkerClient=bunkerClient??(browserSupabase as unknown as BunkerRpcClient|null)??undefined;const activeCarriageRealtimeClient=realtimeClient??(browserSupabase as unknown as CarriageCallRealtimeClient|null)??undefined;const activeQuizRealtimeClient=quizRealtimeClient??(browserSupabase as unknown as QuizRealtimeClient|null)??undefined;const activeBunkerRealtimeClient=bunkerRealtimeClient??(browserSupabase as unknown as BunkerRealtimeClient|null)??undefined;let cachedDeviceKey=deviceKey;const getDeviceKey=()=>{cachedDeviceKey??=getOrCreateDeviceKey();return cachedDeviceKey;};return{
+  getDeviceKey,
+  restore:(key)=>restoreGuest(registrationClient,eventSlug,key),
+  register:(draft,confirmDuplicate)=>registerGuest(registrationClient,eventSlug,getDeviceKey(),draft,confirmDuplicate),
+  recover:(key,recoveryCode)=>recoverGuest(registrationClient,eventSlug,key,recoveryCode),
+  loadCarriageCalls:(key)=>getGuestActiveCarriageCalls(carriageCallClient,eventSlug,key),
+  subscribeToCarriageCalls:activeCarriageRealtimeClient?(carriageId,callback)=>subscribeToCarriageCallRefresh(activeCarriageRealtimeClient,carriageId,callback):undefined,
+  quiz:activeQuizClient?{getDeviceKey,load:(key)=>getGuestQuizState(activeQuizClient,eventSlug,key),vote:(key,questionId,choice)=>submitGuestQuizVote(activeQuizClient,eventSlug,key,questionId,choice),subscribeToRefresh:activeQuizRealtimeClient?(callback)=>subscribeToQuizRefresh(activeQuizRealtimeClient,eventSlug,callback):undefined}:undefined,
+  bunker:activeBunkerClient?{
+   getDeviceKey,
+   load:(key)=>getGuestBunkerQuest(activeBunkerClient,eventSlug,key),
+   loadRuntime:(key)=>getGuestBunkerRuntime(activeBunkerClient,eventSlug,key),
+   loadMissionOne:(key)=>getGuestMissionOneReadModel(activeBunkerClient,eventSlug,key),
+   confirmMissionOne:(key,input)=>confirmMissionOneSelection(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   loadMissionTwo:(key)=>getGuestMissionTwoReadModel(activeBunkerClient,eventSlug,key),
+   submitMissionTwo:(key,input)=>submitMissionTwoAnswers(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   useMissionTwoAbility:(key,input)=>useMissionTwoAbility(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   loadMissionThree:(key)=>getGuestMissionThreeReadModel(activeBunkerClient,eventSlug,key),
+   confirmMissionThree:(key,input)=>confirmMissionThree(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   useMissionThreeAbility:(key,input)=>commitMissionThreeAbility(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   loadMissionFour:(key)=>getGuestMissionFourReadModel(activeBunkerClient,eventSlug,key),
+   sendMissionFourMessage:(key,input)=>sendMissionFourMessage(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   proposeMissionFourTrade:(key,input)=>proposeMissionFourTrade(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   respondMissionFourTrade:(key,input)=>respondMissionFourTrade(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   submitMissionFourAnswer:(key,input)=>submitMissionFourAnswer(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   loadMissionFive:(key)=>getGuestMissionFiveReadModel(activeBunkerClient,eventSlug,key),
+   castMissionFiveVote:(key,input)=>castMissionFiveVote(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   useMissionFiveAbility:(key,input)=>useMissionFiveAbility(activeBunkerClient,{eventSlug,deviceKey:key,...input}),
+   submitMission:(key,stage,answer)=>submitBunkerMission(activeBunkerClient,eventSlug,key,stage,answer),
+   submitFinalCode:(key,code)=>submitBunkerFinalCode(activeBunkerClient,eventSlug,key,code),
+   subscribeToRefresh:activeBunkerRealtimeClient?(callback)=>subscribeToBunkerRefresh(activeBunkerRealtimeClient,eventSlug,callback):undefined,
+  }:undefined,
+ };},[bunkerClient,bunkerRealtimeClient,client,deviceKey,eventSlug,quizClient,quizRealtimeClient,realtimeClient]);
+ return <JoinPage dependencies={dependencies} revealDelayMs={revealDelayMs}/>;
 }
