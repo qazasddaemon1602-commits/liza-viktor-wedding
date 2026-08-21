@@ -45,4 +45,21 @@ describe('MK realtime refresh', () => {
       payload: {},
     });
   });
+
+  it('times out and unsubscribes when the subscribe status never arrives', async () => {
+    const channel = {
+      send: vi.fn().mockResolvedValue('ok'),
+      on: vi.fn(),
+      subscribe: vi.fn(() => channel),
+      unsubscribe: vi.fn(),
+    };
+    const client: MkRealtimeClient = { channel: vi.fn().mockReturnValue(channel) };
+
+    await expect(broadcastMkRefresh(client, 'liza-viktor', 10)).rejects.toThrow(
+      /SUBSCRIBE_TIMEOUT/,
+    );
+    expect(channel.send).not.toHaveBeenCalled();
+    expect(channel.unsubscribe).toHaveBeenCalledTimes(1);
+  });
 });
+

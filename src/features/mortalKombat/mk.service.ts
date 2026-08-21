@@ -10,7 +10,7 @@ export type MkRpcClient = {
 
 function throwRpcError(error: Exclude<MkRpcError, null>): never {
   if (error instanceof Error) throw error;
-  const next = new Error(error.message || 'Mortal Kombat request failed');
+  const next = new Error(error.message || 'Tournament request failed');
   if (error.code) Object.assign(next, { code: error.code });
   throw next;
 }
@@ -61,6 +61,7 @@ function parseTournament(data: unknown): MkTournamentProjection {
     || data.maxPlayers !== 16
     || !Array.isArray(data.players)
     || !Array.isArray(data.matches)
+    || typeof data.presentOnMainScreen !== 'boolean'
   ) {
     throw new Error('Unexpected MK tournament payload');
   }
@@ -81,6 +82,7 @@ function parseTournament(data: unknown): MkTournamentProjection {
     players: data.players.map(parsePlayer),
     matches: data.matches.map(parseMatch),
     championGuestId: typeof data.championGuestId === 'string' ? data.championGuestId : null,
+    presentOnMainScreen: data.presentOnMainScreen,
   };
 }
 
@@ -126,6 +128,17 @@ export async function getMkTournamentScreenState(
   client: MkRpcClient,
   eventSlug: string,
 ): Promise<MkTournamentProjection> {
+  const projection = await loadMkProjection(client, eventSlug, null);
+  if (projection.status === 'active' && !projection.presentOnMainScreen) {
+    return { status: 'idle' };
+  }
+  return projection;
+}
+
+export async function getMkTournamentDedicatedScreenState(
+  client: MkRpcClient,
+  eventSlug: string,
+): Promise<MkTournamentProjection> {
   return loadMkProjection(client, eventSlug, null);
 }
 
@@ -141,3 +154,4 @@ export async function joinMkTournament(
   if (error) throwRpcError(error);
   return parseJoin(data);
 }
+

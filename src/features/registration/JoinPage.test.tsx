@@ -35,17 +35,18 @@ describe('JoinPage', () => {
     render(<JoinPage dependencies={dependencies({ restore })} />);
 
     expect(await screen.findByText('Иван Петров')).toBeInTheDocument();
-    expect(screen.getByText('LV-031')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('LV-031');
     expect(restore).toHaveBeenCalledWith('lvw_device_1');
   });
 
-  it('offers the registered guest a direct Mortal Kombat entry without another signup form', async () => {
+  it('offers the registered guest a neutral direct arena entry without another signup form', async () => {
     const restore = vi.fn().mockResolvedValue({ status: 'restored', guest });
     render(<JoinPage dependencies={dependencies({ restore })} />);
 
-    await screen.findByText('LV-031');
-    const mkLink = screen.getByRole('link', { name: 'MORTAL KOMBAT · УЧАСТВОВАТЬ' });
-    expect(mkLink).toHaveAttribute('href', '/mortal-kombat');
+    await screen.findByTestId('virtual-ticket');
+    const arenaLink = screen.getByRole('link', { name: 'ПОСЛЕДНИЙ КРУГ · УЧАСТВОВАТЬ' });
+    expect(arenaLink).toHaveAttribute('href', '/mortal-kombat');
+    expect(screen.queryByText(/MORTAL KOMBAT|FATALITY/i)).not.toBeInTheDocument();
   });
 
   it('shows registration when the device has no existing guest binding', async () => {
@@ -53,7 +54,7 @@ describe('JoinPage', () => {
 
     expect(await screen.findByRole('button', { name: /получить билет/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Имя')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'MORTAL KOMBAT · УЧАСТВОВАТЬ' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'ПОСЛЕДНИЙ КРУГ · УЧАСТВОВАТЬ' })).not.toBeInTheDocument();
   });
 
   it('recovers the old ticket from an owner-issued code on a new phone', async () => {
@@ -68,7 +69,7 @@ describe('JoinPage', () => {
 
     expect(recover).toHaveBeenCalledWith('lvw_device_1', 'AB12-CD34');
     expect(await screen.findByText('Иван Петров')).toBeInTheDocument();
-    expect(screen.getByText('LV-031')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('LV-031');
   });
 
   it('keeps registration available when a recovery code is invalid or expired', async () => {

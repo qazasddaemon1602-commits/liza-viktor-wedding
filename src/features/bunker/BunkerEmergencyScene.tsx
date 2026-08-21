@@ -1,8 +1,8 @@
+import { BunkerResponsivePicture } from './BunkerResponsivePicture';
+
 type BunkerEmergencySceneProps = {
   remainingSeconds: number;
-  soundEnabled: boolean;
-  soundArmed: boolean;
-  onArmSound?: () => void;
+  motionPreference?: 'full' | 'reduced';
 };
 
 function timerLabel(seconds: number): string {
@@ -14,15 +14,53 @@ function timerLabel(seconds: number): string {
 
 export function BunkerEmergencyScene({
   remainingSeconds,
-  soundEnabled,
-  soundArmed,
-  onArmSound,
+  motionPreference = 'full',
 }: BunkerEmergencySceneProps) {
   const arrived = remainingSeconds <= 0;
+  const reducedMotion = motionPreference === 'reduced';
 
   return (
-    <section className="bunker-emergency" aria-live="assertive" data-testid="bunker-emergency-scene">
+    <section
+      className="bunker-emergency"
+      aria-live="assertive"
+      data-motion={motionPreference}
+      data-testid="bunker-emergency-scene"
+    >
+      <BunkerResponsivePicture
+        asset="train-tunnel"
+        className="bunker-emergency__artwork"
+        testId="bunker-emergency-artwork"
+        loading="eager"
+      />
+      {!reducedMotion && (
+        <>
+          <div className="bunker-emergency__blackout" aria-hidden="true" data-testid="bunker-blackout" />
+          <div className="bunker-emergency__sync-tear" aria-hidden="true" data-testid="bunker-sync-tear" />
+        </>
+      )}
       <div className="bunker-emergency__scan" aria-hidden="true" />
+      <div className="bunker-emergency__frame" aria-hidden="true">
+        <span className="bunker-emergency__corner bunker-emergency__corner--tl" />
+        <span className="bunker-emergency__corner bunker-emergency__corner--tr" />
+        <span className="bunker-emergency__corner bunker-emergency__corner--bl" />
+        <span className="bunker-emergency__corner bunker-emergency__corner--br" />
+      </div>
+      <div className="bunker-emergency__grid" aria-hidden="true" />
+
+      <ul className="bunker-emergency__index" aria-hidden="true" data-testid="bunker-archive-index">
+        <li>ARCH. 07 / 21</li>
+        <li>SEC. LV-04</li>
+        <li>N 55°45′ E 37°37′</li>
+        <li>REG. 1602</li>
+      </ul>
+
+      <BunkerResponsivePicture
+        asset="tunnel-map-master"
+        className="bunker-emergency__schematic"
+        testId="bunker-route-schematic"
+        sizes="(max-width: 1100px) 1px, 30vw"
+      />
+
       <header className="bunker-emergency__header">
         <span className="bunker-emergency__signal" aria-hidden="true" />
         <strong>ЭКСТРЕННОЕ СООБЩЕНИЕ</strong>
@@ -31,7 +69,7 @@ export function BunkerEmergencyScene({
 
       <div className="bunker-emergency__content">
         <p>ПОЕЗД ИЗМЕНИЛ МАРШРУТ.</p>
-        <h1>БУНКЕР</h1>
+        <h1 className="bunker-emergency__title-reveal">БУНКЕР</h1>
         <p>ЕДИНСТВЕННАЯ БЕЗОПАСНАЯ ТОЧКА</p>
 
         <div className="bunker-emergency__timer-block">
@@ -44,12 +82,6 @@ export function BunkerEmergencyScene({
         <span>СОХРАНЯЙТЕ СПОКОЙСТВИЕ · СЛЕДУЙТЕ УКАЗАНИЯМ ВЕДУЩЕГО</span>
         <span>{arrived ? 'ТОЧКА ДОСТИГНУТА' : 'МАРШРУТ ПЕРЕСТРОЕН'}</span>
       </footer>
-
-      {soundEnabled && !soundArmed && onArmSound && (
-        <button type="button" className="bunker-emergency__sound" onClick={onArmSound}>
-          ВКЛЮЧИТЬ ТРЕВОГУ
-        </button>
-      )}
     </section>
   );
 }

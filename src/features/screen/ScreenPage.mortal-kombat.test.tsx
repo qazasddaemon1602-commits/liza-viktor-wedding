@@ -22,6 +22,7 @@ const liveFight: MkTournamentProjection = {
     status: 'ready', current: true,
   }],
   championGuestId: null,
+  presentOnMainScreen: true,
 };
 
 describe('ScreenPage Mortal Kombat integration', () => {
@@ -39,6 +40,7 @@ describe('ScreenPage Mortal Kombat integration', () => {
     render(<ScreenPage joinUrl="https://wedding.test/join" dependencies={dependencies} />);
 
     expect(await screen.findByText('ТЕКУЩИЙ БОЙ')).toBeInTheDocument();
+    expect(screen.getByText('ТЕКУЩИЙ БОЙ').closest('.screen-page')).toHaveClass('screen-page--mk');
     expect(screen.getByRole('heading', { name: 'Сергей' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Максим' })).toBeInTheDocument();
 
@@ -64,3 +66,4 @@ describe('ScreenPage Mortal Kombat integration', () => {
     expect(screen.getByText('ТЕКУЩИЙ БОЙ')).toBeInTheDocument();
   });
 });
+

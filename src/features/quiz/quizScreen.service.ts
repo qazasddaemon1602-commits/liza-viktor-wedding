@@ -16,22 +16,28 @@ export type QuizScreenQuestion = {
   imagePath: string | null;
 };
 
+type QuizScreenTiming = {
+  roundId?: string;
+  phaseStartedAt?: string | null;
+  phaseEndsAt?: string | null;
+};
+
 export type QuizScreenState =
   | { status: 'idle' }
   | { status: 'not_found' }
-  | {
+  | (QuizScreenTiming & {
       status: 'active';
       phase: 'voting';
       question: QuizScreenQuestion;
       answeredCount: number;
-    }
-  | {
+    })
+  | (QuizScreenTiming & {
       status: 'active';
       phase: 'results';
       question: QuizScreenQuestion;
       answeredCount: number;
       results: QuizResults;
-    };
+    });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -50,6 +56,13 @@ function fail(): never {
 
 function parseCount(value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) fail();
+  return value;
+}
+
+function parseOptionalTimestamp(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) fail();
   return value;
 }
 
@@ -83,6 +96,14 @@ function parseResults(value: unknown): QuizResults {
   return { liza, viktor, total };
 }
 
+function parseTiming(data: Record<string, unknown>): QuizScreenTiming {
+  return {
+    roundId: typeof data.roundId === 'string' ? data.roundId : undefined,
+    phaseStartedAt: parseOptionalTimestamp(data.phaseStartedAt),
+    phaseEndsAt: parseOptionalTimestamp(data.phaseEndsAt),
+  };
+}
+
 function parseState(data: unknown): QuizScreenState {
   if (!isRecord(data)) fail();
   if (data.status === 'idle') return { status: 'idle' };
@@ -91,10 +112,12 @@ function parseState(data: unknown): QuizScreenState {
 
   const question = parseQuestion(data.question);
   const answeredCount = parseCount(data.answeredCount);
+  const timing = parseTiming(data);
 
   if (data.phase === 'voting') {
     if ('results' in data) fail();
     return {
+      ...timing,
       status: 'active',
       phase: 'voting',
       question,
@@ -104,6 +127,7 @@ function parseState(data: unknown): QuizScreenState {
 
   if (data.phase === 'results') {
     return {
+      ...timing,
       status: 'active',
       phase: 'results',
       question,
@@ -125,3 +149,4 @@ export async function getQuizScreenState(
   if (error) throwRpcError(error);
   return parseState(data);
 }
+

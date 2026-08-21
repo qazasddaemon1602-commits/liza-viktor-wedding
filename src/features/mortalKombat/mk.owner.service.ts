@@ -26,7 +26,7 @@ export type MkResultResponse =
 
 function throwRpcError(error: Exclude<MkOwnerRpcError, null>): never {
   if (error instanceof Error) throw error;
-  const next = new Error(error.message || 'Owner Mortal Kombat request failed');
+  const next = new Error(error.message || 'Owner tournament request failed');
   if (error.code) Object.assign(next, { code: error.code });
   throw next;
 }
@@ -192,6 +192,17 @@ export async function showMkBracket(client: MkOwnerRpcClient, eventId: string): 
   await ownerCommand(client, 'owner_show_mk_bracket', { p_event_id: eventId });
 }
 
+export async function setMkMainScreen(
+  client: MkOwnerRpcClient,
+  eventId: string,
+  enabled: boolean,
+): Promise<void> {
+  await ownerCommand(client, 'owner_set_mk_main_screen', {
+    p_event_id: eventId,
+    p_enabled: enabled,
+  });
+}
+
 export async function recordMkWinner(
   client: MkOwnerRpcClient,
   matchId: string,
@@ -217,3 +228,4 @@ export async function undoMkResult(
   });
   return parseResultResponse(data);
 }
+

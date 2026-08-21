@@ -1,0 +1,881 @@
+.wedding-home {
+  --home-page: var(--wedding-paper, #f3eee5);
+  --home-ink: var(--wedding-graphite, #252724);
+  --home-muted: color-mix(in srgb, var(--home-ink) 64%, transparent);
+  --home-dark: var(--wedding-graphite, #252724);
+  --home-line: var(--wedding-line-soft, rgba(37, 39, 36, 0.14));
+  min-height: 100vh;
+  overflow: hidden;
+  color: var(--home-ink);
+  background: var(--home-page);
+  font-size: 1rem;
+}
+
+.wedding-home h1,
+.wedding-home h2,
+.wedding-home h3,
+.wedding-home p {
+  margin: 0;
+}
+
+.wedding-home a {
+  color: inherit;
+}
+
+.wedding-home__media {
+  min-width: 0;
+  margin: 0;
+}
+
+.wedding-home__media img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.wedding-home__media figcaption {
+  margin-top: 0.75rem;
+  color: var(--home-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.wedding-home__masthead {
+  width: min(100%, 90rem);
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin: 0 auto;
+  padding: 0.75rem clamp(1rem, 4vw, 4rem);
+  border-bottom: 1px solid var(--home-line);
+}
+
+.wedding-home__monogram {
+  flex: none;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+}
+
+.wedding-home__monogram-link {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wedding-home__monogram span {
+  color: var(--wedding-brass);
+}
+
+.wedding-home__nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(1rem, 2.4vw, 2.5rem);
+}
+
+.wedding-home__nav a,
+.wedding-home__text-link {
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--home-ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-decoration-color: color-mix(in srgb, var(--home-ink) 42%, transparent);
+  text-underline-offset: 0.35rem;
+  text-transform: uppercase;
+}
+
+.wedding-home__hero,
+.wedding-home__story,
+.wedding-home__venue,
+.wedding-home__rsvp {
+  width: min(100%, 90rem);
+  margin: 0 auto;
+  padding-inline: clamp(1rem, 6vw, 7rem);
+}
+
+.wedding-home__hero {
+  position: relative;
+  min-height: clamp(37rem, 66vw, 53rem);
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(17rem, 0.72fr) minmax(11rem, 0.4fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 7rem);
+  padding-block: clamp(3.5rem, 8vw, 7rem);
+}
+
+.wedding-home__hero-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  gap: 1.4rem;
+}
+
+.wedding-home__hero-media {
+  align-self: center;
+}
+
+.wedding-home__hero-media img {
+  aspect-ratio: 4 / 5;
+  border-radius: 48% 48% 0 0 / 22% 22% 0 0;
+  filter: saturate(0.72) contrast(1.03);
+  object-position: 50% 58%;
+}
+
+.wedding-home__eyebrow,
+.wedding-home__section-heading > p {
+  color: var(--wedding-cinnamon);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.wedding-home__hero h1 {
+  max-width: none;
+  display: grid;
+  color: var(--home-ink);
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 7.2vw, 7.5rem);
+  font-weight: 400;
+  line-height: 0.78;
+  letter-spacing: -0.055em;
+  text-transform: uppercase;
+}
+
+.wedding-home__hero h1 small {
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  margin: 0.4rem 0 0.2rem 42%;
+  border-radius: 50%;
+  color: var(--home-page);
+  background: var(--wedding-brass);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: lowercase;
+}
+
+.wedding-home__date {
+  display: block;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--home-line);
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.2vw, 2rem);
+  letter-spacing: 0.03em;
+}
+
+.wedding-home__intro,
+.wedding-home__section-copy > p,
+.wedding-home__venue-copy > p,
+.wedding-home__dress-code > p,
+.wedding-home__rsvp-copy > p {
+  max-width: 36rem;
+  color: var(--home-muted);
+  line-height: 1.75;
+}
+
+.wedding-home__hero-facts {
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+  gap: clamp(2rem, 4vw, 4rem);
+  padding-left: clamp(1.5rem, 3vw, 3rem);
+  border-left: 1px solid var(--home-line);
+}
+
+.wedding-home__hero-facts > p {
+  color: var(--home-ink);
+  font-family: var(--font-display);
+  font-size: clamp(4.5rem, 8vw, 8rem);
+  font-weight: 400;
+  line-height: 0.72;
+  letter-spacing: -0.07em;
+}
+
+.wedding-home__hero-facts dl,
+.wedding-home__venue-facts {
+  margin: 0;
+}
+
+.wedding-home__hero-facts dl {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+}
+
+.wedding-home__hero-facts dl > div {
+  min-width: 0;
+  padding: 1.2rem 0 0;
+  border-top: 1px solid var(--home-line);
+}
+
+.wedding-home__hero-facts dl > div:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.wedding-home__hero-facts dt,
+.wedding-home__venue-facts dt {
+  color: var(--wedding-cinnamon);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.wedding-home__hero-facts dd,
+.wedding-home__venue-facts dd {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-display);
+  line-height: 1.2;
+}
+
+.wedding-home__countdown {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.4fr) repeat(4, minmax(7rem, 0.65fr));
+  margin: 0;
+  padding-inline: max(clamp(1rem, 6vw, 7rem), calc((100vw - 90rem) / 2 + clamp(1rem, 6vw, 7rem)));
+  border-block: 1px solid var(--wedding-line-strong);
+  background: var(--wedding-cream);
+}
+
+.wedding-home__countdown > div {
+  min-width: 0;
+  min-height: 8rem;
+  display: grid;
+  place-content: center;
+  gap: 0.35rem;
+  padding: 1.25rem clamp(0.75rem, 2vw, 2rem);
+  border-left: 1px solid var(--home-line);
+  text-align: center;
+}
+
+.wedding-home__countdown > div:first-child {
+  align-content: center;
+  justify-content: start;
+  padding-left: 0;
+  border-left: 0;
+  text-align: left;
+}
+
+.wedding-home__countdown-heading span,
+.wedding-home__countdown > div:not(:first-child) span {
+  color: var(--home-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.wedding-home__countdown-heading strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 3rem);
+  font-weight: 400;
+}
+
+.wedding-home__countdown > div:not(:first-child) strong {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 4rem);
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.wedding-home__story {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.72fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(2.5rem, 7vw, 8rem);
+  padding-block: clamp(5rem, 10vw, 10rem);
+  border-top: 1px solid var(--home-line);
+}
+
+.wedding-home__story-media img,
+.wedding-home__venue-media img {
+  aspect-ratio: 4 / 5;
+  border-radius: 50% 50% 0 0 / 18% 18% 0 0;
+}
+
+.wedding-home__story-media img {
+  object-position: center;
+}
+
+.wedding-home__section-copy,
+.wedding-home__venue-copy,
+.wedding-home__rsvp-copy {
+  display: grid;
+  justify-items: start;
+  gap: 1.35rem;
+}
+
+.wedding-home h2 {
+  max-width: 15ch;
+  color: var(--home-ink);
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 5.5vw, 5.8rem);
+  font-weight: 400;
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.wedding-home__schedule {
+  padding: clamp(4rem, 7vw, 7rem) max(clamp(1rem, 6vw, 7rem), calc((100vw - 90rem) / 2 + clamp(1rem, 6vw, 7rem)));
+  color: var(--home-page);
+  background: var(--home-dark);
+}
+
+.wedding-home__section-heading {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  margin-bottom: clamp(2.5rem, 5vw, 5rem);
+  text-align: center;
+}
+
+.wedding-home__section-heading h2 {
+  max-width: none;
+}
+
+.wedding-home__section-heading--light > p {
+  color: var(--wedding-brass);
+}
+
+.wedding-home__section-heading--light h2 {
+  color: var(--home-page);
+}
+
+.wedding-home__schedule-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wedding-home__schedule-list li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  padding: 0 clamp(1.2rem, 3vw, 3rem);
+  border-left: 1px solid color-mix(in srgb, var(--home-page) 24%, transparent);
+}
+
+.wedding-home__schedule-list li:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.wedding-home__schedule-list li:last-child {
+  padding-right: 0;
+}
+
+.wedding-home__schedule-list > li > span {
+  color: var(--wedding-brass);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.wedding-home__schedule-list h3,
+.wedding-home__dress-code h3 {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2vw, 2rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.wedding-home__schedule-list p {
+  margin-top: 0.6rem;
+  color: color-mix(in srgb, var(--home-page) 68%, transparent);
+  line-height: 1.6;
+}
+
+.wedding-home__venue {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(12rem, 0.64fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 5rem);
+  padding-block: clamp(5rem, 9vw, 9rem);
+}
+
+.wedding-home__venue-media img {
+  object-position: 50% 42%;
+}
+
+.wedding-home__venue-details {
+  min-width: 0;
+  display: grid;
+  gap: 2rem;
+}
+
+.wedding-home__venue-facts {
+  display: grid;
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 3vw, 3rem);
+  border-block: 1px solid var(--home-line);
+}
+
+.wedding-home__venue-facts > div + div {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--home-line);
+}
+
+.wedding-home__dress-code {
+  display: grid;
+  align-content: center;
+  gap: 1.2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--home-line);
+}
+
+.wedding-home__palette {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+}
+
+.wedding-home__swatch {
+  width: 1.65rem;
+  aspect-ratio: 1;
+  display: block;
+  border: 1px solid color-mix(in srgb, var(--home-ink) 16%, transparent);
+  border-radius: 50%;
+}
+
+.wedding-home__swatch--graphite { background: var(--wedding-graphite); }
+.wedding-home__swatch--brass { background: var(--wedding-brass); }
+.wedding-home__swatch--cream { background: var(--wedding-cream); }
+.wedding-home__swatch--cinnamon { background: var(--wedding-cinnamon); }
+
+.wedding-home__gallery {
+  padding: clamp(4rem, 7vw, 7rem) max(clamp(1rem, 4vw, 4rem), calc((100vw - 90rem) / 2 + clamp(1rem, 4vw, 4rem)));
+  border-block: 1px solid var(--home-line);
+}
+
+.wedding-home__ticket-still {
+  margin-bottom: clamp(2rem, 4vw, 4rem);
+}
+
+.wedding-home__ticket-still img {
+  aspect-ratio: 16 / 9;
+  max-height: 42rem;
+  object-position: center;
+}
+
+.wedding-home__archive {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  border-block: 1px solid var(--home-line);
+  list-style: none;
+}
+
+.wedding-home__archive li {
+  min-width: 0;
+  min-height: 14rem;
+  display: grid;
+  align-content: space-between;
+  gap: 1.2rem;
+  padding: 1.5rem clamp(1rem, 2vw, 2rem);
+  border-left: 1px solid var(--home-line);
+}
+
+.wedding-home__archive li:first-child {
+  border-left: 0;
+}
+
+.wedding-home__archive li > span {
+  color: var(--wedding-cinnamon);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+}
+
+.wedding-home__archive time,
+.wedding-home__archive strong {
+  align-self: end;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 2rem);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.wedding-home__archive p {
+  color: var(--home-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.wedding-home__rsvp {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.72fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(2.5rem, 7vw, 8rem);
+  padding-block: clamp(5rem, 9vw, 9rem);
+}
+
+.wedding-home__rsvp-mark {
+  display: grid;
+  justify-items: start;
+  font-family: var(--font-display);
+  font-size: clamp(3.8rem, 8vw, 7.5rem);
+  line-height: 0.76;
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+}
+
+.wedding-home__rsvp-mark span:nth-child(2) {
+  margin-left: 42%;
+  color: var(--wedding-brass);
+  font-size: 0.5em;
+}
+
+.wedding-home__rsvp-mark small {
+  margin-top: 1.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.15em;
+}
+
+.wedding-home__button {
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.6rem;
+  border: 1px solid var(--home-dark);
+  color: var(--home-page) !important;
+  background: var(--home-dark);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color var(--motion-duration-fast), background var(--motion-duration-fast);
+}
+
+.wedding-home__button:hover {
+  color: var(--home-dark) !important;
+  background: transparent;
+}
+
+.wedding-home__footer {
+  width: min(100%, 90rem);
+  min-height: 7rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin: 0 auto;
+  padding: 1.5rem clamp(1rem, 4vw, 4rem);
+  border-top: 1px solid var(--home-line);
+  color: var(--home-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .wedding-home__masthead {
+    align-items: flex-start;
+  }
+
+  .wedding-home__nav {
+    max-width: 32rem;
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .wedding-home__hero {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.72fr);
+  }
+
+  .wedding-home__hero-facts {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(9rem, auto) minmax(0, 1fr);
+    align-items: center;
+    padding: 2rem 0 0;
+    border-top: 1px solid var(--home-line);
+    border-left: 0;
+  }
+
+  .wedding-home__hero-facts dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .wedding-home__hero-facts dl > div,
+  .wedding-home__hero-facts dl > div:first-child {
+    padding: 0 1rem;
+    border-top: 0;
+    border-left: 1px solid var(--home-line);
+  }
+
+  .wedding-home__hero h1 {
+    font-size: clamp(3.5rem, 10vw, 5.5rem);
+  }
+
+  .wedding-home__venue {
+    grid-template-columns: 1fr 0.72fr;
+  }
+
+  .wedding-home__venue-details {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    padding-top: 2rem;
+    border-top: 1px solid var(--home-line);
+  }
+
+  .wedding-home__dress-code {
+    padding: 0 0 0 2rem;
+    border-top: 0;
+    border-left: 1px solid var(--home-line);
+  }
+}
+
+@media (max-width: 640px) {
+  .wedding-home__masthead {
+    min-height: 3.75rem;
+    align-items: center;
+  }
+
+  .wedding-home__nav {
+    justify-content: flex-end;
+    gap: 0 0.85rem;
+  }
+
+  .wedding-home__nav a {
+    min-height: 2.75rem;
+    font-size: 0.75rem;
+  }
+
+  .wedding-home__hero,
+  .wedding-home__story,
+  .wedding-home__venue,
+  .wedding-home__rsvp {
+    padding-inline: 1.25rem;
+  }
+
+  .wedding-home__hero {
+    grid-template-columns: 1fr;
+    gap: 2.75rem;
+    padding-block: 3.5rem 4.5rem;
+  }
+
+  .wedding-home__hero-copy {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .wedding-home__hero h1 {
+    justify-items: center;
+    font-size: clamp(3.6rem, 18vw, 5.5rem);
+  }
+
+  .wedding-home__hero h1 small {
+    margin-left: 0;
+  }
+
+  .wedding-home__hero-facts {
+    min-height: 13rem;
+    grid-template-columns: 1fr;
+    padding: 2.5rem 0 0;
+    border-top: 1px solid var(--home-line);
+    border-left: 0;
+  }
+
+  .wedding-home__hero-facts > p {
+    text-align: center;
+  }
+
+  .wedding-home__hero-facts dl > div,
+  .wedding-home__hero-facts dl > div:first-child {
+    padding: 0 0.75rem;
+  }
+
+  .wedding-home__story,
+  .wedding-home__rsvp {
+    grid-template-columns: 1fr;
+  }
+
+  .wedding-home__story-media,
+  .wedding-home__rsvp-mark {
+    justify-self: center;
+    text-align: center;
+  }
+
+  .wedding-home__section-copy,
+  .wedding-home__venue-copy,
+  .wedding-home__rsvp-copy {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .wedding-home h2 {
+    font-size: clamp(2.65rem, 13vw, 4.4rem);
+  }
+
+  .wedding-home__schedule {
+    padding: 4rem 1.25rem;
+  }
+
+  .wedding-home__schedule-list {
+    grid-template-columns: 1fr;
+  }
+
+  .wedding-home__schedule-list li,
+  .wedding-home__schedule-list li:first-child,
+  .wedding-home__schedule-list li:last-child {
+    padding: 1.5rem 0;
+    border-top: 1px solid color-mix(in srgb, var(--home-page) 24%, transparent);
+    border-left: 0;
+  }
+
+  .wedding-home__schedule-list li:first-child {
+    border-top: 0;
+  }
+
+  .wedding-home__countdown {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-inline: 1.25rem;
+  }
+
+  .wedding-home__countdown > div.wedding-home__countdown-heading {
+    grid-column: 1 / -1;
+    min-height: 5.5rem;
+    justify-content: center;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--home-line);
+    text-align: center;
+  }
+
+  .wedding-home__countdown > div:not(:first-child) {
+    min-height: 6.75rem;
+    padding-inline: 0.25rem;
+  }
+
+  .wedding-home__countdown > div:nth-child(2) {
+    border-left: 0;
+  }
+
+  .wedding-home__venue {
+    grid-template-columns: 1fr;
+  }
+
+  .wedding-home__venue-facts {
+    grid-row: auto;
+  }
+
+  .wedding-home__venue-media {
+    grid-row: 1;
+  }
+
+  .wedding-home__venue-details {
+    grid-template-columns: 1fr;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .wedding-home__dress-code {
+    justify-items: center;
+    padding: 2rem 0 0;
+    border-top: 1px solid var(--home-line);
+    border-left: 0;
+    text-align: center;
+  }
+
+  .wedding-home__gallery {
+    padding: 4rem 1.25rem 5.25rem;
+  }
+
+  .wedding-home__archive {
+    grid-template-columns: 1fr;
+  }
+
+  .wedding-home__archive li {
+    min-height: auto;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.65rem 1rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--home-line);
+    border-left: 0;
+  }
+
+  .wedding-home__archive li:first-child {
+    border-top: 0;
+  }
+
+  .wedding-home__archive li > span {
+    grid-row: 1 / 3;
+  }
+
+  .wedding-home__archive time,
+  .wedding-home__archive strong,
+  .wedding-home__archive p {
+    grid-column: 2;
+  }
+
+  .wedding-home__footer {
+    min-height: 6rem;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 370px) {
+  .wedding-home__masthead {
+    align-items: flex-start;
+  }
+
+  .wedding-home__nav {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+  }
+
+  .wedding-home__hero h1 {
+    font-size: 3.45rem;
+  }
+
+  .wedding-home__countdown {
+    padding-inline: 0.75rem;
+  }
+
+  .wedding-home__countdown > div:not(:first-child) strong {
+    font-size: 1.85rem;
+  }
+
+  .wedding-home__countdown > div:not(:first-child) span {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+  }
+}

@@ -19,6 +19,58 @@ const restoredGuest = {
 };
 
 describe('GuestJoinPage', () => {
+  it('loads the authoritative Bunker runtime through production dependencies and opens the active dashboard', async () => {
+    const registrationRpc = vi.fn(async (name: string) => {
+      if (name === 'restore_guest') {
+        return { data: { status: 'restored', guest: restoredGuest }, error: null };
+      }
+      if (name === 'get_guest_active_carriage_calls') {
+        return { data: { status: 'ok', carriage: restoredGuest.carriage, calls: [] }, error: null };
+      }
+      return { data: null, error: new Error(`Unexpected registration RPC ${name}`) };
+    });
+    const activeRuntime = {
+      status: 'active', serverNow: '2026-08-20T18:00:00.000Z',
+      game: { runNonce: 'run-1', state: 'MISSION_03', mode: 'production', finalStartedAt: null, finalDuration: 1800, bunkerRevealed: false },
+      guest: { id: restoredGuest.id, realName: 'Иван П.', joinedLate: false },
+      wagon: { id: restoredGuest.carriage.id, number: 3, label: 'ВАГОН №3' },
+      character: {
+        profession: 'МЕХАНИК', health: 'отличное', visibleSkill: 'ремонт механизмов',
+        hiddenTrait: null, hiddenTraitRevealed: false, specialAbility: 'mechanical_fix',
+        abilityDescription: 'Открывает технический отсек.', abilityUsesRemaining: 1, status: 'active',
+      },
+      passengers: [], inventory: [], archive: [],
+      wagonState: { powerStatus: 'stable', communicationStatus: 'working', navigationStatus: 'working' },
+      currentMission: null,
+    };
+    const bunkerRpc = vi.fn(async (name: string) => {
+      if (name === 'get_guest_bunker_state') {
+        return { data: { status: 'idle', serverNow: '2026-08-20T18:00:00.000Z' }, error: null };
+      }
+      if (name === 'get_guest_bunker_runtime') {
+        return { data: activeRuntime, error: null };
+      }
+      return { data: null, error: new Error(`Unexpected Bunker RPC ${name}`) };
+    });
+
+    render(
+      <GuestJoinPage
+        client={{ rpc: registrationRpc }}
+        bunkerClient={{ rpc: bunkerRpc }}
+        eventSlug="liza-viktor"
+        deviceKey="lvw_device_31"
+        revealDelayMs={0}
+      />,
+    );
+
+    expect(await screen.findByLabelText('Игровой модуль Бункер')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'ИВАН П.' })).toBeInTheDocument();
+    expect(bunkerRpc).toHaveBeenCalledWith('get_guest_bunker_runtime', {
+      p_event_slug: 'liza-viktor',
+      p_device_key: 'lvw_device_31',
+    });
+  });
+
   it('restores the existing ticket before showing a new registration form', async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: { status: 'restored', guest: restoredGuest },
@@ -28,7 +80,7 @@ describe('GuestJoinPage', () => {
     render(<GuestJoinPage client={{ rpc }} eventSlug="liza-viktor" deviceKey="lvw_device_31" revealDelayMs={0} />);
 
     expect(screen.getByText(/проверяем билет/i)).toBeInTheDocument();
-    expect(await screen.findByText('LV-031')).toBeInTheDocument();
+    expect(await screen.findByTestId('virtual-ticket')).toHaveTextContent('LV-031');
     expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
   });
 

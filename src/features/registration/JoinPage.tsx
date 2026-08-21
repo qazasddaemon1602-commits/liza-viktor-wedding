@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { GuestBunkerLiveDependencies } from '../bunker/useGuestBunkerLiveState';
+import { useGuestBunkerLiveState } from '../bunker/useGuestBunkerLiveState';
 import type { GuestActiveCarriageCalls, GuestCarriageCall } from '../carriages/carriageCalls.service';
-import { GuestCallBanner } from '../guest/GuestCallBanner';
+import { GuestHub } from '../guest/GuestHub';
+import { useGuestQuizLiveState, type GuestQuizLiveDependencies } from '../guest/useGuestQuizLiveState';
 import { RegistrationPage } from './RegistrationPage';
 import type { RegistrationDraft } from './registrationModel';
 import type { RegisteredGuest } from './registration.types';
@@ -13,6 +16,8 @@ export type JoinPageDependencies = {
   recover: (deviceKey: string, recoveryCode: string) => Promise<RecoveryResult>;
   loadCarriageCalls?: (deviceKey: string) => Promise<GuestActiveCarriageCalls>;
   subscribeToCarriageCalls?: (carriageId: string, callback: () => void) => () => void;
+  quiz?: GuestQuizLiveDependencies;
+  bunker?: GuestBunkerLiveDependencies;
 };
 
 type JoinPageProps = {
@@ -28,6 +33,14 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   const [recoveryCode, setRecoveryCode] = useState('');
   const [recoveryError, setRecoveryError] = useState('');
   const [recovering, setRecovering] = useState(false);
+  const quiz = useGuestQuizLiveState({
+    dependencies: dependencies.quiz,
+    enabled: Boolean(guest && dependencies.quiz),
+  });
+  const bunker = useGuestBunkerLiveState({
+    dependencies: dependencies.bunker,
+    enabled: Boolean(guest && dependencies.bunker),
+  });
 
   const restore = useCallback(async () => {
     setState('loading');
@@ -113,7 +126,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   if (state === 'loading') {
     return (
-      <main className="registration-shell">
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-routing" aria-live="polite">
           <p className="eyebrow">ПОЕЗД ВИКТОРА</p>
           <h1>ПРОВЕРЯЕМ БИЛЕТ…</h1>
@@ -125,7 +138,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   if (state === 'error') {
     return (
-      <main className="registration-shell">
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-card registration-join-error" role="alert">
           <p className="eyebrow">СВЯЗЬ С СОСТАВОМ</p>
           <h1>Не удалось проверить билет</h1>
@@ -136,9 +149,32 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
     );
   }
 
-  if (recoveryOpen && !guest) {
+  if (guest) {
     return (
-      <main className="registration-shell">
+      <GuestHub
+        guest={guest}
+        activeCall={activeCall}
+        bunkerState={bunker.state}
+        bunkerRuntime={bunker.runtime}
+        bunkerRuntimeLoading={bunker.runtimeLoading}
+        bunkerRuntimeError={bunker.runtimeError}
+        bunkerFeedback={bunker.feedback}
+        bunkerError={bunker.error}
+        bunkerSubmitting={bunker.submitting}
+        onBunkerMission={(stage, answer) => void bunker.submitMission(stage, answer)}
+        onBunkerFinalCode={(code) => void bunker.submitFinalCode(code)}
+        quizState={quiz.state}
+        quizError={quiz.error}
+        quizSubmitting={quiz.submitting}
+        onQuizVote={(choice) => void quiz.vote(choice)}
+        onQuizDeadline={() => void quiz.reload()}
+      />
+    );
+  }
+
+  if (recoveryOpen) {
+    return (
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-card">
           <header className="registration-heading">
             <p className="eyebrow">ВОССТАНОВЛЕНИЕ БИЛЕТА</p>
@@ -171,31 +207,16 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   return (
     <>
-      {guest && <GuestCallBanner carriage={guest.carriage} call={activeCall} />}
       <RegistrationPage
         onRegister={register}
-        initialGuest={guest}
+        initialGuest={null}
         revealDelayMs={revealDelayMs}
       />
-      {guest && (
-        <nav className="guest-event-actions" aria-label="Активности события">
-          <a
-            className="guest-event-action guest-event-action--mk"
-            href="/mortal-kombat"
-            aria-label="MORTAL KOMBAT · УЧАСТВОВАТЬ"
-          >
-            <span>MORTAL KOMBAT</span>
-            <strong>УЧАСТВОВАТЬ</strong>
-          </a>
-        </nav>
-      )}
-      {!guest && (
-        <div className="registration-recovery-entry">
-          <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>
-            У МЕНЯ УЖЕ БЫЛ БИЛЕТ
-          </button>
-        </div>
-      )}
+      <div className="registration-recovery-entry registration-ticket-surface">
+        <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>
+          У МЕНЯ УЖЕ БЫЛ БИЛЕТ
+        </button>
+      </div>
     </>
   );
 }

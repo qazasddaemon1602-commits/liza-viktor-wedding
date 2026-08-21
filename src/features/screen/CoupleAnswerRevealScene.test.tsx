@@ -43,4 +43,19 @@ describe('CoupleAnswerRevealScene', () => {
 
     expect(screen.getByText('ГОСТИ НЕ ОПРЕДЕЛИЛИСЬ')).toBeInTheDocument();
   });
+
+  it('renders the answer as a wedding editorial reveal card', () => {
+    render(
+      <CoupleAnswerRevealScene
+        question="Кто первым мирится?"
+        choice="viktor"
+        results={{ liza: 4, viktor: 8, total: 12 }}
+      />,
+    );
+
+    expect(screen.getByTestId('couple-editorial-reveal')).toBeInTheDocument();
+    expect(screen.getByText('OFFICIAL COUPLE ANSWER')).toBeInTheDocument();
+    expect(screen.getByText('L × V · 30 AUG 2026')).toBeInTheDocument();
+  });
 });
+

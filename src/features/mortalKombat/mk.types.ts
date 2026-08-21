@@ -35,6 +35,7 @@ export type MkTournamentProjection =
       players: MkPlayer[];
       matches: MkMatch[];
       championGuestId: string | null;
+      presentOnMainScreen: boolean;
     };
 
 export type MkOwnerRegistration = MkPlayer & {
@@ -71,3 +72,4 @@ export type MkJoinResult = {
   maxPlayers: 16;
   waitlistPosition: number | null;
 };
+

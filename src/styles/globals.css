@@ -1,19 +1,33 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #27332b;
-  background: #efe7d8;
+  color: #252724;
+  background: #F3EEE5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ivory: #f3ecdf;
-  --paper: #e8ddca;
-  --forest: #31483a;
-  --cinnamon: #9a6348;
+  
+  /* Editorial Wedding Palette */
+  --wedding-paper: #F3EEE5;
+  --wedding-cream: #E9DFD0;
+  --wedding-mist: #D9D2C7;
+  --wedding-graphite: #252724;
+  --wedding-forest: #31483A;
+  --wedding-brass: #A58C5B;
+  --wedding-cinnamon: #9A6348;
+  --wedding-line-soft: rgba(37, 39, 36, 0.12);
+  --wedding-line-strong: rgba(37, 39, 36, 0.25);
+  --wedding-paper-shadow: 0 2rem 6rem rgba(37, 39, 36, 0.08);
+
+  /* Legacy aliases for compatibility */
+  --ivory: var(--wedding-paper);
+  --paper: var(--wedding-cream);
+  --forest: var(--wedding-forest);
+  --cinnamon: var(--wedding-cinnamon);
+  --ink: var(--wedding-graphite);
+  --line: var(--wedding-line-soft);
   --wine: #7e3f3c;
   --sage: #78806a;
-  --sand: #b49b7e;
-  --ink: #27332b;
-  --night: #101210;
-  --line: rgba(49, 72, 58, 0.18);
+
+  
   --carriage-1: #31483a;
   --carriage-2: #9a6348;
   --carriage-3: #7e3f3c;
@@ -480,3 +494,4 @@ h1 {
     transition-duration: 0.001ms !important;
   }
 }
+

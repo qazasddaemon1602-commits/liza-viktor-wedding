@@ -52,9 +52,9 @@ describe('AdminQuizPanel', () => {
 
     expect(await screen.findByText('Кто первым мирится после ссоры?')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'ЛИЗА ИЛИ ВИКТОР?' })).toBeInTheDocument();
-    expect(screen.getByText('18 ответили')).toBeInTheDocument();
+    expect(screen.getByText(/18 ОТВЕТИЛИ/i)).toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'ПОКАЗАТЬ РЕЗУЛЬТАТ' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'ЗАКРЫТЬ ОТВЕТЫ СЕЙЧАС' })).toBeEnabled();
   });
 
   it('seeds the default pool when no questions exist', async () => {
@@ -110,10 +110,10 @@ describe('AdminQuizPanel', () => {
     await waitFor(() => expect(activate).toHaveBeenCalledWith('event-1', 'question-2'));
     await waitFor(() => expect(broadcastRefresh).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
-    expect(screen.getByText('18 ответили')).toBeInTheDocument();
+    expect(screen.getByText(/18 ОТВЕТИЛИ/i)).toBeInTheDocument();
   });
 
-  it('reveals aggregate percentages only after the owner presses reveal', async () => {
+  it('reveals aggregate percentages only after the owner closes answers', async () => {
     const resultsControl: AdminQuizControl = {
       ...votingControl,
       phase: 'results',
@@ -133,7 +133,7 @@ describe('AdminQuizPanel', () => {
 
     render(<AdminQuizPanel eventId="event-1" dependencies={dependencies} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'ПОКАЗАТЬ РЕЗУЛЬТАТ' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'ЗАКРЫТЬ ОТВЕТЫ СЕЙЧАС' }));
 
     await waitFor(() => expect(reveal).toHaveBeenCalledWith('event-1', 'question-2'));
     await waitFor(() => expect(broadcastRefresh).toHaveBeenCalledTimes(1));
@@ -141,3 +141,4 @@ describe('AdminQuizPanel', () => {
     expect(screen.getByText('ВИКТОР 40%')).toBeInTheDocument();
   });
 });
+

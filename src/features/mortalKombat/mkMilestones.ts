@@ -32,7 +32,7 @@ export function deriveMkMilestone(
       if (previousCount < threshold && current.activeCount >= threshold) {
         return {
           key: `players-${threshold}`,
-          eyebrow: 'MORTAL KOMBAT · НАБОР ИГРОКОВ',
+          eyebrow: 'АРЕНА · НАБОР ИГРОКОВ',
           title: `${threshold} / 16 ИГРОКОВ`,
           detail: threshold === 16 ? 'ОСНОВНАЯ СЕТКА СОБРАНА' : 'АРЕНА ЗАПОЛНЯЕТСЯ',
           durationMs: threshold === 16 ? 5200 : 3800,
@@ -44,7 +44,7 @@ export function deriveMkMilestone(
   if (current.state === 'active' && before?.state !== 'active') {
     return {
       key: 'draw-locked',
-      eyebrow: 'MORTAL KOMBAT',
+      eyebrow: 'АРЕНА · ПОСЛЕДНИЙ КРУГ',
       title: 'СЕТКА ЗАФИКСИРОВАНА',
       detail: '16 ИГРОКОВ · 15 БОЁВ · ОДИН ЧЕМПИОН',
       durationMs: 5200,
@@ -55,7 +55,7 @@ export function deriveMkMilestone(
     if (completedCount(before, 'sf') < 2 && completedCount(current, 'sf') === 2) {
       return {
         key: 'finalists',
-        eyebrow: 'MORTAL KOMBAT',
+        eyebrow: 'АРЕНА · ПОСЛЕДНИЙ КРУГ',
         title: 'ФИНАЛИСТЫ ОПРЕДЕЛЕНЫ',
         detail: 'ПОСЛЕДНИЙ БОЙ',
         durationMs: 5200,
@@ -65,7 +65,7 @@ export function deriveMkMilestone(
     if (completedCount(before, 'qf') < 4 && completedCount(current, 'qf') === 4) {
       return {
         key: 'semifinalists',
-        eyebrow: 'MORTAL KOMBAT',
+        eyebrow: 'АРЕНА · ПОСЛЕДНИЙ КРУГ',
         title: 'ПОЛУФИНАЛИСТЫ ОПРЕДЕЛЕНЫ',
         detail: 'ОСТАЛОСЬ ЧЕТВЕРО',
         durationMs: 4600,
@@ -85,7 +85,7 @@ export function deriveMkMilestone(
           key: `winner-${newlyCompleted?.id ?? currentCompleted}`,
           eyebrow: 'ПОБЕДИТЕЛЬ БОЯ',
           title: winner.toUpperCase(),
-          detail: 'FATALITY · ДВИГАЕТСЯ ДАЛЬШЕ',
+          detail: 'ПРОХОДИТ В СЛЕДУЮЩИЙ КРУГ',
           durationMs: 3600,
         };
       }

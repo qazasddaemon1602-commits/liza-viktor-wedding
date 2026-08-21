@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { siteAudio } from '../../lib/siteAudio';
 import { createScreenAudioController } from './screenAudio';
 
 function fakeAudioContext() {
@@ -53,21 +54,32 @@ function fakeAudioContext() {
 }
 
 describe('createScreenAudioController', () => {
+  beforeEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
+  afterEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
   it('stays silent until the projector has been armed by a local interaction', () => {
     const { context } = fakeAudioContext();
     const factory = vi.fn(() => context);
-    const audio = createScreenAudioController(factory);
+    const audio = createScreenAudioController(factory, undefined, () => false);
 
     audio.playArrival();
 
     expect(factory).not.toHaveBeenCalled();
     expect(context.createOscillator).not.toHaveBeenCalled();
+    audio.dispose();
   });
 
-  it('arms once and plays a quiet two-note arrival signal', async () => {
+  it('arms once and plays a quiet two-note arrival signal through a master gain', async () => {
     const { context, oscillators, gains } = fakeAudioContext();
     const factory = vi.fn(() => context);
-    const audio = createScreenAudioController(factory);
+    const audio = createScreenAudioController(factory, undefined, () => false);
 
     expect(await audio.arm()).toBe(true);
     expect(context.resume).toHaveBeenCalledTimes(1);
@@ -75,16 +87,33 @@ describe('createScreenAudioController', () => {
     audio.playArrival();
 
     expect(context.createOscillator).toHaveBeenCalledTimes(2);
-    expect(context.createGain).toHaveBeenCalledTimes(2);
+    expect(context.createGain).toHaveBeenCalledTimes(3);
+    expect(gains[0].gain.setValueAtTime).toHaveBeenCalledWith(0.75, context.currentTime);
     expect(oscillators[0].start).toHaveBeenCalled();
     expect(oscillators[1].start).toHaveBeenCalled();
-    expect(gains[0].gain.linearRampToValueAtTime).toHaveBeenCalled();
     expect(gains[1].gain.linearRampToValueAtTime).toHaveBeenCalled();
+    expect(gains[2].gain.linearRampToValueAtTime).toHaveBeenCalled();
+    audio.dispose();
+  });
+
+  it('updates the live master gain when volume or mute changes', async () => {
+    const { context, gains } = fakeAudioContext();
+    const audio = createScreenAudioController(() => context, undefined, () => false);
+
+    await audio.arm();
+    const master = gains[0];
+
+    siteAudio.setVolume(0.25);
+    expect(master.gain.setValueAtTime).toHaveBeenLastCalledWith(0.25, context.currentTime);
+
+    siteAudio.setEnabled(false);
+    expect(master.gain.setValueAtTime).toHaveBeenLastCalledWith(0, context.currentTime);
+    audio.dispose();
   });
 
   it('stops already scheduled arrival notes immediately without closing the armed audio context', async () => {
     const { context, oscillators } = fakeAudioContext();
-    const audio = createScreenAudioController(() => context);
+    const audio = createScreenAudioController(() => context, undefined, () => false);
 
     await audio.arm();
     audio.playArrival();
@@ -97,5 +126,47 @@ describe('createScreenAudioController', () => {
 
     audio.playArrival();
     expect(context.createOscillator).toHaveBeenCalledTimes(4);
+    audio.dispose();
+  });
+
+  it('schedules a long cinematic rail bed and horn for carriage calls', async () => {
+    const { context, oscillators } = fakeAudioContext();
+    const audio = createScreenAudioController(() => context, undefined, () => false);
+
+    await audio.arm();
+    audio.playCarriageCall();
+
+    expect(oscillators.length).toBeGreaterThan(10);
+    const scheduledStops = oscillators.flatMap((oscillator) => oscillator.stop.mock.calls.map(([when]) => when as number));
+    expect(Math.max(...scheduledStops)).toBeGreaterThan(context.currentTime + 10);
+    audio.dispose();
+  });
+
+  it('routes acquired local cues through the shared sample bus without oscillator duplication', async () => {
+    const { context } = fakeAudioContext();
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn().mockResolvedValue('played'),
+      stopCue: vi.fn(),
+    };
+    const audio = createScreenAudioController(
+      () => context,
+      samplePlayer,
+      () => true,
+    );
+
+    await expect(audio.arm()).resolves.toBe(true);
+    audio.playArrival();
+    audio.playCarriageCall();
+    audio.stopArrival();
+    audio.stopCarriageCall();
+
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('arrival.chime', { priority: 'scene' });
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('arrival.sequence', { priority: 'scene' });
+    expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.chime');
+    expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.sequence');
+    expect(context.createOscillator).not.toHaveBeenCalled();
+    audio.dispose();
   });
 });
+

@@ -103,7 +103,7 @@ describe('AdminShell rehearsal reset', () => {
     expect(load).toHaveBeenCalledTimes(2);
     expect(await screen.findByText(/0 \/ ~40/)).toBeInTheDocument();
     expect(screen.queryByText('Тест Гость')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'ЗАФИКСИРОВАТЬ СОСТАВ' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ПРИНЯТЬ РАСПРЕДЕЛЕНИЕ' })).toBeInTheDocument();
     expect(screen.getByText(/регистрация открыта/i)).toBeInTheDocument();
   });
 });

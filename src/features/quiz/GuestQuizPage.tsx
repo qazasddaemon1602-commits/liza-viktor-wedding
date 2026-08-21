@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
+import { GuestLiveQuizCard } from './GuestLiveQuizCard';
 import {
   subscribeToQuizRefresh,
   type QuizRealtimeClient,
@@ -56,11 +57,6 @@ function browserDependencies(eventSlug: string): GuestQuizPageDependencies {
   };
 }
 
-function percentage(value: number, total: number): number {
-  if (total <= 0) return 0;
-  return Math.round((value / total) * 100);
-}
-
 export function GuestQuizPage({
   dependencies,
   eventSlug = DEFAULT_EVENT_SLUG,
@@ -73,6 +69,18 @@ export function GuestQuizPage({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<QuizChoice | null>(null);
   const [error, setError] = useState('');
+
+  const reload = useCallback(async () => {
+    try {
+      const next = await deps.load(deps.getDeviceKey());
+      setState(next);
+      setError('');
+      return next;
+    } catch {
+      setError('Связь с игрой прервалась. Проверьте интернет.');
+      return null;
+    }
+  }, [deps]);
 
   useEffect(() => {
     let active = true;
@@ -88,33 +96,25 @@ export function GuestQuizPage({
       .finally(() => {
         if (active) setLoading(false);
       });
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [deps]);
 
   useEffect(() => {
     if (!deps.subscribeToRefresh) return;
-    let active = true;
-    const unsubscribe = deps.subscribeToRefresh(() => {
-      void deps.load(deps.getDeviceKey())
-        .then((next) => {
-          if (active) {
-            setState(next);
-            setError('');
-          }
-        })
-        .catch(() => {
-          if (active) setError('Связь с игрой прервалась. Проверьте интернет.');
-        });
-    });
+    return deps.subscribeToRefresh(() => { void reload(); });
+  }, [deps, reload]);
 
-    return () => {
-      active = false;
-      unsubscribe();
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void reload();
     };
-  }, [deps]);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [reload]);
 
   const choose = async (choice: QuizChoice) => {
     if (state?.status !== 'active' || state.phase !== 'voting' || state.selectedChoice || submitting) return;
@@ -134,6 +134,7 @@ export function GuestQuizPage({
       });
     } catch {
       setError('Ответ не отправился. Попробуйте ещё раз.');
+      void reload();
     } finally {
       setSubmitting(null);
     }
@@ -194,62 +195,22 @@ export function GuestQuizPage({
           <p className="eyebrow">ЛИЗА ИЛИ ВИКТОР?</p>
           <h1>ЖДЁМ СЛЕДУЮЩИЙ ВОПРОС</h1>
           <p>Когда организатор запустит раунд, вопрос появится здесь.</p>
+          <a className="quiz-primary-link" href="/join">ВЕРНУТЬСЯ К БИЛЕТУ</a>
         </section>
       </main>
     );
   }
 
-  const locked = state.phase === 'results' || Boolean(state.selectedChoice) || Boolean(submitting);
-  const lizaPercent = state.phase === 'results' ? percentage(state.results.liza, state.results.total) : null;
-  const viktorPercent = state.phase === 'results' ? percentage(state.results.viktor, state.results.total) : null;
-
   return (
     <main className="quiz-shell">
-      <section className="quiz-card quiz-live-card">
-        <header className="quiz-heading">
-          <p className="eyebrow">ЛИЗА ИЛИ ВИКТОР?</p>
-          <h1>{state.question.text}</h1>
-          <p className="quiz-answered">{state.answeredCount} ответили</p>
-        </header>
-
-        {state.question.imagePath && (
-          <img
-            className="quiz-question-image"
-            src={state.question.imagePath}
-            alt=""
-          />
-        )}
-
-        <div className="quiz-choices" aria-label="Варианты ответа">
-          <button
-            type="button"
-            className={`quiz-choice quiz-choice-liza${state.selectedChoice === 'liza' ? ' is-selected' : ''}`}
-            disabled={locked}
-            onClick={() => void choose('liza')}
-          >
-            <span>ЛИЗА</span>
-            {lizaPercent !== null && <strong>{lizaPercent}%</strong>}
-          </button>
-          <button
-            type="button"
-            className={`quiz-choice quiz-choice-viktor${state.selectedChoice === 'viktor' ? ' is-selected' : ''}`}
-            disabled={locked}
-            onClick={() => void choose('viktor')}
-          >
-            <span>ВИКТОР</span>
-            {viktorPercent !== null && <strong>{viktorPercent}%</strong>}
-          </button>
-        </div>
-
-        {submitting && <p className="quiz-status" aria-live="polite">ФИКСИРУЕМ ОТВЕТ…</p>}
-        {!submitting && state.phase === 'voting' && state.selectedChoice && (
-          <p className="quiz-status" aria-live="polite">ОТВЕТ ПРИНЯТ</p>
-        )}
-        {state.phase === 'results' && (
-          <p className="quiz-status quiz-status-results">РЕЗУЛЬТАТ ОТКРЫТ</p>
-        )}
-        {error && <p className="quiz-error" role="alert">{error}</p>}
-      </section>
+      <GuestLiveQuizCard
+        state={state}
+        submitting={submitting}
+        error={error}
+        onVote={(choice) => void choose(choice)}
+        onDeadline={() => void reload()}
+      />
     </main>
   );
 }
+

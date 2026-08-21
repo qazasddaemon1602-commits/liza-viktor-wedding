@@ -35,30 +35,43 @@ export function subscribeToQuizRefresh(
 export async function broadcastQuizRefresh(
   client: QuizRealtimeClient,
   eventSlug: string,
+  subscribeTimeoutMs = 800,
 ): Promise<void> {
   const channel = client.channel(`quiz:${eventSlug}`);
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
-    channel.subscribe((status) => {
-      if (settled) return;
-      if (status === 'SUBSCRIBED') {
-        settled = true;
-        resolve();
-      }
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        settled = true;
-        reject(new Error(`Unable to subscribe quiz channel: ${status}`));
-      }
-    });
-  });
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   try {
-    await channel.send({
-      type: 'broadcast',
-      event: 'refresh',
-      payload: {},
+    const subscribed = await new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (value: boolean) => {
+        if (settled) return;
+        settled = true;
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        resolve(value);
+      };
+
+      timeoutId = setTimeout(() => finish(false), subscribeTimeoutMs);
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') finish(true);
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') finish(false);
+      });
     });
+
+    if (!subscribed) return;
+
+    try {
+      await channel.send({
+        type: 'broadcast',
+        event: 'refresh',
+        payload: {},
+      });
+    } catch {
+      // The mutation already succeeded. Clients have polling/focus fallbacks, so a failed
+      // invalidation signal must never freeze the owner UI or make the mutation look failed.
+    }
   } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
     void channel.unsubscribe();
   }
 }
+

@@ -58,3 +58,33 @@ describe('MatchEditor', () => {
     expect(recordWinner).toHaveBeenLastCalledWith('m1', 'g1', true);
   });
 });
+describe('MatchEditor with automatic byes', () => {
+  it('does not offer bye or empty internal matches as real fights', () => {
+    const bye: MkMatch = {
+      id: 'm-bye', matchKey: 'r16-1', round: 'r16', position: 1,
+      player1GuestId: 'g1', player2GuestId: null, winnerGuestId: 'g1',
+      status: 'complete', current: false,
+    };
+    const empty: MkMatch = {
+      id: 'm-empty', matchKey: 'r16-3', round: 'r16', position: 3,
+      player1GuestId: null, player2GuestId: null, winnerGuestId: null,
+      status: 'complete', current: false,
+    };
+
+    render(
+      <MatchEditor
+        matches={[bye, empty, currentMatch]}
+        registrations={registrations}
+        onSetCurrent={vi.fn().mockResolvedValue(undefined)}
+        onRecordWinner={vi.fn()}
+        onUndo={vi.fn()}
+        onChanged={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.queryByText('1/8 ФИНАЛА · БОЙ 3')).not.toBeInTheDocument();
+    expect(screen.getByText('1/8 ФИНАЛА · БОЙ 1')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ИСПРАВИТЬ' })).not.toBeInTheDocument();
+  });
+});
+

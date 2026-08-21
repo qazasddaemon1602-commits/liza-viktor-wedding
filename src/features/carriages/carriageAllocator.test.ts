@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  balancedCarriageSizes,
   chooseCarriage,
+  recommendCarriageCount,
   type AffiliationKey,
   type AllocationSnapshot,
 } from './carriageAllocator';
@@ -61,5 +63,40 @@ describe('chooseCarriage', () => {
     expect(totals.reduce((sum, total) => sum + total, 0)).toBe(40);
     expect(Math.max(...totals) - Math.min(...totals)).toBeLessThanOrEqual(1);
     expect(totals.every((total) => total === 8)).toBe(true);
+  });
+});
+
+describe('adaptive carriage planning', () => {
+  it.each([
+    [12, 2],
+    [18, 2],
+    [19, 3],
+    [26, 3],
+    [27, 4],
+    [36, 4],
+    [37, 5],
+    [45, 5],
+  ])('recommends the expected active carriage count for %i registered guests', (guestCount, expected) => {
+    expect(recommendCarriageCount(guestCount)).toBe(expected);
+  });
+
+  it('keeps the two-carriage fallback below twelve guests without blocking the game', () => {
+    expect(recommendCarriageCount(0)).toBe(2);
+    expect(recommendCarriageCount(11)).toBe(2);
+  });
+
+  it.each([
+    [16, 2, [8, 8]],
+    [20, 3, [7, 7, 6]],
+    [24, 3, [8, 8, 8]],
+    [32, 4, [8, 8, 8, 8]],
+    [40, 5, [8, 8, 8, 8, 8]],
+  ])('balances %i guests across %i carriages', (guestCount, carriageCount, expected) => {
+    expect(balancedCarriageSizes(guestCount, carriageCount)).toEqual(expected);
+  });
+
+  it('rejects unsupported carriage counts instead of silently creating tiny extra teams', () => {
+    expect(() => balancedCarriageSizes(20, 1)).toThrow('Carriage count must be between 2 and 5');
+    expect(() => balancedCarriageSizes(20, 6)).toThrow('Carriage count must be between 2 and 5');
   });
 });
