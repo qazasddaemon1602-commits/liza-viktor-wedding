@@ -202,7 +202,7 @@
 .guest-hub-inventory__empty {
   min-height: 7.5rem;
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
   align-items: center;
   gap: 1rem;
   padding: 1rem;
@@ -223,10 +223,10 @@
   filter: grayscale(1) sepia(0.18);
 }
 
-.guest-hub-inventory__empty > div {
+.guest-hub-inventory__copy {
   min-width: 0;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.6rem;
 }
 
 .guest-hub-inventory__empty strong {
@@ -243,14 +243,15 @@
   line-height: 1.5;
 }
 
-.guest-hub-inventory__empty > span {
+.guest-hub-inventory__status {
+  margin-top: 0.25rem;
   max-width: 13rem;
   color: var(--wedding-cinnamon);
   font-size: 0.56rem;
   font-weight: 900;
   line-height: 1.45;
   letter-spacing: 0.1em;
-  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .guest-hub-history-list {
@@ -367,10 +368,8 @@
     height: 3.5rem;
   }
 
-  .guest-hub-inventory__empty > span {
-    grid-column: 2;
+  .guest-hub-inventory__status {
     max-width: none;
-    text-align: left;
   }
 }
 

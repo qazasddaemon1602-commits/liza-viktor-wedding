@@ -10,6 +10,18 @@ const weddingScenesCss = readFileSync(
   'utf8',
 );
 
+function fontClamp(ruleName: string): { min: number; max: number } {
+  const escapedRuleName = ruleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const declaration = weddingScenesCss.match(
+    new RegExp(`${escapedRuleName}\\s*\\{([^}]*)\\}`),
+  )?.[1] ?? '';
+  const clamp = declaration.match(
+    /font-size:\s*clamp\(\s*([\d.]+)rem\s*,[^,]+,\s*([\d.]+)rem\s*\)/,
+  );
+  if (!clamp) throw new Error(`Missing font-size clamp for ${ruleName}`);
+  return { min: Number(clamp[1]), max: Number(clamp[2]) };
+}
+
 const event = {
   id: 'screen-event-1',
   kind: 'guest_registered' as const,
@@ -63,6 +75,32 @@ describe('TrainArrivalScene', () => {
       'Прибыл новый игрок. Анна Смирнова. Назначен ВАГОН №4.',
     );
     expect(screen.queryByTestId('arrival-platform-ticket')).not.toBeInTheDocument();
+  });
+
+  it('uses projector-legible wagon type while compacting a realistic long guest name', () => {
+    const longName = 'Александра-Екатерина Константинопольская';
+    render(
+      <TrainArrivalScene
+        event={{ ...event, payload: { ...event.payload, displayName: longName } }}
+      />,
+    );
+
+    const name = screen.getByTestId('arrival-wagon-copy-2');
+    expect(name).toHaveTextContent(longName);
+    expect(name).toHaveClass('train-arrival__wagon-copy--long');
+
+    const announcementType = fontClamp('.train-arrival__wagon-copy');
+    const guestNameType = fontClamp('.train-arrival__wagon-copy--2');
+    expect(announcementType.min).toBeGreaterThanOrEqual(0.95);
+    expect(announcementType.max).toBeGreaterThanOrEqual(1.7);
+    expect(guestNameType.min).toBeGreaterThanOrEqual(1.1);
+    expect(guestNameType.max).toBeGreaterThanOrEqual(2);
+
+    const longRule = weddingScenesCss.match(
+      /\.train-arrival__wagon-copy--long\s*\{([^}]*)\}/,
+    )?.[1] ?? '';
+    expect(longRule).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(longRule).toMatch(/hyphens:\s*auto/);
   });
 
   it.each([390, 1920])(

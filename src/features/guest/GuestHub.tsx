@@ -194,11 +194,11 @@ export function GuestHub({
             />
             <img src="/images/ticket/railway-seal.png" alt="" width="256" height="256" />
           </picture>
-          <div>
+          <div className="guest-hub-inventory__copy">
             <strong>ИНВЕНТАРЬ ПУСТ</strong>
             <p>Предметы вагона появятся здесь после запуска Бункера и будут обновляться автоматически.</p>
+            <span className="guest-hub-inventory__status">ПОЯВИТСЯ ПОСЛЕ ЗАПУСКА БУНКЕРА</span>
           </div>
-          <span>ПОЯВИТСЯ ПОСЛЕ ЗАПУСКА БУНКЕРА</span>
         </div>
       </section>
 

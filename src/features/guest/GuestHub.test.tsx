@@ -1,10 +1,18 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+// @ts-expect-error Vitest runs this layout contract in Node; the browser app intentionally omits Node types.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
 import type { RegisteredGuest } from '../registration/registration.types';
 import type { GuestQuizState } from '../quiz/quiz.service';
 import { GuestHub } from './GuestHub';
+
+const testRuntime = globalThis as typeof globalThis & { process: { cwd: () => string } };
+const guestHubCss = readFileSync(
+  `${testRuntime.process.cwd()}/src/styles/guest-hub.css`,
+  'utf8',
+);
 
 const guest: RegisteredGuest = {
   id: 'guest-1',
@@ -109,6 +117,35 @@ describe('GuestHub', () => {
     const inventory = screen.getByLabelText('Инвентарь');
     expect(inventory).toHaveTextContent('ИНВЕНТАРЬ ПУСТ');
     expect(inventory).toHaveTextContent('ПОЯВИТСЯ ПОСЛЕ ЗАПУСКА БУНКЕРА');
+  });
+
+  it('keeps the empty-inventory status in the copy flow with responsive separation', () => {
+    render(
+      <GuestHub
+        guest={guest}
+        activeCall={null}
+        quizState={{ status: 'idle', history: [] }}
+        onQuizVote={vi.fn()}
+      />,
+    );
+
+    const inventory = screen.getByLabelText('Инвентарь');
+    const copy = inventory.querySelector('.guest-hub-inventory__copy');
+    const status = screen.getByText('ПОЯВИТСЯ ПОСЛЕ ЗАПУСКА БУНКЕРА');
+
+    expect(copy).not.toBeNull();
+    expect(copy).toContainElement(screen.getByText('ИНВЕНТАРЬ ПУСТ'));
+    expect(copy).toContainElement(screen.getByText(/Предметы вагона появятся/));
+    expect(copy).toContainElement(status);
+    expect(status).toHaveClass('guest-hub-inventory__status');
+
+    const copyRule = guestHubCss.match(/\.guest-hub-inventory__copy\s*\{([^}]*)\}/)?.[1] ?? '';
+    const statusRule = guestHubCss.match(/\.guest-hub-inventory__status\s*\{([^}]*)\}/)?.[1] ?? '';
+    const statusMargin = Number(statusRule.match(/margin-top:\s*([\d.]+)rem/)?.[1] ?? 0);
+    expect(copyRule).toMatch(/display:\s*grid/);
+    expect(copyRule).toMatch(/gap:\s*(?:0\.[5-9]|[1-9])rem/);
+    expect(statusMargin).toBeGreaterThanOrEqual(0.2);
+    expect(statusRule).toMatch(/overflow-wrap:\s*anywhere/);
   });
 
   it('mounts the Bunker dashboard only for an authoritative active runtime', () => {

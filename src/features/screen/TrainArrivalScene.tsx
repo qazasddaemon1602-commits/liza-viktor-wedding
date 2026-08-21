@@ -91,7 +91,9 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
         {wagonCopy.map((copy, index) => (
           <span
             key={`${index}-${copy}`}
-            className={`train-arrival__wagon-copy train-arrival__wagon-copy--${index + 1}`}
+            className={`train-arrival__wagon-copy train-arrival__wagon-copy--${index + 1}${
+              index === 1 && [...copy].length > 24 ? ' train-arrival__wagon-copy--long' : ''
+            }`}
             data-testid={`arrival-wagon-copy-${index + 1}`}
           >
             {copy}

@@ -1053,7 +1053,7 @@
   z-index: 4;
   width: 13.4%;
   color: #f4e7cd;
-  font-size: clamp(0.68rem, 1.02vw, 1.28rem);
+  font-size: clamp(0.98rem, 1.45vw, 1.8rem);
   font-weight: 850;
   line-height: 1.08;
   letter-spacing: 0.08em;
@@ -1065,9 +1065,17 @@
 }
 
 .train-arrival__wagon-copy--1 { left: 41.2%; }
-.train-arrival__wagon-copy--2 { left: 59.2%; color: #fff3d8; font-family: Georgia, "Times New Roman", serif; font-size: clamp(0.84rem, 1.25vw, 1.62rem); font-weight: 600; letter-spacing: 0.025em; text-transform: none; }
+.train-arrival__wagon-copy--2 { left: 59.2%; color: #fff3d8; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.15rem, 1.75vw, 2.2rem); font-weight: 600; letter-spacing: 0.025em; text-transform: none; }
 .train-arrival__wagon-copy--3 { left: 77.1%; color: color-mix(in srgb, var(--arrival-accent) 54%, #fff3d8); }
-.train-arrival__wagon-copy--4 { left: 93.4%; font-size: clamp(0.58rem, 0.86vw, 1.05rem); }
+.train-arrival__wagon-copy--4 { left: 93.4%; font-size: clamp(0.84rem, 1.16vw, 1.45rem); }
+
+.train-arrival__wagon-copy--long {
+  font-size: clamp(0.92rem, 1.38vw, 1.72rem);
+  line-height: 0.98;
+  letter-spacing: 0.005em;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
 
 @keyframes arrival-scene-lifecycle {
   0% { opacity: 0; }
