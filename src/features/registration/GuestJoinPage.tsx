@@ -5,6 +5,8 @@ import { getGuestBunkerQuest, submitBunkerFinalCode, submitBunkerMission } from 
 import { getGuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
 import { confirmMissionOneSelection, getGuestMissionOneReadModel } from '../bunker/v2/m01.service';
 import { getGuestMissionTwoReadModel, submitMissionTwoAnswers, useMissionTwoAbility } from '../bunker/v2/m02.service';
+import { commitMissionThreeAbility, confirmMissionThree, getGuestMissionThreeReadModel } from '../bunker/v2/m03.service';
+import { getGuestMissionFourReadModel, proposeMissionFourTrade, respondMissionFourTrade, sendMissionFourMessage, submitMissionFourAnswer } from '../bunker/v2/m04.service';
 import { subscribeToCarriageCallRefresh, type CarriageCallRealtimeClient } from '../carriages/carriageCalls.realtime';
 import { getGuestActiveCarriageCalls, type CarriageCallRpcClient } from '../carriages/carriageCalls.service';
 import { subscribeToQuizRefresh, type QuizRealtimeClient } from '../quiz/quiz.realtime';
@@ -46,6 +48,14 @@ export function GuestJoinPage({ client, realtimeClient, quizClient, quizRealtime
         loadMissionTwo: (key) => getGuestMissionTwoReadModel(activeBunkerClient, eventSlug, key),
         submitMissionTwo: (key, input) => submitMissionTwoAnswers(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
         useMissionTwoAbility: (key, input) => useMissionTwoAbility(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
+        loadMissionThree: (key) => getGuestMissionThreeReadModel(activeBunkerClient, eventSlug, key),
+        confirmMissionThree: (key, input) => confirmMissionThree(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
+        useMissionThreeAbility: (key, input) => commitMissionThreeAbility(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
+        loadMissionFour: (key) => getGuestMissionFourReadModel(activeBunkerClient, eventSlug, key),
+        sendMissionFourMessage: (key, input) => sendMissionFourMessage(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
+        proposeMissionFourTrade: (key, input) => proposeMissionFourTrade(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
+        respondMissionFourTrade: (key, input) => respondMissionFourTrade(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
+        submitMissionFourAnswer: (key, input) => submitMissionFourAnswer(activeBunkerClient, { eventSlug, deviceKey: key, ...input }),
         submitMission: (key, stage, answer) => submitBunkerMission(activeBunkerClient, eventSlug, key, stage, answer),
         submitFinalCode: (key, code) => submitBunkerFinalCode(activeBunkerClient, eventSlug, key, code),
         subscribeToRefresh: activeBunkerRealtimeClient ? (callback) => subscribeToBunkerRefresh(activeBunkerRealtimeClient, eventSlug, callback) : undefined,
