@@ -188,19 +188,37 @@ select ok(
 
 select ok(
   (
-    select pg_get_functiondef(
+    select
+      definition.body ~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*event\.owner_user_id = v_owner;'
+      and definition.body !~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*for update;'
+      and (
+        select count(*)
+        from regexp_matches(
+          definition.body, 'event\.owner_user_id = v_owner', 'g'
+        )
+      ) = 2
+    from (select pg_get_functiondef(
       'public.owner_prepare_bunker_v2(uuid,uuid)'::regprocedure
-    ) ~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*for update;'
+    ) as body) definition
   ),
-  'V2 preparation locks bunker_state before events'
+  'V2 preparation rechecks ownership after state lock without locking events'
 );
 select ok(
   (
-    select pg_get_functiondef(
+    select
+      definition.body ~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*event\.owner_user_id = v_owner;'
+      and definition.body !~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*for update;'
+      and (
+        select count(*)
+        from regexp_matches(
+          definition.body, 'event\.owner_user_id = v_owner', 'g'
+        )
+      ) = 2
+    from (select pg_get_functiondef(
       'public.owner_transition_bunker_v2(uuid,text,uuid)'::regprocedure
-    ) ~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*for update;'
+    ) as body) definition
   ),
-  'V2 transition locks bunker_state before events'
+  'V2 transition rechecks ownership after state lock without locking events'
 );
 
 select ok(
@@ -1074,6 +1092,28 @@ cross join lateral (
   order by guest.id
   limit 1
 ) guest;
+
+insert into public.bunker_inventory_lots(
+  id, event_id, run_nonce, carriage_id,
+  item_key, quantity, source_lot_id, metadata
+)
+select
+  '20000000-0000-4000-8000-000000000006',
+  baseline.event_id,
+  baseline.run_nonce,
+  source.carriage_id,
+  source.item_key,
+  1,
+  source.id,
+  '{"resetChild":true}'::jsonb
+from bunker_v2_reset_baseline baseline
+cross join lateral (
+  select lot.id, lot.carriage_id, lot.item_key
+  from public.bunker_inventory_lots lot
+  where lot.run_nonce = baseline.run_nonce
+  order by lot.id
+  limit 1
+) source;
 
 insert into public.bunker_archive_entitlements(
   id, event_id, run_nonce, archive_entry_id,

@@ -541,11 +541,12 @@ begin
       using errcode = '55000';
   end if;
 
-  -- Lock order shared with legacy owner paths: bunker_state, then events.
+  -- Recheck ownership after serializing on bunker_state. This read must not
+  -- lock events: guest registration holds an event FK key-share lock before
+  -- its late-guest trigger reaches bunker_state.
   perform 1
   from public.events event
-  where event.id = p_event_id and event.owner_user_id = v_owner
-  for update;
+  where event.id = p_event_id and event.owner_user_id = v_owner;
   if not found then
     raise exception 'owner access required' using errcode = '42501';
   end if;
@@ -815,11 +816,11 @@ begin
   where state.event_id = p_event_id
   for update;
 
-  -- Lock order shared with legacy owner paths: bunker_state, then events.
+  -- Recheck ownership after serializing on bunker_state without taking an
+  -- events row lock that can deadlock with guest registration.
   perform 1
   from public.events event
-  where event.id = p_event_id and event.owner_user_id = v_owner
-  for update;
+  where event.id = p_event_id and event.owner_user_id = v_owner;
   if not found then
     raise exception 'owner access required' using errcode = '42501';
   end if;
@@ -1784,6 +1785,13 @@ begin
 
     delete from public.bunker_inventory_transfers transfer
     where transfer.event_id = old.event_id;
+
+    -- Reset is destroying these runs, so their nullable provenance links no
+    -- longer carry ledger value. Break self references before run cascades.
+    update public.bunker_inventory_lots lot
+    set source_lot_id = null
+    where lot.event_id = old.event_id
+      and lot.source_lot_id is not null;
 
     delete from public.bunker_game_runs run
     where run.event_id = old.event_id;
