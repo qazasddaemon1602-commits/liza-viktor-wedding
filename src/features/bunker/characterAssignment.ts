@@ -6,6 +6,18 @@ export type CharacterCategory = keyof typeof CHARACTER_CATEGORY_KEYS;
 export type CharacterCategoryCounts = Record<CharacterCategory, number>;
 
 const categories = Object.keys(CHARACTER_CATEGORY_KEYS) as CharacterCategory[];
+const LEGACY_CHARACTER_CATEGORY_KEYS: Record<CharacterCategory, readonly string[]> = {
+  technical: ['power_engineer', 'electrician', 'mechanic', 'military_engineer'],
+  medical: ['surgeon', 'paramedic'],
+  information: ['cybersecurity_specialist', 'programmer', 'student'],
+  communication: ['signal_operator', 'radio_amateur', 'diplomat', 'psychologist'],
+  bunker: ['unemployed', 'architect', 'security_guard', 'journalist', 'military_engineer'],
+  navigation: ['geologist', 'cartographer', 'train_driver', 'driver'],
+  analytical: [
+    'cartographer', 'cybersecurity_specialist', 'logistician', 'chemist', 'biologist',
+    'architect', 'lawyer', 'journalist', 'teacher', 'astronomer',
+  ],
+};
 
 function seedNumber(seed: string): number {
   let hash = 2166136261;
@@ -47,15 +59,7 @@ function hasCategory(profile: BunkerCharacterProfile, category: CharacterCategor
 }
 
 function legacyIsCategory(profile: BunkerCharacterProfile, category: CharacterCategory): boolean {
-  switch (category) {
-    case 'technical': return ['power_engineer', 'electrician', 'mechanic', 'military_engineer'].includes(profile.key);
-    case 'medical': return profile.tags.includes('medicine');
-    case 'information': return ['cybersecurity_specialist', 'programmer', 'student'].includes(profile.key);
-    case 'communication': return profile.tags.includes('communication');
-    case 'bunker': return profile.specialAbility === 'bunker_knowledge' || profile.tags.includes('bunker');
-    case 'navigation': return ['geologist', 'cartographer', 'train_driver', 'driver'].includes(profile.key);
-    case 'analytical': return profile.tags.includes('analysis');
-  }
+  return LEGACY_CHARACTER_CATEGORY_KEYS[category].includes(profile.key);
 }
 
 function validateGuests(guestIds: readonly string[], runNonce: string): void {
@@ -196,13 +200,21 @@ export function assignCharacterProfiles(guestIds: readonly string[], runSeed: st
   return assignLegacyCharacters(guestIds, runSeed);
 }
 
-export function characterCategoryCounts(assignments: readonly CharacterAssignment[]): CharacterCategoryCounts {
+function categoryCounts(
+  assignments: readonly CharacterAssignment[],
+  categoryKeys: Record<CharacterCategory, readonly string[]>,
+): CharacterCategoryCounts {
   const result = Object.fromEntries(categories.map((category) => [category, 0])) as CharacterCategoryCounts;
-  const profiles = new Map(BUNKER_CHARACTER_PROFILES.map((profile) => [profile.key, profile]));
   for (const { profileKey } of assignments) {
-    const profile = profiles.get(profileKey);
-    if (!profile) continue;
-    for (const category of categories) if (hasCategory(profile, category)) result[category] += 1;
+    for (const category of categories) if (categoryKeys[category].includes(profileKey)) result[category] += 1;
   }
   return result;
+}
+
+export function characterCategoryCounts(assignments: readonly CharacterAssignment[]): CharacterCategoryCounts {
+  return categoryCounts(assignments, LEGACY_CHARACTER_CATEGORY_KEYS);
+}
+
+export function v2CharacterCategoryCounts(assignments: readonly CharacterAssignment[]): CharacterCategoryCounts {
+  return categoryCounts(assignments, CHARACTER_CATEGORY_KEYS);
 }

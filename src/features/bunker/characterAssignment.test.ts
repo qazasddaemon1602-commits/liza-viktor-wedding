@@ -4,6 +4,7 @@ import {
   assignV2Characters,
   assignCharacterProfiles,
   characterCategoryCounts,
+  v2CharacterCategoryCounts,
 } from './characterAssignment';
 
 function guests(count: number): string[] {
@@ -38,7 +39,7 @@ describe('controlled Bunker character assignment', () => {
   );
 
   it.each(Array.from({ length: 26 }, (_, index) => index + 15))('meets the approved V2 category quotas for %i guests', (count) => {
-    const counts = characterCategoryCounts(assignV2Characters(
+    const counts = v2CharacterCategoryCounts(assignV2Characters(
       guests(count), balancedWagons(count), `quota-${count}`,
     ));
     const expected = count <= 18
@@ -118,6 +119,13 @@ describe('controlled Bunker character assignment', () => {
     expect(assignCharacterProfiles(guests(12), 'run-2026').find(
       (assignment) => assignment.guestId === 'guest-1',
     )?.profileKey).toBe('geologist');
+  });
+
+  it('preserves the original legacy category membership despite V2 tag corrections', () => {
+    expect(assignCharacterProfiles(
+      Array.from({ length: 12 }, (_, index) => `g${index + 1}`),
+      'seed-7',
+    ).find((assignment) => assignment.guestId === 'g1')?.profileKey).toBe('diplomat');
   });
 
   it.each([12, 16, 20, 32, 40])('guarantees all mandatory categories for %i guests', (count) => {
