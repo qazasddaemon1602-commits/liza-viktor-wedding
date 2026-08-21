@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(7);
+select plan(16);
 
 select is(
   (
@@ -54,6 +54,84 @@ select is(
   ),
   0,
   'authenticated clients cannot invoke implementation helpers directly'
+);
+
+select ok(
+  not has_function_privilege(
+    'anon', 'public.owner_prepare_bunker_v2(uuid,uuid)', 'EXECUTE'
+  ),
+  'anonymous guests cannot invoke owner_prepare_bunker_v2'
+);
+
+select ok(
+  has_function_privilege(
+    'authenticated', 'public.owner_prepare_bunker_v2(uuid,uuid)', 'EXECUTE'
+  ),
+  'authenticated sessions retain owner_prepare_bunker_v2'
+);
+
+select ok(
+  not has_function_privilege(
+    'anon', 'public.owner_transition_bunker_v2(uuid,text,uuid)', 'EXECUTE'
+  ),
+  'anonymous guests cannot invoke owner_transition_bunker_v2'
+);
+
+select ok(
+  has_function_privilege(
+    'authenticated', 'public.owner_transition_bunker_v2(uuid,text,uuid)', 'EXECUTE'
+  ),
+  'authenticated sessions retain owner_transition_bunker_v2'
+);
+
+select ok(
+  not has_function_privilege(
+    'anon', 'public._bunker_v2_plan(uuid,uuid)', 'EXECUTE'
+  ),
+  'anonymous guests cannot invoke the V2 plan helper'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated', 'public._bunker_v2_plan(uuid,uuid)', 'EXECUTE'
+  ),
+  'authenticated clients cannot invoke the V2 plan helper'
+);
+
+select ok(
+  coalesce(
+    (
+      select 'search_path=""' = any(procedure.proconfig)
+      from pg_proc procedure
+      where procedure.oid = 'public._bunker_v2_plan(uuid,uuid)'::regprocedure
+    ),
+    false
+  ),
+  'the V2 plan helper has an immutable empty search path'
+);
+
+select ok(
+  coalesce(
+    (
+      select 'search_path=""' = any(procedure.proconfig)
+      from pg_proc procedure
+      where procedure.oid = 'public.owner_prepare_bunker_v2(uuid,uuid)'::regprocedure
+    ),
+    false
+  ),
+  'owner_prepare_bunker_v2 has an immutable empty search path'
+);
+
+select ok(
+  coalesce(
+    (
+      select 'search_path=""' = any(procedure.proconfig)
+      from pg_proc procedure
+      where procedure.oid = 'public.owner_transition_bunker_v2(uuid,text,uuid)'::regprocedure
+    ),
+    false
+  ),
+  'owner_transition_bunker_v2 has an immutable empty search path'
 );
 
 select ok(
