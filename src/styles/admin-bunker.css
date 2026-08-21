@@ -398,3 +398,189 @@
     min-height: 3rem;
   }
 }
+
+.admin-mission-one {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(0.85rem, 2vw, 1.25rem);
+  border: 1px solid var(--bunker-admin-rule);
+  background: var(--bunker-admin-panel);
+}
+
+.admin-mission-one > header,
+.admin-mission-one__override > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-mission-one h3,
+.admin-mission-one h4 {
+  margin: 0.25rem 0 0;
+  color: var(--bunker-admin-paper);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.45rem, 5vw, 2.6rem);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.admin-mission-one h4 {
+  font-size: clamp(1.25rem, 4vw, 2rem);
+}
+
+.admin-mission-one > header time,
+.admin-mission-one__progress,
+.admin-mission-one__wagons span,
+.admin-mission-one__wagons b,
+.admin-mission-one__override legend,
+.admin-mission-one__override header span,
+.admin-mission-one__reason > span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+
+.admin-mission-one > header time {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--bunker-admin-rule);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-mission-one__progress {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--bunker-admin-rule);
+  border-bottom: 1px solid var(--bunker-admin-rule);
+}
+
+.admin-mission-one__progress span {
+  color: var(--bunker-admin-muted);
+  text-align: right;
+}
+
+.admin-mission-one__wagons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-mission-one__wagons li {
+  min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid var(--bunker-admin-rule);
+  background: var(--bunker-admin-bg);
+}
+
+.admin-mission-one__wagons li > div {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.admin-mission-one__wagons strong {
+  overflow-wrap: anywhere;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  font-weight: 400;
+}
+
+.admin-mission-one__wagons span,
+.admin-mission-one__wagons b {
+  color: var(--bunker-admin-muted);
+}
+
+.admin-mission-one__wagons button,
+.admin-mission-one__override header button {
+  border: 1px solid var(--bunker-admin-rule);
+  color: var(--bunker-admin-paper);
+  background: transparent;
+}
+
+.admin-mission-one__override {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid rgba(139, 61, 54, 0.72);
+  background: #211918;
+}
+
+.admin-mission-one__override > p {
+  margin: 0;
+  color: var(--bunker-admin-muted);
+  line-height: 1.5;
+}
+
+.admin-mission-one__override fieldset {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--bunker-admin-rule);
+  background: var(--bunker-admin-rule);
+}
+
+.admin-mission-one__override legend {
+  width: 100%;
+  padding: 0 0 0.65rem;
+  color: var(--bunker-admin-muted);
+  background: #211918;
+}
+
+.admin-mission-one__override fieldset label {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  gap: 0.65rem;
+  padding: 0.75rem;
+  background: var(--bunker-admin-bg);
+}
+
+.admin-mission-one__override fieldset label > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-mission-one__override fieldset strong {
+  overflow-wrap: anywhere;
+}
+
+.admin-mission-one__override fieldset small {
+  color: var(--bunker-admin-muted);
+}
+
+.admin-mission-one__reason {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.admin-mission-one__reason textarea {
+  min-height: 6rem;
+  resize: vertical;
+  border: 1px solid var(--bunker-admin-rule);
+  border-radius: 0;
+  padding: 0.75rem;
+  color: var(--bunker-admin-paper);
+  background: var(--bunker-admin-bg);
+  font: inherit;
+}
+
+@media (max-width: 520px) {
+  .admin-mission-one > header,
+  .admin-mission-one__override > header,
+  .admin-mission-one__progress {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-mission-one__progress span {
+    text-align: left;
+  }
+}

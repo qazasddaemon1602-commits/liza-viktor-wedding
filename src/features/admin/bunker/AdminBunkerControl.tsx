@@ -51,6 +51,11 @@ import {
   type OwnerBunkerQuestDependencies,
 } from '../../bunker/useOwnerBunkerQuestState';
 import { BunkerQuestOwnerPanel, bunkerPhaseTitle } from './BunkerQuestOwnerPanel';
+import {
+  MissionOneOwnerPanel,
+  type MissionOneOwnerOverride,
+  type MissionOneOwnerReadModel,
+} from './MissionOneOwnerPanel';
 
 export type AdminBunkerControlDependencies = {
   load: (eventId: string) => Promise<OwnerBunkerControl>;
@@ -79,6 +84,8 @@ type AdminBunkerControlProps = {
   dashboard?: AdminDashboard;
   onAcceptDistribution?: (carriageCount: SupportedCarriageCount) => Promise<void> | void;
   questDependencies?: OwnerBunkerQuestDependencies;
+  missionOne?: MissionOneOwnerReadModel;
+  onMissionOneOverride?: (override: MissionOneOwnerOverride) => Promise<void> | void;
 };
 
 const SUPPORTED_WAGON_COUNTS: SupportedCarriageCount[] = [2, 3, 4, 5];
@@ -168,6 +175,8 @@ export function AdminBunkerControl({
   dashboard,
   onAcceptDistribution,
   questDependencies,
+  missionOne,
+  onMissionOneOverride,
 }: AdminBunkerControlProps) {
   const deps = useMemo(() => dependencies ?? browserDependencies(), [dependencies]);
   const [state, setState] = useState<OwnerBunkerControl | null>(null);
@@ -633,7 +642,11 @@ export function AdminBunkerControl({
         />
       )}
 
-      {state?.status === 'active' && characters.length > 0 && (
+      {state?.status === 'active' && globalState === 'MISSION_01' && missionOne && (
+        <MissionOneOwnerPanel model={missionOne} onOverride={onMissionOneOverride} />
+      )}
+
+      {state?.status === 'active' && globalState !== 'MISSION_01' && characters.length > 0 && (
         <section className="admin-bunker-characters" aria-labelledby="admin-bunker-characters-title">
           <header>
             <p className="eyebrow">СЮЖЕТНЫЕ СТАТУСЫ</p>

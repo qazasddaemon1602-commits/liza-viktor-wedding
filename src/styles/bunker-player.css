@@ -318,3 +318,268 @@
     font-size: 0.58rem;
   }
 }
+
+.bunker-mission-one-player {
+  min-width: 0;
+  display: grid;
+  gap: 0.9rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
+  border: 1px solid var(--bunker-player-rule);
+  color: var(--bunker-player-ivory);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-mission-one-player__header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--bunker-player-rule);
+}
+
+.bunker-mission-one-player__header p,
+.bunker-mission-one-player__quota,
+.bunker-mission-one-player__header time,
+.bunker-mission-one-player__members legend,
+.bunker-mission-one-player__members b,
+.bunker-mission-one-player__primary,
+.bunker-mission-one-player__secondary,
+.bunker-mission-one-player__outcome > strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.bunker-mission-one-player__header p {
+  margin: 0 0 0.4rem;
+  color: var(--bunker-player-muted);
+  font-size: 0.68rem;
+}
+
+.bunker-mission-one-player__header h2 {
+  margin: 0;
+  color: var(--bunker-player-ivory);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 9vw, 4rem);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+}
+
+.bunker-mission-one-player__header time {
+  min-width: 4.3rem;
+  padding: 0.55rem;
+  border: 1px solid var(--bunker-player-rule);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.bunker-mission-one-player__question {
+  max-width: 28ch;
+  margin: 0;
+  color: var(--bunker-player-ivory);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.45rem, 6vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.bunker-mission-one-player__continuity,
+.bunker-mission-one-player__sync,
+.bunker-mission-one-player__error {
+  margin: 0;
+  color: #cbc6ba;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.bunker-mission-one-player__sync,
+.bunker-mission-one-player__error {
+  padding: 0.75rem;
+  border-left: 2px solid var(--bunker-player-muted);
+  background: var(--bunker-player-black);
+}
+
+.bunker-mission-one-player__error {
+  border-color: #a9594f;
+}
+
+.bunker-mission-one-player__quota {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--bunker-player-rule);
+  border-bottom: 1px solid var(--bunker-player-rule);
+  font-size: 0.72rem;
+}
+
+.bunker-mission-one-player__quota span {
+  color: var(--bunker-player-muted);
+  text-align: right;
+}
+
+.bunker-mission-one-player__members {
+  min-width: 0;
+  max-height: min(19rem, calc(100dvh - 32rem));
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--bunker-player-rule);
+  background: var(--bunker-player-rule);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.bunker-mission-one-player__members legend {
+  width: 100%;
+  padding: 0 0 0.65rem;
+  color: var(--bunker-player-muted);
+  background: var(--bunker-player-graphite);
+  font-size: 0.68rem;
+}
+
+.bunker-mission-one-player__members label {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.8rem;
+  color: var(--bunker-player-ivory);
+  background: var(--bunker-player-black);
+  cursor: pointer;
+}
+
+.bunker-mission-one-player__members label.is-selected {
+  background: #272923;
+}
+
+.bunker-mission-one-player__members label:has(input:disabled:not(:checked)) {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.bunker-mission-one-player__members input {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0.1rem 0 0;
+  accent-color: var(--bunker-player-ivory);
+}
+
+.bunker-mission-one-player__members label > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.bunker-mission-one-player__members strong {
+  overflow-wrap: anywhere;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.bunker-mission-one-player__members b,
+.bunker-mission-one-player__members small {
+  color: var(--bunker-player-muted);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.bunker-mission-one-player__primary,
+.bunker-mission-one-player__secondary {
+  min-height: 3.25rem;
+  border: 1px solid var(--bunker-player-ivory);
+  padding: 0.75rem 1rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bunker-mission-one-player__primary {
+  width: 100%;
+  color: var(--bunker-player-black);
+  background: var(--bunker-player-ivory);
+}
+
+.bunker-mission-one-player__secondary {
+  color: var(--bunker-player-ivory);
+  background: transparent;
+}
+
+.bunker-mission-one-player__primary:disabled,
+.bunker-mission-one-player__secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.bunker-mission-one-player__confirmation,
+.bunker-mission-one-player__outcome {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--bunker-player-rule);
+  background: var(--bunker-player-black);
+}
+
+.bunker-mission-one-player__confirmation h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.65rem;
+  font-weight: 400;
+}
+
+.bunker-mission-one-player__confirmation p,
+.bunker-mission-one-player__outcome p,
+.bunker-mission-one-player__outcome small {
+  margin: 0;
+  color: var(--bunker-player-muted);
+  line-height: 1.45;
+}
+
+.bunker-mission-one-player__confirmation ul,
+.bunker-mission-one-player__outcome ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.bunker-mission-one-player__confirmation li,
+.bunker-mission-one-player__outcome li {
+  overflow-wrap: anywhere;
+}
+
+.bunker-mission-one-player__confirmation > div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+@media (max-width: 520px) {
+  .bunker-player-dashboard--mission-one {
+    gap: 0.8rem;
+  }
+
+  .bunker-player-dashboard--mission-one .bunker-player-dashboard__header {
+    padding-block: 0.8rem;
+  }
+
+  .bunker-player-dashboard--mission-one .bunker-player-dashboard__guest-name {
+    font-size: clamp(1.7rem, 8vw, 2.5rem);
+    line-height: 0.95;
+  }
+
+  .bunker-mission-one-player {
+    gap: 0.72rem;
+    padding: 0.85rem;
+  }
+
+  .bunker-mission-one-player__confirmation > div {
+    grid-template-columns: 1fr;
+  }
+}

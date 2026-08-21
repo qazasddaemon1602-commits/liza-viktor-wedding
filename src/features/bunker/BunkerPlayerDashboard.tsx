@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
+import {
+  MissionOnePlayer,
+  type MissionOnePlayerReadModel,
+} from './v2/MissionOnePlayer';
 
 const SECTIONS = [
   'МОЙ ВАГОН', 'ПЕРСОНАЖ', 'ПАССАЖИРЫ', 'ИНВЕНТАРЬ',
@@ -61,17 +65,33 @@ function archiveArtwork(entry: ArchiveEntry): BunkerAsset | null {
 type BunkerPlayerDashboardProps = {
   runtime: ActiveGuestBunkerRuntime;
   connectionError?: string;
+  missionOne?: MissionOnePlayerReadModel;
+  onConfirmMissionOne?: (selectedGuestIds: string[]) => Promise<void> | void;
 };
 
-export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerPlayerDashboardProps) {
-  const [section, setSection] = useState<Section>('МОЙ ВАГОН');
+export function BunkerPlayerDashboard({
+  runtime,
+  connectionError = '',
+  missionOne,
+  onConfirmMissionOne,
+}: BunkerPlayerDashboardProps) {
+  const [section, setSection] = useState<Section>(
+    missionOne ? 'ТЕКУЩЕЕ ЗАДАНИЕ' : 'МОЙ ВАГОН',
+  );
   const inventory = rows(runtime.inventory);
   const passengers = rows(runtime.passengers);
   const archive = archiveEntries(runtime.archive);
   const mission = currentMission(runtime.currentMission);
 
   return (
-    <section className="bunker-player-dashboard" aria-label="Игровой модуль Бункер">
+    <section
+      className={`bunker-player-dashboard${missionOne ? ' bunker-player-dashboard--mission-one' : ''}`}
+      aria-label="Игровой модуль Бункер"
+    >
+      {missionOne && (
+        <MissionOnePlayer model={missionOne} onConfirm={onConfirmMissionOne} />
+      )}
+
       <header className="bunker-player-dashboard__header">
         <div>
           <p className="bunker-player-dashboard__index">ПОСЛЕДНИЙ ВАГОН · {runtime.wagon.label}</p>
@@ -79,17 +99,21 @@ export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerP
             {runtime.guest.realName.toLocaleUpperCase('ru-RU')}
           </h2>
         </div>
-        <span className="bunker-player-dashboard__state">{runtime.game.state}</span>
+        <span className="bunker-player-dashboard__state">
+          {missionOne ? 'МИССИЯ 01' : runtime.game.state}
+        </span>
       </header>
 
-      <BunkerResponsivePicture
-        asset="tunnel-relief-wide"
-        mobileAsset="tunnel-relief-mobile"
-        className="bunker-player-dashboard__relief"
-        testId="bunker-tunnel-relief"
-        sizes="(max-width: 640px) calc(100vw - 1.3rem), min(72rem, calc(100vw - 5rem))"
-        loading="eager"
-      />
+      {!missionOne && (
+        <BunkerResponsivePicture
+          asset="tunnel-relief-wide"
+          mobileAsset="tunnel-relief-mobile"
+          className="bunker-player-dashboard__relief"
+          testId="bunker-tunnel-relief"
+          sizes="(max-width: 640px) calc(100vw - 1.3rem), min(72rem, calc(100vw - 5rem))"
+          loading="eager"
+        />
+      )}
 
       {connectionError && (
         <p className="bunker-player-dashboard__connection" role="alert">{connectionError}</p>
@@ -113,7 +137,7 @@ export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerP
         </p>
       )}
 
-      {mission && (
+      {mission && !missionOne && (
         <button
           className="bunker-player-dashboard__primary-action"
           type="button"
@@ -225,11 +249,17 @@ export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerP
         {section === 'ТЕКУЩЕЕ ЗАДАНИЕ' && (
           <article aria-label="Текущее задание">
             <h3>ТЕКУЩЕЕ ЗАДАНИЕ</h3>
-            <dl className="bunker-player-mission-meta">
-              <div><dt>Текущий этап</dt><dd>{runtime.game.state}</dd></div>
-              {mission && <div><dt>Идентификатор задания</dt><dd>{mission.id}</dd></div>}
-            </dl>
-            {!mission && <p>Для текущего этапа активное задание не назначено.</p>}
+            {missionOne ? (
+              <p>Решение вагона открыто в верхней части экрана. Навигация остаётся доступной.</p>
+            ) : (
+              <>
+                <dl className="bunker-player-mission-meta">
+                  <div><dt>Текущий этап</dt><dd>{runtime.game.state}</dd></div>
+                  {mission && <div><dt>Идентификатор задания</dt><dd>{mission.id}</dd></div>}
+                </dl>
+                {!mission && <p>Для текущего этапа активное задание не назначено.</p>}
+              </>
+            )}
           </article>
         )}
       </div>

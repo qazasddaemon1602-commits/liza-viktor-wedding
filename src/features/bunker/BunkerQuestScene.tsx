@@ -3,6 +3,10 @@ import type { BunkerPhase } from './bunkerQuest.types';
 import type { BunkerScreenState, BunkerScreenTeamState } from './bunker.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
 import type { BunkerGlobalGameState } from './bunkerSession.service';
+import {
+  MissionOneScreen,
+  type MissionOneScreenReadModel,
+} from './v2/MissionOneScreen';
 
 type ActiveBunkerScreen = Extract<BunkerScreenState, { status: 'active' }>;
 
@@ -10,6 +14,7 @@ type BunkerQuestSceneProps = {
   state: ActiveBunkerScreen;
   remainingSeconds: number;
   motionPreference?: 'full' | 'reduced';
+  missionOne?: MissionOneScreenReadModel;
 };
 
 function formatTimer(seconds: number): string {
@@ -91,11 +96,43 @@ function sceneBackdrop(state: ActiveBunkerScreen, phase: BunkerPhase): BunkerAss
   return 'bunker-exterior';
 }
 
+function missionOnePublicSummary(state: ActiveBunkerScreen): string {
+  const plan = state.currentMission?.plan;
+  if (plan && !Array.isArray(plan)) {
+    const summary = plan.publicTvSummary;
+    if (typeof summary === 'string' && summary.trim()) return summary.trim();
+    const presentation = plan.presentation;
+    if (typeof presentation === 'object' && presentation !== null && !Array.isArray(presentation)) {
+      const nested = (presentation as Record<string, unknown>).publicTvSummary;
+      if (typeof nested === 'string' && nested.trim()) return nested.trim();
+    }
+  }
+  return 'Вагоны изучают открытые части досье и принимают командное решение.';
+}
+
 export function BunkerQuestScene({
   state,
   remainingSeconds,
   motionPreference = 'full',
+  missionOne,
 }: BunkerQuestSceneProps) {
+  if (state.globalGameState === 'MISSION_01') {
+    return (
+      <MissionOneScreen
+        model={missionOne ?? {
+          title: 'Лишний пассажир',
+          publicSummary: missionOnePublicSummary(state),
+          remainingSeconds,
+          wagons: state.teams.map((team) => ({
+            wagonId: String(team.carriageNumber),
+            label: team.label,
+            status: team.missionAComplete ? 'completed' : 'active',
+          })),
+        }}
+      />
+    );
+  }
+
   const phase = phaseForGlobalGameState(state.globalGameState, state.phase);
   const progress = progressLabel(state, phase);
   const arrived = remainingSeconds <= 0;
