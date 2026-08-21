@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   advanceBunkerGameState,
   distributeBunkerCharacters,
+  parseBunkerContractState,
   prepareBunkerGame,
 } from './bunkerSession.service';
 import type { BunkerRpcClient } from './bunker.service';
@@ -11,6 +12,17 @@ function clientWith(data: unknown): BunkerRpcClient {
 }
 
 describe('Bunker session service', () => {
+  it('branches on contractVersion before parsing legacy or strict V2 state', () => {
+    expect(parseBunkerContractState({ contractVersion: 1, state: 'STORY_BUNKER' }))
+      .toEqual({ contractVersion: 1, state: 'STORY_BUNKER' });
+    expect(parseBunkerContractState({ contractVersion: 2, state: 'UNKNOWN_PASSENGER' }))
+      .toEqual({ contractVersion: 2, state: 'UNKNOWN_PASSENGER' });
+    expect(() => parseBunkerContractState({ contractVersion: 2, state: 'STORY_BUNKER' }))
+      .toThrow(/state/i);
+    expect(() => parseBunkerContractState({ contractVersion: 3, state: 'LOBBY' }))
+      .toThrow(/version/i);
+  });
+
   it('prepares one server-side game run without activating the final takeover', async () => {
     const client = clientWith({
       status: 'prepared',

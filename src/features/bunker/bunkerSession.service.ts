@@ -1,4 +1,8 @@
 import type { BunkerRpcClient, BunkerRpcError } from './bunker.service';
+import {
+  parseBunkerV2State,
+  type BunkerV2State,
+} from './v2/contracts';
 
 export type BunkerGameMode = 'production' | 'test';
 export type BunkerGlobalGameState =
@@ -60,6 +64,10 @@ export const BUNKER_GLOBAL_GAME_STATES: readonly BunkerGlobalGameState[] = [
 
 const GAME_STATES = new Set<BunkerGlobalGameState>(BUNKER_GLOBAL_GAME_STATES);
 
+export type BunkerContractState =
+  | { contractVersion: 1; state: BunkerGlobalGameState }
+  | BunkerV2State;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -79,6 +87,13 @@ function gameState(value: unknown): BunkerGlobalGameState {
     throw new Error('Unexpected Bunker game state');
   }
   return value as BunkerGlobalGameState;
+}
+
+export function parseBunkerContractState(value: unknown): BunkerContractState {
+  if (!record(value)) throw new Error('Unexpected Bunker contract version');
+  if (value.contractVersion === 2) return parseBunkerV2State(value);
+  if (value.contractVersion !== 1) throw new Error('Unexpected Bunker contract version');
+  return { contractVersion: 1, state: gameState(value.state) };
 }
 
 function missionPlan(value: unknown): BunkerMissionPlan {
