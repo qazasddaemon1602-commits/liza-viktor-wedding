@@ -151,6 +151,7 @@ select is(
         '_ensure_late_bunker_guest',
         '_create_bunker_game_plan',
         '_assign_late_bunker_guest',
+        '_clear_bunker_game_run_on_reset',
         '_bunker_v2_match_repeats',
         'owner_distribute_bunker_characters'
       ])

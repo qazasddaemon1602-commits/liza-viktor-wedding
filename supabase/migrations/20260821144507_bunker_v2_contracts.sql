@@ -526,8 +526,7 @@ begin
 
   perform 1
   from public.events event
-  where event.id = p_event_id and event.owner_user_id = v_owner
-  for update;
+  where event.id = p_event_id and event.owner_user_id = v_owner;
   if not found then
     raise exception 'owner access required' using errcode = '42501';
   end if;
@@ -540,6 +539,15 @@ begin
   if v_state.event_id is null or v_state.run_nonce is null then
     raise exception 'Bunker V2 run must be prepared before transition'
       using errcode = '55000';
+  end if;
+
+  -- Lock order shared with legacy owner paths: bunker_state, then events.
+  perform 1
+  from public.events event
+  where event.id = p_event_id and event.owner_user_id = v_owner
+  for update;
+  if not found then
+    raise exception 'owner access required' using errcode = '42501';
   end if;
 
   select run.contract_version
@@ -792,8 +800,7 @@ begin
 
   perform 1
   from public.events event
-  where event.id = p_event_id and event.owner_user_id = v_owner
-  for update;
+  where event.id = p_event_id and event.owner_user_id = v_owner;
   if not found then
     raise exception 'owner access required' using errcode = '42501';
   end if;
@@ -807,6 +814,15 @@ begin
   from public.bunker_state state
   where state.event_id = p_event_id
   for update;
+
+  -- Lock order shared with legacy owner paths: bunker_state, then events.
+  perform 1
+  from public.events event
+  where event.id = p_event_id and event.owner_user_id = v_owner
+  for update;
+  if not found then
+    raise exception 'owner access required' using errcode = '42501';
+  end if;
 
   v_request_hash := encode(
     extensions.digest(
@@ -1727,6 +1743,57 @@ alter table public.bunker_game_events
   foreign key (instance_id, event_id, run_nonce)
   references public.bunker_mission_instances(id, event_id, run_nonce)
   on delete set null (instance_id);
+
+-- The run reset is an AFTER UPDATE trigger. Remove provenance dependents in a
+-- deterministic child-first order before the run's broad cascades execute.
+create or replace function public._clear_bunker_game_run_on_reset()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_deleted integer;
+begin
+  if old.run_nonce is not null and new.run_nonce is null then
+    loop
+      delete from public.bunker_archive_entitlements entitlement
+      where entitlement.event_id = old.event_id
+        and not exists (
+          select 1
+          from public.bunker_archive_entitlements child
+          where child.event_id = entitlement.event_id
+            and child.run_nonce = entitlement.run_nonce
+            and child.source_entitlement_id = entitlement.id
+        );
+      get diagnostics v_deleted = row_count;
+      exit when v_deleted = 0;
+    end loop;
+
+    if exists (
+      select 1
+      from public.bunker_archive_entitlements entitlement
+      where entitlement.event_id = old.event_id
+    ) then
+      raise exception 'cyclic Bunker archive entitlement provenance'
+        using errcode = '23514';
+    end if;
+
+    delete from public.bunker_final_parameters parameter
+    where parameter.event_id = old.event_id;
+
+    delete from public.bunker_inventory_transfers transfer
+    where transfer.event_id = old.event_id;
+
+    delete from public.bunker_game_runs run
+    where run.event_id = old.event_id;
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public._clear_bunker_game_run_on_reset()
+  from public, anon, authenticated;
 
 create unique index bunker_game_events_run_sequence_idx
   on public.bunker_game_events(run_nonce, sequence);

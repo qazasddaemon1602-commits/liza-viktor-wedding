@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(92);
+select plan(97);
 
 select has_column(
   'public', 'bunker_game_runs', 'contract_version',
@@ -161,26 +161,46 @@ select is(
 select ok(
   (
     select count(*) = 14
-    from pg_constraint constraint_row
-    where constraint_row.contype = 'f'
-      and constraint_row.conname = any(array[
-        'bunker_inventory_transfers_source_lot_run_fkey',
-        'bunker_inventory_transfers_accepted_lot_run_fkey',
-        'bunker_inventory_transfers_from_carriage_event_fkey',
-        'bunker_inventory_transfers_to_carriage_event_fkey',
-        'bunker_inventory_transfers_guest_event_fkey',
-        'bunker_archive_entitlements_archive_run_fkey',
-        'bunker_archive_entitlements_carriage_event_fkey',
-        'bunker_archive_entitlements_source_run_fkey',
-        'bunker_archive_entitlements_transfer_run_fkey',
-        'bunker_final_parameters_source_instance_run_fkey',
-        'bunker_mission_members_guest_event_fkey',
-        'bunker_mission_members_carriage_event_fkey',
-        'bunker_ability_uses_guest_event_fkey',
-        'bunker_game_events_instance_run_fkey'
-      ])
+    from (values
+      ('bunker_inventory_transfers', 'bunker_inventory_transfers_source_lot_run_fkey', 'FOREIGN KEY \(source_lot_id, event_id, run_nonce\) REFERENCES (public\.)?bunker_inventory_lots\(id, event_id, run_nonce\)'),
+      ('bunker_inventory_transfers', 'bunker_inventory_transfers_accepted_lot_run_fkey', 'FOREIGN KEY \(accepted_lot_id, event_id, run_nonce\) REFERENCES (public\.)?bunker_inventory_lots\(id, event_id, run_nonce\)'),
+      ('bunker_inventory_transfers', 'bunker_inventory_transfers_from_carriage_event_fkey', 'FOREIGN KEY \(from_carriage_id, event_id\) REFERENCES (public\.)?carriages\(id, event_id\)'),
+      ('bunker_inventory_transfers', 'bunker_inventory_transfers_to_carriage_event_fkey', 'FOREIGN KEY \(to_carriage_id, event_id\) REFERENCES (public\.)?carriages\(id, event_id\)'),
+      ('bunker_inventory_transfers', 'bunker_inventory_transfers_guest_event_fkey', 'FOREIGN KEY \(proposed_by_guest_id, event_id\) REFERENCES (public\.)?guests\(id, event_id\)'),
+      ('bunker_archive_entitlements', 'bunker_archive_entitlements_archive_run_fkey', 'FOREIGN KEY \(archive_entry_id, event_id, run_nonce\) REFERENCES (public\.)?bunker_archive_entries\(id, event_id, run_nonce\)'),
+      ('bunker_archive_entitlements', 'bunker_archive_entitlements_carriage_event_fkey', 'FOREIGN KEY \(carriage_id, event_id\) REFERENCES (public\.)?carriages\(id, event_id\)'),
+      ('bunker_archive_entitlements', 'bunker_archive_entitlements_source_run_fkey', 'FOREIGN KEY \(source_entitlement_id, event_id, run_nonce\) REFERENCES (public\.)?bunker_archive_entitlements\(id, event_id, run_nonce\)'),
+      ('bunker_archive_entitlements', 'bunker_archive_entitlements_transfer_run_fkey', 'FOREIGN KEY \(source_transfer_id, event_id, run_nonce\) REFERENCES (public\.)?bunker_inventory_transfers\(id, event_id, run_nonce\)'),
+      ('bunker_final_parameters', 'bunker_final_parameters_source_instance_run_fkey', 'FOREIGN KEY \(source_instance_id, event_id, run_nonce\) REFERENCES (public\.)?bunker_mission_instances\(id, event_id, run_nonce\)'),
+      ('bunker_mission_members', 'bunker_mission_members_guest_event_fkey', 'FOREIGN KEY \(guest_id, event_id\) REFERENCES (public\.)?guests\(id, event_id\)'),
+      ('bunker_mission_members', 'bunker_mission_members_carriage_event_fkey', 'FOREIGN KEY \(carriage_id, event_id\) REFERENCES (public\.)?carriages\(id, event_id\)'),
+      ('bunker_ability_uses', 'bunker_ability_uses_guest_event_fkey', 'FOREIGN KEY \(guest_id, event_id\) REFERENCES (public\.)?guests\(id, event_id\)'),
+      ('bunker_game_events', 'bunker_game_events_instance_run_fkey', 'FOREIGN KEY \(instance_id, event_id, run_nonce\) REFERENCES (public\.)?bunker_mission_instances\(id, event_id, run_nonce\)')
+    ) expected(table_name, constraint_name, definition_pattern)
+    join pg_constraint constraint_row
+      on constraint_row.conrelid = to_regclass('public.' || expected.table_name)
+     and constraint_row.conname = expected.constraint_name
+     and constraint_row.contype = 'f'
+     and pg_get_constraintdef(constraint_row.oid) ~ expected.definition_pattern
   ),
   'authoritative references declare named same-event/run foreign keys'
+);
+
+select ok(
+  (
+    select pg_get_functiondef(
+      'public.owner_prepare_bunker_v2(uuid,uuid)'::regprocedure
+    ) ~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*for update;'
+  ),
+  'V2 preparation locks bunker_state before events'
+);
+select ok(
+  (
+    select pg_get_functiondef(
+      'public.owner_transition_bunker_v2(uuid,text,uuid)'::regprocedure
+    ) ~ 'from public\.bunker_state state(.|\n)*for update;(.|\n)*from public\.events event(.|\n)*for update;'
+  ),
+  'V2 transition locks bunker_state before events'
 );
 
 select ok(
@@ -976,6 +996,173 @@ select ok(
     join public.bunker_game_runs run on run.run_nonce = matrix.run_nonce
   ),
   'every matrix plan and assignment persists a non-null catalog version'
+);
+
+create temporary table bunker_v2_reset_baseline as
+select
+  matrix.event_id,
+  matrix.run_nonce,
+  to_jsonb(event) as event_snapshot,
+  to_jsonb(event_state) as event_state_snapshot,
+  (select count(*)::integer from public.guests guest
+   where guest.event_id = matrix.event_id) as guest_count,
+  (select count(*)::integer from public.carriages carriage
+   where carriage.event_id = matrix.event_id) as carriage_count
+from bunker_v2_matrix matrix
+join public.events event on event.id = matrix.event_id
+join public.event_state event_state on event_state.event_id = matrix.event_id
+where matrix.guest_count = 15;
+
+insert into public.bunker_archive_entries(
+  id, event_id, run_nonce, artifact_key, content_type, content
+)
+select
+  '20000000-0000-4000-8000-000000000001',
+  baseline.event_id,
+  baseline.run_nonce,
+  'reset-graph',
+  'document',
+  '{"fixture":true}'::jsonb
+from bunker_v2_reset_baseline baseline;
+
+insert into public.bunker_inventory_transfers(
+  id, event_id, run_nonce, instance_id, source_lot_id, accepted_lot_id,
+  from_carriage_id, to_carriage_id, proposed_by_guest_id,
+  item_key, quantity, status, command_id, settled_at
+)
+select
+  '20000000-0000-4000-8000-000000000002',
+  baseline.event_id,
+  baseline.run_nonce,
+  instance.id,
+  lot.id,
+  lot.id,
+  carriage_ids.ids[1],
+  carriage_ids.ids[2],
+  guest.id,
+  lot.item_key,
+  1,
+  'accepted',
+  '20000000-0000-4000-8000-000000000003',
+  clock_timestamp()
+from bunker_v2_reset_baseline baseline
+cross join lateral (
+  select array_agg(carriage.id order by carriage.sort_order) as ids
+  from public.carriages carriage
+  where carriage.event_id = baseline.event_id
+) carriage_ids
+cross join lateral (
+  select instance.id
+  from public.bunker_mission_instances instance
+  where instance.run_nonce = baseline.run_nonce
+  order by instance.id
+  limit 1
+) instance
+cross join lateral (
+  select lot.id, lot.item_key
+  from public.bunker_inventory_lots lot
+  where lot.run_nonce = baseline.run_nonce
+    and lot.carriage_id = carriage_ids.ids[1]
+  order by lot.id
+  limit 1
+) lot
+cross join lateral (
+  select guest.id
+  from public.guests guest
+  where guest.event_id = baseline.event_id
+    and guest.carriage_id = carriage_ids.ids[1]
+  order by guest.id
+  limit 1
+) guest;
+
+insert into public.bunker_archive_entitlements(
+  id, event_id, run_nonce, archive_entry_id,
+  owner_scope_kind, owner_scope_key, status, transferred_at
+)
+select
+  '20000000-0000-4000-8000-000000000004',
+  baseline.event_id,
+  baseline.run_nonce,
+  '20000000-0000-4000-8000-000000000001',
+  'global',
+  'reset-root',
+  'transferred',
+  clock_timestamp()
+from bunker_v2_reset_baseline baseline;
+
+insert into public.bunker_archive_entitlements(
+  id, event_id, run_nonce, archive_entry_id,
+  owner_scope_kind, owner_scope_key,
+  source_entitlement_id, source_transfer_id
+)
+select
+  '20000000-0000-4000-8000-000000000005',
+  baseline.event_id,
+  baseline.run_nonce,
+  '20000000-0000-4000-8000-000000000001',
+  'global',
+  'reset-child',
+  '20000000-0000-4000-8000-000000000004',
+  '20000000-0000-4000-8000-000000000002'
+from bunker_v2_reset_baseline baseline;
+
+update public.bunker_final_parameters parameter
+set source_instance_id = source.instance_id
+from (
+  select baseline.run_nonce, instance.id as instance_id
+  from bunker_v2_reset_baseline baseline
+  cross join lateral (
+    select candidate.id
+    from public.bunker_mission_instances candidate
+    where candidate.run_nonce = baseline.run_nonce
+    order by candidate.id
+    limit 1
+  ) instance
+) source
+where parameter.run_nonce = source.run_nonce
+  and parameter.parameter_key = 'coordinates';
+
+select lives_ok(
+  $$ update public.bunker_state
+     set run_nonce = null
+     where event_id = (select event_id from bunker_v2_reset_baseline) $$,
+  'a populated V2 provenance graph resets without RESTRICT-order failures'
+);
+select is(
+  (
+    select sum(runtime_rows)::integer
+    from (
+      select count(*) as runtime_rows from public.bunker_game_runs run
+        join bunker_v2_reset_baseline baseline on baseline.run_nonce = run.run_nonce
+      union all select count(*) from public.bunker_mission_instances row
+        join bunker_v2_reset_baseline baseline on baseline.run_nonce = row.run_nonce
+      union all select count(*) from public.bunker_mission_members row
+        join bunker_v2_reset_baseline baseline on baseline.run_nonce = row.run_nonce
+      union all select count(*) from public.bunker_inventory_transfers row
+        join bunker_v2_reset_baseline baseline on baseline.run_nonce = row.run_nonce
+      union all select count(*) from public.bunker_archive_entitlements row
+        join bunker_v2_reset_baseline baseline on baseline.run_nonce = row.run_nonce
+      union all select count(*) from public.bunker_final_parameters row
+        join bunker_v2_reset_baseline baseline on baseline.run_nonce = row.run_nonce
+    ) remaining
+  ),
+  0,
+  'the reset removes the authoritative V2 run and its projection graph'
+);
+select ok(
+  (
+    select
+      to_jsonb(event) = baseline.event_snapshot
+      and to_jsonb(event_state) = baseline.event_state_snapshot
+      and (select count(*) from public.guests guest
+           where guest.event_id = baseline.event_id) = baseline.guest_count
+      and (select count(*) from public.carriages carriage
+           where carriage.event_id = baseline.event_id) = baseline.carriage_count
+    from bunker_v2_reset_baseline baseline
+    join public.events event on event.id = baseline.event_id
+    join public.event_state event_state on event_state.event_id = baseline.event_id
+  ),
+  'the Bunker reset preserves wedding configuration, carriages and guests'
 );
 
 insert into public.events(id, slug, name, owner_user_id)
