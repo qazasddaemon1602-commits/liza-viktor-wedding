@@ -37,7 +37,7 @@ describe('controlled Bunker character assignment', () => {
     },
   );
 
-  it.each([15, 18, 19, 20, 21, 29])('meets the approved V2 category quotas for %i guests', (count) => {
+  it.each(Array.from({ length: 26 }, (_, index) => index + 15))('meets the approved V2 category quotas for %i guests', (count) => {
     const counts = characterCategoryCounts(assignV2Characters(
       guests(count), balancedWagons(count), `quota-${count}`,
     ));
@@ -54,6 +54,27 @@ describe('controlled Bunker character assignment', () => {
   it('separates controlled repeats across wagons when balanced wagons permit it', () => {
     const wagonByGuest = balancedWagons(40);
     const assignments = assignV2Characters(guests(40), wagonByGuest, 'wagon-repeat-seed');
+    const wagonsByProfile = new Map<string, Set<string>>();
+    assignments.forEach(({ guestId, profileKey }) => {
+      const wagons = wagonsByProfile.get(profileKey) ?? new Set<string>();
+      wagons.add(wagonByGuest.get(guestId) as string);
+      wagonsByProfile.set(profileKey, wagons);
+    });
+    for (const [profileKey, count] of [...assignments.reduce((result, { profileKey }) => {
+      result.set(profileKey, (result.get(profileKey) ?? 0) + 1);
+      return result;
+    }, new Map<string, number>())]) {
+      if (count === 2) expect(wagonsByProfile.get(profileKey)?.size).toBe(2);
+    }
+  });
+
+  it('globally separates repeats when a greedy first choice would block a later repeat', () => {
+    const guestIds = Array.from({ length: 38 }, (_, index) => `g${index + 1}`);
+    const wagonByGuest = new Map(guestIds.map((guestId, index) => [
+      guestId,
+      index < 35 ? 'B' : index === 35 ? 'C' : index === 36 ? 'A' : 'B',
+    ]));
+    const assignments = assignV2Characters(guestIds, wagonByGuest, 's5');
     const wagonsByProfile = new Map<string, Set<string>>();
     assignments.forEach(({ guestId, profileKey }) => {
       const wagons = wagonsByProfile.get(profileKey) ?? new Set<string>();
@@ -91,6 +112,12 @@ describe('controlled Bunker character assignment', () => {
     const first = assignCharacterProfiles(currentGuests, 'run-a');
     expect(assignCharacterProfiles(currentGuests, 'run-a')).toEqual(first);
     expect(assignCharacterProfiles(currentGuests, 'run-b')).not.toEqual(first);
+  });
+
+  it('preserves the original seeded legacy guest shuffle', () => {
+    expect(assignCharacterProfiles(guests(12), 'run-2026').find(
+      (assignment) => assignment.guestId === 'guest-1',
+    )?.profileKey).toBe('geologist');
   });
 
   it.each([12, 16, 20, 32, 40])('guarantees all mandatory categories for %i guests', (count) => {
