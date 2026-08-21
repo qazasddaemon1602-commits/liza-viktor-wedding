@@ -191,6 +191,7 @@ export function JoinPage({
         activeCall={activeCall}
         bunkerState={bunker.state}
         bunkerRuntime={bunker.runtime}
+        bunkerMissionOne={bunker.missionOne}
         bunkerRuntimeLoading={bunker.runtimeLoading}
         bunkerRuntimeError={bunker.runtimeError}
         bunkerFeedback={bunker.feedback}
@@ -198,6 +199,7 @@ export function JoinPage({
         bunkerSubmitting={bunker.submitting}
         onBunkerMission={(stage, answer) => void bunker.submitMission(stage, answer)}
         onBunkerFinalCode={(code) => void bunker.submitFinalCode(code)}
+        onConfirmBunkerMissionOne={(selectedGuestIds) => bunker.confirmMissionOne(selectedGuestIds)}
         quizState={quiz.state}
         quizError={quiz.error}
         quizSubmitting={quiz.submitting}

@@ -10,10 +10,56 @@ async function flushLoadedState() {
   await act(async () => {
     await Promise.resolve();
     await Promise.resolve();
+    await Promise.resolve();
   });
 }
 
 describe('BunkerScreenGuard', () => {
+  it('uses the public V2 M01 instance projection instead of legacy missionA team progress', async () => {
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue({
+          status: 'active',
+          startedAt: '2026-08-21T18:00:00.000Z',
+          durationSeconds: 1800,
+          remainingSeconds: 999,
+          soundEnabled: false,
+          phase: 'dossier_1',
+          unlocked: false,
+          teams: [
+            { carriageNumber: 1, label: 'ВАГОН №1', missionAComplete: true, missionBComplete: false },
+            { carriageNumber: 2, label: 'ВАГОН №2', missionAComplete: true, missionBComplete: false },
+          ],
+          characterCounts: { active: 12, saved: 0, excluded: 0 },
+          globalGameState: 'MISSION_01',
+          currentMission: { id: 'mission-01', state: 'MISSION_01', plan: null },
+          serverNow: '2026-08-21T18:00:01.000Z',
+        }),
+        loadMissionOne: vi.fn().mockResolvedValue({
+          contractVersion: 2,
+          status: 'active',
+          serverNow: '2026-08-21T18:00:01.000Z',
+          deadlineAt: '2026-08-21T18:04:00.000Z',
+          title: 'Лишний пассажир',
+          publicSummary: 'Вагоны принимают решение по открытым частям досье.',
+          wagons: [
+            { wagonId: 'carriage-1', label: 'ВАГОН №1', status: 'completed' },
+            { wagonId: 'carriage-2', label: 'ВАГОН №2', status: 'active' },
+          ],
+        }),
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(screen.getByRole('region', { name: 'Миссия 01 · экран' })).toBeInTheDocument();
+    expect(screen.getByText('Вагоны принимают решение по открытым частям досье.')).toBeInTheDocument();
+    expect(screen.getByText('1 / 2 ГОТОВО')).toBeInTheDocument();
+    expect(screen.queryByText('2 / 2 ГОТОВО')).not.toBeInTheDocument();
+    expect(screen.getByText('03:59')).toBeInTheDocument();
+  });
+
   it('selects the restored projector scene from authoritative globalGameState', async () => {
     render(
       <BunkerScreenGuard dependencies={{

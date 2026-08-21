@@ -12,6 +12,13 @@ import {
   getGuestBunkerRuntime,
   type GuestBunkerReadRuntime,
 } from './bunkerRuntime.service';
+import type { MissionOnePlayerReadModel } from './v2/MissionOnePlayer';
+import {
+  confirmMissionOneSelection,
+  getGuestMissionOneReadModel,
+  type ConfirmMissionOneSelectionInput,
+  type MissionOneGuestReadModel,
+} from './v2/m01.service';
 import type {
   BunkerMissionStage,
   GuestBunkerQuestState,
@@ -23,6 +30,11 @@ export type GuestBunkerLiveDependencies = {
   getDeviceKey: () => string;
   load: (deviceKey: string) => Promise<GuestBunkerQuestState>;
   loadRuntime?: (deviceKey: string) => Promise<GuestBunkerReadRuntime>;
+  loadMissionOne?: (deviceKey: string) => Promise<MissionOneGuestReadModel>;
+  confirmMissionOne?: (
+    deviceKey: string,
+    input: Omit<ConfirmMissionOneSelectionInput, 'eventSlug' | 'deviceKey'>,
+  ) => Promise<unknown>;
   submitMission: (
     deviceKey: string,
     stage: BunkerMissionStage,
@@ -51,10 +63,42 @@ function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
     getDeviceKey,
     load: (key) => getGuestBunkerQuest(rpcClient, eventSlug, key),
     loadRuntime: (key) => getGuestBunkerRuntime(rpcClient, eventSlug, key),
+    loadMissionOne: (key) => getGuestMissionOneReadModel(rpcClient, eventSlug, key),
+    confirmMissionOne: (key, input) => confirmMissionOneSelection(rpcClient, {
+      eventSlug,
+      deviceKey: key,
+      ...input,
+    }),
     submitMission: (key, stage, answer) => submitBunkerMission(rpcClient, eventSlug, key, stage, answer),
     submitFinalCode: (key, code) => submitBunkerFinalCode(rpcClient, eventSlug, key, code),
     subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
   };
+}
+
+function missionOnePlayerModel(
+  model: MissionOneGuestReadModel,
+  connection: MissionOnePlayerReadModel['connection'] = 'online',
+): MissionOnePlayerReadModel | undefined {
+  if (model.status !== 'active' && model.status !== 'completed') return undefined;
+  return {
+    instanceId: model.instanceId,
+    instanceVersion: model.instanceVersion,
+    status: model.status,
+    wagon: model.wagon,
+    quota: model.quota,
+    remainingSeconds: Math.max(
+      0,
+      Math.ceil((Date.parse(model.deadlineAt) - Date.parse(model.serverNow)) / 1000),
+    ),
+    connection,
+    members: model.members,
+    selectedGuestIds: model.selectedGuestIds,
+  };
+}
+
+function commandId(): string {
+  return globalThis.crypto?.randomUUID?.()
+    ?? `m01-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function useGuestBunkerLiveState({
@@ -68,6 +112,7 @@ export function useGuestBunkerLiveState({
   );
   const [state, setState] = useState<GuestBunkerQuestState | null>(null);
   const [runtime, setRuntime] = useState<GuestBunkerReadRuntime | null>(null);
+  const [missionOne, setMissionOne] = useState<MissionOnePlayerReadModel | undefined>();
   const [runtimeLoading, setRuntimeLoading] = useState(Boolean(enabled && deps?.loadRuntime));
   const [runtimeError, setRuntimeError] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -96,6 +141,21 @@ export function useGuestBunkerLiveState({
         })
         .finally(() => {
           if (isLatest()) setRuntimeLoading(false);
+        });
+    }
+
+    if (deps.loadMissionOne) {
+      void Promise.resolve()
+        .then(() => deps.loadMissionOne!(deviceKey))
+        .then((nextMissionOne) => {
+          if (!isLatest()) return;
+          setMissionOne(missionOnePlayerModel(nextMissionOne));
+        })
+        .catch(() => {
+          if (!isLatest()) return;
+          setMissionOne((current) => (
+            current ? { ...current, connection: 'reconnecting' } : current
+          ));
         });
     }
 
@@ -186,9 +246,23 @@ export function useGuestBunkerLiveState({
     }
   }, [deps, reload, submitting]);
 
+  const confirmMissionOne = useCallback(async (selectedGuestIds: string[]) => {
+    if (!deps?.confirmMissionOne || !missionOne) {
+      throw new Error('M01 confirmation is unavailable');
+    }
+    await deps.confirmMissionOne(deps.getDeviceKey(), {
+      commandId: commandId(),
+      instanceId: missionOne.instanceId,
+      instanceVersion: missionOne.instanceVersion,
+      selectedGuestIds,
+    });
+    await reload();
+  }, [deps, missionOne, reload]);
+
   return {
     state,
     runtime,
+    missionOne,
     runtimeLoading,
     runtimeError,
     feedback,
@@ -197,5 +271,6 @@ export function useGuestBunkerLiveState({
     reload,
     submitMission,
     submitFinalCode,
+    confirmMissionOne,
   };
 }

@@ -11,6 +11,14 @@ import {
   AdminBunkerControl,
   type AdminBunkerControlDependencies,
 } from './AdminBunkerControl';
+import type { MissionOneOwnerReadModel as MissionOneOwnerPanelReadModel } from './MissionOneOwnerPanel';
+import {
+  getOwnerMissionOneReadModel,
+  overrideMissionOneSelection,
+  type MissionOneOwnerReadModel,
+  type MissionOneRpcClient,
+  type OverrideMissionOneSelectionInput,
+} from '../../bunker/v2/m01.service';
 
 const EVENT_SLUG = 'liza-viktor';
 
@@ -18,6 +26,8 @@ export type AdminBunkerDockDependencies = {
   loadDashboard: () => Promise<AdminDashboard>;
   applyDistribution: (eventId: string, carriageCount: SupportedCarriageCount) => Promise<unknown>;
   bunkerControl?: AdminBunkerControlDependencies;
+  loadMissionOne?: (eventId: string) => Promise<MissionOneOwnerReadModel>;
+  overrideMissionOne?: (input: OverrideMissionOneSelectionInput) => Promise<unknown>;
 };
 
 type AdminBunkerDockProps = {
@@ -27,7 +37,7 @@ type AdminBunkerDockProps = {
 
 function browserDependencies(): AdminBunkerDockDependencies | null {
   try {
-    const client = getSupabaseClient() as unknown as AdminRpcClient;
+    const client = getSupabaseClient() as unknown as AdminRpcClient & MissionOneRpcClient;
     return {
       loadDashboard: () => loadOwnerDashboard(client, EVENT_SLUG),
       applyDistribution: (eventId, carriageCount) => applyCarriageDistribution(
@@ -35,10 +45,32 @@ function browserDependencies(): AdminBunkerDockDependencies | null {
         eventId,
         carriageCount,
       ),
+      loadMissionOne: (eventId) => getOwnerMissionOneReadModel(client, eventId),
+      overrideMissionOne: (input) => overrideMissionOneSelection(client, input),
     };
   } catch {
     return null;
   }
+}
+
+function remainingSeconds(deadlineAt: string, serverNow: string): number {
+  return Math.max(0, Math.ceil((Date.parse(deadlineAt) - Date.parse(serverNow)) / 1000));
+}
+
+function ownerPanelModel(
+  model: MissionOneOwnerReadModel | null,
+): MissionOneOwnerPanelReadModel | undefined {
+  if (!model || model.contractVersion !== 2 || model.status !== 'active') return undefined;
+  return {
+    status: model.wagons.every((wagon) => wagon.status === 'completed') ? 'completed' : 'active',
+    remainingSeconds: remainingSeconds(model.deadlineAt, model.serverNow),
+    wagons: model.wagons,
+  };
+}
+
+function commandId(): string {
+  return globalThis.crypto?.randomUUID?.()
+    ?? `m01-owner-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 export function AdminBunkerDock({
@@ -47,6 +79,7 @@ export function AdminBunkerDock({
 }: AdminBunkerDockProps = {}) {
   const deps = useMemo(() => dependencies ?? browserDependencies(), [dependencies]);
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [missionOneRead, setMissionOneRead] = useState<MissionOneOwnerReadModel | null>(null);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
   const [availability, setAvailability] = useState<'loading' | 'current' | 'unavailable'>(
     deps ? 'loading' : 'unavailable',
@@ -69,7 +102,13 @@ export function AdminBunkerDock({
     setDashboard(null);
     setLastSuccessAt(null);
     setAvailability('unavailable');
+    setMissionOneRead(null);
   }, []);
+
+  const loadMissionOne = useCallback(async (next: AdminDashboard) => {
+    if (!deps?.loadMissionOne) return null;
+    return deps.loadMissionOne(next.event.id);
+  }, [deps]);
 
   const pollDashboard = useCallback(async () => {
     if (!deps || commandInFlightRef.current) return;
@@ -80,8 +119,10 @@ export function AdminBunkerDock({
 
     try {
       const next = await deps.loadDashboard();
+      const nextMissionOne = await loadMissionOne(next);
       if (mountedRef.current && requestId === latestRequestRef.current) {
         storeDashboard(next);
+        setMissionOneRead(nextMissionOne);
       }
     } catch {
       if (mountedRef.current && requestId === latestRequestRef.current) {
@@ -92,7 +133,7 @@ export function AdminBunkerDock({
         activePollRequestRef.current = null;
       }
     }
-  }, [deps, failClosed, storeDashboard]);
+  }, [deps, failClosed, loadMissionOne, storeDashboard]);
 
   useEffect(() => {
     if (!deps) return undefined;
@@ -119,8 +160,10 @@ export function AdminBunkerDock({
       const requestId = ++latestRequestRef.current;
       try {
         const fresh = await deps.loadDashboard();
+        const freshMissionOne = await loadMissionOne(fresh);
         if (mountedRef.current && requestId === latestRequestRef.current) {
           storeDashboard(fresh);
+          setMissionOneRead(freshMissionOne);
         }
       } catch (error) {
         if (mountedRef.current && requestId === latestRequestRef.current) {
@@ -131,6 +174,29 @@ export function AdminBunkerDock({
     } finally {
       commandInFlightRef.current = false;
     }
+  };
+
+  const applyMissionOneOverride = async (override: {
+    wagonId: string;
+    selectedGuestIds: string[];
+    reason: string;
+  }) => {
+    if (!deps?.overrideMissionOne || !dashboardRef.current) return;
+    const model = missionOneRead;
+    const wagon = model?.contractVersion === 2 && model.status === 'active'
+      ? model.wagons.find((candidate) => candidate.wagonId === override.wagonId)
+      : undefined;
+    if (!wagon) throw new Error('M01 wagon snapshot is unavailable');
+    await deps.overrideMissionOne({
+      eventId: dashboardRef.current.event.id,
+      instanceId: wagon.instanceId,
+      instanceVersion: wagon.instanceVersion,
+      commandId: commandId(),
+      selectedGuestIds: override.selectedGuestIds,
+      reason: override.reason,
+    });
+    const next = await deps.loadMissionOne?.(dashboardRef.current.event.id);
+    if (mountedRef.current && next) setMissionOneRead(next);
   };
 
   if (!deps || availability === 'unavailable') {
@@ -171,6 +237,9 @@ export function AdminBunkerDock({
         dependencies={deps.bunkerControl}
         dashboard={dashboard}
         onAcceptDistribution={acceptDistribution}
+        bunkerContractVersion={deps.loadMissionOne ? (missionOneRead?.contractVersion ?? 2) : 1}
+        missionOne={ownerPanelModel(missionOneRead)}
+        onMissionOneOverride={deps.overrideMissionOne ? applyMissionOneOverride : undefined}
       />
     </aside>
   );

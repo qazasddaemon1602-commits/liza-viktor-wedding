@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
+import type { BunkerV2ActiveGuestRuntime } from './v2/contracts';
 import {
   MissionOnePlayer,
   type MissionOnePlayerReadModel,
@@ -63,7 +64,7 @@ function archiveArtwork(entry: ArchiveEntry): BunkerAsset | null {
 }
 
 type BunkerPlayerDashboardProps = {
-  runtime: ActiveGuestBunkerRuntime;
+  runtime: ActiveGuestBunkerRuntime | BunkerV2ActiveGuestRuntime;
   connectionError?: string;
   missionOne?: MissionOnePlayerReadModel;
   onConfirmMissionOne?: (selectedGuestIds: string[]) => Promise<void> | void;
@@ -75,13 +76,27 @@ export function BunkerPlayerDashboard({
   missionOne,
   onConfirmMissionOne,
 }: BunkerPlayerDashboardProps) {
+  const isV2 = 'contractVersion' in runtime;
+  const guest = isV2
+    ? { ...runtime.viewer.guest, joinedLate: runtime.character.m01Eligibility === 'late_joiner' }
+    : runtime.guest;
+  const wagon = isV2
+    ? { id: missionOne?.instanceId ?? '', ...runtime.viewer.wagon }
+    : runtime.wagon;
+  const gameState = isV2 ? runtime.state : runtime.game.state;
+  const v2Passengers = missionOne?.members.map((member) => ({
+    ...member,
+    hiddenTraitRevealed: false,
+  })) ?? [];
   const [section, setSection] = useState<Section>(
     missionOne ? 'ТЕКУЩЕЕ ЗАДАНИЕ' : 'МОЙ ВАГОН',
   );
-  const inventory = rows(runtime.inventory);
-  const passengers = rows(runtime.passengers);
-  const archive = archiveEntries(runtime.archive);
-  const mission = currentMission(runtime.currentMission);
+  const inventory = rows(isV2 ? [] : runtime.inventory);
+  const passengers = rows(isV2 ? v2Passengers : runtime.passengers);
+  const archive = archiveEntries(isV2 ? [] : runtime.archive);
+  const mission = isV2
+    ? (runtime.currentMission ? { id: runtime.currentMission.instanceId } : null)
+    : currentMission(runtime.currentMission);
 
   return (
     <section
@@ -94,13 +109,13 @@ export function BunkerPlayerDashboard({
 
       <header className="bunker-player-dashboard__header">
         <div>
-          <p className="bunker-player-dashboard__index">ПОСЛЕДНИЙ ВАГОН · {runtime.wagon.label}</p>
+          <p className="bunker-player-dashboard__index">ПОСЛЕДНИЙ ВАГОН · {wagon.label}</p>
           <h2 className="bunker-player-dashboard__guest-name">
-            {runtime.guest.realName.toLocaleUpperCase('ru-RU')}
+            {guest.realName.toLocaleUpperCase('ru-RU')}
           </h2>
         </div>
         <span className="bunker-player-dashboard__state">
-          {missionOne ? 'МИССИЯ 01' : runtime.game.state}
+          {missionOne ? 'МИССИЯ 01' : gameState}
         </span>
       </header>
 
@@ -119,7 +134,7 @@ export function BunkerPlayerDashboard({
         <p className="bunker-player-dashboard__connection" role="alert">{connectionError}</p>
       )}
 
-      {runtime.guest.joinedLate && (
+      {guest.joinedLate && (
         <p className="bunker-player-dashboard__late" role="status">
           Вы присоединились к составу после отправления. Некоторые решения уже были приняты вашим вагоном.
         </p>
@@ -164,7 +179,7 @@ export function BunkerPlayerDashboard({
         {section === 'МОЙ ВАГОН' && (
           <article>
             <p className="bunker-player-dashboard__index">СОСТАВ</p>
-            <h3>{runtime.wagon.label.toLocaleUpperCase('ru-RU')}</h3>
+            <h3>{wagon.label.toLocaleUpperCase('ru-RU')}</h3>
             <p>{passengers.length} пассажиров · решения команды синхронизируются автоматически.</p>
           </article>
         )}
@@ -176,7 +191,7 @@ export function BunkerPlayerDashboard({
             <dl>
               <div><dt>Здоровье</dt><dd>{runtime.character.health}</dd></div>
               <div><dt>Навык</dt><dd>{runtime.character.visibleSkill}</dd></div>
-              <div><dt>Скрытая характеристика</dt><dd>{runtime.character.hiddenTrait ?? 'ДАННЫЕ НЕДОСТУПНЫ'}</dd></div>
+              <div><dt>Скрытая характеристика</dt><dd>{'hiddenTrait' in runtime.character ? (runtime.character.hiddenTrait ?? 'ДАННЫЕ НЕДОСТУПНЫ') : 'ДАННЫЕ НЕДОСТУПНЫ'}</dd></div>
             </dl>
             <div className="bunker-player-character__ability">
               <span>ОСОБАЯ СПОСОБНОСТЬ</span>
@@ -243,7 +258,11 @@ export function BunkerPlayerDashboard({
         )}
 
         {section === 'СОСТОЯНИЕ' && (
-          <article><h3>СОСТОЯНИЕ ВАГОНА</h3><p>ПИТАНИЕ · {String(runtime.wagonState.powerStatus).toLocaleUpperCase('ru-RU')}</p><p>СВЯЗЬ · {String(runtime.wagonState.communicationStatus).toLocaleUpperCase('ru-RU')}</p><p>НАВИГАЦИЯ · {String(runtime.wagonState.navigationStatus).toLocaleUpperCase('ru-RU')}</p></article>
+          isV2 ? (
+            <article><h3>СОСТОЯНИЕ ВАГОНА</h3><p>Данные вагона будут открыты на следующих этапах.</p></article>
+          ) : (
+            <article><h3>СОСТОЯНИЕ ВАГОНА</h3><p>ПИТАНИЕ · {String(runtime.wagonState.powerStatus).toLocaleUpperCase('ru-RU')}</p><p>СВЯЗЬ · {String(runtime.wagonState.communicationStatus).toLocaleUpperCase('ru-RU')}</p><p>НАВИГАЦИЯ · {String(runtime.wagonState.navigationStatus).toLocaleUpperCase('ru-RU')}</p></article>
+          )
         )}
 
         {section === 'ТЕКУЩЕЕ ЗАДАНИЕ' && (
@@ -254,7 +273,7 @@ export function BunkerPlayerDashboard({
             ) : (
               <>
                 <dl className="bunker-player-mission-meta">
-                  <div><dt>Текущий этап</dt><dd>{runtime.game.state}</dd></div>
+                  <div><dt>Текущий этап</dt><dd>{gameState}</dd></div>
                   {mission && <div><dt>Идентификатор задания</dt><dd>{mission.id}</dd></div>}
                 </dl>
                 {!mission && <p>Для текущего этапа активное задание не назначено.</p>}

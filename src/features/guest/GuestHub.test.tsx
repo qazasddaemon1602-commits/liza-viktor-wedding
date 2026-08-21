@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
 import type { RegisteredGuest } from '../registration/registration.types';
@@ -169,5 +170,68 @@ describe('GuestHub', () => {
       screen.getByLabelText('Сейчас происходит').compareDocumentPosition(screen.getByRole('alert'))
       & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('mounts the server-backed M01 decision for a V2 guest and forwards its confirmation', async () => {
+    const user = userEvent.setup();
+    const onConfirmBunkerMissionOne = vi.fn().mockResolvedValue(undefined);
+    render(
+      <GuestHub
+        guest={guest}
+        activeCall={null}
+        bunkerRuntime={{
+          contractVersion: 2,
+          status: 'active',
+          serverNow: '2026-08-21T18:00:01.000Z',
+          state: 'MISSION_01',
+          planVersion: 1,
+          runNonce: '41000000-0000-4000-8000-000000000001',
+          viewer: {
+            kind: 'guest',
+            guest: { id: guest.id, realName: 'Илья Тестов' },
+            wagon: { number: 3, label: 'ВАГОН №3' },
+          },
+          character: {
+            profileKey: 'mechanic', profileVersion: 1, profession: 'Механик',
+            health: 'Полностью здоров', visibleSkill: 'Чинит механизмы',
+            specialAbility: 'mechanical_fix', abilityDescription: 'Устраняет поломку.',
+            abilityUsesRemaining: 1, status: 'excluded', m01Eligibility: 'frozen_member',
+            hiddenTraitRevealed: false,
+          },
+          currentMission: {
+            instanceId: '41000000-0000-4000-8000-000000000010', instanceVersion: 1,
+            code: 'MISSION_01', status: 'active', scope: 'wagon',
+          },
+        }}
+        bunkerMissionOne={{
+          instanceId: '41000000-0000-4000-8000-000000000010',
+          instanceVersion: 1,
+          status: 'active',
+          wagon: { number: 3, label: 'ВАГОН №3' },
+          quota: 1,
+          remainingSeconds: 239,
+          connection: 'online',
+          members: [{
+            guestId: guest.id, realName: 'Илья Тестов', profession: 'Механик',
+            health: 'Полностью здоров', visibleSkill: 'Чинит механизмы',
+          }],
+          selectedGuestIds: [],
+        }}
+        onConfirmBunkerMissionOne={onConfirmBunkerMissionOne}
+        quizState={{ status: 'idle', history: [] }}
+        onQuizVote={vi.fn()}
+      />,
+    );
+
+    const mission = screen.getByRole('region', { name: 'Миссия 01 · Лишний пассажир' });
+    expect(mission).toBeInTheDocument();
+    expect(screen.getByText(/персонаж исключён из истории/i)).toBeInTheDocument();
+    await user.click(within(mission).getByRole('checkbox', { name: /илья тестов/i }));
+    await user.click(within(mission).getByRole('button', { name: 'Подтвердить решение' }));
+    await user.click(
+      within(screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' }))
+        .getByRole('button', { name: 'Подтвердить решение' }),
+    );
+    expect(onConfirmBunkerMissionOne).toHaveBeenCalledWith([guest.id]);
   });
 });

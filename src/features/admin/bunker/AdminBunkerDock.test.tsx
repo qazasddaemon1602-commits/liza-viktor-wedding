@@ -86,6 +86,73 @@ async function flushPromises() {
 afterEach(() => vi.useRealTimers());
 
 describe('AdminBunkerDock dashboard scheduling', () => {
+  it('loads authoritative M01 owner instances and forwards a reason-bound override', async () => {
+    const loadMissionOne = vi.fn().mockResolvedValue({
+      contractVersion: 2,
+      status: 'active',
+      serverNow: '2026-08-30T12:00:01.000Z',
+      deadlineAt: '2026-08-30T12:04:00.000Z',
+      wagons: [{
+        wagonId: 'carriage-1',
+        instanceId: '41000000-0000-4000-8000-000000000010',
+        instanceVersion: 1,
+        label: 'ВАГОН №1',
+        quota: 1,
+        status: 'completed',
+        selectedGuestIds: ['guest-1'],
+        members: [
+          { guestId: 'guest-1', realName: 'Александра-Мария Константинопольская', profession: 'Инженер' },
+          { guestId: 'guest-2', realName: 'Николай Добровольский', profession: 'Картограф' },
+        ],
+      }],
+    });
+    const overrideMissionOne = vi.fn().mockResolvedValue({
+      contractVersion: 2,
+      status: 'accepted',
+      commandId: '41000000-0000-4000-8000-000000000020',
+      commandType: 'owner_m01_override',
+    });
+    const control = bunkerControlDependencies();
+    control.load = vi.fn().mockResolvedValue({
+      status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+      remainingSeconds: 239, soundEnabled: false, globalGameState: 'MISSION_01',
+      currentMission: { id: 'mission-01', state: 'MISSION_01', plan: null },
+      serverNow: '2026-08-30T12:00:01.000Z',
+    });
+
+    render(
+      <AdminBunkerDock
+        dependencies={{
+          loadDashboard: vi.fn().mockResolvedValue(dashboard({ wagonCount: 2, guestCount: 12, locked: true })),
+          applyDistribution: vi.fn(),
+          bunkerControl: control,
+          loadMissionOne,
+          overrideMissionOne,
+        }}
+      />,
+    );
+    await flushPromises();
+
+    expect(await screen.findByRole('heading', { name: 'ЛИШНИЙ ПАССАЖИР' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'ИЗМЕНИТЬ РЕШЕНИЕ · ВАГОН №1' }));
+    const form = screen.getByRole('form', { name: 'Override · ВАГОН №1' });
+    fireEvent.click(within(form).getByRole('checkbox', { name: /александра-мария/i }));
+    fireEvent.click(within(form).getByRole('checkbox', { name: /николай добровольский/i }));
+    fireEvent.change(within(form).getByRole('textbox', { name: 'Причина изменения' }), {
+      target: { value: 'Исправляем подтверждённую ошибку команды' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: 'ПРИМЕНИТЬ OVERRIDE' }));
+    await flushPromises();
+
+    expect(overrideMissionOne).toHaveBeenCalledWith(expect.objectContaining({
+      eventId: 'event-1',
+      instanceId: '41000000-0000-4000-8000-000000000010',
+      instanceVersion: 1,
+      selectedGuestIds: ['guest-2'],
+      reason: 'Исправляем подтверждённую ошибку команды',
+    }));
+  });
+
   it('fails closed and removes owner-only counts when the latest dashboard read loses access', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-30T12:00:00.000Z'));

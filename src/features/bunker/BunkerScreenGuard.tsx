@@ -13,9 +13,16 @@ import {
   type BunkerRpcClient,
   type BunkerScreenState,
 } from './bunker.service';
+import {
+  getMissionOneScreenReadModel,
+  type MissionOneRpcClient,
+  type MissionOneScreenReadModel as MissionOneServiceScreenReadModel,
+} from './v2/m01.service';
+import type { MissionOneScreenReadModel } from './v2/MissionOneScreen';
 
 export type BunkerScreenGuardDependencies = {
   load: () => Promise<BunkerScreenState>;
+  loadMissionOne?: () => Promise<MissionOneServiceScreenReadModel>;
   subscribe?: (callback: () => void) => () => void;
   audio?: BunkerAudioController;
 };
@@ -29,16 +36,36 @@ type BunkerScreenGuardProps = {
 function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies | null {
   try {
     const client = getSupabaseClient();
-    const rpcClient = client as unknown as BunkerRpcClient;
+    const rpcClient = client as unknown as BunkerRpcClient & MissionOneRpcClient;
     const realtimeClient = client as unknown as BunkerRealtimeClient;
     return {
       load: () => getBunkerScreenState(rpcClient, eventSlug),
+      loadMissionOne: () => getMissionOneScreenReadModel(rpcClient, eventSlug),
       subscribe: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
       audio: createBunkerAudioController(),
     };
   } catch {
     return null;
   }
+}
+
+type TimedMissionOne = {
+  model: Extract<MissionOneServiceScreenReadModel, { status: 'active' }>;
+  receivedAt: number;
+};
+
+function missionOneScreenModel(
+  value: TimedMissionOne | null,
+  nowMs: number,
+): MissionOneScreenReadModel | undefined {
+  if (!value) return undefined;
+  const initialSeconds = (Date.parse(value.model.deadlineAt) - Date.parse(value.model.serverNow)) / 1000;
+  return {
+    title: value.model.title,
+    publicSummary: value.model.publicSummary,
+    remainingSeconds: Math.max(0, Math.ceil(initialSeconds - (nowMs - value.receivedAt) / 1000)),
+    wagons: value.model.wagons,
+  };
 }
 
 function remainingFromState(
@@ -60,6 +87,7 @@ export function BunkerScreenGuard({
   const [browserDeps, setBrowserDeps] = useState<BunkerScreenGuardDependencies | null>(null);
   const deps = dependencies ?? browserDeps;
   const [state, setState] = useState<BunkerScreenState | null>(null);
+  const [missionOne, setMissionOne] = useState<TimedMissionOne | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [motionPreference, setMotionPreference] = useState<'full' | 'reduced'>(() => (
     typeof window !== 'undefined'
@@ -72,14 +100,15 @@ export function BunkerScreenGuard({
   const latestServerMsRef = useRef(Number.NEGATIVE_INFINITY);
   const previousUnlockRef = useRef<boolean | null>(null);
 
-  const applyServerState = (next: BunkerScreenState) => {
+  const applyServerState = (next: BunkerScreenState): boolean => {
     const receivedAt = Date.now();
     const serverMs = Date.parse(next.serverNow);
-    if (Number.isFinite(serverMs) && serverMs < latestServerMsRef.current) return;
+    if (Number.isFinite(serverMs) && serverMs < latestServerMsRef.current) return false;
     if (Number.isFinite(serverMs)) latestServerMsRef.current = serverMs;
     serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
     setState(next);
     setNowMs(receivedAt);
+    return true;
   };
 
   useEffect(() => {
@@ -105,10 +134,19 @@ export function BunkerScreenGuard({
     if (!deps) return;
     let active = true;
     const reload = () => {
-      void deps.load()
-        .then((next) => {
+      void Promise.all([
+        deps.load(),
+        deps.loadMissionOne?.() ?? Promise.resolve(null),
+      ])
+        .then(([next, nextMissionOne]) => {
           if (!active) return;
-          applyServerState(next);
+          if (applyServerState(next)) {
+            setMissionOne(
+              nextMissionOne?.status === 'active'
+                ? { model: nextMissionOne, receivedAt: Date.now() }
+                : null,
+            );
+          }
         })
         .catch(() => {
           // Keep last authoritative bunker state during a short network drop.
@@ -149,9 +187,18 @@ export function BunkerScreenGuard({
     if (!deps) return;
     let active = true;
     const interval = window.setInterval(() => {
-      void deps.load()
-        .then((next) => {
-          if (active) applyServerState(next);
+      void Promise.all([
+        deps.load(),
+        deps.loadMissionOne?.() ?? Promise.resolve(null),
+      ])
+        .then(([next, nextMissionOne]) => {
+          if (active && applyServerState(next)) {
+            setMissionOne(
+              nextMissionOne?.status === 'active'
+                ? { model: nextMissionOne, receivedAt: Date.now() }
+                : null,
+            );
+          }
         })
         .catch(() => {
           // Keep the last valid screen state until connectivity returns.
@@ -233,6 +280,7 @@ export function BunkerScreenGuard({
           state={state}
           remainingSeconds={remainingSeconds}
           motionPreference={motionPreference}
+          missionOne={missionOneScreenModel(missionOne, nowMs)}
         />
       )}
     </>

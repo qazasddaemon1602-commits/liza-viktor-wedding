@@ -79,6 +79,41 @@ function deps(overrides: Partial<GuestBunkerLiveDependencies> = {}): GuestBunker
 }
 
 describe('useGuestBunkerLiveState', () => {
+  it('loads the frozen M01 read model and submits against its authoritative instance version', async () => {
+    const loadMissionOne = vi.fn().mockResolvedValue({
+      contractVersion: 2,
+      status: 'active',
+      serverNow: '2026-08-21T18:00:01.000Z',
+      deadlineAt: '2026-08-21T18:04:00.000Z',
+      instanceId: '41000000-0000-4000-8000-000000000010',
+      instanceVersion: 3,
+      wagon: { id: 'carriage-2', number: 2, label: 'ВАГОН №2' },
+      quota: 1,
+      members: [{
+        guestId: 'guest-1', realName: 'Александра-Мария Константинопольская',
+        profession: 'Инженер', health: 'Здорова', visibleSkill: 'Чинит механизмы',
+      }],
+      selectedGuestIds: [],
+    });
+    const confirmMissionOne = vi.fn().mockResolvedValue({
+      contractVersion: 2, status: 'accepted', commandId: 'command-1', commandType: 'mission_confirm',
+    });
+    const dependencies = deps({ loadMissionOne, confirmMissionOne });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
+
+    await waitFor(() => expect(result.current.missionOne).toMatchObject({
+      instanceVersion: 3, remainingSeconds: 239,
+    }));
+    await act(async () => result.current.confirmMissionOne(['guest-1']));
+
+    expect(confirmMissionOne).toHaveBeenCalledWith('device-key-123', expect.objectContaining({
+      instanceId: '41000000-0000-4000-8000-000000000010',
+      instanceVersion: 3,
+      selectedGuestIds: ['guest-1'],
+      commandId: expect.any(String),
+    }));
+  });
+
   it('keeps a reconnected late V2 guest on the active polling cadence', async () => {
     const interval = vi.spyOn(window, 'setInterval');
     const dependencies = deps({

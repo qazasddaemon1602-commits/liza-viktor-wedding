@@ -517,6 +517,17 @@
   opacity: 0.45;
 }
 
+.bunker-mission-one-player__modal-layer {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  background: rgb(7 9 8 / 82%);
+  overflow-y: auto;
+}
+
 .bunker-mission-one-player__confirmation,
 .bunker-mission-one-player__outcome {
   display: grid;
@@ -524,6 +535,13 @@
   padding: 1rem;
   border: 1px solid var(--bunker-player-rule);
   background: var(--bunker-player-black);
+}
+
+.bunker-mission-one-player__confirmation {
+  width: min(100%, 32rem);
+  max-height: min(42rem, calc(100dvh - 2rem));
+  overflow-y: auto;
+  box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 48%);
 }
 
 .bunker-mission-one-player__confirmation h3 {

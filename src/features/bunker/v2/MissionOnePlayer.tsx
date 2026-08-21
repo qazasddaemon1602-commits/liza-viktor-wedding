@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export type MissionOnePlayerMember = {
   guestId: string;
@@ -46,6 +47,7 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const confirmationRef = useRef<HTMLDivElement>(null);
+  const confirmationHeadingRef = useRef<HTMLHeadingElement>(null);
   const selectionButtonRef = useRef<HTMLButtonElement>(null);
   const restoreSelectionFocusRef = useRef(false);
   const authoritativeSelectionKey = model.selectedGuestIds.join('\u001f');
@@ -59,7 +61,32 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
   }, [model.instanceId, model.instanceVersion, authoritativeSelectionKey]);
 
   useEffect(() => {
-    if (reviewing) confirmationRef.current?.focus();
+    if (!reviewing) return undefined;
+    confirmationHeadingRef.current?.focus();
+    const dialog = confirmationRef.current;
+    const background = [...document.body.children].filter((element) => (
+      element instanceof HTMLElement && !element.contains(dialog)
+    ));
+    const previous = background.map((element) => ({
+      element,
+      inert: element.getAttribute('inert'),
+      ariaHidden: element.getAttribute('aria-hidden'),
+    }));
+    background.forEach((element) => {
+      element.setAttribute('inert', '');
+      element.setAttribute('aria-hidden', 'true');
+    });
+    return () => {
+      previous.forEach(({ element, inert, ariaHidden }) => {
+        if (inert === null) element.removeAttribute('inert');
+        else element.setAttribute('inert', inert);
+        if (ariaHidden === null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      });
+    };
+  }, [reviewing]);
+
+  useEffect(() => {
     if (!reviewing && restoreSelectionFocusRef.current) {
       restoreSelectionFocusRef.current = false;
       selectionButtonRef.current?.focus();
@@ -88,6 +115,36 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
           ? [...current, guestId]
           : current
     ));
+  };
+
+  const closeReview = () => {
+    if (submitting) return;
+    restoreSelectionFocusRef.current = true;
+    setReviewing(false);
+  };
+
+  const handleConfirmationKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeReview();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const dialog = confirmationRef.current;
+    if (!dialog) return;
+    const controls = [...dialog.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    )];
+    if (controls.length === 0) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === confirmationHeadingRef.current)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   const submit = async () => {
@@ -141,41 +198,48 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
         <p className="bunker-mission-one-player__sync" role="status">
           Решение отправлено. Получаем подтверждённый итог с сервера…
         </p>
-      ) : reviewing ? (
-        <div
-          ref={confirmationRef}
-          className="bunker-mission-one-player__confirmation"
-          role="alertdialog"
-          aria-labelledby="mission-one-confirmation-title"
-          tabIndex={-1}
-        >
-          <h3 id="mission-one-confirmation-title">Проверьте решение вагона</h3>
-          <p>После подтверждения изменить список сможет только ведущий с указанием причины.</p>
-          <ul>
-            {draftMembers.map((member) => <li key={member.guestId}>{member.realName}</li>)}
-          </ul>
-          <div>
-            <button
-              type="button"
-              className="bunker-mission-one-player__secondary"
-              disabled={submitting}
-              onClick={() => {
-                restoreSelectionFocusRef.current = true;
-                setReviewing(false);
-              }}
+      ) : reviewing ? createPortal(
+        <div className="bunker-mission-one-player__modal-layer">
+          <div
+            ref={confirmationRef}
+            className="bunker-mission-one-player__confirmation"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="mission-one-confirmation-title"
+            onKeyDown={handleConfirmationKeyDown}
+          >
+            <h3
+              ref={confirmationHeadingRef}
+              id="mission-one-confirmation-title"
+              tabIndex={-1}
             >
-              Вернуться к выбору
-            </button>
-            <button
-              type="button"
-              className="bunker-mission-one-player__primary"
-              disabled={submitting}
-              onClick={() => void submit()}
-            >
-              {submitting ? 'Подтверждаем…' : 'Подтвердить решение'}
-            </button>
+              Проверьте решение вагона
+            </h3>
+            <p>После подтверждения изменить список сможет только ведущий с указанием причины.</p>
+            <ul>
+              {draftMembers.map((member) => <li key={member.guestId}>{member.realName}</li>)}
+            </ul>
+            <div>
+              <button
+                type="button"
+                className="bunker-mission-one-player__secondary"
+                disabled={submitting}
+                onClick={closeReview}
+              >
+                Вернуться к выбору
+              </button>
+              <button
+                type="button"
+                className="bunker-mission-one-player__primary"
+                disabled={submitting}
+                onClick={() => void submit()}
+              >
+                {submitting ? 'Подтверждаем…' : 'Подтвердить решение'}
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : (
         <>
           {model.connection === 'reconnecting' && (

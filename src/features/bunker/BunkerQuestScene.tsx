@@ -96,20 +96,6 @@ function sceneBackdrop(state: ActiveBunkerScreen, phase: BunkerPhase): BunkerAss
   return 'bunker-exterior';
 }
 
-function missionOnePublicSummary(state: ActiveBunkerScreen): string {
-  const plan = state.currentMission?.plan;
-  if (plan && !Array.isArray(plan)) {
-    const summary = plan.publicTvSummary;
-    if (typeof summary === 'string' && summary.trim()) return summary.trim();
-    const presentation = plan.presentation;
-    if (typeof presentation === 'object' && presentation !== null && !Array.isArray(presentation)) {
-      const nested = (presentation as Record<string, unknown>).publicTvSummary;
-      if (typeof nested === 'string' && nested.trim()) return nested.trim();
-    }
-  }
-  return 'Вагоны изучают открытые части досье и принимают командное решение.';
-}
-
 export function BunkerQuestScene({
   state,
   remainingSeconds,
@@ -117,18 +103,18 @@ export function BunkerQuestScene({
   missionOne,
 }: BunkerQuestSceneProps) {
   if (state.globalGameState === 'MISSION_01') {
+    if (!missionOne) {
+      return (
+        <section className="bunker-mission-one-screen" aria-label="Миссия 01 · экран">
+          <p className="bunker-quest-scene__empty" role="status">
+            ПОЛУЧАЕМ СЕРВЕРНЫЙ ПРОГРЕСС ВАГОНОВ…
+          </p>
+        </section>
+      );
+    }
     return (
       <MissionOneScreen
-        model={missionOne ?? {
-          title: 'Лишний пассажир',
-          publicSummary: missionOnePublicSummary(state),
-          remainingSeconds,
-          wagons: state.teams.map((team) => ({
-            wagonId: String(team.carriageNumber),
-            label: team.label,
-            status: team.missionAComplete ? 'completed' : 'active',
-          })),
-        }}
+        model={missionOne}
       />
     );
   }

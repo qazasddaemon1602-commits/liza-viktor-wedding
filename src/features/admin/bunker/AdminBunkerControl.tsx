@@ -86,6 +86,7 @@ type AdminBunkerControlProps = {
   questDependencies?: OwnerBunkerQuestDependencies;
   missionOne?: MissionOneOwnerReadModel;
   onMissionOneOverride?: (override: MissionOneOwnerOverride) => Promise<void> | void;
+  bunkerContractVersion?: 1 | 2;
 };
 
 const SUPPORTED_WAGON_COUNTS: SupportedCarriageCount[] = [2, 3, 4, 5];
@@ -177,6 +178,7 @@ export function AdminBunkerControl({
   questDependencies,
   missionOne,
   onMissionOneOverride,
+  bunkerContractVersion = 1,
 }: AdminBunkerControlProps) {
   const deps = useMemo(() => dependencies ?? browserDependencies(), [dependencies]);
   const [state, setState] = useState<OwnerBunkerControl | null>(null);
@@ -646,7 +648,10 @@ export function AdminBunkerControl({
         <MissionOneOwnerPanel model={missionOne} onOverride={onMissionOneOverride} />
       )}
 
-      {state?.status === 'active' && globalState !== 'MISSION_01' && characters.length > 0 && (
+      {state?.status === 'active'
+        && bunkerContractVersion === 1
+        && globalState !== 'MISSION_01'
+        && characters.length > 0 && (
         <section className="admin-bunker-characters" aria-labelledby="admin-bunker-characters-title">
           <header>
             <p className="eyebrow">СЮЖЕТНЫЕ СТАТУСЫ</p>

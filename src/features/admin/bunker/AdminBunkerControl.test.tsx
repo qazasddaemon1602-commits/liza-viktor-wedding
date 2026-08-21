@@ -294,6 +294,41 @@ describe('AdminBunkerControl', () => {
     expect(await screen.findByRole('listitem', { name: /гость 1 · механик/i })).toHaveTextContent('СПАСЁН');
   });
 
+  it('never exposes legacy direct character-status mutations for a V2 run after M01', async () => {
+    const setCharacterStatus = vi.fn();
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        bunkerContractVersion={2}
+        dependencies={dependencies({
+          load: vi.fn().mockResolvedValue({
+            status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+            remainingSeconds: 1200, soundEnabled: true, globalGameState: 'BREAK',
+            serverNow: '2026-08-30T12:10:00.000Z',
+          }),
+          loadCharacters: vi.fn().mockResolvedValue({
+            status: 'active', runNonce: '41000000-0000-4000-8000-000000000001',
+            characters: [{
+              guestId: 'guest-1', realName: 'Гость 1',
+              wagon: { id: 'carriage-1', number: 1, label: 'ВАГОН №1' },
+              profession: 'МЕХАНИК', characterStatus: 'saved', joinedLate: false,
+            }],
+            serverNow: '2026-08-30T12:10:00.000Z',
+          }),
+          setCharacterStatus,
+        })}
+        dashboard={dashboard(2, 12)}
+      />,
+    );
+
+    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · ПЕРЕРЫВ')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /статус ·/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'АКТИВЕН' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'СПАСЁН' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ИСКЛЮЧЁН' })).not.toBeInTheDocument();
+    expect(setCharacterStatus).not.toHaveBeenCalled();
+  });
+
   it('advances the authoritative global story one understandable owner step at a time', async () => {
     const user = userEvent.setup();
     const advance = vi.fn().mockResolvedValue({

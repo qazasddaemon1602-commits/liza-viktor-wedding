@@ -8,6 +8,10 @@ import {
 } from '../bunker/bunkerQuest.service';
 import { getGuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
 import {
+  confirmMissionOneSelection,
+  getGuestMissionOneReadModel,
+} from '../bunker/v2/m01.service';
+import {
   subscribeToCarriageCallRefresh,
   type CarriageCallRealtimeClient,
 } from '../carriages/carriageCalls.realtime';
@@ -132,6 +136,12 @@ export function GuestJoinPage({
         getDeviceKey,
         load: (key) => getGuestBunkerQuest(activeBunkerClient, eventSlug, key),
         loadRuntime: (key) => getGuestBunkerRuntime(activeBunkerClient, eventSlug, key),
+        loadMissionOne: (key) => getGuestMissionOneReadModel(activeBunkerClient, eventSlug, key),
+        confirmMissionOne: (key, input) => confirmMissionOneSelection(activeBunkerClient, {
+          eventSlug,
+          deviceKey: key,
+          ...input,
+        }),
         submitMission: (key, stage, answer) => submitBunkerMission(
           activeBunkerClient,
           eventSlug,

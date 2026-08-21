@@ -89,7 +89,7 @@ describe('MissionOnePlayer', () => {
     await user.click(screen.getByRole('button', { name: 'Подтвердить решение' }));
 
     const dialog = screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' });
-    expect(dialog).toHaveFocus();
+    expect(within(dialog).getByRole('heading', { name: 'Проверьте решение вагона' })).toHaveFocus();
     expect(within(dialog).getByText(members[0].realName)).toBeInTheDocument();
     expect(within(dialog).getByText(members[2].realName)).toBeInTheDocument();
     expect(within(dialog).queryByText(members[1].realName)).not.toBeInTheDocument();
@@ -105,6 +105,31 @@ describe('MissionOnePlayer', () => {
         .getByRole('button', { name: 'Подтвердить решение' }),
     );
     expect(onConfirm).toHaveBeenCalledWith(['guest-1', 'guest-3']);
+  });
+
+  it('opens confirmation as an isolated keyboard modal and restores the initiating control on Escape', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<MissionOnePlayer model={model()} onConfirm={vi.fn()} />);
+
+    await user.click(screen.getByRole('checkbox', { name: /александра-мария/i }));
+    await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
+    const initiator = screen.getByRole('button', { name: 'Подтвердить решение' });
+    await user.click(initiator);
+
+    const dialog = screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(within(dialog).getByRole('heading', { name: 'Проверьте решение вагона' })).toHaveFocus();
+    expect(container).toHaveAttribute('inert');
+
+    await user.tab({ shift: true });
+    expect(within(dialog).getByRole('button', { name: 'Подтвердить решение' })).toHaveFocus();
+    await user.tab();
+    expect(within(dialog).getByRole('button', { name: 'Вернуться к выбору' })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Подтвердить решение' })).toHaveFocus();
+    expect(container).not.toHaveAttribute('inert');
   });
 
   it('replaces reconnecting controls with the authoritative completed outcome', () => {

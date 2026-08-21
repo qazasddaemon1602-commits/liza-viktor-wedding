@@ -74,7 +74,22 @@ const activeScreen: Extract<BunkerScreenState, { status: 'active' }> = {
 
 describe('Mission one TV integration', () => {
   it('replaces the legacy dossier briefing with the dedicated public mission scene', () => {
-    render(<BunkerQuestScene state={activeScreen} remainingSeconds={184} />);
+    render(
+      <BunkerQuestScene
+        state={activeScreen}
+        remainingSeconds={184}
+        missionOne={{
+          title: 'Лишний пассажир',
+          publicSummary: 'Команды принимают решение по досье.',
+          remainingSeconds: 184,
+          wagons: activeScreen.teams.map((team) => ({
+            wagonId: String(team.carriageNumber),
+            label: team.label,
+            status: team.missionAComplete ? 'completed' : 'active',
+          })),
+        }}
+      />,
+    );
 
     expect(screen.getByRole('region', { name: 'Миссия 01 · экран' })).toBeInTheDocument();
     expect(screen.getByText('Команды принимают решение по досье.')).toBeInTheDocument();

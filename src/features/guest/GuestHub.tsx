@@ -5,6 +5,7 @@ import {
   type GuestBunkerReadRuntime,
 } from '../bunker/bunkerRuntime.service';
 import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
+import type { MissionOnePlayerReadModel } from '../bunker/v2/MissionOnePlayer';
 import type { RegisteredGuest } from '../registration/registration.types';
 import { VirtualTicket } from '../registration/VirtualTicket';
 import type { GuestQuizState, QuizChoice, QuizHistoryEntry } from '../quiz/quiz.service';
@@ -15,6 +16,7 @@ type GuestHubProps = {
   activeCall: GuestCarriageCall | null;
   bunkerState?: GuestBunkerQuestState | null;
   bunkerRuntime?: GuestBunkerReadRuntime | null;
+  bunkerMissionOne?: MissionOnePlayerReadModel;
   bunkerRuntimeLoading?: boolean;
   bunkerRuntimeError?: string;
   bunkerFeedback?: string;
@@ -22,6 +24,7 @@ type GuestHubProps = {
   bunkerSubmitting?: boolean;
   onBunkerMission?: (stage: BunkerMissionStage, answer: string) => void;
   onBunkerFinalCode?: (code: string) => void;
+  onConfirmBunkerMissionOne?: (selectedGuestIds: string[]) => Promise<void> | void;
   quizState: GuestQuizState | null;
   quizError?: string;
   quizSubmitting?: QuizChoice | null;
@@ -56,6 +59,7 @@ export function GuestHub({
   activeCall,
   bunkerState = null,
   bunkerRuntime = null,
+  bunkerMissionOne,
   bunkerRuntimeLoading = false,
   bunkerRuntimeError = '',
   bunkerFeedback = '',
@@ -63,16 +67,30 @@ export function GuestHub({
   bunkerSubmitting = false,
   onBunkerMission = () => undefined,
   onBunkerFinalCode = () => undefined,
+  onConfirmBunkerMissionOne,
   quizState,
   quizError = '',
   quizSubmitting = null,
   onQuizVote,
   onQuizDeadline,
 }: GuestHubProps) {
-  if (bunkerRuntime && isLegacyActiveGuestBunkerRuntime(bunkerRuntime)) {
+  const activeV2MissionOne = Boolean(
+    bunkerRuntime
+    && bunkerRuntime.status === 'active'
+    && 'contractVersion' in bunkerRuntime
+    && bunkerRuntime.contractVersion === 2
+    && bunkerRuntime.state === 'MISSION_01'
+    && bunkerMissionOne,
+  );
+  if (bunkerRuntime && (isLegacyActiveGuestBunkerRuntime(bunkerRuntime) || activeV2MissionOne)) {
     return (
       <main className="bunker-player-shell theme-bunker">
-        <BunkerPlayerDashboard runtime={bunkerRuntime} connectionError={bunkerRuntimeError} />
+        <BunkerPlayerDashboard
+          runtime={bunkerRuntime as Parameters<typeof BunkerPlayerDashboard>[0]['runtime']}
+          connectionError={bunkerRuntimeError}
+          missionOne={bunkerMissionOne}
+          onConfirmMissionOne={onConfirmBunkerMissionOne}
+        />
       </main>
     );
   }
