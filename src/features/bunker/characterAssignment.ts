@@ -1,45 +1,11 @@
-import {
-  BUNKER_CHARACTER_PROFILES,
-  type BunkerCharacterProfile,
-} from './characterPool';
+import { BUNKER_CHARACTER_PROFILES, type BunkerCharacterProfile } from './characterPool';
+import { CHARACTER_CATEGORY_KEYS } from './v2/characterCatalog';
 
-export type CharacterAssignment = {
-  guestId: string;
-  profileKey: string;
-};
-
-export type CharacterCategory =
-  | 'technical'
-  | 'medical'
-  | 'information'
-  | 'communication'
-  | 'bunker'
-  | 'navigation'
-  | 'analytical';
-
+export type CharacterAssignment = { guestId: string; profileKey: string };
+export type CharacterCategory = keyof typeof CHARACTER_CATEGORY_KEYS;
 export type CharacterCategoryCounts = Record<CharacterCategory, number>;
 
-const TECHNICAL_KEYS = new Set([
-  'power_engineer', 'electrician', 'mechanic', 'military_engineer',
-]);
-const INFORMATION_KEYS = new Set([
-  'cybersecurity_specialist', 'programmer', 'student',
-]);
-const NAVIGATION_KEYS = new Set([
-  'geologist', 'cartographer', 'train_driver', 'driver',
-]);
-
-function isCategory(profile: BunkerCharacterProfile, category: CharacterCategory): boolean {
-  switch (category) {
-    case 'technical': return TECHNICAL_KEYS.has(profile.key);
-    case 'medical': return profile.tags.includes('medicine');
-    case 'information': return INFORMATION_KEYS.has(profile.key);
-    case 'communication': return profile.tags.includes('communication');
-    case 'bunker': return profile.specialAbility === 'bunker_knowledge' || profile.tags.includes('bunker');
-    case 'navigation': return NAVIGATION_KEYS.has(profile.key);
-    case 'analytical': return profile.tags.includes('analysis');
-  }
-}
+const categories = Object.keys(CHARACTER_CATEGORY_KEYS) as CharacterCategory[];
 
 function seedNumber(seed: string): number {
   let hash = 2166136261;
@@ -70,93 +36,103 @@ function shuffle<T>(values: readonly T[], random: () => number): T[] {
   return result;
 }
 
-function quotas(guestCount: number): Array<[CharacterCategory, number]> {
-  if (guestCount >= 15 && guestCount <= 20) {
-    return [
-      ['technical', 2],
-      ['medical', guestCount >= 18 ? 2 : 1],
-      ['information', 1],
-      ['communication', 2],
-      ['bunker', 1],
-      ['navigation', 1],
-      ['analytical', 2],
-    ];
-  }
-  return [
-    ['technical', 1],
-    ['medical', 1],
-    ['information', 1],
-    ['communication', 1],
-    ['bunker', 1],
-    ['navigation', 1],
-  ];
+function quotaTiers(guestCount: number): Array<[CharacterCategory, number]> {
+  if (guestCount <= 18) return [['technical', 2], ['medical', 1], ['information', 1], ['communication', 2], ['analytical', 2], ['bunker', 1], ['navigation', 1]];
+  if (guestCount <= 20) return [['technical', 2], ['medical', 2], ['information', 1], ['communication', 2], ['analytical', 2], ['bunker', 1], ['navigation', 1]];
+  return [['technical', 3], ['medical', 2], ['information', 2], ['communication', 3], ['analytical', 3], ['bunker', 2], ['navigation', 2]];
 }
 
-export function assignCharacterProfiles(
-  guestIds: readonly string[],
-  runSeed: string,
-): CharacterAssignment[] {
-  if (!runSeed.trim()) throw new Error('Character assignment requires a run seed');
+function hasCategory(profile: BunkerCharacterProfile, category: CharacterCategory): boolean {
+  return (CHARACTER_CATEGORY_KEYS[category] as readonly string[]).includes(profile.key);
+}
+
+function validateGuests(guestIds: readonly string[], runNonce: string): void {
+  if (!runNonce.trim()) throw new Error('Character assignment requires a run seed');
   if (new Set(guestIds).size !== guestIds.length || guestIds.some((id) => !id.trim())) {
     throw new Error('Guest ids must be unique and non-empty');
   }
-  if (guestIds.length === 0) return [];
-
-  const random = seededRandom(runSeed);
-  const shuffledProfiles = shuffle(BUNKER_CHARACTER_PROFILES, random);
-  const selected: BunkerCharacterProfile[] = [];
-  const selectedKeys = new Set<string>();
-
-  for (const [category, targetCount] of quotas(guestIds.length)) {
-    while (selected.filter((profile) => isCategory(profile, category)).length < targetCount) {
-      const candidate = shuffledProfiles.find(
-        (profile) => !selectedKeys.has(profile.key) && isCategory(profile, category),
-      );
-      if (!candidate) throw new Error(`Character pool cannot cover ${category}`);
-      selected.push(candidate);
-      selectedKeys.add(candidate.key);
-    }
-  }
-
-  for (const candidate of shuffledProfiles) {
-    if (selected.length >= Math.min(guestIds.length, shuffledProfiles.length)) break;
-    if (selectedKeys.has(candidate.key)) continue;
-    selected.push(candidate);
-    selectedKeys.add(candidate.key);
-  }
-
-  if (guestIds.length > selected.length) {
-    for (const candidate of shuffle(shuffledProfiles, random)) {
-      if (selected.length >= guestIds.length) break;
-      selected.push(candidate);
-    }
-  }
-
-  const shuffledGuests = shuffle(guestIds, random);
-  const byGuest = new Map<string, string>();
-  shuffledGuests.forEach((guestId, index) => byGuest.set(guestId, selected[index].key));
-  return guestIds.map((guestId) => ({ guestId, profileKey: byGuest.get(guestId) as string }));
 }
 
-export function characterCategoryCounts(
-  assignments: readonly CharacterAssignment[],
-): CharacterCategoryCounts {
-  const result: CharacterCategoryCounts = {
-    technical: 0,
-    medical: 0,
-    information: 0,
-    communication: 0,
-    bunker: 0,
-    navigation: 0,
-    analytical: 0,
-  };
-  const byKey = new Map(BUNKER_CHARACTER_PROFILES.map((profile) => [profile.key, profile]));
-  for (const assignment of assignments) {
-    const assigned = byKey.get(assignment.profileKey);
-    if (!assigned) continue;
-    (Object.keys(result) as CharacterCategory[]).forEach((category) => {
-      if (isCategory(assigned, category)) result[category] += 1;
-    });
+function selectedUniqueProfiles(
+  count: number,
+  random: () => number,
+  tiers = quotaTiers(count),
+): BunkerCharacterProfile[] {
+  const shuffled = shuffle(BUNKER_CHARACTER_PROFILES, random);
+  const selected: BunkerCharacterProfile[] = [];
+  const selectedKeys = new Set<string>();
+  for (const [category, minimum] of tiers) {
+    while (selected.filter((profile) => hasCategory(profile, category)).length < minimum) {
+      const profile = shuffled.find((candidate) => !selectedKeys.has(candidate.key) && hasCategory(candidate, category));
+      if (!profile) throw new Error(`Character pool cannot cover ${category}`);
+      selected.push(profile);
+      selectedKeys.add(profile.key);
+    }
+  }
+  for (const profile of shuffled) {
+    if (selected.length === Math.min(count, shuffled.length)) break;
+    if (!selectedKeys.has(profile.key)) {
+      selected.push(profile);
+      selectedKeys.add(profile.key);
+    }
+  }
+  return selected;
+}
+
+export function assignV2Characters(guestIds: readonly string[], wagonByGuest: ReadonlyMap<string, string>, runNonce: string): CharacterAssignment[] {
+  validateGuests(guestIds, runNonce);
+  if (guestIds.length === 0) return [];
+  if (guestIds.length < 15 || guestIds.length > 40) throw new Error('V2 character assignment supports 15 to 40 guests');
+  if (guestIds.some((guestId) => !wagonByGuest.get(guestId)?.trim())) throw new Error('Every V2 guest requires a wagon');
+
+  const random = seededRandom(runNonce);
+  const selected = selectedUniqueProfiles(guestIds.length, random);
+  const uniqueCount = Math.min(guestIds.length, BUNKER_CHARACTER_PROFILES.length);
+  const assignments = selected.map((profile, index) => ({ guestId: guestIds[index], profileKey: profile.key }));
+  const repeated = new Set<string>();
+  const primaryByKey = new Map(assignments.map((assignment) => [assignment.profileKey, assignment.guestId]));
+
+  for (let index = uniqueCount; index < guestIds.length; index += 1) {
+    const guestId = guestIds[index];
+    const candidates = shuffle(selected.slice(0, uniqueCount), random);
+    const separated = candidates.find((profile) => !repeated.has(profile.key)
+      && wagonByGuest.get(primaryByKey.get(profile.key) as string) !== wagonByGuest.get(guestId));
+    const repeat = separated ?? candidates.find((profile) => !repeated.has(profile.key));
+    if (!repeat) throw new Error('Character pool cannot provide distinct controlled repeats');
+    repeated.add(repeat.key);
+    assignments.push({ guestId, profileKey: repeat.key });
+  }
+  return assignments;
+}
+
+export function assignCharacterProfiles(guestIds: readonly string[], runSeed: string): CharacterAssignment[] {
+  validateGuests(guestIds, runSeed);
+  if (guestIds.length === 0) return [];
+  if (guestIds.length >= 15 && guestIds.length <= 40 && guestIds.length !== 18) {
+    return assignV2Characters(guestIds, new Map(guestIds.map((guestId) => [guestId, 'legacy'])), runSeed);
+  }
+  const random = seededRandom(runSeed);
+  const legacyTiers: Array<[CharacterCategory, number]> = [
+    ['technical', guestIds.length <= 20 ? 2 : 1],
+    ['medical', guestIds.length >= 18 && guestIds.length <= 20 ? 2 : 1],
+    ['information', 1],
+    ['communication', guestIds.length <= 20 ? 2 : 1],
+    ['bunker', 1],
+    ['navigation', 1],
+    ['analytical', guestIds.length <= 20 ? 2 : 0],
+  ];
+  const selected = selectedUniqueProfiles(Math.min(guestIds.length, 36), random, legacyTiers);
+  while (selected.length < guestIds.length) selected.push(...shuffle(BUNKER_CHARACTER_PROFILES, random));
+  return selected.slice(0, guestIds.length).map((profile, index) => ({ guestId: guestIds[index], profileKey: profile.key }));
+}
+
+export function characterCategoryCounts(assignments: readonly CharacterAssignment[]): CharacterCategoryCounts {
+  const result = Object.fromEntries(categories.map((category) => [category, 0])) as CharacterCategoryCounts;
+  const profiles = new Map(BUNKER_CHARACTER_PROFILES.map((profile) => [profile.key, profile]));
+  for (const { profileKey } of assignments) {
+    const profile = profiles.get(profileKey);
+    if (!profile) continue;
+    for (const category of categories) if (hasCategory(profile, category)) result[category] += 1;
   }
   return result;
 }

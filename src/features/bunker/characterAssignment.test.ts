@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUNKER_CHARACTER_PROFILES } from './characterPool';
 import {
+  assignV2Characters,
   assignCharacterProfiles,
   characterCategoryCounts,
 } from './characterAssignment';
@@ -9,7 +10,64 @@ function guests(count: number): string[] {
   return Array.from({ length: count }, (_, index) => `guest-${index + 1}`);
 }
 
+function balancedWagons(count: number): Map<string, string> {
+  const wagonCount = count <= 18 ? 2 : count <= 26 ? 3 : count <= 36 ? 4 : 5;
+  return new Map(guests(count).map((guestId, index) => [guestId, `wagon-${(index % wagonCount) + 1}`]));
+}
+
+function frequencies(assignments: readonly { profileKey: string }[]): number[] {
+  return [...assignments.reduce((result, { profileKey }) => {
+    result.set(profileKey, (result.get(profileKey) ?? 0) + 1);
+    return result;
+  }, new Map<string, number>()).values()];
+}
+
 describe('controlled Bunker character assignment', () => {
+  it.each(Array.from({ length: 26 }, (_, index) => index + 15))(
+    'assigns the V2 quota mix deterministically for %i guests',
+    (count) => {
+      const guestIds = guests(count);
+      const wagonByGuest = balancedWagons(count);
+      const result = assignV2Characters(guestIds, wagonByGuest, 'run-seed');
+      expect(result).toHaveLength(count);
+      expect(new Set(result.slice(0, Math.min(count, 36)).map((entry) => entry.profileKey)).size)
+        .toBe(Math.min(count, 36));
+      expect(Math.max(...frequencies(result))).toBeLessThanOrEqual(2);
+      expect(assignV2Characters(guestIds, wagonByGuest, 'run-seed')).toEqual(result);
+    },
+  );
+
+  it.each([15, 18, 19, 20, 21, 29])('meets the approved V2 category quotas for %i guests', (count) => {
+    const counts = characterCategoryCounts(assignV2Characters(
+      guests(count), balancedWagons(count), `quota-${count}`,
+    ));
+    const expected = count <= 18
+      ? { technical: 2, medical: 1, information: 1, communication: 2, analytical: 2, bunker: 1, navigation: 1 }
+      : count <= 20
+        ? { technical: 2, medical: 2, information: 1, communication: 2, analytical: 2, bunker: 1, navigation: 1 }
+        : { technical: 3, medical: 2, information: 2, communication: 3, analytical: 3, bunker: 2, navigation: 2 };
+    for (const [category, minimum] of Object.entries(expected)) {
+      expect(counts[category as keyof typeof counts]).toBeGreaterThanOrEqual(minimum);
+    }
+  });
+
+  it('separates controlled repeats across wagons when balanced wagons permit it', () => {
+    const wagonByGuest = balancedWagons(40);
+    const assignments = assignV2Characters(guests(40), wagonByGuest, 'wagon-repeat-seed');
+    const wagonsByProfile = new Map<string, Set<string>>();
+    assignments.forEach(({ guestId, profileKey }) => {
+      const wagons = wagonsByProfile.get(profileKey) ?? new Set<string>();
+      wagons.add(wagonByGuest.get(guestId) as string);
+      wagonsByProfile.set(profileKey, wagons);
+    });
+    for (const [profileKey, count] of [...assignments.reduce((result, { profileKey }) => {
+      result.set(profileKey, (result.get(profileKey) ?? 0) + 1);
+      return result;
+    }, new Map<string, number>())]) {
+      if (count === 2) expect(wagonsByProfile.get(profileKey)?.size).toBe(2);
+    }
+  });
+
   it.each(Array.from({ length: 26 }, (_, index) => index + 15))(
     'keeps SQL-parity assignment coverage for every supported event size from 15 to 40: %i',
     (count) => {
