@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(25);
+select plan(28);
 
 select function_returns(
   'public', 'get_guest_bunker_v2_runtime', array['text', 'text'], 'jsonb',
@@ -51,7 +51,8 @@ select is(
     where namespace.nspname = 'public'
       and procedure.proname in (
         '_ensure_late_bunker_guest', '_assign_late_bunker_guest',
-        'get_guest_bunker_v2_runtime', '_clear_bunker_game_run_on_reset'
+        'get_guest_bunker_v2_runtime', '_clear_bunker_game_run_on_reset',
+        'owner_reset_bunker_progress'
       )
       and not coalesce('search_path=""' = any(procedure.proconfig), false)
   ),
@@ -213,6 +214,39 @@ set runtime = public.get_guest_bunker_runtime(
 )
 where stage = 'after_m01';
 
+grant select on bunker_v2_late_results to anon;
+set local role anon;
+select is(
+  public.get_guest_bunker_runtime(
+    'bunker-v2-late-reset', 'late-device-before-m01'
+  )->>'status',
+  'active',
+  'an anonymous caller with a valid device binding can read its V2 runtime'
+);
+select is(
+  public.get_guest_bunker_runtime(
+    'bunker-v2-late-reset', 'wrong-device-key'
+  )->>'status',
+  'guest_not_found',
+  'an anonymous caller with the wrong device key is rejected'
+);
+select ok(
+  public.get_guest_bunker_runtime(
+    'bunker-v2-late-reset', 'late-device-before-m01'
+  )#>>'{viewer,guest,id}' = (
+    select result#>>'{guest,id}' from bunker_v2_late_results
+    where stage = 'before_m01'
+  )
+  and public.get_guest_bunker_runtime(
+    'bunker-v2-late-reset', 'late-device-before-m01'
+  )#>>'{viewer,guest,id}' <> (
+    select result#>>'{guest,id}' from bunker_v2_late_results
+    where stage = 'during_m01'
+  ),
+  'a valid device binding cannot read another guest identity'
+);
+reset role;
+
 select ok(
   (select bool_and(result->>'status' = 'registered')
    from bunker_v2_late_results),
@@ -357,8 +391,19 @@ select throws_ok(
   'a late guest cannot use an ability in a completed instance'
 );
 
+insert into public.questions(id, event_id, text, sort_order, enabled)
+values (
+  '30000000-0000-4000-8000-000000000026',
+  '30000000-0000-4000-8000-000000000002',
+  'Сохраняется ли анкета пары?', 1, true
+);
 insert into public.couple_preanswer_access(event_id, token_hash)
 values ('30000000-0000-4000-8000-000000000002', 'preserve-on-bunker-reset');
+insert into public.couple_preanswers(event_id, question_id, choice)
+values (
+  '30000000-0000-4000-8000-000000000002',
+  '30000000-0000-4000-8000-000000000026', 'viktor'
+);
 create temporary table bunker_v2_reset_preserved as
 select
   to_jsonb(event) as event_snapshot,
@@ -370,11 +415,15 @@ from public.events event
 join public.event_state event_state on event_state.event_id = event.id
 where event.id = '30000000-0000-4000-8000-000000000002';
 
+set local role authenticated;
 select lives_ok(
-  $$ update public.bunker_state set run_nonce = null
-     where event_id = '30000000-0000-4000-8000-000000000002' $$,
+  $$ select public.owner_reset_bunker_progress(
+       '30000000-0000-4000-8000-000000000002',
+       '30000000-0000-4000-8000-000000000027'
+     ) $$,
   'the populated V2 run resets in dependency-safe order'
 );
+reset role;
 select is(
   (
     select sum(rows)::integer from (
@@ -414,6 +463,9 @@ select ok(
       and (select count(*) from public.carriages carriage where carriage.event_id = event.id) = preserved.carriages
       and exists (select 1 from public.couple_preanswer_access access
                   where access.event_id = event.id)
+      and exists (select 1 from public.couple_preanswers answer
+                  where answer.event_id = event.id
+                    and answer.question_id = '30000000-0000-4000-8000-000000000026')
     from bunker_v2_reset_preserved preserved
     join public.events event on event.id = '30000000-0000-4000-8000-000000000002'
     join public.event_state event_state on event_state.event_id = event.id
