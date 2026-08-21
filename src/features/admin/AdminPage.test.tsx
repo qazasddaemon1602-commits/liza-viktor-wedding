@@ -189,3 +189,4 @@ describe('AdminPage', () => {
     expect(await screen.findByText('ВЫЗОВ АКТИВЕН')).toBeInTheDocument();
   });
 });
+

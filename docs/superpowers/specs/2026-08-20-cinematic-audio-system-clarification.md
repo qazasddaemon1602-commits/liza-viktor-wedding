@@ -15,3 +15,4 @@ This does not change the cinematic restraint principle: universal interaction co
 ## Lean first-production verification
 
 For the first audio rollout, verification is intentionally reduced so the feature can reach production quickly for a real listening pass: targeted shared-audio and projector/train-audio tests, TypeScript typecheck, production build, and one representative browser smoke only when CI runner infrastructure is available. The main acceptance pass after publish is one real `/screen` plus one guest phone.
+

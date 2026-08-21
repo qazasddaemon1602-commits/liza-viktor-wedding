@@ -170,3 +170,4 @@ describe('premiere screen presence realtime', () => {
     expect(fixture.channel.send).not.toHaveBeenCalled();
   });
 });
+

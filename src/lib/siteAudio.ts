@@ -59,6 +59,9 @@ type SiteAudioControllerOptions = {
   factory?: AudioContextFactory;
   storage?: StorageLike | null;
   now?: () => number;
+  samplePlayer?: Pick<SampleAudioController, 'setMasterVolume' | 'setMuted'>
+    & Partial<Pick<SampleAudioController, 'arm' | 'playCue' | 'stopCue'>>;
+  hasSample?: (id: AudioCueId) => boolean;
 };
 
 const ENABLED_STORAGE_KEY = 'love-story-live:sound-enabled';
@@ -80,6 +83,17 @@ const cuePriority: Record<SiteAudioCue, SiteAudioPriority> = {
   reveal: 'scene',
   countdown: 'scene',
   impact: 'scene',
+};
+
+const sampleCue: Record<SiteAudioCue, AudioCueId> = {
+  tap: 'ui.tap',
+  select: 'ui.select',
+  confirm: 'ui.confirm',
+  success: 'ui.success',
+  error: 'ui.error',
+  reveal: 'ui.reveal',
+  countdown: 'ui.countdown',
+  impact: 'ui.impact',
 };
 
 function browserAudioContextFactory(): SiteAudioContextLike {
@@ -155,15 +169,22 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
     ? (typeof window === 'undefined' ? null : browserStorage())
     : options.storage;
   const now = options.now ?? (() => Date.now());
+  const samplePlayer = options.samplePlayer ?? sampleAudio;
+  const hasSample = options.hasSample ?? hasLocalAudioSource;
 
   let enabled = storedEnabled(storage);
   let volume = storedVolume(storage);
   let context: SiteAudioContextLike | null = null;
   let armed = false;
+  let samplePathArmed = false;
+  let fallbackPathArmed = false;
   let lastUiCueAt = -Infinity;
   const activeOscillators = new Set<OscillatorLike>();
   const priorityCounts: Record<SiteAudioPriority, number> = { ui: 0, scene: 0, major: 0 };
   const listeners = new Set<(settings: SiteAudioSettings) => void>();
+
+  samplePlayer.setMasterVolume(volume);
+  samplePlayer.setMuted(!enabled || volume <= 0);
 
   const getSettings = (): SiteAudioSettings => ({ enabled, volume });
   const notify = () => {
@@ -179,27 +200,43 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
 
   const arm = async (): Promise<boolean> => {
     if (!enabled || volume <= 0) return false;
-    try {
-      context ??= factory();
-      if (context.state !== 'running') await context.resume();
-      armed = context.state === 'running';
-      return armed;
-    } catch {
-      armed = false;
-      return false;
-    }
+    const cueIds = Object.values(sampleCue);
+    const needsSamplePath = cueIds.some(hasSample);
+    const needsFallbackPath = cueIds.some((id) => !hasSample(id));
+
+    const sampleReady = needsSamplePath && samplePlayer.arm
+      ? samplePlayer.arm().catch(() => false)
+      : Promise.resolve(!needsSamplePath);
+    const fallbackReady = (async () => {
+      if (!needsFallbackPath) return true;
+      try {
+        context ??= factory();
+        if (context.state !== 'running') await context.resume();
+        return context.state === 'running';
+      } catch {
+        return false;
+      }
+    })();
+
+    const [sampleArmed, fallbackArmed] = await Promise.all([sampleReady, fallbackReady]);
+    samplePathArmed = needsSamplePath && sampleArmed;
+    fallbackPathArmed = needsFallbackPath && fallbackArmed;
+    armed = samplePathArmed || fallbackPathArmed;
+    return armed;
   };
 
   const stopAll = () => {
-    if (!context) return;
-    for (const oscillator of activeOscillators) {
-      try {
-        oscillator.stop(context.currentTime);
-      } catch {
-        // Already stopped.
+    if (context) {
+      for (const oscillator of activeOscillators) {
+        try {
+          oscillator.stop(context.currentTime);
+        } catch {
+          // Already stopped.
+        }
       }
+      activeOscillators.clear();
     }
-    activeOscillators.clear();
+    for (const id of Object.values(sampleCue)) samplePlayer.stopCue?.(id);
   };
 
   const setEnabled = (next: boolean) => {
@@ -210,6 +247,7 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
       // Storage is advisory only.
     }
     if (!enabled) stopAll();
+    samplePlayer.setMuted(!enabled || volume <= 0);
     notify();
   };
 
@@ -221,6 +259,8 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
       // Storage is advisory only.
     }
     if (volume <= 0) stopAll();
+    samplePlayer.setMasterVolume(volume);
+    samplePlayer.setMuted(!enabled || volume <= 0);
     notify();
   };
 
@@ -242,8 +282,12 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
   };
 
   const play = (cue: SiteAudioCue): boolean => {
-    if (!enabled || volume <= 0 || !armed || !context || context.state !== 'running') return false;
+    if (!enabled || volume <= 0 || !armed) return false;
     if (activePriorityWeight() > priorityWeight[cuePriority[cue]]) return false;
+    const localCue = sampleCue[cue];
+    const usesSample = hasSample(localCue);
+    if (usesSample && (!samplePathArmed || !samplePlayer.playCue)) return false;
+    if (!usesSample && (!fallbackPathArmed || !context || context.state !== 'running')) return false;
 
     if (cuePriority[cue] === 'ui') {
       const current = now();
@@ -252,7 +296,13 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
     }
 
     const shape = cueShape(cue);
-    const startAt = context.currentTime + 0.008;
+    if (usesSample && samplePlayer.playCue) {
+      void samplePlayer.playCue(localCue, { priority: cuePriority[cue] });
+      return true;
+    }
+    const fallbackContext = context;
+    if (!fallbackContext) return false;
+    const startAt = fallbackContext.currentTime + 0.008;
     playTone(shape.frequency, startAt, shape.duration, shape.peak, shape.type);
     if (shape.frequency2 > 0) {
       playTone(shape.frequency2, startAt + Math.max(0.028, shape.duration * 0.38), shape.duration * 0.82, shape.peak * 0.82, shape.type);
@@ -281,6 +331,8 @@ export function createSiteAudioController(options: SiteAudioControllerOptions = 
     const current = context;
     context = null;
     armed = false;
+    samplePathArmed = false;
+    fallbackPathArmed = false;
     if (current) void current.close().catch(() => undefined);
   };
 
@@ -340,3 +392,5 @@ export function installGlobalInteractionAudio(controller: SiteAudioController = 
   document.addEventListener('pointerdown', onPointerDown, true);
   return () => document.removeEventListener('pointerdown', onPointerDown, true);
 }
+import { hasLocalAudioSource, type AudioCueId } from './audioManifest';
+import { sampleAudio, type SampleAudioController } from './sampleAudio';

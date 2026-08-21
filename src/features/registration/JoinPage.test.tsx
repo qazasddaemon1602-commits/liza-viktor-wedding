@@ -39,13 +39,14 @@ describe('JoinPage', () => {
     expect(restore).toHaveBeenCalledWith('lvw_device_1');
   });
 
-  it('offers the registered guest a direct Mortal Kombat entry without another signup form', async () => {
+  it('offers the registered guest a neutral direct arena entry without another signup form', async () => {
     const restore = vi.fn().mockResolvedValue({ status: 'restored', guest });
     render(<JoinPage dependencies={dependencies({ restore })} />);
 
     await screen.findByTestId('virtual-ticket');
-    const mkLink = screen.getByRole('link', { name: 'MORTAL KOMBAT · УЧАСТВОВАТЬ' });
-    expect(mkLink).toHaveAttribute('href', '/mortal-kombat');
+    const arenaLink = screen.getByRole('link', { name: 'ПОСЛЕДНИЙ КРУГ · УЧАСТВОВАТЬ' });
+    expect(arenaLink).toHaveAttribute('href', '/mortal-kombat');
+    expect(screen.queryByText(/MORTAL KOMBAT|FATALITY/i)).not.toBeInTheDocument();
   });
 
   it('shows registration when the device has no existing guest binding', async () => {
@@ -53,7 +54,7 @@ describe('JoinPage', () => {
 
     expect(await screen.findByRole('button', { name: /получить билет/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Имя')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'MORTAL KOMBAT · УЧАСТВОВАТЬ' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'ПОСЛЕДНИЙ КРУГ · УЧАСТВОВАТЬ' })).not.toBeInTheDocument();
   });
 
   it('recovers the old ticket from an owner-issued code on a new phone', async () => {

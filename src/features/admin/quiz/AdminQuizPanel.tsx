@@ -302,3 +302,4 @@ export function AdminQuizPanel({ eventId, dependencies }: AdminQuizPanelProps) {
     </section>
   );
 }
+

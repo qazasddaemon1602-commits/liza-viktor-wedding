@@ -10,6 +10,7 @@ import { FinalFiveRolePage } from '../features/quiz/FinalFiveRolePage';
 import { GuestQuizPage } from '../features/quiz/GuestQuizPage';
 import { GuestJoinPage } from '../features/registration/GuestJoinPage';
 import { ScreenPage } from '../features/screen/ScreenPage';
+import { WeddingHomePage } from '../features/wedding/WeddingHomePage';
 
 export const routePaths = [
   '/',
@@ -27,7 +28,6 @@ export const routePaths = [
 ] as const;
 
 export const routeRedirects = {
-  '/': '/join',
   '/screen/connect': '/screen',
   '/premiere': '/screen',
 } as const;
@@ -43,7 +43,7 @@ function projector(element: ReactNode) {
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={routeRedirects['/']} replace />} />
+      <Route path="/" element={<WeddingHomePage />} />
       <Route path="/join" element={<GuestJoinPage />} />
       <Route path="/play" element={<GuestQuizPage />} />
       <Route path="/couple-preanswers" element={<CouplePreanswersPage />} />

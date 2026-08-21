@@ -43,3 +43,4 @@ The projector preference applies to all site-generated audio on that device, inc
 4. The projector exposes only the compact speaker icon + volume slider, not the old text sound button.
 5. Mute is real mute; volume changes propagate to projector audio paths.
 6. Carriage call remains 12 seconds while ordinary registration arrival remains approximately 5.6 seconds.
+

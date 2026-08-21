@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import type { MkMatch, MkPlayer, MkTournamentProjection } from './mk.types';
 import { PublicBracket } from './PublicBracket';
 
@@ -56,9 +57,112 @@ describe('PublicBracket with byes', () => {
   it('omits round columns without any real fight', () => {
     render(<PublicBracket state={state} />);
 
-    expect(screen.getByText('1/8 ФИНАЛА')).toBeInTheDocument();
-    expect(screen.getByText('1/4 ФИНАЛА')).toBeInTheDocument();
+    expect(screen.getAllByText('1/8 ФИНАЛА')).toHaveLength(2);
+    expect(screen.getAllByText('1/4 ФИНАЛА')).toHaveLength(2);
     expect(screen.queryByText('1/2 ФИНАЛА')).not.toBeInTheDocument();
     expect(screen.queryByText('ФИНАЛ')).not.toBeInTheDocument();
   });
+
+  it('exposes visible rounds as semantic progressive navigation', async () => {
+    const user = userEvent.setup();
+    const progressiveState: ActiveProjection = {
+      ...state,
+      matches: [
+        match({ id: 'm1', matchKey: 'r16-1', round: 'r16', position: 1, player1GuestId: 'g1', player2GuestId: 'g2', status: 'complete', winnerGuestId: 'g1' }),
+        match({ id: 'm9', matchKey: 'qf-1', round: 'qf', position: 1, player1GuestId: 'g1', player2GuestId: 'g3', status: 'complete', winnerGuestId: 'g1' }),
+        match({ id: 'm13', matchKey: 'sf-1', round: 'sf', position: 1, player1GuestId: 'g1', player2GuestId: 'g4', status: 'complete', winnerGuestId: 'g1' }),
+        match({ id: 'm15', matchKey: 'final-1', round: 'final', position: 1, player1GuestId: 'g1', player2GuestId: 'g5', status: 'ready', current: true }),
+      ],
+    };
+
+    render(<PublicBracket state={progressiveState} />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Этапы турнира' });
+    const roundButtons = within(navigation).getAllByRole('button');
+    expect(roundButtons.map((button) => button.textContent)).toEqual([
+      '1/8 ФИНАЛА',
+      '1/4 ФИНАЛА',
+      '1/2 ФИНАЛА',
+      'ФИНАЛ',
+    ]);
+    expect(roundButtons[3]).toHaveAttribute('aria-current', 'step');
+
+    await user.click(roundButtons[2]);
+
+    expect(roundButtons[2]).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('region', { name: '1/2 ФИНАЛА' })).toHaveAttribute('data-active', 'true');
+  });
+
+  it('synchronizes the progressive navigation with the round snapped into view', () => {
+    const progressiveState: ActiveProjection = {
+      ...state,
+      matches: [
+        match({ id: 'm1', matchKey: 'r16-1', round: 'r16', position: 1, player1GuestId: 'g1', player2GuestId: 'g2', status: 'complete', winnerGuestId: 'g1' }),
+        match({ id: 'm9', matchKey: 'qf-1', round: 'qf', position: 1, player1GuestId: 'g1', player2GuestId: 'g3', status: 'ready' }),
+        match({ id: 'm13', matchKey: 'sf-1', round: 'sf', position: 1, player1GuestId: 'g1', player2GuestId: 'g4', status: 'ready' }),
+      ],
+    };
+    render(<PublicBracket state={progressiveState} />);
+
+    const roundViewport = screen.getByRole('group', { name: 'Турнирные раунды' });
+    const navigation = screen.getByRole('navigation', { name: 'Этапы турнира' });
+    const roundButtons = within(navigation).getAllByRole('button');
+    const rounds = [
+      screen.getByRole('region', { name: '1/8 ФИНАЛА' }),
+      screen.getByRole('region', { name: '1/4 ФИНАЛА' }),
+      screen.getByRole('region', { name: '1/2 ФИНАЛА' }),
+    ];
+    const rect = (left: number, width = 280): DOMRect => ({
+      left,
+      right: left + width,
+      top: 0,
+      bottom: 300,
+      width,
+      height: 300,
+      x: left,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    vi.spyOn(roundViewport, 'getBoundingClientRect').mockReturnValue(rect(0, 320));
+    vi.spyOn(rounds[0], 'getBoundingClientRect').mockReturnValue(rect(-280));
+    vi.spyOn(rounds[1], 'getBoundingClientRect').mockReturnValue(rect(20));
+    vi.spyOn(rounds[2], 'getBoundingClientRect').mockReturnValue(rect(320));
+
+    fireEvent.scroll(roundViewport);
+
+    expect(roundButtons[1]).toHaveAttribute('aria-current', 'step');
+    expect(rounds[1]).toHaveAttribute('data-active', 'true');
+  });
+
+  it('keeps long real participant names as primary bracket content', () => {
+    const longNameState: ActiveProjection = {
+      ...state,
+      players: [
+        ...players,
+        {
+          registrationId: 'r10',
+          guestId: 'g10',
+          displayName: 'Александра-Екатерина Константинопольская',
+          seed: 10,
+        },
+      ],
+      matches: [
+        match({
+          id: 'm4',
+          matchKey: 'r16-4',
+          round: 'r16',
+          position: 4,
+          player1GuestId: 'g10',
+          player2GuestId: 'g2',
+          status: 'ready',
+        }),
+      ],
+    };
+
+    render(<PublicBracket state={longNameState} />);
+
+    expect(screen.getByText('Александра-Екатерина Константинопольская')).toBeInTheDocument();
+  });
 });
+

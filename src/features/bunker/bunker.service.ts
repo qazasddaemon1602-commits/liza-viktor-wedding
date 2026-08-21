@@ -1,10 +1,22 @@
 import type { BunkerPhase } from './bunkerQuest.types';
+import {
+  BUNKER_GLOBAL_GAME_STATES,
+  parseBunkerCurrentMission,
+  type BunkerCurrentMission,
+  type BunkerGlobalGameState,
+} from './bunkerSession.service';
 
 export type BunkerScreenTeamState = {
   carriageNumber: number;
   label: string;
   missionAComplete: boolean;
   missionBComplete: boolean;
+};
+
+export type BunkerScreenCharacterCounts = {
+  active: number;
+  saved: number;
+  excluded: number;
 };
 
 export type BunkerScreenState =
@@ -18,6 +30,9 @@ export type BunkerScreenState =
       phase: BunkerPhase;
       unlocked: boolean;
       teams: BunkerScreenTeamState[];
+      characterCounts: BunkerScreenCharacterCounts;
+      globalGameState?: BunkerGlobalGameState;
+      currentMission?: BunkerCurrentMission | null;
       serverNow: string;
     };
 
@@ -26,6 +41,9 @@ export type OwnerBunkerControl =
       status: 'idle';
       durationSeconds: number;
       soundEnabled: boolean;
+      runNonce?: string;
+      globalGameState?: BunkerGlobalGameState;
+      currentMission?: BunkerCurrentMission | null;
       serverNow: string;
     }
   | {
@@ -34,6 +52,9 @@ export type OwnerBunkerControl =
       durationSeconds: number;
       remainingSeconds: number;
       soundEnabled: boolean;
+      runNonce?: string;
+      globalGameState?: BunkerGlobalGameState;
+      currentMission?: BunkerCurrentMission | null;
       serverNow: string;
     };
 
@@ -54,6 +75,7 @@ const BUNKER_PHASES = new Set<BunkerPhase>([
   'final',
   'completed',
 ]);
+const GLOBAL_GAME_STATES = new Set<BunkerGlobalGameState>(BUNKER_GLOBAL_GAME_STATES);
 
 function rpcError(error: Exclude<BunkerRpcError, null>): never {
   if (error instanceof Error) throw error;
@@ -113,6 +135,33 @@ function parseTeams(value: unknown): BunkerScreenTeamState[] {
   });
 }
 
+function parseCharacterCounts(value: unknown): BunkerScreenCharacterCounts {
+  if (value === undefined) return { active: 0, saved: 0, excluded: 0 };
+  if (!record(value)) throw new Error('Unexpected bunker character counts');
+  const active = positiveInteger(value.active);
+  const saved = positiveInteger(value.saved);
+  const excluded = positiveInteger(value.excluded);
+  return { active, saved, excluded };
+}
+
+function authoritativeState(data: Record<string, unknown>): {
+  globalGameState?: BunkerGlobalGameState;
+  currentMission?: BunkerCurrentMission | null;
+} {
+  if (data.globalGameState === undefined) return {};
+  if (
+    typeof data.globalGameState !== 'string'
+    || !GLOBAL_GAME_STATES.has(data.globalGameState as BunkerGlobalGameState)
+  ) {
+    throw new Error('Unexpected bunker global game state');
+  }
+  const globalGameState = data.globalGameState as BunkerGlobalGameState;
+  return {
+    globalGameState,
+    currentMission: parseBunkerCurrentMission(data.currentMission, globalGameState),
+  };
+}
+
 function parseScreen(data: unknown): BunkerScreenState {
   if (!record(data) || typeof data.status !== 'string') {
     throw new Error('Unexpected bunker screen response');
@@ -137,16 +186,26 @@ function parseScreen(data: unknown): BunkerScreenState {
     phase: phase(data.phase),
     unlocked: data.unlocked === undefined ? false : Boolean(data.unlocked),
     teams: parseTeams(data.teams),
+    characterCounts: parseCharacterCounts(data.characterCounts),
+    ...authoritativeState(data),
     serverNow,
   };
 }
 
 function parseOwner(data: unknown): OwnerBunkerControl {
   const parsed = parseScreen(data);
+  if (!record(data)) throw new Error('Unexpected owner bunker response');
   if (parsed.status === 'not_found') {
     throw new Error('Unexpected owner bunker response');
   }
-  if (parsed.status === 'active') return parsed;
+  if (parsed.status === 'active') {
+    return {
+      ...parsed,
+      ...(typeof data.runNonce === 'string'
+        ? { runNonce: data.runNonce }
+        : {}),
+    };
+  }
   if (!record(data) || typeof data.soundEnabled !== 'boolean') {
     throw new Error('Unexpected owner bunker idle response');
   }
@@ -154,6 +213,8 @@ function parseOwner(data: unknown): OwnerBunkerControl {
     status: 'idle',
     durationSeconds: positiveInteger(data.durationSeconds),
     soundEnabled: data.soundEnabled,
+    ...authoritativeState(data),
+    ...(typeof data.runNonce === 'string' ? { runNonce: data.runNonce } : {}),
     serverNow: parsed.serverNow,
   };
 }
@@ -199,3 +260,4 @@ export async function stopBunker(client: BunkerRpcClient, eventId: string) {
 export async function setBunkerSound(client: BunkerRpcClient, eventId: string, enabled: boolean) {
   return command(client, 'owner_set_bunker_sound', { p_event_id: eventId, p_enabled: enabled });
 }
+

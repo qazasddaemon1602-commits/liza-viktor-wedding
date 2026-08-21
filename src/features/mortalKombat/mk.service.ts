@@ -10,7 +10,7 @@ export type MkRpcClient = {
 
 function throwRpcError(error: Exclude<MkRpcError, null>): never {
   if (error instanceof Error) throw error;
-  const next = new Error(error.message || 'Mortal Kombat request failed');
+  const next = new Error(error.message || 'Tournament request failed');
   if (error.code) Object.assign(next, { code: error.code });
   throw next;
 }
@@ -154,3 +154,4 @@ export async function joinMkTournament(
   if (error) throwRpcError(error);
   return parseJoin(data);
 }
+

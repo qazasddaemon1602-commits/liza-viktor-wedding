@@ -97,3 +97,4 @@ Lovable Cloud вручную синхронизирован с новыми sche
 
 **AUTOMATED GO: PASS.**  
 **EVENT-DAY GO: PENDING** — нужны реальные два ТВ/телефоны, production video/domain и заполненные ответы пары.
+

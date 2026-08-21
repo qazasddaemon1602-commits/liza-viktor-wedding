@@ -349,3 +349,4 @@ Do not add unrelated features or refactors during the gate.
 - [ ] **Step 5: Merge after fresh green evidence**
 
 Merge to `main`, then verify the deployed `/admin`, `/join`, and `/screen` Bunker flow with a short production smoke test.
+

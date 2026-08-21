@@ -126,7 +126,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   if (state === 'loading') {
     return (
-      <main className="registration-shell">
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-routing" aria-live="polite">
           <p className="eyebrow">ПОЕЗД ВИКТОРА</p>
           <h1>ПРОВЕРЯЕМ БИЛЕТ…</h1>
@@ -138,7 +138,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   if (state === 'error') {
     return (
-      <main className="registration-shell">
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-card registration-join-error" role="alert">
           <p className="eyebrow">СВЯЗЬ С СОСТАВОМ</p>
           <h1>Не удалось проверить билет</h1>
@@ -155,6 +155,9 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
         guest={guest}
         activeCall={activeCall}
         bunkerState={bunker.state}
+        bunkerRuntime={bunker.runtime}
+        bunkerRuntimeLoading={bunker.runtimeLoading}
+        bunkerRuntimeError={bunker.runtimeError}
         bunkerFeedback={bunker.feedback}
         bunkerError={bunker.error}
         bunkerSubmitting={bunker.submitting}
@@ -171,7 +174,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
 
   if (recoveryOpen) {
     return (
-      <main className="registration-shell">
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-card">
           <header className="registration-heading">
             <p className="eyebrow">ВОССТАНОВЛЕНИЕ БИЛЕТА</p>
@@ -209,7 +212,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
         initialGuest={null}
         revealDelayMs={revealDelayMs}
       />
-      <div className="registration-recovery-entry">
+      <div className="registration-recovery-entry registration-ticket-surface">
         <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>
           У МЕНЯ УЖЕ БЫЛ БИЛЕТ
         </button>

@@ -229,3 +229,4 @@ Full E2E remains a merge gate, not a per-edit gate.
 - Bunker character cards, hidden attributes, team tasks, scoring or final code;
 - editing/deleting completed quiz history;
 - changing guest identity from device-bound tickets to email/password accounts.
+

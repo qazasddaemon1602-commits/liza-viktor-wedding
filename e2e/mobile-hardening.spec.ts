@@ -157,3 +157,4 @@ test('Mortal Kombat guest page has no horizontal overflow at 320px', async ({ br
     await expectNoHorizontalOverflow(page);
   });
 });
+

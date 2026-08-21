@@ -49,3 +49,4 @@ describe('premiere readiness', () => {
     expect(screen.getByText(/владелец вручную/i)).toBeInTheDocument();
   });
 });
+

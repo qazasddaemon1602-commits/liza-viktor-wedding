@@ -6,6 +6,7 @@ import {
   submitBunkerFinalCode,
   submitBunkerMission,
 } from '../bunker/bunkerQuest.service';
+import { getGuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
 import {
   subscribeToCarriageCallRefresh,
   type CarriageCallRealtimeClient,
@@ -130,6 +131,7 @@ export function GuestJoinPage({
       bunker: activeBunkerClient ? {
         getDeviceKey,
         load: (key) => getGuestBunkerQuest(activeBunkerClient, eventSlug, key),
+        loadRuntime: (key) => getGuestBunkerRuntime(activeBunkerClient, eventSlug, key),
         submitMission: (key, stage, answer) => submitBunkerMission(
           activeBunkerClient,
           eventSlug,

@@ -79,3 +79,4 @@ describe('premiere media resolver', () => {
     expect(needsPremiereMediaResolution('https://drive.google.com/open?id=file-id')).toBe(true);
   });
 });
+

@@ -84,6 +84,7 @@ import {
 } from '../quiz/quiz.realtime';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
+  applyCarriageDistribution as applyCarriageDistributionRpc,
   deleteGuest as deleteGuestRpc,
   issueGuestRecovery as issueGuestRecoveryRpc,
   loadOwnerDashboard,
@@ -91,6 +92,7 @@ import {
   reassignGuest as reassignGuestRpc,
   resetEventTestData as resetEventTestDataRpc,
   type AdminDashboard,
+  type CarriageDistributionResult,
   type EventTestResetResult,
 } from './admin.service';
 import {
@@ -116,6 +118,10 @@ export type AdminPageDependencies = {
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  applyCarriageDistribution?: (
+    eventId: string,
+    carriageCount: number,
+  ) => Promise<CarriageDistributionResult>;
   issueGuestRecovery: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   resetEventTestData?: (eventId: string, confirmation: string) => Promise<EventTestResetResult>;
   subscribeToRegistrations: (callback: (guestId: string) => void) => () => void;
@@ -190,6 +196,8 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     deleteGuest: (guestId) => deleteGuestRpc(client, guestId),
     reassignGuest: (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
     lockComposition: (eventId) => lockCompositionRpc(client, eventId),
+    applyCarriageDistribution: (eventId, carriageCount) =>
+      applyCarriageDistributionRpc(client, eventId, carriageCount),
     issueGuestRecovery: (guestId) => issueGuestRecoveryRpc(client, guestId),
     resetEventTestData: async (eventId, confirmation) => {
       const result = await resetEventTestDataRpc(client, eventId, confirmation);
@@ -386,6 +394,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
             deleteGuest: deps.deleteGuest,
             reassignGuest: deps.reassignGuest,
             lockComposition: deps.lockComposition,
+            applyCarriageDistribution: deps.applyCarriageDistribution,
             issueGuestRecovery: deps.issueGuestRecovery,
             resetEventTestData: deps.resetEventTestData,
             subscribeToRegistrations: deps.subscribeToRegistrations,

@@ -17,3 +17,4 @@ export function MkMilestoneScene({ milestone }: MkMilestoneSceneProps) {
     </section>
   );
 }
+

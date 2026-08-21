@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  applyCarriageDistribution,
   deleteGuest,
   issueGuestRecovery,
   loadOwnerDashboard,
@@ -79,6 +80,29 @@ describe('admin service', () => {
       p_event_id: 'event-1',
     });
     expect(result.registrationOpen).toBe(true);
+  });
+
+  it('applies the selected active carriage count atomically before locking composition', async () => {
+    const client = clientWith({
+      status: 'locked',
+      activeCarriageCount: 3,
+      registeredGuestCount: 20,
+      carriageSizes: [7, 7, 6],
+      registrationOpen: true,
+    });
+
+    const result = await applyCarriageDistribution(client, 'event-1', 3);
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_apply_carriage_distribution', {
+      p_event_id: 'event-1',
+      p_carriage_count: 3,
+    });
+    expect(result).toEqual({
+      activeCarriageCount: 3,
+      registeredGuestCount: 20,
+      carriageSizes: [7, 7, 6],
+      registrationOpen: true,
+    });
   });
 
   it('issues a short-lived recovery code only through the owner RPC', async () => {

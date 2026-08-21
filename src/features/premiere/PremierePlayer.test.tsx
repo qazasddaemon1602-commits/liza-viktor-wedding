@@ -1,4 +1,5 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PremierePlayer } from './PremierePlayer';
 
@@ -12,6 +13,7 @@ describe('PremierePlayer', () => {
     pause.mockReset();
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(play);
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(pause);
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -84,6 +86,16 @@ describe('PremierePlayer', () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps one playback attempt when StrictMode replays source effects', () => {
+    render(
+      <StrictMode>
+        <PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay />
+      </StrictMode>,
+    );
+
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
   it('seeks to the authoritative position before starting a late or reconnected screen', () => {
     const { container } = render(
       <PremierePlayer
@@ -147,6 +159,30 @@ describe('PremierePlayer', () => {
     expect(play).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps replacement playback active when the previous source rejects late', async () => {
+    let rejectPrevious!: (error: unknown) => void;
+    play
+      .mockImplementationOnce(() => new Promise<void>((_resolve, reject) => {
+        rejectPrevious = reject;
+      }))
+      .mockResolvedValue(undefined);
+
+    const { rerender } = render(
+      <PremierePlayer src="https://cdn.test/ring.mp4" shouldPlay />,
+    );
+    rerender(<PremierePlayer src="https://cdn.test/ring-v2.mp4" shouldPlay />);
+    pause.mockClear();
+
+    await act(async () => {
+      rejectPrevious(new DOMException('Interrupted old source', 'AbortError'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    rerender(<PremierePlayer src="https://cdn.test/ring-v2.mp4" shouldPlay={false} />);
+
+    expect(pause).toHaveBeenCalledTimes(1);
+  });
+
   it('reports the video end to the orchestration layer', () => {
     const ended = vi.fn();
     const { container } = render(
@@ -157,3 +193,4 @@ describe('PremierePlayer', () => {
     expect(ended).toHaveBeenCalledTimes(1);
   });
 });
+

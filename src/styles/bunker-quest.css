@@ -132,6 +132,43 @@
   font: 400 clamp(24px, 7vw, 36px)/1.02 Georgia, 'Times New Roman', serif;
 }
 
+.guest-bunker-mission__evidence,
+.guest-bunker-final__door {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--bq-line);
+  background: #090a09;
+}
+
+.guest-bunker-mission__evidence {
+  aspect-ratio: 4 / 3;
+  margin: 16px 0 18px;
+}
+
+.guest-bunker-final__door {
+  aspect-ratio: 16 / 9;
+  margin-bottom: 18px;
+}
+
+.guest-bunker-mission__evidence::after,
+.guest-bunker-final__door::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 10px solid rgba(17, 18, 16, 0.22);
+  pointer-events: none;
+}
+
+.guest-bunker-mission__evidence img,
+.guest-bunker-final__door img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.06);
+}
+
 .guest-bunker-options {
   display: grid;
   gap: 8px;
@@ -147,7 +184,7 @@
   background: transparent;
   color: var(--bq-paper);
   padding: 13px 14px;
-  font: 700 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   cursor: pointer;
@@ -246,10 +283,18 @@
 }
 
 .admin-bunker-quest__heading strong,
-.admin-bunker-quest__waiting,
 .admin-bunker-unlocked {
-  font: 600 11px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font: 600 12px/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   letter-spacing: .08em;
+}
+
+.admin-bunker-quest__waiting,
+.admin-bunker-quest__briefing > p,
+.admin-bunker-manual-unlock > p,
+.admin-bunker-danger--quest > p,
+.admin-bunker-quest__confirmation > p {
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 .admin-bunker-quest__briefing,
@@ -287,12 +332,16 @@
   font-size: 13px;
 }
 
+.admin-bunker-team-card__heading span {
+  font-size: 12px;
+}
+
 .admin-bunker-team-grid article > p,
 .admin-bunker-team-grid article > small {
   display: block;
   margin: 8px 0 0;
   color: var(--bq-muted);
-  font: 500 10px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .admin-bunker-team-card__actions {
@@ -301,8 +350,9 @@
 
 .admin-bunker-team-card__actions button {
   width: 100%;
-  padding: 9px;
-  font-size: 9px;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 12px;
 }
 
 .admin-bunker-team-fragment {
@@ -324,6 +374,11 @@
   margin-top: 12px;
 }
 
+.admin-bunker-quest button {
+  min-height: 44px;
+  font-size: 12px;
+}
+
 .bunker-quest-scene {
   position: fixed;
   inset: 0;
@@ -331,15 +386,59 @@
   overflow: hidden;
   background: #0d0e0c;
   color: var(--bq-paper);
-  padding: clamp(28px, 4vw, 64px);
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 5vh 5vw;
   display: grid;
   grid-template-rows: auto 1fr auto;
+}
+
+.bunker-quest-scene__train-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: block;
+  pointer-events: none;
+  animation: bunker-train-window-wipe 850ms cubic-bezier(.62, 0, .25, 1) both;
+}
+
+.bunker-quest-scene__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.bunker-quest-scene__backdrop img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  filter: grayscale(1) contrast(1.08) brightness(0.62);
+}
+
+.bunker-quest-scene__train-wipe img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+@keyframes bunker-train-window-wipe {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(105%); visibility: hidden; }
 }
 
 .bunker-quest-scene__grid {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 1;
   background:
     linear-gradient(rgba(236,232,222,.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(236,232,222,.035) 1px, transparent 1px);
@@ -348,6 +447,7 @@
 
 .bunker-quest-scene__header {
   position: relative;
+  z-index: 2;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 32px;
@@ -380,6 +480,7 @@
 .bunker-quest-scene__mission,
 .bunker-quest-scene__final {
   position: relative;
+  z-index: 2;
   align-self: center;
   width: min(100%, 1400px);
   margin: 0 auto;
@@ -407,16 +508,20 @@
   font: 500 clamp(20px, 2.2vw, 34px)/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.bunker-quest-scene__teams,
-.bunker-quest-scene__slots {
+.bunker-quest-scene .bunker-wagon-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-top: 12px;
 }
 
+.bunker-quest-scene .bunker-wagon-grid[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bunker-quest-scene .bunker-wagon-grid[data-count="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bunker-quest-scene .bunker-wagon-grid[data-count="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.bunker-quest-scene .bunker-wagon-grid[data-count="5"] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
 .bunker-quest-scene__teams article,
 .bunker-quest-scene__slots article {
+  position: relative;
   min-height: 150px;
   border: 1px solid var(--bq-line);
   padding: 14px;
@@ -424,6 +529,37 @@
   flex-direction: column;
   justify-content: space-between;
   background: rgba(236,232,222,.025);
+  overflow: hidden;
+}
+
+.bunker-map-fragment {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  overflow: hidden;
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.bunker-map-fragment img {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--bunker-fragment-offset);
+  display: block;
+  width: var(--bunker-fragment-width);
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.08);
+}
+
+.bunker-quest-scene__slots article > span,
+.bunker-quest-scene__slots article > strong {
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9);
 }
 
 .bunker-quest-scene__teams article.is-complete,
@@ -445,6 +581,16 @@
   font: 400 clamp(21px, 2.4vw, 40px)/1 Georgia, 'Times New Roman', serif;
 }
 
+.bunker-quest-scene__empty {
+  margin: 12px 0 0;
+  border: 1px solid var(--bq-line);
+  padding: clamp(24px, 4vw, 56px);
+  color: var(--bq-muted);
+  font: 600 clamp(12px, 1.1vw, 16px)/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: .12em;
+  text-align: center;
+}
+
 .bunker-quest-scene__unlock-state {
   margin-top: 20px;
   border-top: 1px solid var(--bq-line-strong);
@@ -463,6 +609,7 @@
 
 .bunker-quest-scene footer {
   position: relative;
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   border-top: 1px solid var(--bq-line-strong);
@@ -491,14 +638,21 @@
 }
 
 @media (max-width: 1100px) {
-  .bunker-quest-scene__teams,
-  .bunker-quest-scene__slots {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-
   .bunker-quest-scene__teams article,
   .bunker-quest-scene__slots article {
     min-height: 110px;
     padding: 10px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bunker-quest-scene__train-wipe {
+    display: none;
+    animation: none;
+  }
+}
+
+.bunker-quest-scene[data-motion="reduced"] .bunker-quest-scene__train-wipe {
+  display: none;
+  animation: none;
 }

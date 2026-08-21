@@ -124,3 +124,4 @@
 - [ ] DB migrations 001→025 clean-install = PASS via local Supabase start.
 - [ ] Confirm PR is mergeable and `main` remains unchanged.
 - [ ] Confirm latest feature-branch contents are visible through GitHub/Lovable sync before asking user to publish/update production.
+

@@ -149,3 +149,4 @@ export async function getQuizScreenState(
   if (error) throwRpcError(error);
   return parseState(data);
 }
+

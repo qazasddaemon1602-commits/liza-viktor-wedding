@@ -1,7 +1,7 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
-import { BunkerQuestScene } from './BunkerQuestScene';
+import { BunkerQuestScene, phaseForGlobalGameState } from './BunkerQuestScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
 import { setBunkerPresentationProtected } from './bunkerProtection';
 import {
@@ -57,21 +57,49 @@ export function BunkerScreenGuard({
   dependencies,
   children,
 }: BunkerScreenGuardProps) {
-  const deps = useMemo(
-    () => dependencies ?? browserDependencies(eventSlug),
-    [dependencies, eventSlug],
-  );
+  const [browserDeps, setBrowserDeps] = useState<BunkerScreenGuardDependencies | null>(null);
+  const deps = dependencies ?? browserDeps;
   const [state, setState] = useState<BunkerScreenState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [motionPreference, setMotionPreference] = useState<'full' | 'reduced'>(() => (
+    typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'reduced'
+      : 'full'
+  ));
   const serverOffsetRef = useRef(0);
+  const latestServerMsRef = useRef(Number.NEGATIVE_INFINITY);
+  const previousUnlockRef = useRef<boolean | null>(null);
 
   const applyServerState = (next: BunkerScreenState) => {
     const receivedAt = Date.now();
     const serverMs = Date.parse(next.serverNow);
+    if (Number.isFinite(serverMs) && serverMs < latestServerMsRef.current) return;
+    if (Number.isFinite(serverMs)) latestServerMsRef.current = serverMs;
     serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
     setState(next);
     setNowMs(receivedAt);
   };
+
+  useEffect(() => {
+    if (dependencies) {
+      setBrowserDeps(null);
+      return;
+    }
+    const next = browserDependencies(eventSlug);
+    setBrowserDeps(next);
+    return () => next?.audio?.dispose();
+  }, [dependencies, eventSlug]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotionPreference = () => setMotionPreference(query.matches ? 'reduced' : 'full');
+    updateMotionPreference();
+    query.addEventListener?.('change', updateMotionPreference);
+    return () => query.removeEventListener?.('change', updateMotionPreference);
+  }, []);
 
   useEffect(() => {
     if (!deps) return;
@@ -99,7 +127,9 @@ export function BunkerScreenGuard({
     ? remainingFromState(state, nowMs, serverOffsetRef.current)
     : 0;
   const bunkerActive = state?.status === 'active';
-  const activePhase = state?.status === 'active' ? (state.phase ?? 'emergency') : null;
+  const activePhase = state?.status === 'active'
+    ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency')
+    : null;
   const emergencyPhase = bunkerActive && activePhase === 'emergency';
 
   useEffect(() => {
@@ -154,16 +184,56 @@ export function BunkerScreenGuard({
     return () => audio.stopAlarm();
   }, [deps, emergencyPhase, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
 
-  useEffect(() => () => deps?.audio?.dispose(), [deps]);
+  useEffect(() => {
+    const audio = deps?.audio;
+    if (!audio) return;
+    if (!bunkerActive || state?.status !== 'active' || !state.soundEnabled) {
+      audio.stopAmbience();
+      return;
+    }
+
+    audio.startAmbience();
+    void audio.arm();
+    return () => audio.stopAmbience();
+  }, [deps, bunkerActive, state?.status === 'active' ? state.soundEnabled : false]);
+
+  useEffect(() => {
+    const audio = deps?.audio;
+    if (!bunkerActive || state?.status !== 'active') {
+      previousUnlockRef.current = null;
+      return;
+    }
+
+    const finalPhase = activePhase === 'final' || activePhase === 'completed';
+    const wasUnlocked = previousUnlockRef.current;
+    if (
+      finalPhase
+      && state.soundEnabled
+      && wasUnlocked === false
+      && state.unlocked
+    ) {
+      audio?.playDoorUnlock();
+      void audio?.arm();
+    }
+    previousUnlockRef.current = state.unlocked;
+  }, [deps, bunkerActive, activePhase, state?.status === 'active' ? state.unlocked : false, state?.status === 'active' ? state.soundEnabled : false]);
 
   return (
     <>
       {children}
       {bunkerActive && state?.status === 'active' && activePhase === 'emergency' && (
-        <BunkerEmergencyScene remainingSeconds={remainingSeconds} />
+        <BunkerEmergencyScene
+          remainingSeconds={remainingSeconds}
+          motionPreference={motionPreference}
+        />
       )}
       {bunkerActive && state?.status === 'active' && activePhase !== 'emergency' && (
-        <BunkerQuestScene state={state} remainingSeconds={remainingSeconds} />
+        <BunkerQuestScene
+          key={activePhase}
+          state={state}
+          remainingSeconds={remainingSeconds}
+          motionPreference={motionPreference}
+        />
       )}
     </>
   );

@@ -45,11 +45,7 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
 
   return (
     <section className="mk-signup-card">
-      <div className="mk-fighter-emblem" aria-hidden="true">
-        <span>FIGHTER</span>
-        <strong>01</strong>
-      </div>
-      <p className="eyebrow">MORTAL KOMBAT · 16 МЕСТ</p>
+      <p className="eyebrow">ПОСЛЕДНИЙ КРУГ · 16 МЕСТ</p>
       <strong>{state.activeCount} / 16</strong>
       <p>
         Первые 16 зарегистрированных гостей попадают в основную сетку. Дальше — лист ожидания.
@@ -65,3 +61,4 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
     </section>
   );
 }
+

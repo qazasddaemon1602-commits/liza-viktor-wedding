@@ -9,6 +9,8 @@ export type BunkerPhase =
 
 export type BunkerMissionStage = 'mission_a' | 'mission_b';
 
+import type { BunkerAbilityTag } from './gamePlanner';
+
 export type GuestBunkerDossier = {
   profession: string;
   profile: string;
@@ -16,6 +18,7 @@ export type GuestBunkerDossier = {
   hobby: string | null;
   baggage: string | null;
   hiddenFact: string | null;
+  abilityTags: BunkerAbilityTag[];
 };
 
 export type GuestBunkerMission = {

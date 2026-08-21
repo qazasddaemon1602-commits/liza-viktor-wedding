@@ -57,10 +57,11 @@ describe('AdminMkControl', () => {
   it('shows all sixteen seed slots and the waitlist before bracket start', async () => {
     render(<AdminMkControl eventId="event-1" dependencies={dependencies()} />);
 
-    expect(await screen.findByRole('heading', { name: 'MORTAL KOMBAT · ПУЛЬТ' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'ТУРНИРНЫЙ ПУЛЬТ' })).toBeInTheDocument();
     expect(screen.getAllByTestId('seed-slot')).toHaveLength(16);
     expect(screen.getByText('Запасной Игрок')).toBeInTheDocument();
     expect(screen.getByText('16 / 16')).toBeInTheDocument();
+    expect(screen.queryByText(/MORTAL KOMBAT|FATALITY/i)).not.toBeInTheDocument();
   });
 
   it('randomizes the draw and starts the bracket on the shared projector', async () => {
@@ -198,3 +199,4 @@ describe('AdminMkControl with fewer than sixteen players', () => {
     expect(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 1 ИГРОКОВ' })).toBeDisabled();
   });
 });
+

@@ -26,7 +26,7 @@ export type MkResultResponse =
 
 function throwRpcError(error: Exclude<MkOwnerRpcError, null>): never {
   if (error instanceof Error) throw error;
-  const next = new Error(error.message || 'Owner Mortal Kombat request failed');
+  const next = new Error(error.message || 'Owner tournament request failed');
   if (error.code) Object.assign(next, { code: error.code });
   throw next;
 }
@@ -228,3 +228,4 @@ export async function undoMkResult(
   });
   return parseResultResponse(data);
 }
+

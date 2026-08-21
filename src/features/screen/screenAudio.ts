@@ -1,4 +1,6 @@
 import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
+import { hasLocalAudioSource, type AudioCueId } from '../../lib/audioManifest';
+import { sampleAudio, type SampleAudioController } from '../../lib/sampleAudio';
 
 type AudioParamLike = {
   setValueAtTime: (value: number, time: number) => unknown;
@@ -52,6 +54,8 @@ function browserAudioContextFactory(): AudioContextLike {
 
 export function createScreenAudioController(
   factory: AudioContextFactory = browserAudioContextFactory,
+  samplePlayer: Pick<SampleAudioController, 'arm' | 'playCue' | 'stopCue'> = sampleAudio,
+  hasSample: (id: AudioCueId) => boolean = hasLocalAudioSource,
 ): ScreenAudioController {
   let context: AudioContextLike | null = null;
   let masterGain: GainLike | null = null;
@@ -80,6 +84,9 @@ export function createScreenAudioController(
 
   const arm = async (): Promise<boolean> => {
     if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
+    const needsArrivalFallback = !hasSample('arrival.chime');
+    const needsSequenceFallback = !hasSample('arrival.sequence');
+    if (!needsArrivalFallback && !needsSequenceFallback) return samplePlayer.arm();
     try {
       context ??= factory();
       if (context.state !== 'running') await context.resume();
@@ -128,6 +135,10 @@ export function createScreenAudioController(
   };
 
   const playArrival = () => {
+    if (hasSample('arrival.chime')) {
+      void samplePlayer.playCue('arrival.chime', { priority: 'scene' });
+      return;
+    }
     if (!context || context.state !== 'running') return;
     const now = context.currentTime + 0.015;
     playTone(523.25, now, 0.16);
@@ -135,6 +146,10 @@ export function createScreenAudioController(
   };
 
   const playCarriageCall = () => {
+    if (hasSample('arrival.sequence')) {
+      void samplePlayer.playCue('arrival.sequence', { priority: 'scene' });
+      return;
+    }
     if (!context || context.state !== 'running') return;
     stopOscillators();
     const start = context.currentTime + 0.02;
@@ -163,8 +178,14 @@ export function createScreenAudioController(
     playTone(73.42, start + 9.15, 1.55, 0.012, 'triangle');
   };
 
-  const stopArrival = () => stopOscillators();
-  const stopCarriageCall = () => stopOscillators();
+  const stopArrival = () => {
+    if (hasSample('arrival.chime')) samplePlayer.stopCue('arrival.chime');
+    stopOscillators();
+  };
+  const stopCarriageCall = () => {
+    if (hasSample('arrival.sequence')) samplePlayer.stopCue('arrival.sequence');
+    stopOscillators();
+  };
 
   const dispose = () => {
     unsubscribeSettings();
@@ -172,6 +193,8 @@ export function createScreenAudioController(
       window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
     }
     stopOscillators();
+    if (hasSample('arrival.chime')) samplePlayer.stopCue('arrival.chime');
+    if (hasSample('arrival.sequence')) samplePlayer.stopCue('arrival.sequence');
     const current = context;
     context = null;
     masterGain = null;
@@ -187,3 +210,4 @@ export function createScreenAudioController(
     dispose,
   };
 }
+

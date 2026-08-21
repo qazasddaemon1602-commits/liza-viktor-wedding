@@ -32,3 +32,4 @@ jobs:
           fi
           tail -n 40 vitest.log
       - run: npm run build
+

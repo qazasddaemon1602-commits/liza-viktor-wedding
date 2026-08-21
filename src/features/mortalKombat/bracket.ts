@@ -18,10 +18,10 @@ export const SEED_SLOT_ORDER = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 
 
 export function buildBracket(playerIds: string[]): BracketMatch[] {
   if (playerIds.length < 2 || playerIds.length > 16) {
-    throw new Error('Mortal Kombat bracket requires between 2 and 16 players');
+    throw new Error('Tournament bracket requires between 2 and 16 players');
   }
   if (new Set(playerIds).size !== playerIds.length || playerIds.some((playerId) => !playerId.trim())) {
-    throw new Error('Mortal Kombat bracket requires unique player ids');
+    throw new Error('Tournament bracket requires unique player ids');
   }
 
   const bySeed = (seed: number): string | null => playerIds[seed - 1] ?? null;
@@ -80,3 +80,4 @@ export function affectedDownstreamMatches(
 
   return affected;
 }
+

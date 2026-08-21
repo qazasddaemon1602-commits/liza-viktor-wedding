@@ -1,47 +1,177 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
-import { loadOwnerDashboard, type AdminRpcClient } from '../admin.service';
-import { AdminBunkerControl } from './AdminBunkerControl';
+import {
+  applyCarriageDistribution,
+  loadOwnerDashboard,
+  type AdminDashboard,
+  type AdminRpcClient,
+} from '../admin.service';
+import type { SupportedCarriageCount } from '../../carriages/carriageAllocator';
+import {
+  AdminBunkerControl,
+  type AdminBunkerControlDependencies,
+} from './AdminBunkerControl';
 
 const EVENT_SLUG = 'liza-viktor';
 
-export function AdminBunkerDock() {
-  const [eventId, setEventId] = useState<string | null>(null);
+export type AdminBunkerDockDependencies = {
+  loadDashboard: () => Promise<AdminDashboard>;
+  applyDistribution: (eventId: string, carriageCount: SupportedCarriageCount) => Promise<unknown>;
+  bunkerControl?: AdminBunkerControlDependencies;
+};
 
-  useEffect(() => {
-    let active = true;
-    let client: AdminRpcClient;
+type AdminBunkerDockProps = {
+  dependencies?: AdminBunkerDockDependencies;
+  pollIntervalMs?: number;
+};
+
+function browserDependencies(): AdminBunkerDockDependencies | null {
+  try {
+    const client = getSupabaseClient() as unknown as AdminRpcClient;
+    return {
+      loadDashboard: () => loadOwnerDashboard(client, EVENT_SLUG),
+      applyDistribution: (eventId, carriageCount) => applyCarriageDistribution(
+        client,
+        eventId,
+        carriageCount,
+      ),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function AdminBunkerDock({
+  dependencies,
+  pollIntervalMs = 15_000,
+}: AdminBunkerDockProps = {}) {
+  const deps = useMemo(() => dependencies ?? browserDependencies(), [dependencies]);
+  const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<'loading' | 'current' | 'unavailable'>(
+    deps ? 'loading' : 'unavailable',
+  );
+  const dashboardRef = useRef<AdminDashboard | null>(null);
+  const mountedRef = useRef(false);
+  const activePollRequestRef = useRef<number | null>(null);
+  const commandInFlightRef = useRef(false);
+  const latestRequestRef = useRef(0);
+
+  const storeDashboard = useCallback((next: AdminDashboard) => {
+    dashboardRef.current = next;
+    setDashboard(next);
+    setLastSuccessAt(new Date().toISOString());
+    setAvailability('current');
+  }, []);
+
+  const failClosed = useCallback(() => {
+    dashboardRef.current = null;
+    setDashboard(null);
+    setLastSuccessAt(null);
+    setAvailability('unavailable');
+  }, []);
+
+  const pollDashboard = useCallback(async () => {
+    if (!deps || commandInFlightRef.current) return;
+    const activeRequestId = activePollRequestRef.current;
+    if (activeRequestId !== null && activeRequestId === latestRequestRef.current) return;
+    const requestId = ++latestRequestRef.current;
+    activePollRequestRef.current = requestId;
 
     try {
-      client = getSupabaseClient() as unknown as AdminRpcClient;
+      const next = await deps.loadDashboard();
+      if (mountedRef.current && requestId === latestRequestRef.current) {
+        storeDashboard(next);
+      }
     } catch {
-      return;
+      if (mountedRef.current && requestId === latestRequestRef.current) {
+        failClosed();
+      }
+    } finally {
+      if (activePollRequestRef.current === requestId) {
+        activePollRequestRef.current = null;
+      }
     }
+  }, [deps, failClosed, storeDashboard]);
 
-    const probeOwnerEvent = () => {
-      void loadOwnerDashboard(client, EVENT_SLUG)
-        .then((dashboard) => {
-          if (active) setEventId(dashboard.event.id);
-        })
-        .catch(() => {
-          if (active) setEventId(null);
-        });
-    };
-
-    probeOwnerEvent();
-    const interval = window.setInterval(probeOwnerEvent, eventId ? 15_000 : 1_500);
+  useEffect(() => {
+    if (!deps) return undefined;
+    mountedRef.current = true;
+    void pollDashboard();
+    const interval = window.setInterval(() => void pollDashboard(), pollIntervalMs);
 
     return () => {
-      active = false;
+      mountedRef.current = false;
+      latestRequestRef.current += 1;
+      activePollRequestRef.current = null;
       window.clearInterval(interval);
     };
-  }, [eventId]);
+  }, [deps, pollDashboard, pollIntervalMs]);
 
-  if (!eventId) return null;
+  const acceptDistribution = async (carriageCount: SupportedCarriageCount) => {
+    if (!deps || commandInFlightRef.current || !dashboardRef.current) return;
+    commandInFlightRef.current = true;
+    latestRequestRef.current += 1;
+    const eventId = dashboardRef.current.event.id;
+
+    try {
+      await deps.applyDistribution(eventId, carriageCount);
+      const requestId = ++latestRequestRef.current;
+      try {
+        const fresh = await deps.loadDashboard();
+        if (mountedRef.current && requestId === latestRequestRef.current) {
+          storeDashboard(fresh);
+        }
+      } catch (error) {
+        if (mountedRef.current && requestId === latestRequestRef.current) {
+          failClosed();
+        }
+        throw error;
+      }
+    } finally {
+      commandInFlightRef.current = false;
+    }
+  };
+
+  if (!deps || availability === 'unavailable') {
+    return (
+      <aside className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
+        <div className="admin-bunker-dock__unavailable" role="status">
+          <strong>OWNER-ДАННЫЕ НЕДОСТУПНЫ</strong>
+          <span>ПУЛЬТ СКРЫТ · ПРОВЕРЬТЕ OWNER-СЕССИЮ И СВЯЗЬ</span>
+        </div>
+      </aside>
+    );
+  }
+
+  if (!dashboard || availability !== 'current') {
+    return (
+      <aside className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
+        <div className="admin-bunker-dock__freshness" role="status">
+          <span>OWNER-ДОСТУП · ПРОВЕРЯЕМ</span>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
-      <AdminBunkerControl eventId={eventId} />
+      {lastSuccessAt && (
+        <div className="admin-bunker-dock__freshness" role="status">
+          <span>OWNER-ДАННЫЕ ПОДТВЕРЖДЕНЫ</span>
+          <time dateTime={lastSuccessAt}>
+            {new Intl.DateTimeFormat('ru-RU', {
+              hour: '2-digit', minute: '2-digit', second: '2-digit',
+            }).format(new Date(lastSuccessAt))}
+          </time>
+        </div>
+      )}
+      <AdminBunkerControl
+        eventId={dashboard.event.id}
+        dependencies={deps.bunkerControl}
+        dashboard={dashboard}
+        onAcceptDistribution={acceptDistribution}
+      />
     </aside>
   );
 }

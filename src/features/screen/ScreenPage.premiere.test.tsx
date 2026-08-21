@@ -1,6 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { siteAudio } from '../../lib/siteAudio';
 import type { PremiereScreenState } from '../premiere/premiere.service';
+import { ScreenAudioControl } from './ScreenAudioControl';
 import { ScreenPage } from './ScreenPage';
 import type { ScreenPresentationEvent } from './screenEvents.realtime';
 
@@ -52,9 +55,17 @@ describe('ScreenPage premiere protection', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(serverNow));
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
 
   it('replaces the normal screen with the authoritative premiere countdown and suppresses arrival scenes', async () => {
     let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
@@ -147,21 +158,27 @@ describe('ScreenPage premiere protection', () => {
       playPremiereCountdownTick: vi.fn(),
     };
 
-    render(
-      <ScreenPage
-        joinUrl="https://wedding.example/join"
-        eventSlug="liza-viktor"
-        dependencies={dependencies}
-      />,
+    const { container } = render(
+      <MemoryRouter initialEntries={['/screen']}>
+        <ScreenPage
+          joinUrl="https://wedding.example/join"
+          eventSlug="liza-viktor"
+          dependencies={dependencies}
+        />
+        <ScreenAudioControl />
+      </MemoryRouter>,
     );
     await flushPromises();
 
     expect(armArrivalAudio).toHaveBeenCalledTimes(1);
     expect(armPremiereAudio).toHaveBeenCalledTimes(1);
-    const button = screen.getByRole('button', { name: 'ВЫКЛЮЧИТЬ ЗВУК' });
+    const button = screen.getByRole('button', { name: 'Выключить звук' });
 
     fireEvent.click(button);
-    expect(stopArrivalAudio).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: 'ВКЛЮЧИТЬ ЗВУК' })).toBeInTheDocument();
+    expect(siteAudio.isEnabled()).toBe(false);
+    expect(container.querySelector('video')?.muted).toBe(true);
+    expect(stopArrivalAudio).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Включить звук' })).toBeInTheDocument();
   });
 });
+

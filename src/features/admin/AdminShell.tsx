@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OwnerCarriageCall } from '../carriages/carriageCalls.service';
-import type { AdminDashboard, EventTestResetResult } from './admin.service';
+import type {
+  AdminDashboard,
+  CarriageDistributionResult,
+  EventTestResetResult,
+} from './admin.service';
 import { AdminCarriageCalls } from './carriages/AdminCarriageCalls';
+import { AdminCarriageDistribution } from './carriages/AdminCarriageDistribution';
 import { AdminGuestsPage } from './guests/AdminGuestsPage';
 import { AdminMkControl, type AdminMkControlDependencies } from './mortalKombat/AdminMkControl';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
@@ -24,6 +29,10 @@ export type AdminShellDependencies = {
   deleteGuest: (guestId: string) => Promise<void>;
   reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
+  applyCarriageDistribution?: (
+    eventId: string,
+    carriageCount: number,
+  ) => Promise<CarriageDistributionResult>;
   issueGuestRecovery?: (guestId: string) => Promise<{ code: string; expiresAt: string }>;
   resetEventTestData?: (eventId: string, confirmation: string) => Promise<EventTestResetResult>;
   subscribeToRegistrations?: (callback: (guestId: string) => void) => () => void;
@@ -232,6 +241,30 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
     }
   };
 
+  const handleApplyCarriageDistribution = async (carriageCount: number) => {
+    if (!dependencies.applyCarriageDistribution) {
+      await handleLockComposition();
+      return;
+    }
+
+    await dependencies.applyCarriageDistribution(dashboard.event.id, carriageCount);
+    try {
+      const fresh = await dependencies.load();
+      storeFreshDashboard(fresh, false);
+    } catch {
+      setDashboard((current) => {
+        if (!current) return current;
+        const next = {
+          ...current,
+          event: { ...current.event, compositionLocked: true, registrationOpen: true },
+        };
+        dashboardRef.current = next;
+        return next;
+      });
+      setSyncWarning(true);
+    }
+  };
+
   const handleTestReset = async (confirmation: string): Promise<EventTestResetResult> => {
     if (!dependencies.resetEventTestData) {
       throw new Error('Test reset is not configured');
@@ -280,18 +313,15 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
       />
 
       <section className="admin-operations" aria-label="Управление составом">
-        {dashboard.event.compositionLocked ? (
-          <strong>СОСТАВ ЗАФИКСИРОВАН</strong>
-        ) : (
-          <button
-            type="button"
-            className="registration-secondary"
-            disabled={locking}
-            onClick={() => void handleLockComposition()}
-          >
-            {locking ? 'ФИКСИРУЕМ…' : 'ЗАФИКСИРОВАТЬ СОСТАВ'}
-          </button>
-        )}
+        <AdminCarriageDistribution
+          guestCount={dashboard.guests.length}
+          compositionLocked={dashboard.event.compositionLocked}
+          activeCarriageCount={(() => {
+            const count = dashboard.carriages.filter((carriage) => carriage.enabled).length;
+            return count >= 2 && count <= 5 ? count as 2 | 3 | 4 | 5 : undefined;
+          })()}
+          onAccept={handleApplyCarriageDistribution}
+        />
         <p>Фиксация не закрывает регистрацию: опоздавшие гости продолжат получать свободный подходящий вагон.</p>
       </section>
 

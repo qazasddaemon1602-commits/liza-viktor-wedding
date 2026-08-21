@@ -76,22 +76,33 @@ describe('AdminShell', () => {
     expect(screen.getByRole('link', { name: 'ОТКРЫТЬ ТВ' })).toHaveAttribute('href', '/screen');
     expect(screen.getByRole('link', { name: 'РЕГИСТРАЦИЯ ГОСТЯ' })).toHaveAttribute('href', '/join');
     expect(screen.getByRole('link', { name: 'КВИЗ' })).toHaveAttribute('href', '/play');
-    expect(screen.getByRole('link', { name: 'MK' })).toHaveAttribute('href', '/mortal-kombat');
-    expect(screen.getByRole('link', { name: 'MK НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
+    expect(screen.getByRole('link', { name: 'ТУРНИР' })).toHaveAttribute('href', '/mortal-kombat');
+    expect(screen.getByRole('link', { name: 'ТУРНИР НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
     expect(screen.getByText('Иван Петров')).toBeInTheDocument();
     expect(screen.getByText(/зарегистрировано: 1/i)).toBeInTheDocument();
     expect(screen.getByText(/регистрация открыта/i)).toBeInTheDocument();
   });
 
-  it('fixes the current carriage composition without closing late registration', async () => {
+  it('accepts the recommended carriage distribution without closing late registration', async () => {
     const user = userEvent.setup();
-    const lockComposition = vi.fn().mockResolvedValue({ registrationOpen: true });
-    render(<AdminShell dependencies={dependencies({ lockComposition })} />);
+    const applyCarriageDistribution = vi.fn().mockResolvedValue({
+      activeCarriageCount: 2,
+      registeredGuestCount: 1,
+      carriageSizes: [1, 0],
+      registrationOpen: true,
+    });
+    const load = vi.fn()
+      .mockResolvedValueOnce(structuredClone(dashboard))
+      .mockResolvedValue({
+        ...structuredClone(dashboard),
+        event: { ...dashboard.event, compositionLocked: true },
+      });
+    render(<AdminShell dependencies={dependencies({ applyCarriageDistribution, load })} />);
 
     await screen.findByText('Иван Петров');
-    await user.click(screen.getByRole('button', { name: 'ЗАФИКСИРОВАТЬ СОСТАВ' }));
+    await user.click(screen.getByRole('button', { name: 'ПРИНЯТЬ РАСПРЕДЕЛЕНИЕ' }));
 
-    expect(lockComposition).toHaveBeenCalledWith('event-1');
+    expect(applyCarriageDistribution).toHaveBeenCalledWith('event-1', 2);
     expect(await screen.findByText('СОСТАВ ЗАФИКСИРОВАН')).toBeInTheDocument();
     expect(screen.getByText(/регистрация открыта/i)).toBeInTheDocument();
   });

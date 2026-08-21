@@ -20,3 +20,4 @@ describe('QuizPhaseTimer', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+

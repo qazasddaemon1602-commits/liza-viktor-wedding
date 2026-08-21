@@ -34,3 +34,4 @@ jobs:
       - name: Stop local Supabase database
         if: always()
         run: supabase stop --no-backup
+

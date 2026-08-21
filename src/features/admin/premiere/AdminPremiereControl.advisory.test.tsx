@@ -64,3 +64,4 @@ describe('AdminPremiereControl advisory readiness', () => {
     await waitFor(() => expect(deps.start).toHaveBeenCalledWith(eventId, 10));
   });
 });
+

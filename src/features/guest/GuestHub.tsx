@@ -1,4 +1,6 @@
 import type { BunkerMissionStage, GuestBunkerQuestState } from '../bunker/bunkerQuest.types';
+import { BunkerPlayerDashboard } from '../bunker/BunkerPlayerDashboard';
+import type { GuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
 import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
 import type { RegisteredGuest } from '../registration/registration.types';
 import { VirtualTicket } from '../registration/VirtualTicket';
@@ -9,6 +11,9 @@ type GuestHubProps = {
   guest: RegisteredGuest;
   activeCall: GuestCarriageCall | null;
   bunkerState?: GuestBunkerQuestState | null;
+  bunkerRuntime?: GuestBunkerRuntime | null;
+  bunkerRuntimeLoading?: boolean;
+  bunkerRuntimeError?: string;
   bunkerFeedback?: string;
   bunkerError?: string;
   bunkerSubmitting?: boolean;
@@ -47,6 +52,9 @@ export function GuestHub({
   guest,
   activeCall,
   bunkerState = null,
+  bunkerRuntime = null,
+  bunkerRuntimeLoading = false,
+  bunkerRuntimeError = '',
   bunkerFeedback = '',
   bunkerError = '',
   bunkerSubmitting = false,
@@ -58,6 +66,14 @@ export function GuestHub({
   onQuizVote,
   onQuizDeadline,
 }: GuestHubProps) {
+  if (bunkerRuntime?.status === 'active') {
+    return (
+      <main className="bunker-player-shell theme-bunker">
+        <BunkerPlayerDashboard runtime={bunkerRuntime} connectionError={bunkerRuntimeError} />
+      </main>
+    );
+  }
+
   const history = historyFrom(quizState);
   const quizStatus = quizState?.status === 'active'
     ? quizState.phase === 'voting' ? 'ИДЁТ ГОЛОСОВАНИЕ' : 'ПОКАЗЫВАЕМ РЕЗУЛЬТАТ'
@@ -73,6 +89,15 @@ export function GuestHub({
         </div>
         <span className="guest-hub-online">LIVE</span>
       </header>
+
+      {bunkerRuntimeLoading && (
+        <p className="guest-hub-notice" role="status">
+          Проверяем защищённый канал Бункера. Ваш билет и остальные активности остаются доступны.
+        </p>
+      )}
+      {bunkerRuntimeError && (
+        <p className="guest-hub-notice" role="alert">{bunkerRuntimeError}</p>
+      )}
 
       <section className="guest-hub-section guest-hub-ticket" aria-label="Мой билет">
         <div className="guest-hub-section-heading">
@@ -120,9 +145,9 @@ export function GuestHub({
           <a
             className="guest-hub-activity-link guest-event-action--mk"
             href="/mortal-kombat"
-            aria-label="MORTAL KOMBAT · УЧАСТВОВАТЬ"
+            aria-label="ПОСЛЕДНИЙ КРУГ · УЧАСТВОВАТЬ"
           >
-            <span>MORTAL KOMBAT</span>
+            <span>ПОСЛЕДНИЙ КРУГ</span>
             <strong>ОТКРЫТЬ АРЕНУ</strong>
             <p>Регистрация и статус турнира. После проверки вернитесь сюда.</p>
           </a>

@@ -326,3 +326,4 @@ The feature is successful when:
 5. Browser autoplay restrictions do not block the wedding flow.
 6. Critical sound files are available locally/under controlled hosting for event reliability.
 7. The site remains fully usable with audio disabled or unsupported.
+

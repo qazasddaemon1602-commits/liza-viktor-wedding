@@ -160,3 +160,4 @@ describe('subscribeToScreenEvents', () => {
     expect(callback).not.toHaveBeenCalled();
   });
 });
+

@@ -27,3 +27,4 @@ select ok(has_function_privilege('anon', 'public.get_quiz_state(text,text)', 'EX
 
 select * from finish();
 rollback;
+

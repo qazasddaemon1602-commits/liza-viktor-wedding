@@ -74,7 +74,7 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
     return (
       <main className="mk-screen-page">
         <section className="mk-screen-scene mk-screen-waiting">
-          <p className="eyebrow">MORTAL KOMBAT</p>
+          <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
           <h1>ГОТОВИМ АРЕНУ…</h1>
         </section>
       </main>
@@ -85,7 +85,7 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
     return (
       <main className="mk-screen-page">
         <section className="mk-screen-scene mk-screen-waiting">
-          <p className="eyebrow">MORTAL KOMBAT</p>
+          <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
           <h1>ТУРНИР ЕЩЁ НЕ ОТКРЫТ</h1>
         </section>
       </main>
@@ -105,7 +105,12 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
       ) : (
         <PublicBracket state={state} />
       )}
-      {degraded && <div className="screen-connection-indicator">СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ</div>}
+      {degraded && (
+        <div className="screen-connection-indicator" role="status" aria-live="polite">
+          СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ
+        </div>
+      )}
     </main>
   );
 }
+

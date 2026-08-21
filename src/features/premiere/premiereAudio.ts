@@ -124,3 +124,4 @@ export function createPremiereAudioController(
 
   return { arm, playCountdownTick, dispose };
 }
+

@@ -40,8 +40,9 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByRole('link', { name: 'ОТКРЫТЬ ТВ' })).toHaveAttribute('href', '/screen');
     expect(screen.getByRole('link', { name: 'РЕГИСТРАЦИЯ ГОСТЯ' })).toHaveAttribute('href', '/join');
     expect(screen.getByRole('link', { name: 'КВИЗ' })).toHaveAttribute('href', '/play');
-    expect(screen.getByRole('link', { name: 'MK' })).toHaveAttribute('href', '/mortal-kombat');
-    expect(screen.getByRole('link', { name: 'MK НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
+    expect(screen.getByRole('link', { name: 'ТУРНИР' })).toHaveAttribute('href', '/mortal-kombat');
+    expect(screen.getByRole('link', { name: 'ТУРНИР НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
+    expect(screen.queryByText(/\bMK\b/i)).not.toBeInTheDocument();
   });
 
   it('shows missing readiness as advisory telemetry rather than blockers', async () => {
@@ -76,7 +77,7 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByText('ПРЕМЬЕРА · НЕ НАСТРОЕНА')).toBeInTheDocument();
     expect(screen.getByText('ОТВЕТЫ ПАРЫ · 2 / 5')).toBeInTheDocument();
     expect(screen.getByText('БУНКЕР · ГОТОВ')).toBeInTheDocument();
-    expect(screen.getByText('MK · ГОТОВ')).toBeInTheDocument();
+    expect(screen.getByText('ТУРНИР · ГОТОВ')).toBeInTheDocument();
   });
 
   it('updates each status as a single projector heartbeat arrives', async () => {
@@ -227,6 +228,7 @@ describe('AdminRehearsalPanel', () => {
     expect(screen.getByText('ПРЕМЬЕРА · ГОТОВА')).toBeInTheDocument();
     expect(screen.getByText('ОТВЕТЫ ПАРЫ · ГОТОВЫ')).toBeInTheDocument();
     expect(screen.getByText('БУНКЕР · ГОТОВ')).toBeInTheDocument();
-    expect(screen.getByText('MK · ГОТОВ')).toBeInTheDocument();
+    expect(screen.getByText('ТУРНИР · ГОТОВ')).toBeInTheDocument();
   });
 });
+

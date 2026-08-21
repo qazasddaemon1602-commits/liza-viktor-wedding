@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
@@ -73,9 +73,11 @@ describe('ScreenAudioControl', () => {
     window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
     renderControl();
 
-    window.dispatchEvent(new CustomEvent(PREMIERE_MEDIA_AUTOPLAY_MUTED_EVENT, {
-      detail: { muted: true },
-    }));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(PREMIERE_MEDIA_AUTOPLAY_MUTED_EVENT, {
+        detail: { muted: true },
+      }));
+    });
 
     expect(siteAudio.isEnabled()).toBe(true);
     expect(screen.getByRole('button', { name: 'Включить звук' })).toBeInTheDocument();
@@ -87,3 +89,4 @@ describe('ScreenAudioControl', () => {
     window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
   });
 });
+

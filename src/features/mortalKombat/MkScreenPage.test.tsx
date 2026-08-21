@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MkTournamentProjection } from './mk.types';
 import { MkScreenPage, type MkScreenPageDependencies } from './MkScreenPage';
@@ -45,6 +45,7 @@ describe('MkScreenPage', () => {
     render(<MkScreenPage dependencies={dependencies(liveFight)} />);
 
     expect(await screen.findByText('ТЕКУЩИЙ БОЙ')).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveClass('mk-screen-page');
     expect(screen.getByRole('heading', { name: 'Сергей' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Максим' })).toBeInTheDocument();
     expect(screen.getByText('VS')).toBeInTheDocument();
@@ -53,8 +54,56 @@ describe('MkScreenPage', () => {
   it('shows the champion after the final result', async () => {
     render(<MkScreenPage dependencies={dependencies(completed)} />);
 
-    expect(await screen.findByText('FINISH HIM')).toBeInTheDocument();
+    expect(await screen.findByText('ПОСЛЕДНИЙ БОЙ ЗАВЕРШЁН')).toBeInTheDocument();
     expect(screen.getByText('ПОБЕДИТЕЛЬ')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Сергей' })).toBeInTheDocument();
+    expect(screen.queryByText(/FINISH HIM/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps the authoritative fight visible while reconnecting and clears the status after recovery', async () => {
+    let refresh: (() => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce(liveFight)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        ...liveFight,
+        players: [
+          { ...liveFight.players[0], displayName: 'Сергей Петров' },
+          liveFight.players[1],
+        ],
+      });
+
+    render(
+      <MkScreenPage
+        dependencies={{
+          load,
+          subscribeToRefresh: (callback) => {
+            refresh = callback;
+            return vi.fn();
+          },
+        }}
+      />,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Сергей' })).toBeInTheDocument();
+
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent('СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ');
+    expect(screen.getByRole('heading', { name: 'Сергей' })).toBeInTheDocument();
+
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Сергей Петров' })).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });
+

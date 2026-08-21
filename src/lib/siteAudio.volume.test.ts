@@ -29,6 +29,23 @@ function fakeAudioContext() {
 }
 
 describe('siteAudio volume', () => {
+  it('mirrors volume and mute settings to the shared sample bus', () => {
+    const samplePlayer = {
+      setMasterVolume: vi.fn(),
+      setMuted: vi.fn(),
+    };
+    const audio = createSiteAudioController({
+      storage: null,
+      samplePlayer,
+    });
+
+    audio.setVolume(0.42);
+    audio.setEnabled(false);
+
+    expect(samplePlayer.setMasterVolume).toHaveBeenLastCalledWith(0.42);
+    expect(samplePlayer.setMuted).toHaveBeenLastCalledWith(true);
+  });
+
   it('defaults to 75%, persists volume, scales cues and treats mute as silence', async () => {
     const values = new Map<string, string>();
     const storage = {
@@ -36,7 +53,11 @@ describe('siteAudio volume', () => {
       setItem: vi.fn((key: string, value: string) => values.set(key, value)),
     };
     const { context, ramps } = fakeAudioContext();
-    const audio = createSiteAudioController({ factory: () => context, storage });
+    const audio = createSiteAudioController({
+      factory: () => context,
+      storage,
+      hasSample: () => false,
+    });
 
     expect(audio.isEnabled()).toBe(true);
     expect(audio.getVolume()).toBe(0.75);
@@ -59,3 +80,4 @@ describe('siteAudio volume', () => {
     expect(audio.play('tap')).toBe(false);
   });
 });
+

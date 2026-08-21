@@ -108,7 +108,7 @@ export function MortalKombatPage({
     return (
       <main className="mk-page">
         <section className="mk-loading" aria-live="polite">
-          <p className="eyebrow">MORTAL KOMBAT</p>
+          <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
           <h1>ГОТОВИМ АРЕНУ…</h1>
         </section>
       </main>
@@ -119,7 +119,7 @@ export function MortalKombatPage({
     return (
       <main className="mk-page">
         <section className="mk-loading" role="alert">
-          <p className="eyebrow">MORTAL KOMBAT</p>
+          <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
           <h1>АРЕНА ПОКА НЕДОСТУПНА</h1>
           <p>{error}</p>
           <a className="mk-primary-button" href="/join">ПЕРЕЙТИ К РЕГИСТРАЦИИ</a>
@@ -132,7 +132,7 @@ export function MortalKombatPage({
     return (
       <main className="mk-page">
         <section className="mk-loading">
-          <p className="eyebrow">MORTAL KOMBAT</p>
+          <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
           <h1>РЕГИСТРАЦИЯ ЕЩЁ НЕ ОТКРЫТА</h1>
           <p>Как только админ откроет набор бойцов, здесь появится кнопка участия.</p>
         </section>
@@ -143,27 +143,45 @@ export function MortalKombatPage({
   return (
     <main className="mk-page">
       <header className="mk-hero">
+        <picture className="mk-hero-art" aria-hidden="true">
+          <source media="(max-width: 900px)" type="image/avif" srcSet="/images/tournament/arena-mobile-720.avif 720w, /images/tournament/arena-mobile-1086.avif 1086w" sizes="100vw" />
+          <source media="(max-width: 900px)" type="image/webp" srcSet="/images/tournament/arena-mobile-720.webp 720w, /images/tournament/arena-mobile-1086.webp 1086w" sizes="100vw" />
+          <source type="image/avif" srcSet="/images/tournament/arena-wide-960.avif 960w, /images/tournament/arena-wide-1672.avif 1672w" sizes="100vw" />
+          <source type="image/webp" srcSet="/images/tournament/arena-wide-960.webp 960w, /images/tournament/arena-wide-1672.webp 1672w" sizes="100vw" />
+          <img
+            src="/images/tournament/arena-wide.png"
+            alt=""
+            width="1672"
+            height="941"
+            data-testid="tournament-hero-art"
+            decoding="async"
+            fetchPriority="high"
+          />
+        </picture>
         <div className="mk-hero-copy">
           <div className="mk-hero-meta">
             <p className="eyebrow">ЛИЗА × ВИКТОР · 30.08.2026</p>
-            <span>WEDDING FIGHT ARCHIVE · EDITION 001</span>
+            <span>СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</span>
           </div>
-          <h1>MORTAL<br /><span>KOMBAT</span></h1>
-          <p className="mk-hero-note">ДО 16 БОЙЦОВ · ONE BRACKET · LIVE ARENA</p>
-        </div>
-
-        <div className="mk-hero-figure" aria-hidden="true">
-          <span className="mk-hero-figure__head" />
-          <span className="mk-hero-figure__body" />
-          <i>F-16</i>
+          <h1 aria-label="АРЕНА ПОСЛЕДНИЙ КРУГ"><span>АРЕНА</span><br />ПОСЛЕДНИЙ КРУГ</h1>
+          <p className="mk-hero-note">ДО 16 БОЙЦОВ · ОДНА СЕТКА · ЖИВОЙ ФИНАЛ</p>
         </div>
 
         <div className="mk-hero-counter">
-          <small>FIGHTERS LOCKED</small>
+          <small>УЧАСТНИКИ</small>
           <strong>{state.activeCount}</strong>
           <span>/ 16 БОЙЦОВ</span>
         </div>
       </header>
+
+      <section className="mk-editorial-intro" aria-labelledby="mk-editorial-intro-title">
+        <p className="eyebrow">АРХИВ 001 · ТЮМЕНЬ</p>
+        <h2 id="mk-editorial-intro-title">ТУРНИР КАК ЖИВОЙ АРХИВ ВЕЧЕРА</h2>
+        <p>
+          Имена гостей, жеребьёвка и каждый результат остаются главным содержанием арены.
+          Экран меняется вместе с ходом турнира и возвращается к текущему бою после потери связи.
+        </p>
+      </section>
 
       <MkSignupCard state={state} joining={joining} onJoin={() => void join()} />
       {error && <p className="mk-error" role="alert">{error}</p>}
@@ -171,3 +189,4 @@ export function MortalKombatPage({
     </main>
   );
 }
+

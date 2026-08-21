@@ -58,3 +58,4 @@ describe('CoupleAnswerRevealScene', () => {
     expect(screen.getByText('L × V · 30 AUG 2026')).toBeInTheDocument();
   });
 });
+

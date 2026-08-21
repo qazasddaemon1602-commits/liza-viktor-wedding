@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   BunkerMissionStage,
   BunkerPhase,
@@ -17,7 +18,7 @@ type BunkerQuestOwnerPanelProps = {
   onUnlock: () => void;
 };
 
-function phaseTitle(phase: BunkerPhase): string {
+export function bunkerPhaseTitle(phase: BunkerPhase): string {
   switch (phase) {
     case 'emergency': return 'ЭКСТРЕННОЕ СООБЩЕНИЕ';
     case 'dossier_1': return 'ДОСЬЕ · ЭТАП I';
@@ -66,6 +67,13 @@ export function BunkerQuestOwnerPanel({
   onForce,
   onUnlock,
 }: BunkerQuestOwnerPanelProps) {
+  const [unlockArmed, setUnlockArmed] = useState(false);
+  const [pendingFallback, setPendingFallback] = useState<{
+    kind: 'reset' | 'force';
+    carriageId: string;
+    label: string;
+    stage: BunkerMissionStage;
+  } | null>(null);
   const stage = currentStage(state.phase);
   const completeCount = stage
     ? state.teams.filter((team) => completedFor(team, stage)).length
@@ -83,7 +91,7 @@ export function BunkerQuestOwnerPanel({
       <div className="admin-bunker-quest__heading">
         <div>
           <p className="eyebrow">ПРОТОКОЛ БУНКЕРА</p>
-          <h3>{phaseTitle(state.phase)}</h3>
+          <h3>{bunkerPhaseTitle(state.phase)}</h3>
         </div>
         {stage && <strong>{completeCount} / {state.teams.length} ГОТОВО</strong>}
       </div>
@@ -91,7 +99,7 @@ export function BunkerQuestOwnerPanel({
       {state.phase === 'emergency' && (
         <div className="admin-bunker-quest__briefing">
           <p>Экстренное сообщение уже на экранах. Когда гости увидели смену маршрута — откройте личные досье.</p>
-          <button type="button" disabled={Boolean(busy)} onClick={onBegin}>
+          <button type="button" className="admin-bunker-stage-primary" data-variant="primary" disabled={Boolean(busy)} onClick={onBegin}>
             НАЧАТЬ КВЕСТ · ОТКРЫТЬ ДОСЬЕ
           </button>
         </div>
@@ -120,7 +128,9 @@ export function BunkerQuestOwnerPanel({
                           type="button"
                           disabled={Boolean(busy)}
                           aria-label={`СБРОСИТЬ · ${team.label}`}
-                          onClick={() => onReset(team.carriageId, stage)}
+                          onClick={() => setPendingFallback({
+                            kind: 'reset', carriageId: team.carriageId, label: team.label, stage,
+                          })}
                         >
                           СБРОСИТЬ
                         </button>
@@ -129,7 +139,9 @@ export function BunkerQuestOwnerPanel({
                           type="button"
                           disabled={Boolean(busy)}
                           aria-label={`ЗАВЕРШИТЬ ВРУЧНУЮ · ${team.label}`}
-                          onClick={() => onForce(team.carriageId, stage)}
+                          onClick={() => setPendingFallback({
+                            kind: 'force', carriageId: team.carriageId, label: team.label, stage,
+                          })}
                         >
                           ЗАВЕРШИТЬ ВРУЧНУЮ
                         </button>
@@ -154,13 +166,67 @@ export function BunkerQuestOwnerPanel({
         <p className="admin-bunker-quest__waiting">Ожидаем остальные вагоны. Переход остаётся под контролем ведущего.</p>
       )}
 
-      {state.phase === 'final' && !state.unlocked && (
-        <div className="admin-bunker-manual-unlock">
-          <p>Если телефоны или сеть мешают финальному вводу, откройте шлюз вручную. Это аварийный fallback.</p>
-          <button type="button" disabled={Boolean(busy)} onClick={onUnlock}>
-            ОТКРЫТЬ БУНКЕР ВРУЧНУЮ
-          </button>
+      {pendingFallback && (
+        <div className="admin-bunker-quest__confirmation" role="alert">
+          <strong>
+            {pendingFallback.kind === 'reset' ? 'СБРОСИТЬ ПРОГРЕСС ВАГОНА?' : 'ЗАВЕРШИТЬ ЭТАП ВРУЧНУЮ?'}
+          </strong>
+          <p>{pendingFallback.label} · действие сразу изменит серверное состояние команды.</p>
+          <div>
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => {
+                if (pendingFallback.kind === 'reset') {
+                  onReset(pendingFallback.carriageId, pendingFallback.stage);
+                } else {
+                  onForce(pendingFallback.carriageId, pendingFallback.stage);
+                }
+                setPendingFallback(null);
+              }}
+            >
+              {pendingFallback.kind === 'reset' ? 'ПОДТВЕРДИТЬ СБРОС' : 'ПОДТВЕРДИТЬ РУЧНОЕ ЗАВЕРШЕНИЕ'}
+            </button>
+            <button type="button" disabled={Boolean(busy)} onClick={() => setPendingFallback(null)}>
+              ОТМЕНА
+            </button>
+          </div>
         </div>
+      )}
+
+      {state.phase === 'final' && !state.unlocked && (
+        <section className="admin-bunker-danger admin-bunker-danger--quest" aria-label="Опасная команда ручного открытия">
+          <div>
+            <p className="eyebrow">ПОДТВЕРЖДАЕМАЯ ЗОНА</p>
+            <h4>РУЧНОЕ ОТКРЫТИЕ</h4>
+          </div>
+          <p>Если телефоны или сеть мешают финальному вводу, откройте шлюз вручную. Это аварийный fallback.</p>
+          {!unlockArmed ? (
+            <button type="button" disabled={Boolean(busy)} onClick={() => setUnlockArmed(true)}>
+              ОТКРЫТЬ БУНКЕР ВРУЧНУЮ
+            </button>
+          ) : (
+            <div className="admin-bunker-quest__confirmation" role="alert">
+              <strong>ОТКРЫТЬ БУНКЕР ВРУЧНУЮ?</strong>
+              <p>Доступ откроется для всех вагонов и изменит глобальное состояние квеста.</p>
+              <div>
+                <button
+                  type="button"
+                  disabled={Boolean(busy)}
+                  onClick={() => {
+                    onUnlock();
+                    setUnlockArmed(false);
+                  }}
+                >
+                  ПОДТВЕРДИТЬ РУЧНОЕ ОТКРЫТИЕ
+                </button>
+                <button type="button" disabled={Boolean(busy)} onClick={() => setUnlockArmed(false)}>
+                  ОТМЕНА
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       )}
 
       {state.phase === 'final' && state.unlocked && (
@@ -170,7 +236,8 @@ export function BunkerQuestOwnerPanel({
       {next && (
         <button
           type="button"
-          className="admin-bunker-next"
+          className="admin-bunker-next admin-bunker-stage-primary"
+          data-variant="primary"
           disabled={nextDisabled}
           onClick={() => onAdvance(next.phase)}
         >

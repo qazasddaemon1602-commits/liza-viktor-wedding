@@ -6,13 +6,11 @@
   grid-template-rows: auto 1fr auto;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: clamp(2rem, 5vw, 5rem);
+  box-sizing: border-box;
+  padding: 5vh 5vw;
   overflow: hidden;
   color: #d8d8d8;
   background-color: #0c0c0c;
-  background-image: 
-    radial-gradient(circle at 50% 50%, rgba(216, 216, 216, 0.05), transparent 80%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
   isolation: isolate;
 }
 
@@ -25,8 +23,62 @@
   pointer-events: none;
 }
 
+.bunker-emergency__artwork {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  display: block;
+  opacity: 0.36;
+  pointer-events: none;
+}
+
+.bunker-emergency__artwork img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  filter: grayscale(1) contrast(1.12) brightness(0.68);
+}
+
 .bunker-emergency__scan {
   display: none;
+}
+
+.bunker-emergency__blackout,
+.bunker-emergency__sync-tear {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.bunker-emergency__blackout {
+  background: #050505;
+  animation: bunker-blackout 800ms linear both;
+}
+
+.bunker-emergency__sync-tear {
+  z-index: 21;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(236, 232, 222, 0.84) 0 2px,
+    rgba(17, 18, 16, 0.96) 2px 7px
+  );
+  clip-path: inset(46% 0 46% 0);
+  animation: bunker-sync-tear 800ms steps(2, end) both;
+}
+
+@keyframes bunker-blackout {
+  0%, 76% { opacity: 1; visibility: visible; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+@keyframes bunker-sync-tear {
+  0%, 77%, 91%, 100% { opacity: 0; transform: translateX(0); }
+  78%, 84% { opacity: 0.72; transform: translateX(-1.8vw); }
+  85%, 90% { opacity: 0.38; transform: translateX(1.1vw); }
 }
 
 .bunker-emergency__header,
@@ -59,11 +111,6 @@
   height: 0.8rem;
   border: 1px solid #d8d8d8;
   background: transparent;
-  animation: bunker-blink 1s steps(2, start) infinite;
-}
-
-@keyframes bunker-blink {
-  to { visibility: hidden; }
 }
 
 .bunker-emergency__header strong {
@@ -98,6 +145,16 @@
   text-transform: uppercase;
   color: #d8d8d8;
   font-style: normal;
+}
+
+.bunker-emergency__title-reveal {
+  clip-path: inset(0 100% 0 0);
+  animation: bunker-title-reveal 760ms cubic-bezier(.2, .7, .2, 1) 800ms both;
+}
+
+@keyframes bunker-title-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
 }
 
 .bunker-emergency__timer-block {
@@ -239,41 +296,13 @@
   height: auto;
   opacity: 0.55;
   pointer-events: none;
-  animation: bunker-register-drift 9s ease-in-out infinite alternate;
 }
 
-.bunker-emergency__schematic-lines path {
-  fill: none;
-  stroke: rgba(233, 229, 219, 0.5);
-  stroke-width: 1.25;
-}
-
-.bunker-emergency__schematic-nodes circle,
-.bunker-emergency__schematic-nodes rect {
-  fill: none;
-  stroke: rgba(233, 229, 219, 0.6);
-  stroke-width: 1.25;
-}
-
-.bunker-emergency__schematic-target {
-  animation: bunker-line-shimmer 3.2s ease-in-out infinite;
-}
-
-.bunker-emergency__schematic-labels text {
-  fill: rgba(158, 154, 145, 0.8);
-  font-family: monospace;
-  font-size: 13px;
-  letter-spacing: 0.16em;
-}
-
-@keyframes bunker-register-drift {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(-3px, 2px, 0); }
-}
-
-@keyframes bunker-line-shimmer {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
+.bunker-emergency__schematic img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: grayscale(1) contrast(1.18);
 }
 
 @media (max-width: 1100px) {
@@ -284,9 +313,20 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .bunker-emergency__blackout,
+  .bunker-emergency__sync-tear,
+  .bunker-emergency__title-reveal,
   .bunker-emergency__schematic,
-  .bunker-emergency__schematic-target,
   .bunker-emergency__signal {
     animation: none;
+  }
+
+  .bunker-emergency__blackout,
+  .bunker-emergency__sync-tear {
+    display: none;
+  }
+
+  .bunker-emergency__title-reveal {
+    clip-path: none;
   }
 }

@@ -1,5 +1,8 @@
+import { BunkerResponsivePicture } from './BunkerResponsivePicture';
+
 type BunkerEmergencySceneProps = {
   remainingSeconds: number;
+  motionPreference?: 'full' | 'reduced';
 };
 
 function timerLabel(seconds: number): string {
@@ -9,11 +12,32 @@ function timerLabel(seconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
-export function BunkerEmergencyScene({ remainingSeconds }: BunkerEmergencySceneProps) {
+export function BunkerEmergencyScene({
+  remainingSeconds,
+  motionPreference = 'full',
+}: BunkerEmergencySceneProps) {
   const arrived = remainingSeconds <= 0;
+  const reducedMotion = motionPreference === 'reduced';
 
   return (
-    <section className="bunker-emergency" aria-live="assertive" data-testid="bunker-emergency-scene">
+    <section
+      className="bunker-emergency"
+      aria-live="assertive"
+      data-motion={motionPreference}
+      data-testid="bunker-emergency-scene"
+    >
+      <BunkerResponsivePicture
+        asset="train-tunnel"
+        className="bunker-emergency__artwork"
+        testId="bunker-emergency-artwork"
+        loading="eager"
+      />
+      {!reducedMotion && (
+        <>
+          <div className="bunker-emergency__blackout" aria-hidden="true" data-testid="bunker-blackout" />
+          <div className="bunker-emergency__sync-tear" aria-hidden="true" data-testid="bunker-sync-tear" />
+        </>
+      )}
       <div className="bunker-emergency__scan" aria-hidden="true" />
       <div className="bunker-emergency__frame" aria-hidden="true">
         <span className="bunker-emergency__corner bunker-emergency__corner--tl" />
@@ -30,33 +54,12 @@ export function BunkerEmergencyScene({ remainingSeconds }: BunkerEmergencySceneP
         <li>REG. 1602</li>
       </ul>
 
-      <svg
+      <BunkerResponsivePicture
+        asset="tunnel-map-master"
         className="bunker-emergency__schematic"
-        aria-hidden="true"
-        data-testid="bunker-route-schematic"
-        viewBox="0 0 640 160"
-        preserveAspectRatio="xMidYMid meet"
-        focusable="false"
-      >
-        <g className="bunker-emergency__schematic-lines">
-          <path d="M8 60 H240" />
-          <path d="M240 60 H632" strokeDasharray="6 8" />
-          <path d="M240 60 C 320 60, 340 120, 430 120 H612" />
-          <path d="M430 120 L 452 108 M430 120 L 452 132" />
-        </g>
-        <g className="bunker-emergency__schematic-nodes">
-          <circle cx="8" cy="60" r="4" />
-          <circle cx="240" cy="60" r="6" />
-          <circle cx="612" cy="120" r="9" className="bunker-emergency__schematic-target" />
-          <rect x="600" y="108" width="24" height="24" />
-        </g>
-        <g className="bunker-emergency__schematic-labels">
-          <text x="8" y="42">PT-01</text>
-          <text x="228" y="42">DIV-Δ</text>
-          <text x="470" y="104">SHELTER 09</text>
-          <text x="470" y="152">LN 30.00</text>
-        </g>
-      </svg>
+        testId="bunker-route-schematic"
+        sizes="(max-width: 1100px) 1px, 30vw"
+      />
 
       <header className="bunker-emergency__header">
         <span className="bunker-emergency__signal" aria-hidden="true" />
@@ -66,7 +69,7 @@ export function BunkerEmergencyScene({ remainingSeconds }: BunkerEmergencySceneP
 
       <div className="bunker-emergency__content">
         <p>ПОЕЗД ИЗМЕНИЛ МАРШРУТ.</p>
-        <h1>БУНКЕР</h1>
+        <h1 className="bunker-emergency__title-reveal">БУНКЕР</h1>
         <p>ЕДИНСТВЕННАЯ БЕЗОПАСНАЯ ТОЧКА</p>
 
         <div className="bunker-emergency__timer-block">

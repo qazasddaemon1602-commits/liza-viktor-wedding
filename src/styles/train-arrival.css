@@ -22,36 +22,36 @@
   content: "";
   position: absolute;
   inset: 2.2rem;
-  z-index: -1;
+  z-index: 4;
   border: 1px solid rgba(243, 236, 223, 0.13);
   pointer-events: none;
 }
 
 .train-arrival__wash {
   position: absolute;
-  z-index: -2;
+  z-index: 1;
   inset: 0;
   pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent 0 48%, color-mix(in srgb, var(--arrival-accent) 8%, transparent) 72%, transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0 48%,
+    color-mix(in srgb, var(--arrival-accent) 8%, transparent) 72%,
+    transparent 100%
+  );
   opacity: 0.85;
 }
 
-.train-arrival__speed-lines {
+.train-arrival__plate {
   position: absolute;
-  inset: 42% -12% auto 48%;
-  z-index: 0;
-  height: 26%;
-  opacity: 0.14;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0 1.8rem,
-    rgba(243, 236, 223, 0.42) 1.8rem 1.86rem,
-    transparent 1.86rem 4rem
-  );
-  transform: skewX(-18deg);
-  animation: train-speed-lines 1.8s linear infinite;
+  right: -3vw;
+  bottom: 6vh;
+  z-index: 2;
+  width: min(67vw, 88rem);
+  height: min(33vh, 25rem);
+  object-fit: cover;
+  object-position: 82% center;
   pointer-events: none;
+  animation: train-plate-in 900ms 90ms cubic-bezier(.2,.75,.2,1) both;
 }
 
 .train-arrival__meta,
@@ -138,322 +138,6 @@
   letter-spacing: 0.11em;
 }
 
-.train-arrival__stage {
-  position: absolute;
-  inset: auto 0 7.5vh;
-  z-index: 2;
-  height: min(35vh, 27rem);
-  pointer-events: none;
-  perspective: 1400px;
-}
-
-.train-arrival__track {
-  position: absolute;
-  inset: auto 0 0;
-  height: 4.8rem;
-  overflow: hidden;
-}
-
-.train-arrival__rail {
-  position: absolute;
-  left: -5%;
-  width: 110%;
-  height: 3px;
-  background: linear-gradient(90deg, rgba(243,236,223,0.12), rgba(243,236,223,0.58), rgba(243,236,223,0.14));
-  box-shadow: 0 0.35rem 0 rgba(0,0,0,0.22);
-}
-
-.train-arrival__rail--far { bottom: 2.7rem; opacity: 0.48; }
-.train-arrival__rail--near { bottom: 1.15rem; opacity: 0.88; }
-
-.train-arrival__sleepers {
-  position: absolute;
-  left: -8%;
-  right: -8%;
-  bottom: 0.35rem;
-  height: 3.35rem;
-  opacity: 0.42;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 5.3rem,
-    rgba(241, 228, 207, 0.52) 5.3rem 5.85rem,
-    transparent 5.85rem 8.4rem
-  );
-  transform: skewX(-24deg);
-  animation: train-sleepers 640ms linear infinite;
-}
-
-.train-arrival__train {
-  position: absolute;
-  right: -2vw;
-  bottom: 4.25rem;
-  width: min(70vw, 90rem);
-  height: min(17vw, 15.5rem);
-  display: flex;
-  flex-direction: row-reverse;
-  align-items: flex-end;
-  transform-origin: 70% 100%;
-  filter: drop-shadow(0 1.8rem 2rem rgba(0,0,0,0.34));
-  animation: train-enter 1.55s cubic-bezier(.13,.82,.19,1) both;
-}
-
-.train-arrival__locomotive {
-  position: relative;
-  flex: 0 0 27%;
-  height: 82%;
-  margin-left: 0.3rem;
-}
-
-.train-arrival__loco-body {
-  position: absolute;
-  inset: 20% 6% 4% 0;
-  overflow: hidden;
-  border: 1px solid rgba(243,236,223,0.34);
-  border-radius: 0.55rem 0.2rem 0.2rem 0.35rem;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.055), transparent 24%),
-    linear-gradient(90deg, #18251f 0%, #22362b 58%, #18251f 100%);
-}
-
-.train-arrival__loco-body::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 15%;
-  height: 2px;
-  background: var(--arrival-accent);
-  opacity: 0.9;
-}
-
-.train-arrival__loco-roof {
-  position: absolute;
-  left: 3%;
-  right: 19%;
-  top: 14%;
-  height: 10%;
-  border-radius: 50% 40% 0 0;
-  border-top: 2px solid rgba(243,236,223,0.38);
-  background: #111b17;
-}
-
-.train-arrival__pantograph {
-  position: absolute;
-  left: 23%;
-  top: -9%;
-  width: 34%;
-  height: 30%;
-  border-top: 2px solid rgba(243,236,223,0.45);
-}
-
-.train-arrival__pantograph i {
-  position: absolute;
-  bottom: 0;
-  width: 2px;
-  height: 100%;
-  background: rgba(243,236,223,0.42);
-  transform-origin: bottom;
-}
-
-.train-arrival__pantograph i:first-child { left: 22%; transform: rotate(32deg); }
-.train-arrival__pantograph i:last-child { right: 22%; transform: rotate(-32deg); }
-
-.train-arrival__windshield {
-  position: absolute;
-  top: 14%;
-  right: 5%;
-  width: 31%;
-  height: 32%;
-  display: grid;
-  grid-template-columns: 1fr 0.82fr;
-  gap: 0.22rem;
-  transform: skewX(-8deg);
-}
-
-.train-arrival__windshield i,
-.train-arrival__loco-side-window,
-.train-arrival__coach-windows i {
-  border: 1px solid rgba(243,236,223,0.22);
-  background:
-    linear-gradient(145deg, rgba(241,228,207,0.19), rgba(91,126,109,0.08) 56%, rgba(10,17,14,0.5));
-  box-shadow: inset 0 0 1.2rem rgba(0,0,0,0.16);
-}
-
-.train-arrival__loco-side-window {
-  position: absolute;
-  top: 17%;
-  left: 13%;
-  width: 21%;
-  height: 27%;
-}
-
-.train-arrival__loco-stripe {
-  position: absolute;
-  left: 7%;
-  right: 4%;
-  bottom: 30%;
-  height: 6%;
-  background: color-mix(in srgb, var(--arrival-accent) 82%, #f1e4cf);
-  opacity: 0.9;
-}
-
-.train-arrival__loco-monogram {
-  position: absolute;
-  left: 10%;
-  bottom: 10%;
-  color: rgba(241,228,207,0.72);
-  font-size: clamp(0.5rem, 0.7vw, 0.85rem);
-  letter-spacing: 0.18em;
-}
-
-.train-arrival__loco-nose {
-  position: absolute;
-  top: 28%;
-  right: -10%;
-  width: 24%;
-  height: 65%;
-  clip-path: polygon(0 0, 52% 5%, 100% 31%, 100% 86%, 72% 100%, 0 100%);
-  border-right: 1px solid rgba(243,236,223,0.35);
-  background: linear-gradient(90deg, #20342a, #14211b);
-}
-
-.train-arrival__headlight {
-  position: absolute;
-  right: 13%;
-  width: clamp(0.35rem, 0.55vw, 0.65rem);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: #f4dca7;
-  box-shadow: 0 0 1.1rem 0.42rem rgba(244,220,167,0.34);
-}
-
-.train-arrival__headlight--top { top: 27%; }
-.train-arrival__headlight--bottom { top: 58%; }
-
-.train-arrival__passenger-consist {
-  flex: 1 1 auto;
-  height: 72%;
-  display: flex;
-  align-items: flex-end;
-  min-width: 0;
-}
-
-.train-arrival__coach {
-  position: relative;
-  flex: 1 1 0;
-  height: 100%;
-  border: 1px solid rgba(243,236,223,0.27);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.055), transparent 22%),
-    linear-gradient(180deg, #203229, #18251f 78%);
-}
-
-.train-arrival__coach--featured {
-  border-top: 3px solid var(--arrival-accent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--arrival-accent) 27%, #203229), #18251f 78%);
-}
-
-.train-arrival__coach-roof {
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  top: -7%;
-  height: 8%;
-  border-radius: 60% 60% 0 0;
-  border-top: 1px solid rgba(243,236,223,0.3);
-  background: #111b17;
-}
-
-.train-arrival__coach-windows {
-  position: absolute;
-  left: 8%;
-  right: 16%;
-  top: 18%;
-  height: 34%;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: clamp(0.25rem, 0.55vw, 0.65rem);
-}
-
-.train-arrival__coach-door {
-  position: absolute;
-  right: 4.5%;
-  top: 15%;
-  width: 8%;
-  height: 58%;
-  border: 1px solid rgba(243,236,223,0.22);
-  border-bottom: 0;
-}
-
-.train-arrival__coach-mark {
-  position: absolute;
-  left: 7%;
-  bottom: 9%;
-  color: var(--arrival-accent);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1rem, 1.8vw, 2.25rem);
-  font-weight: 400;
-}
-
-.train-arrival__coupler {
-  flex: 0 0 clamp(0.45rem, 0.75vw, 0.85rem);
-  height: 4px;
-  margin-bottom: 18%;
-  background: rgba(243,236,223,0.34);
-}
-
-.train-arrival__coupler--coach { margin-inline: 0; }
-
-.train-arrival__bogie {
-  position: absolute;
-  bottom: -13%;
-  width: 22%;
-  height: 20%;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  border-top: 3px solid rgba(243,236,223,0.22);
-}
-
-.train-arrival__bogie--left { left: 10%; }
-.train-arrival__bogie--right { right: 10%; }
-.train-arrival__bogie--loco-left { left: 11%; }
-.train-arrival__bogie--loco-right { right: 13%; }
-
-.train-arrival__bogie i {
-  width: clamp(1rem, 1.55vw, 1.8rem);
-  aspect-ratio: 1;
-  border: 2px solid rgba(243,236,223,0.48);
-  border-top-color: var(--arrival-accent);
-  border-radius: 50%;
-  background: #0d1511;
-  animation: train-wheel 540ms linear infinite;
-}
-
-.train-arrival__steam {
-  position: absolute;
-  right: 1.5vw;
-  bottom: 39%;
-  width: min(22vw, 28rem);
-  height: 42%;
-  opacity: 0.35;
-}
-
-.train-arrival__steam i {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: clamp(2rem, 3vw, 4rem);
-  aspect-ratio: 2 / 1;
-  border-radius: 50%;
-  background: rgba(241,228,207,0.22);
-  animation: train-steam 1.75s ease-out infinite;
-}
-
-.train-arrival__steam i:nth-child(2) { animation-delay: 0.48s; }
-.train-arrival__steam i:nth-child(3) { animation-delay: 0.96s; }
-
 .train-arrival__destination {
   align-self: end;
   display: grid;
@@ -478,76 +162,52 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes train-enter {
-  0% { transform: translateX(-156vw) scale(0.98); }
-  75% { transform: translateX(1.1vw) scale(1); }
-  100% { transform: translateX(0) scale(1); }
-}
-
-@keyframes train-sleepers {
-  from { transform: translateX(0) skewX(-24deg); }
-  to { transform: translateX(-8.4rem) skewX(-24deg); }
-}
-
-@keyframes train-wheel { to { transform: rotate(360deg); } }
-
-@keyframes train-speed-lines {
-  from { transform: translateX(0) skewX(-18deg); }
-  to { transform: translateX(-10rem) skewX(-18deg); }
-}
-
-@keyframes train-steam {
-  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.55); }
-  28% { opacity: 0.42; }
-  100% { opacity: 0; transform: translate3d(-8rem, -3.8rem, 0) scale(2.4); }
+@keyframes train-plate-in {
+  from { opacity: 0; transform: translate3d(5vw, 1rem, 0) scale(1.015); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
 
 @media (max-width: 1100px) {
   .train-arrival__copy { width: 58vw; }
-  .train-arrival__train { width: 78vw; }
-  .train-arrival__passenger-consist .train-arrival__coach:last-child { display: none; }
+  .train-arrival__plate { width: 78vw; }
 }
 
 @media (max-width: 900px) {
   .train-arrival { padding: 1.4rem; }
   .train-arrival::before { inset: 0.75rem; }
+
   .train-arrival__copy {
     width: 100%;
     justify-items: center;
     text-align: center;
     transform: translateY(-10vh);
   }
+
   .train-arrival__copy h2 {
     max-width: 10ch;
     font-size: clamp(4rem, 15vw, 7rem);
   }
-  .train-arrival__stage {
-    bottom: 5vh;
-    height: 25vh;
-  }
-  .train-arrival__train {
-    width: 96vw;
-    height: 25vw;
+
+  .train-arrival__plate {
     right: -2vw;
+    bottom: 5vh;
+    width: 96vw;
+    height: 27vh;
+    object-position: 82% center;
   }
+
   .train-arrival__assignment { justify-content: center; }
   .train-arrival__destination { display: none; }
-  .train-arrival__speed-lines { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .train-arrival,
-  .train-arrival__speed-lines,
   .train-arrival__eyebrow,
   .train-arrival__copy h2,
   .train-arrival__assignment,
-  .train-arrival__train,
-  .train-arrival__sleepers,
-  .train-arrival__bogie i,
-  .train-arrival__steam i {
+  .train-arrival__plate {
     animation: none !important;
   }
 
-  .train-arrival__train { transform: none; }
-  .train-arrival__steam { opacity: 0.16; }
+  .train-arrival__plate { transform: none; }
 }

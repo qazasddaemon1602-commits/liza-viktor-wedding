@@ -1,17 +1,33 @@
 import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
+import { hasLocalAudioSource, type AudioCueId } from '../../lib/audioManifest';
+import { sampleAudio, type SampleAudioController } from '../../lib/sampleAudio';
 
 export type BunkerAudioController = {
   arm: () => Promise<boolean>;
   startAlarm: () => void;
   stopAlarm: () => void;
+  startAmbience: () => void;
+  stopAmbience: () => void;
+  playDoorUnlock: () => void;
   dispose: () => void;
 };
 
 type AudioContextLike = AudioContext;
 
-export function createBunkerAudioController(): BunkerAudioController {
+type BunkerAudioOptions = {
+  samplePlayer?: Pick<SampleAudioController, 'arm' | 'playCue' | 'stopCue'>;
+  hasSample?: (id: AudioCueId) => boolean;
+};
+
+export function createBunkerAudioController(options: BunkerAudioOptions = {}): BunkerAudioController {
+  const samplePlayer = options.samplePlayer ?? sampleAudio;
+  const hasSample = options.hasSample ?? hasLocalAudioSource;
   let context: AudioContextLike | null = null;
   let interval: number | null = null;
+  let sampleAlarmRequested = false;
+  let sampleAmbienceRequested = false;
+  let disposed = false;
+  let lifecycleRevision = 0;
   const activeOscillators = new Set<OscillatorNode>();
 
   const ensureContext = () => {
@@ -36,7 +52,9 @@ export function createBunkerAudioController(): BunkerAudioController {
   };
 
   const arm = async (): Promise<boolean> => {
+    if (disposed) return false;
     if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
+    if (hasSample('bunker.alarm')) return samplePlayer.arm();
     const ctx = ensureContext();
     if (!ctx) return false;
     try {
@@ -78,8 +96,17 @@ export function createBunkerAudioController(): BunkerAudioController {
   });
 
   const rearmFromProjectorControl = () => {
+    const revision = lifecycleRevision;
     void arm().then((armed) => {
-      if (armed && interval !== null) pulse();
+      if (!armed || disposed || revision !== lifecycleRevision) return;
+      if (sampleAlarmRequested) {
+        void samplePlayer.playCue('bunker.alarm', { loop: true, priority: 'major' });
+      } else if (interval !== null) {
+        pulse();
+      }
+      if (sampleAmbienceRequested && hasSample('bunker.ambience')) {
+        void samplePlayer.playCue('bunker.ambience', { loop: true, priority: 'scene' });
+      }
     });
   };
   window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
@@ -87,23 +114,56 @@ export function createBunkerAudioController(): BunkerAudioController {
   return {
     arm,
     startAlarm: () => {
+      if (disposed) return;
+      if (hasSample('bunker.alarm')) {
+        sampleAlarmRequested = true;
+        void samplePlayer.playCue('bunker.alarm', { loop: true, priority: 'major' });
+        return;
+      }
       if (interval !== null) return;
       pulse();
       interval = window.setInterval(pulse, 2200);
     },
     stopAlarm: () => {
+      sampleAlarmRequested = false;
+      if (hasSample('bunker.alarm')) samplePlayer.stopCue('bunker.alarm');
       if (interval !== null) window.clearInterval(interval);
       interval = null;
+      sampleAlarmRequested = false;
       stopActive();
     },
+    startAmbience: () => {
+      if (disposed) return;
+      if (!hasSample('bunker.ambience')) return;
+      sampleAmbienceRequested = true;
+      void samplePlayer.playCue('bunker.ambience', { loop: true, priority: 'scene' });
+    },
+    stopAmbience: () => {
+      sampleAmbienceRequested = false;
+      if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
+    },
+    playDoorUnlock: () => {
+      if (disposed) return;
+      if (!hasSample('bunker.door')) return;
+      void samplePlayer.playCue('bunker.door', { priority: 'major' });
+    },
     dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      lifecycleRevision += 1;
+      sampleAlarmRequested = false;
+      sampleAmbienceRequested = false;
       if (interval !== null) window.clearInterval(interval);
       interval = null;
       window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
       unsubscribeSettings();
+      if (hasSample('bunker.alarm')) samplePlayer.stopCue('bunker.alarm');
+      if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
+      if (hasSample('bunker.door')) samplePlayer.stopCue('bunker.door');
       stopActive();
       void context?.close();
       context = null;
     },
   };
 }
+

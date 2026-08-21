@@ -29,3 +29,4 @@ test('an open projector appears as advisory telemetry and exposes compact audio 
   await ownerContext.close();
   await screenContext.close();
 });
+

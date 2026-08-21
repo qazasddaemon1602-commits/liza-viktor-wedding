@@ -30,13 +30,12 @@
 .train-arrival__paper-grain {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  opacity: 0.32;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.3;
   pointer-events: none;
-  background:
-    repeating-linear-gradient(0deg, rgba(37, 39, 36, 0.018) 0 1px, transparent 1px 4px),
-    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.54), transparent 24%),
-    radial-gradient(circle at 74% 72%, rgba(49,72,58,0.06), transparent 22%);
   mix-blend-mode: multiply;
 }
 
@@ -44,17 +43,6 @@
   opacity: 0.64;
   background:
     linear-gradient(90deg, transparent 0 56%, color-mix(in srgb, var(--arrival-accent) 11%, transparent) 78%, transparent 100%);
-}
-
-.train-arrival--editorial .train-arrival__speed-lines {
-  inset: 39% -8% auto 57%;
-  opacity: 0.065;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0 1.9rem,
-    var(--wedding-graphite) 1.9rem 1.95rem,
-    transparent 1.95rem 4.25rem
-  );
 }
 
 .train-arrival--editorial .train-arrival__meta,
@@ -189,7 +177,8 @@
 .train-arrival__seal-emblem {
   width: clamp(4.5rem, 6.8vw, 7.5rem);
   height: auto;
-  color: color-mix(in srgb, var(--arrival-accent) 74%, var(--wedding-forest));
+  opacity: 0.82;
+  filter: saturate(0.78);
 }
 
 .train-arrival__editorial-seal > i {
@@ -218,38 +207,16 @@
   background: linear-gradient(90deg, rgba(37,39,36,0.08), rgba(37,39,36,0.28), rgba(37,39,36,0.08));
 }
 
-.train-arrival--editorial .train-arrival__stage {
-  bottom: 6vh;
-  height: min(33vh, 25rem);
-}
-
-.train-arrival--editorial .train-arrival__train {
+.train-arrival--editorial .train-arrival__plate {
   right: -3vw;
+  bottom: 6vh;
   width: min(67vw, 88rem);
-  filter: sepia(0.08) saturate(0.78) drop-shadow(0 1.55rem 1.8rem rgba(37,39,36,0.22));
-}
-
-.train-arrival--editorial .train-arrival__track {
-  opacity: 0.72;
-}
-
-.train-arrival--editorial .train-arrival__rail {
-  background: linear-gradient(90deg, rgba(37,39,36,0.08), rgba(37,39,36,0.56), rgba(37,39,36,0.12));
-}
-
-.train-arrival--editorial .train-arrival__sleepers {
-  opacity: 0.26;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 5.3rem,
-    rgba(37,39,36,0.55) 5.3rem 5.85rem,
-    transparent 5.85rem 8.4rem
-  );
-}
-
-.train-arrival--editorial .train-arrival__steam i {
-  border-color: rgba(49,72,58,0.13);
-  background: rgba(243,238,229,0.7);
+  height: min(33vh, 25rem);
+  object-position: 82% center;
+  opacity: 0.88;
+  filter: sepia(0.08) saturate(0.78) contrast(0.94) drop-shadow(0 1.55rem 1.8rem rgba(37,39,36,0.22));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.52) 16%, #000 34%);
+  mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.52) 16%, #000 34%);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -918,12 +885,12 @@
     font-size: clamp(3.2rem, 13vw, 5.5rem);
   }
 
-  .train-arrival--editorial .train-arrival__stage {
-    height: 27vh;
-  }
-
-  .train-arrival--editorial .train-arrival__train {
+  .train-arrival--editorial .train-arrival__plate {
     width: 94vw;
+    height: 27vh;
+    object-position: 82% center;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.7) 10%, #000 24%);
+    mask-image: linear-gradient(90deg, transparent 0, rgba(0,0,0,0.7) 10%, #000 24%);
   }
 
   .quiz-screen-editorial-meta,

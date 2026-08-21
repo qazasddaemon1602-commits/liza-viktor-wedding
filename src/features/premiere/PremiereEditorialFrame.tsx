@@ -15,3 +15,4 @@ export function PremiereEditorialFrame({ index = 'PRM · 01' }: PremiereEditoria
     </div>
   );
 }
+

@@ -65,3 +65,4 @@ describe('QuizScreenScene', () => {
     expect(screen.getByText('WEDDING EDITION · LV')).toBeInTheDocument();
   });
 });
+

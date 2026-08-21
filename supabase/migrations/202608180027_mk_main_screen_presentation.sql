@@ -194,3 +194,4 @@ $$;
 
 revoke all on function public.get_mk_tournament_state(text, text) from public;
 grant execute on function public.get_mk_tournament_state(text, text) to anon, authenticated;
+

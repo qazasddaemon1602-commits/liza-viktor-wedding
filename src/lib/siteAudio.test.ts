@@ -33,6 +33,57 @@ function fakeAudioContext() {
 }
 
 describe('siteAudio', () => {
+  it('arms both acquired-sample and pending fallback paths from the same gesture', async () => {
+    const { context, starts } = fakeAudioContext();
+    context.state = 'suspended';
+    context.resume = vi.fn(async () => { context.state = 'running'; });
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn().mockResolvedValue('played'),
+      stopCue: vi.fn(),
+      setMasterVolume: vi.fn(),
+      setMuted: vi.fn(),
+    };
+    const audio = createSiteAudioController({
+      factory: () => context,
+      storage: null,
+      samplePlayer,
+      hasSample: (id) => id === 'ui.tap',
+    });
+
+    await expect(audio.arm()).resolves.toBe(true);
+    expect(samplePlayer.arm).toHaveBeenCalledTimes(1);
+    expect(context.resume).toHaveBeenCalledTimes(1);
+    expect(audio.isArmed()).toBe(true);
+    expect(audio.play('tap')).toBe(true);
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.tap', { priority: 'ui' });
+    expect(starts).toHaveLength(0);
+  });
+
+  it('does not report a local cue playable when only the fallback path armed', async () => {
+    const { context, starts } = fakeAudioContext();
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(false),
+      playCue: vi.fn().mockResolvedValue('failed'),
+      stopCue: vi.fn(),
+      setMasterVolume: vi.fn(),
+      setMuted: vi.fn(),
+    };
+    const audio = createSiteAudioController({
+      factory: () => context,
+      storage: null,
+      samplePlayer,
+      hasSample: (id) => id === 'ui.tap',
+      now: () => 1_000,
+    });
+
+    await expect(audio.arm()).resolves.toBe(true);
+    expect(audio.play('tap')).toBe(false);
+    expect(samplePlayer.playCue).not.toHaveBeenCalled();
+    expect(audio.play('select')).toBe(true);
+    expect(starts.length).toBeGreaterThan(0);
+  });
+
   it('defaults on, respects mute, and suppresses UI cues during a major scene', async () => {
     const { context, starts } = fakeAudioContext();
     const storage = {
@@ -43,6 +94,7 @@ describe('siteAudio', () => {
       factory: () => context,
       storage,
       now: () => 1000,
+      hasSample: () => false,
     });
 
     expect(audio.isEnabled()).toBe(true);
@@ -60,3 +112,4 @@ describe('siteAudio', () => {
     expect(storage.setItem).toHaveBeenCalledWith('love-story-live:sound-enabled', 'off');
   });
 });
+

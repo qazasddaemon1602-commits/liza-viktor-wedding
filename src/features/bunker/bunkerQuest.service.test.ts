@@ -31,6 +31,7 @@ const guestActive = {
     hobby: 'ШАХМАТЫ',
     baggage: 'АПТЕЧКА',
     hiddenFact: 'ЗНАЕТ АЗБУКУ МОРЗЕ',
+    abilityTags: ['technical', 'analytical'],
   },
   team: {
     carriageNumber: 3,
@@ -55,7 +56,7 @@ describe('Bunker quest service', () => {
       status: 'active',
       phase: 'mission_a',
       remainingSeconds: 1680,
-      dossier: { profession: 'АРХИТЕКТОР' },
+      dossier: { profession: 'АРХИТЕКТОР', abilityTags: ['technical', 'analytical'] },
       team: { carriageNumber: 3, completed: false },
     });
 
@@ -77,6 +78,7 @@ describe('Bunker quest service', () => {
         hobby: null,
         baggage: null,
         hiddenFact: null,
+        abilityTags: ['technical'],
       },
       team: null,
     });

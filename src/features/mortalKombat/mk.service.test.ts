@@ -105,3 +105,4 @@ describe('Mortal Kombat service', () => {
     expect(result).toMatchObject({ registrationStatus: 'waitlist', waitlistPosition: 1 });
   });
 });
+

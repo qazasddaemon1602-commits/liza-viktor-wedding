@@ -374,3 +374,4 @@ git commit -m "test: verify wedding visual layouts on phone and TV"
 - The stale `event-day-polish.css` conflicts with the approved monochrome Bunker direction and is explicitly removed rather than imported.
 - No proprietary font or copied reference asset is required.
 - Train arrival, quiz/reveals, MK, Bunker, and Premiere remain out of this first implementation slice and will receive separate plans after this slice is green.
+

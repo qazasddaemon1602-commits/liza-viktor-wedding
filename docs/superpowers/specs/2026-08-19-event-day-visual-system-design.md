@@ -439,3 +439,4 @@ The redesign is accepted when:
 - all existing scene priority, synchronization, security, reset, late-guest, and owner-control behavior remains unchanged;
 - `prefers-reduced-motion`, 390 px admin/mobile behavior, and 1920×1080 TV behavior remain verified;
 - full unit/build/E2E test suites pass after each merged visual slice.
+

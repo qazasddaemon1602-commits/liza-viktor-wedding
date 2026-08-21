@@ -123,7 +123,7 @@ export function RegistrationPage({
 
   if (status === 'ticket' && registeredGuest) {
     return (
-      <main className="registration-shell registration-shell--ticket">
+      <main className="registration-shell registration-ticket-surface registration-shell--ticket">
         <section className="registration-success" aria-live="polite">
           <p className="eyebrow">ДОБРО ПОЖАЛОВАТЬ В СОСТАВ</p>
           <VirtualTicket guest={registeredGuest} />
@@ -135,7 +135,7 @@ export function RegistrationPage({
 
   if (status === 'routing') {
     return (
-      <main className="registration-shell">
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-routing" aria-live="polite">
           <p className="eyebrow">РЕГИСТРАЦИЯ ЗАВЕРШЕНА</p>
           <h1>ФОРМИРУЕМ МАРШРУТ…</h1>
@@ -147,7 +147,7 @@ export function RegistrationPage({
 
   if (status === 'duplicate' && duplicateWarning) {
     return (
-      <main className="registration-shell">
+      <main className="registration-shell registration-ticket-surface">
         <section className="registration-card registration-duplicate" aria-live="polite">
           <p className="eyebrow">ПРОВЕРИМ ПАССАЖИРА</p>
           <h1>{duplicateWarning.publicName} уже зарегистрирован</h1>
@@ -163,67 +163,80 @@ export function RegistrationPage({
   }
 
   return (
-    <main className="registration-shell">
-      <section className="registration-card">
-        <header className="registration-heading">
-          <p className="eyebrow">ЛИЗА × ВИКТОР · 30.08.2026</p>
-          <h1>ВАШ БИЛЕТ ЖДЁТ</h1>
-          <p>Представьтесь — и сайт определит ваш вагон-команду на сегодняшний вечер.</p>
-        </header>
+    <main className="registration-shell registration-ticket-surface">
+      <section className="registration-card registration-card--form">
+        <div className="registration-card__body">
+          <header className="registration-heading">
+            <p className="eyebrow">ЛИЗА × ВИКТОР · 30.08.2026</p>
+            <h1>ВАШ БИЛЕТ ЖДЁТ</h1>
+            <p>Представьтесь — и сайт определит ваш вагон-команду на сегодняшний вечер.</p>
+          </header>
 
-        <form className="registration-form" onSubmit={submit} noValidate>
-          <label>
-            <span>Имя</span>
-            <input
-              autoComplete="given-name"
-              value={draft.firstName}
-              onChange={(event) => update('firstName', event.target.value)}
-              aria-invalid={Boolean(errors.firstName)}
-            />
-            {errors.firstName && <small role="alert">{errors.firstName}</small>}
-          </label>
+          <form className="registration-form" onSubmit={submit} noValidate>
+            <label>
+              <span>Имя</span>
+              <input
+                autoComplete="given-name"
+                value={draft.firstName}
+                onChange={(event) => update('firstName', event.target.value)}
+                aria-invalid={Boolean(errors.firstName)}
+              />
+              {errors.firstName && <small role="alert">{errors.firstName}</small>}
+            </label>
 
-          <label>
-            <span>Фамилия</span>
-            <input
-              autoComplete="family-name"
-              value={draft.lastName}
-              onChange={(event) => update('lastName', event.target.value)}
-              aria-invalid={Boolean(errors.lastName)}
-            />
-            {errors.lastName && <small role="alert">{errors.lastName}</small>}
-          </label>
+            <label>
+              <span>Фамилия</span>
+              <input
+                autoComplete="family-name"
+                value={draft.lastName}
+                onChange={(event) => update('lastName', event.target.value)}
+                aria-invalid={Boolean(errors.lastName)}
+              />
+              {errors.lastName && <small role="alert">{errors.lastName}</small>}
+            </label>
 
-          <label>
-            <span>С кем вы сегодня?</span>
-            <select
-              value={draft.affiliationType}
-              onChange={(event) => update('affiliationType', event.target.value)}
-              aria-invalid={Boolean(errors.affiliationType)}
-            >
-              <option value="">Выберите вариант</option>
-              {affiliationOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            {errors.affiliationType && <small role="alert">{errors.affiliationType}</small>}
-          </label>
+            <label>
+              <span>С кем вы сегодня?</span>
+              <select
+                value={draft.affiliationType}
+                onChange={(event) => update('affiliationType', event.target.value)}
+                aria-invalid={Boolean(errors.affiliationType)}
+              >
+                <option value="">Выберите вариант</option>
+                {affiliationOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              {errors.affiliationType && <small role="alert">{errors.affiliationType}</small>}
+            </label>
 
-          <label>
-            <span>Уточнение</span>
-            <input
-              placeholder="Друг Вити / подруга Лизы"
-              value={draft.affiliationDetail}
-              onChange={(event) => update('affiliationDetail', event.target.value)}
-            />
-          </label>
+            <label>
+              <span>Уточнение</span>
+              <input
+                placeholder="Друг Вити / подруга Лизы"
+                value={draft.affiliationDetail}
+                onChange={(event) => update('affiliationDetail', event.target.value)}
+              />
+            </label>
 
-          {submitError && <p className="registration-error" role="alert">{submitError}</p>}
+            {submitError && <p className="registration-error" role="alert">{submitError}</p>}
 
-          <button className="registration-submit" type="submit" disabled={status === 'registering'}>
-            {status === 'registering' ? 'РЕГИСТРИРУЕМ…' : 'ПОЛУЧИТЬ БИЛЕТ'}
-          </button>
-        </form>
+            <button className="registration-submit" type="submit" disabled={status === 'registering'}>
+              {status === 'registering' ? 'РЕГИСТРИРУЕМ…' : 'ПОЛУЧИТЬ БИЛЕТ'}
+            </button>
+          </form>
+        </div>
+
+        <aside className="registration-card__stub" aria-hidden="true">
+          <span>BOARDING PASS</span>
+          <strong>LV</strong>
+          <dl>
+            <div><dt>DATE</dt><dd>30 AUG 2026</dd></div>
+            <div><dt>ROUTE</dt><dd>TYUMEN</dd></div>
+            <div><dt>CLASS</dt><dd>GUEST</dd></div>
+          </dl>
+          <span>ADMIT ONE</span>
+        </aside>
       </section>
     </main>
   );

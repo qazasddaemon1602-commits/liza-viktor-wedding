@@ -38,3 +38,4 @@ describe('playWithMutedFallback', () => {
     expect(play).toHaveBeenCalledTimes(1);
   });
 });
+

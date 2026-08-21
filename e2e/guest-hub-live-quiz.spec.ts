@@ -101,3 +101,4 @@ test('open guest hub receives live quiz, vote, results and closed-round history'
   await ownerContext.close();
   await guestContext.close();
 });
+

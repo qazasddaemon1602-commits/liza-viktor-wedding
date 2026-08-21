@@ -38,3 +38,4 @@ Visual-only continuation of the approved event-day design system.
 4. Add/adjust Full HD layout E2E only where it validates observable event-screen constraints.
 5. Run typecheck, full unit suite, production build and full E2E.
 6. Review diff for forbidden changes: no Supabase/migrations/services, no scene-priority changes, no owner controls on `/screen`, no MK/Bunker/Premiere logic changes.
+

@@ -62,3 +62,4 @@ describe('MK realtime refresh', () => {
     expect(channel.unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
+

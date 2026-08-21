@@ -34,6 +34,8 @@ export function PremierePlayer({
 }: PremierePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const configuredSourceRef = useRef<string | null>(null);
+  const sourceUsesHlsJsRef = useRef(false);
   const playedSourceRef = useRef<string | null>(null);
   const wasPlayingRef = useRef(false);
   const [sourceReadyVersion, setSourceReadyVersion] = useState(0);
@@ -56,8 +58,6 @@ export function PremierePlayer({
 
   useEffect(() => {
     let active = true;
-    playedSourceRef.current = null;
-    wasPlayingRef.current = false;
 
     if (!needsPremiereMediaResolution(src)) {
       setPlayableSrc(src);
@@ -86,17 +86,28 @@ export function PremierePlayer({
     const video = videoRef.current;
     if (!video) return;
 
-    setAutoplayMuted(false);
-    reportPremiereMediaAutoplayMuted(false);
-    hlsRef.current?.destroy();
-    hlsRef.current = null;
-    playedSourceRef.current = null;
-    wasPlayingRef.current = false;
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
+    const previousSource = configuredSourceRef.current;
+    const sourceChanged = previousSource !== playableSrc;
+    const shouldReattachHlsJs = !sourceChanged && sourceUsesHlsJsRef.current;
+    if (!sourceChanged && !shouldReattachHlsJs) return;
 
-    if (!playableSrc) return;
+    if (sourceChanged) {
+      configuredSourceRef.current = playableSrc;
+      sourceUsesHlsJsRef.current = false;
+      setAutoplayMuted(false);
+      reportPremiereMediaAutoplayMuted(false);
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+      playedSourceRef.current = null;
+      wasPlayingRef.current = false;
+      if (previousSource) video.pause();
+      video.removeAttribute('src');
+    }
+
+    if (!playableSrc) {
+      if (sourceChanged) video.load();
+      return;
+    }
 
     if (isHlsSource(playableSrc)) {
       const nativeManagedHls = (
@@ -105,6 +116,7 @@ export function PremierePlayer({
       );
 
       if (!nativeManagedHls && Hls.isSupported()) {
+        sourceUsesHlsJsRef.current = true;
         const hls = new Hls({
           enableWorker: true,
           startLevel: -1,
@@ -124,6 +136,8 @@ export function PremierePlayer({
         };
       }
     }
+
+    if (!sourceChanged) return;
 
     video.src = playableSrc;
     video.load();
@@ -165,8 +179,10 @@ export function PremierePlayer({
         playedSourceRef.current = playableSrc;
         wasPlayingRef.current = true;
         void video.play().catch(() => {
-          if (playedSourceRef.current === playableSrc) playedSourceRef.current = null;
-          wasPlayingRef.current = false;
+          if (playedSourceRef.current === playableSrc) {
+            playedSourceRef.current = null;
+            wasPlayingRef.current = false;
+          }
         });
       }
     };
@@ -188,7 +204,7 @@ export function PremierePlayer({
       return;
     }
 
-    if (playedSourceRef.current === playableSrc && !video.paused) return;
+    if (playedSourceRef.current === playableSrc) return;
 
     playedSourceRef.current = playableSrc;
     wasPlayingRef.current = true;
@@ -199,8 +215,10 @@ export function PremierePlayer({
       setAutoplayMuted(true);
       reportPremiereMediaAutoplayMuted(true);
     }).catch(() => {
-      if (playedSourceRef.current === playableSrc) playedSourceRef.current = null;
-      wasPlayingRef.current = false;
+      if (playedSourceRef.current === playableSrc) {
+        playedSourceRef.current = null;
+        wasPlayingRef.current = false;
+      }
     });
   }, [shouldPlay, playableSrc, sourceReadyVersion]);
 
@@ -221,3 +239,4 @@ export function PremierePlayer({
     />
   );
 }
+

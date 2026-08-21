@@ -87,3 +87,4 @@ describe('MatchEditor with automatic byes', () => {
     expect(screen.queryByRole('button', { name: 'ИСПРАВИТЬ' })).not.toBeInTheDocument();
   });
 });
+

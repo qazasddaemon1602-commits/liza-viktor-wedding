@@ -12,6 +12,7 @@ import type {
   SubmitBunkerFinalResult,
   SubmitBunkerMissionResult,
 } from './bunkerQuest.types';
+import { BUNKER_ABILITY_TAGS, type BunkerAbilityTag } from './gamePlanner';
 
 const PHASES = new Set<BunkerPhase>([
   'emergency',
@@ -88,6 +89,14 @@ function stringArray(value: unknown): string[] {
   return value as string[];
 }
 
+function abilityTags(value: unknown): BunkerAbilityTag[] {
+  const allowed = new Set<string>(BUNKER_ABILITY_TAGS);
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string' || !allowed.has(entry))) {
+    throw new Error('Unexpected Bunker ability tags');
+  }
+  return value as BunkerAbilityTag[];
+}
+
 function parseDossier(value: unknown): GuestBunkerDossier | null {
   if (value === null) return null;
   if (!record(value)) throw new Error('Unexpected Bunker quest dossier');
@@ -98,6 +107,7 @@ function parseDossier(value: unknown): GuestBunkerDossier | null {
     hobby: nullableString(value.hobby, 'hobby'),
     baggage: nullableString(value.baggage, 'baggage'),
     hiddenFact: nullableString(value.hiddenFact, 'hidden fact'),
+    abilityTags: abilityTags(value.abilityTags),
   };
 }
 

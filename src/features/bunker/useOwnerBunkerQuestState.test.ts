@@ -75,3 +75,4 @@ describe('useOwnerBunkerQuestState', () => {
     expect(result.current.warning).toMatch(/синхронизац/i);
   });
 });
+

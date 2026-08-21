@@ -160,3 +160,4 @@ describe('AdminPremiereControl live projector telemetry', () => {
     expect(screen.getByRole('button', { name: 'НАЧАТЬ ПРЕМЬЕРУ' })).toBeEnabled();
   });
 });
+

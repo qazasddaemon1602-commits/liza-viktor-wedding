@@ -1,8 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+// @ts-expect-error Vitest runs this contract test in Node; the browser app intentionally omits Node types.
+import { readFileSync } from 'node:fs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OwnerBunkerQuestState } from '../../bunker/bunkerQuest.types';
 import { BunkerQuestOwnerPanel } from './BunkerQuestOwnerPanel';
+
+const testRuntime = globalThis as typeof globalThis & { process: { cwd: () => string } };
+let stylesheet: HTMLStyleElement | null = null;
+
+afterEach(() => {
+  stylesheet?.remove();
+  stylesheet = null;
+});
 
 const state: Extract<OwnerBunkerQuestState, { status: 'active' }> = {
   status: 'active',
@@ -41,7 +51,7 @@ describe('BunkerQuestOwnerPanel', () => {
     expect(screen.getByRole('button', { name: 'ОТКРЫТЬ ЗАДАНИЕ B' })).toBeDisabled();
   });
 
-  it('allows owner force-complete/reset fallbacks per carriage', async () => {
+  it('requires explicit confirmation for owner force-complete/reset fallbacks per carriage', async () => {
     const user = userEvent.setup();
     const onForce = vi.fn();
     const onReset = vi.fn();
@@ -57,13 +67,17 @@ describe('BunkerQuestOwnerPanel', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'ЗАВЕРШИТЬ ВРУЧНУЮ · ВАГОН №5' }));
+    expect(onForce).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ РУЧНОЕ ЗАВЕРШЕНИЕ' }));
     expect(onForce).toHaveBeenCalledWith('carriage-5', 'mission_a');
 
     await user.click(screen.getByRole('button', { name: 'СБРОСИТЬ · ВАГОН №1' }));
+    expect(onReset).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ СБРОС' }));
     expect(onReset).toHaveBeenCalledWith('carriage-1', 'mission_a');
   });
 
-  it('shows the manual unlock fallback during the final phase', async () => {
+  it('requires danger-zone confirmation before the manual unlock fallback', async () => {
     const user = userEvent.setup();
     const onUnlock = vi.fn();
     render(
@@ -83,6 +97,40 @@ describe('BunkerQuestOwnerPanel', () => {
 
     expect(screen.getAllByText('42')).toHaveLength(5);
     await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ БУНКЕР ВРУЧНУЮ' }));
+    expect(onUnlock).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('ОТКРЫТЬ БУНКЕР ВРУЧНУЮ?');
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ РУЧНОЕ ОТКРЫТИЕ' }));
     expect(onUnlock).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives stage and fallback controls a real primary hierarchy and mobile-safe sizing', () => {
+    stylesheet = document.createElement('style');
+    stylesheet.textContent = [
+      readFileSync(`${testRuntime.process.cwd()}/src/styles/bunker-quest.css`, 'utf8'),
+      readFileSync(`${testRuntime.process.cwd()}/src/styles/admin-bunker.css`, 'utf8'),
+    ].join('\n');
+    document.head.append(stylesheet);
+
+    render(
+      <BunkerQuestOwnerPanel
+        state={state}
+        onBegin={vi.fn()}
+        onAdvance={vi.fn()}
+        onReset={vi.fn()}
+        onForce={vi.fn()}
+        onUnlock={vi.fn()}
+      />,
+    );
+
+    const primary = screen.getByRole('button', { name: 'ОТКРЫТЬ ЗАДАНИЕ B' });
+    const fallback = screen.getByRole('button', { name: 'СБРОСИТЬ · ВАГОН №1' });
+    const operationalCopy = screen.getByText(/Переход остаётся под контролем ведущего/);
+
+    expect(getComputedStyle(primary).minHeight).toBe('44px');
+    expect(getComputedStyle(primary).fontSize).toBe('12px');
+    expect(getComputedStyle(primary).backgroundColor).toBe('rgb(236, 232, 222)');
+    expect(getComputedStyle(fallback).minHeight).toBe('44px');
+    expect(getComputedStyle(fallback).fontSize).toBe('12px');
+    expect(getComputedStyle(operationalCopy).fontSize).toBe('16px');
   });
 });

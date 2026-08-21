@@ -29,3 +29,4 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-sync-warning::before { animation: none; }
 }
+

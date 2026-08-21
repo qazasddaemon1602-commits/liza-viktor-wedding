@@ -377,3 +377,4 @@ Commit message: `test: cover guest hub timed live quiz flow`
 PR title: `feat: add guest hub and timed live quiz`
 
 PR body must state the exact final verification counts/results and note that full E2E was intentionally run once as the merge gate, per the approved faster-development workflow.
+

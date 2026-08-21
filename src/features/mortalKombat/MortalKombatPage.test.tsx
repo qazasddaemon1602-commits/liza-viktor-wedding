@@ -116,4 +116,35 @@ describe('MortalKombatPage', () => {
     expect(load).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
   });
+
+  it('uses an original wedding arena identity without official game copy', async () => {
+    render(<MortalKombatPage dependencies={dependencies()} />);
+
+    expect(await screen.findByRole('heading', { name: 'АРЕНА ПОСЛЕДНИЙ КРУГ' })).toBeInTheDocument();
+    expect(screen.getByText('СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ')).toBeInTheDocument();
+    expect(screen.queryByText(/MORTAL KOMBAT/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/FINISH HIM/i)).not.toBeInTheDocument();
+  });
+
+  it('art-directs the tournament hero for desktop and mobile without replacing live copy', async () => {
+    render(<MortalKombatPage dependencies={dependencies()} />);
+
+    const artwork = await screen.findByTestId('tournament-hero-art');
+    const picture = artwork.closest('picture');
+    expect(artwork).toHaveAttribute('src', '/images/tournament/arena-wide.png');
+    expect(artwork).toHaveAttribute('alt', '');
+    expect(artwork).toHaveAttribute('width', '1672');
+    expect(artwork).toHaveAttribute('height', '941');
+    expect(picture).toHaveAttribute('aria-hidden', 'true');
+    expect(picture?.querySelector('source[media="(max-width: 900px)"][type="image/avif"]')).toHaveAttribute(
+      'srcset',
+      '/images/tournament/arena-mobile-720.avif 720w, /images/tournament/arena-mobile-1086.avif 1086w',
+    );
+    expect(picture?.querySelector('source[type="image/avif"]:not([media])')).toHaveAttribute(
+      'srcset',
+      '/images/tournament/arena-wide-960.avif 960w, /images/tournament/arena-wide-1672.avif 1672w',
+    );
+    expect(screen.getByRole('heading', { name: 'АРЕНА ПОСЛЕДНИЙ КРУГ' })).toBeInTheDocument();
+  });
 });
+

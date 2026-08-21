@@ -3,6 +3,8 @@ import type {
   BunkerMissionStage,
   GuestBunkerQuestState,
 } from './bunkerQuest.types';
+import type { BunkerAbilityTag } from './gamePlanner';
+import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
 
 type ActiveState = Extract<GuestBunkerQuestState, { status: 'active' }>;
 
@@ -29,6 +31,27 @@ function DossierRow({ label, value }: { label: string; value: string | null }) {
       <strong>{value ?? 'СКРЫТО ДО КОМАНДЫ ВЕДУЩЕГО'}</strong>
     </div>
   );
+}
+
+const ABILITY_LABELS: Record<BunkerAbilityTag, string> = {
+  technical: 'ТЕХНИЧЕСКИЙ СПЕЦИАЛИСТ',
+  medical: 'МЕДИЦИНСКИЙ СПЕЦИАЛИСТ',
+  communication: 'СПЕЦИАЛИСТ ПО СВЯЗИ',
+  bunker_knowledge: 'ЗНАНИЕ БУНКЕРА',
+  analytical: 'АНАЛИТИЧЕСКИЙ СПЕЦИАЛИСТ',
+};
+
+const CARRIAGE_EVIDENCE: readonly BunkerAsset[] = [
+  'evidence-01',
+  'evidence-02',
+  'evidence-03',
+  'evidence-04',
+  'evidence-05',
+];
+
+function missionEvidence(stage: BunkerMissionStage | undefined, carriageNumber: number): BunkerAsset {
+  if (stage === 'mission_b') return 'evidence-06';
+  return CARRIAGE_EVIDENCE[carriageNumber - 1] ?? 'evidence-06';
 }
 
 export function GuestBunkerQuest({
@@ -82,6 +105,10 @@ export function GuestBunkerQuest({
           </div>
           <DossierRow label="ПРОФЕССИЯ" value={state.dossier.profession} />
           <DossierRow label="ПРОФИЛЬ" value={state.dossier.profile} />
+          <DossierRow
+            label="ИГРОВЫЕ СПОСОБНОСТИ"
+            value={state.dossier.abilityTags.map((tag) => ABILITY_LABELS[tag]).join(' · ')}
+          />
           <DossierRow label="СОСТОЯНИЕ" value={state.dossier.health} />
           <DossierRow label="НАВЫК / ХОББИ" value={state.dossier.hobby} />
           <DossierRow label="БАГАЖ" value={state.dossier.baggage} />
@@ -104,6 +131,13 @@ export function GuestBunkerQuest({
             <span>{state.phase === 'mission_a' ? 'КОМАНДНАЯ ЗАДАЧА A' : 'КОМАНДНАЯ ЗАДАЧА B'}</span>
             <small>ВАГОН {state.team.carriageNumber}</small>
           </div>
+
+          <BunkerResponsivePicture
+            asset={missionEvidence(missionStage, state.team.carriageNumber)}
+            className="guest-bunker-mission__evidence"
+            testId="bunker-mission-evidence"
+            sizes="(max-width: 640px) calc(100vw - 72px), 608px"
+          />
 
           {state.team.completed ? (
             <div className="guest-bunker-success" role="status">
@@ -159,6 +193,12 @@ export function GuestBunkerQuest({
 
       {(state.phase === 'final' || state.phase === 'completed') && (
         <div className="guest-bunker-final">
+          <BunkerResponsivePicture
+            asset={state.final.unlocked ? 'bunker-door-open' : 'bunker-door-closed'}
+            className="guest-bunker-final__door"
+            testId="bunker-guest-door"
+            sizes="(max-width: 640px) calc(100vw - 72px), 608px"
+          />
           {state.team?.fragment && (
             <div className="guest-bunker-fragment guest-bunker-fragment--final">
               <span>ВАШ ФРАГМЕНТ · ВАГОН {state.team.carriageNumber}</span>
@@ -175,7 +215,7 @@ export function GuestBunkerQuest({
           ) : (
             <div className="guest-bunker-terminal">
               <p className="eyebrow">ФИНАЛЬНЫЙ ДОСТУП</p>
-              <h3>{state.remainingSeconds > 0 ? 'СОБЕРИТЕ ФРАГМЕНТЫ 1 → 5' : 'ПРИБЫТИЕ · ШЛЮЗ ЗАБЛОКИРОВАН'}</h3>
+              <h3>{state.remainingSeconds > 0 ? 'СОБЕРИТЕ ФРАГМЕНТЫ ВСЕХ ВАГОНОВ' : 'ПРИБЫТИЕ · ШЛЮЗ ЗАБЛОКИРОВАН'}</h3>
               <label>
                 <span>Общий код Бункера</span>
                 <input

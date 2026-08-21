@@ -74,3 +74,4 @@ describe('FinalFiveRevealScene', () => {
     expect(screen.queryByText('ОТВЕТ ЛИЗЫ')).not.toBeInTheDocument();
   });
 });
+

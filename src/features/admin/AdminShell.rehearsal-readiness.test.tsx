@@ -113,3 +113,4 @@ describe('AdminShell rehearsal readiness integration', () => {
     expect(screen.queryByText('ЕСТЬ БЛОКЕРЫ')).not.toBeInTheDocument();
   });
 });
+

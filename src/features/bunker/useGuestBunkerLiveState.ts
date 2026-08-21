@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
@@ -8,6 +8,7 @@ import {
   submitBunkerFinalCode,
   submitBunkerMission,
 } from './bunkerQuest.service';
+import { getGuestBunkerRuntime, type GuestBunkerRuntime } from './bunkerRuntime.service';
 import type {
   BunkerMissionStage,
   GuestBunkerQuestState,
@@ -18,6 +19,7 @@ import type {
 export type GuestBunkerLiveDependencies = {
   getDeviceKey: () => string;
   load: (deviceKey: string) => Promise<GuestBunkerQuestState>;
+  loadRuntime?: (deviceKey: string) => Promise<GuestBunkerRuntime>;
   submitMission: (
     deviceKey: string,
     stage: BunkerMissionStage,
@@ -45,6 +47,7 @@ function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
   return {
     getDeviceKey,
     load: (key) => getGuestBunkerQuest(rpcClient, eventSlug, key),
+    loadRuntime: (key) => getGuestBunkerRuntime(rpcClient, eventSlug, key),
     submitMission: (key, stage, answer) => submitBunkerMission(rpcClient, eventSlug, key, stage, answer),
     submitFinalCode: (key, code) => submitBunkerFinalCode(rpcClient, eventSlug, key, code),
     subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
@@ -61,19 +64,49 @@ export function useGuestBunkerLiveState({
     [dependencies, enabled, eventSlug],
   );
   const [state, setState] = useState<GuestBunkerQuestState | null>(null);
+  const [runtime, setRuntime] = useState<GuestBunkerRuntime | null>(null);
+  const [runtimeLoading, setRuntimeLoading] = useState(Boolean(enabled && deps?.loadRuntime));
+  const [runtimeError, setRuntimeError] = useState('');
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const reloadGeneration = useRef(0);
 
   const reload = useCallback(async () => {
     if (!enabled || !deps) return null;
+    const generation = ++reloadGeneration.current;
+    const isLatest = () => generation === reloadGeneration.current;
+    const deviceKey = deps.getDeviceKey();
+    if (deps.loadRuntime) setRuntimeLoading(true);
+
+    if (deps.loadRuntime) {
+      void Promise.resolve()
+        .then(() => deps.loadRuntime!(deviceKey))
+        .then((nextRuntime) => {
+          if (!isLatest()) return;
+          setRuntime(nextRuntime);
+          setRuntimeError('');
+        })
+        .catch(() => {
+          if (!isLatest()) return;
+          setRuntimeError('Не удалось обновить защищённый архив. Показываем последние полученные данные.');
+        })
+        .finally(() => {
+          if (isLatest()) setRuntimeLoading(false);
+        });
+    }
+
     try {
-      const next = await deps.load(deps.getDeviceKey());
-      setState(next);
-      setError('');
+      const next = await deps.load(deviceKey);
+      if (isLatest()) {
+        setState(next);
+        setError('');
+      }
       return next;
     } catch {
-      setError('Не удалось обновить Бункер. Повторяем подключение автоматически.');
+      if (isLatest()) {
+        setError('Не удалось обновить Бункер. Повторяем подключение автоматически.');
+      }
       return null;
     }
   }, [deps, enabled]);
@@ -82,7 +115,10 @@ export function useGuestBunkerLiveState({
     if (!enabled || !deps) return;
     void reload();
     const unsubscribe = deps.subscribeToRefresh?.(() => { void reload(); });
-    return () => unsubscribe?.();
+    return () => {
+      reloadGeneration.current += 1;
+      unsubscribe?.();
+    };
   }, [deps, enabled, reload]);
 
   useEffect(() => {
@@ -149,6 +185,9 @@ export function useGuestBunkerLiveState({
 
   return {
     state,
+    runtime,
+    runtimeLoading,
+    runtimeError,
     feedback,
     error,
     submitting,

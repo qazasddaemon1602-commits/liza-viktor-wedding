@@ -9,5 +9,12 @@ describe('WeddingRailwayEmblem', () => {
     const emblem = screen.getByTestId('wedding-railway-emblem');
     expect(emblem).toHaveClass('test-emblem');
     expect(emblem).toHaveAttribute('aria-hidden', 'true');
+    expect(emblem.querySelector('svg')).not.toBeInTheDocument();
+    expect(emblem.querySelector('source[type="image/avif"]')).toHaveAttribute(
+      'srcSet',
+      expect.stringContaining('/images/ticket/locomotive-engraving-480.avif'),
+    );
+    expect(emblem.querySelector('img')).toHaveAttribute('src', '/images/ticket/locomotive-engraving.png');
   });
 });
+

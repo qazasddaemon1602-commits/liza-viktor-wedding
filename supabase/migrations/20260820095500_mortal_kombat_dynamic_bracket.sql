@@ -200,3 +200,4 @@ $$;
 
 revoke all on function public.owner_finalize_mk_draw(uuid) from public, anon;
 grant execute on function public.owner_finalize_mk_draw(uuid) to authenticated;
+

@@ -141,3 +141,4 @@ describe('AdminQuizPanel', () => {
     expect(screen.getByText('ВИКТОР 40%')).toBeInTheDocument();
   });
 });
+

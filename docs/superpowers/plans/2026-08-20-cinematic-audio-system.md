@@ -86,3 +86,4 @@
 - [ ] Update PR body from design-only to implementation summary.
 - [ ] Merge after the above lean checks.
 - [ ] Publish Lovable and verify the production site manually by ear/eye on one `/screen` and one phone before making any further tuning changes.
+

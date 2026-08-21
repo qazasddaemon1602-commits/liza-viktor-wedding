@@ -114,3 +114,4 @@ describe('createAdminPageDependencies premiere wiring', () => {
     expect(realtimeChannel.unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
+

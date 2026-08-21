@@ -43,3 +43,4 @@ export function AdminQuizHistory({ history = [] }: AdminQuizHistoryProps) {
     </section>
   );
 }
+

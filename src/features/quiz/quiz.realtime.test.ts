@@ -69,3 +69,4 @@ describe('quiz realtime refresh', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
+

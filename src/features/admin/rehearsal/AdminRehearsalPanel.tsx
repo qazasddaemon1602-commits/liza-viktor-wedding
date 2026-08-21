@@ -12,8 +12,8 @@ const rehearsalLinks = [
   { href: '/screen', label: 'ОТКРЫТЬ ТВ', hint: 'Главный экран' },
   { href: '/join', label: 'РЕГИСТРАЦИЯ ГОСТЯ', hint: 'Тестовый телефон' },
   { href: '/play', label: 'КВИЗ', hint: 'Экран гостя' },
-  { href: '/mortal-kombat', label: 'MK', hint: 'Участие гостя' },
-  { href: '/mortal-kombat/screen', label: 'MK НА ТВ', hint: 'Отдельный экран' },
+  { href: '/mortal-kombat', label: 'ТУРНИР', hint: 'Участие гостя' },
+  { href: '/mortal-kombat/screen', label: 'ТУРНИР НА ТВ', hint: 'Отдельный экран' },
 ] as const;
 
 type RehearsalPremiereDependencies = {
@@ -173,7 +173,7 @@ export function AdminRehearsalPanel({
             <span className={premiereReady ? 'is-ready' : 'is-watch'}>{premiereLabel}</span>
             <span className={coupleReady ? 'is-ready' : 'is-watch'}>{coupleLabel}</span>
             <span className={bunkerActive ? 'is-watch' : 'is-ready'}>БУНКЕР · {bunkerActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
-            <span className={mortalKombatActive ? 'is-watch' : 'is-ready'}>MK · {mortalKombatActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
+            <span className={mortalKombatActive ? 'is-watch' : 'is-ready'}>ТУРНИР · {mortalKombatActive ? 'АКТИВЕН' : 'ГОТОВ'}</span>
           </div>
 
           {showEventStartReadiness && (
@@ -216,3 +216,4 @@ export function AdminRehearsalPanel({
     </section>
   );
 }
+

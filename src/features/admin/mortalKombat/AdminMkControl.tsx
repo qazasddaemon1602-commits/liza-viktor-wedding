@@ -83,7 +83,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
         if (active) setState(next);
       })
       .catch(() => {
-        if (active) setError('Не удалось загрузить Mortal Kombat.');
+        if (active) setError('Не удалось загрузить турнирную арену.');
       });
     return () => {
       active = false;
@@ -98,7 +98,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       await command();
       await refreshAll();
     } catch {
-      setError('Команда MK не выполнена. Проверьте состояние турнира и попробуйте ещё раз.');
+      setError('Команда турнира не выполнена. Проверьте состояние и попробуйте ещё раз.');
     } finally {
       setBusy(false);
     }
@@ -107,7 +107,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   if (!state) {
     return (
       <section className="admin-mk-control">
-        <p className="eyebrow">MORTAL KOMBAT</p>
+        <p className="eyebrow">АРЕНА · ПОСЛЕДНИЙ КРУГ</p>
         <h2>ЗАГРУЖАЕМ АРЕНУ…</h2>
         {error && <p role="alert">{error}</p>}
       </section>
@@ -120,7 +120,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
         <div className="admin-mk-heading">
           <div>
             <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
-            <h2>MORTAL KOMBAT · ПУЛЬТ</h2>
+            <h2>ТУРНИРНЫЙ ПУЛЬТ</h2>
           </div>
           <span>НЕ ОТКРЫТ</span>
         </div>
@@ -130,7 +130,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
           disabled={busy}
           onClick={() => void run(() => dependencies.open(eventId))}
         >
-          ОТКРЫТЬ РЕГИСТРАЦИЮ MK
+          ОТКРЫТЬ РЕГИСТРАЦИЮ ТУРНИРА
         </button>
       </section>
     );
@@ -149,7 +149,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <div className="admin-mk-heading">
         <div>
           <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
-          <h2>MORTAL KOMBAT · ПУЛЬТ</h2>
+          <h2>ТУРНИРНЫЙ ПУЛЬТ</h2>
         </div>
         <span>{state.state.toUpperCase()}</span>
       </div>
@@ -178,7 +178,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
                 disabled={busy}
                 onClick={() => void run(() => dependencies.close(eventId))}
               >
-                ЗАКРЫТЬ РЕГИСТРАЦИЮ MK
+                ЗАКРЫТЬ РЕГИСТРАЦИЮ ТУРНИРА
               </button>
             )}
           </div>
@@ -248,7 +248,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
         <>
           <div className="admin-mk-live-note">
             <strong>{state.state === 'complete' ? 'ТУРНИР ЗАВЕРШЁН' : 'СЕТКА ЗАФИКСИРОВАНА'}</strong>
-            <p>MK можно показывать на общем ТВ только в нужный момент. Отдельный MK-экран продолжает работать независимо.</p>
+            <p>Арену можно показывать на общем ТВ только в нужный момент. Отдельный экран турнира продолжает работать независимо.</p>
             <div className="admin-mk-actions">
               <button
                 type="button"
@@ -283,3 +283,4 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     </section>
   );
 }
+

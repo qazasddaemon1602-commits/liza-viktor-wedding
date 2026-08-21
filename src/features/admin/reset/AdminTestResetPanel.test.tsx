@@ -37,3 +37,4 @@ describe('AdminTestResetPanel', () => {
     expect(screen.getByText(/сохранено ответов: 30/i)).toBeInTheDocument();
   });
 });
+

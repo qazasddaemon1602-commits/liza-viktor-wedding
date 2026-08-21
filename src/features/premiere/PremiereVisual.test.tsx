@@ -36,3 +36,4 @@ describe('Premiere editorial visual layer', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+

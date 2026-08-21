@@ -72,3 +72,4 @@ export type MkJoinResult = {
   maxPlayers: 16;
   waitlistPosition: number | null;
 };
+

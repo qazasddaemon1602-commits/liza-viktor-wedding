@@ -39,3 +39,4 @@ describe('broadcastBunkerRefresh', () => {
     await expect(broadcastBunkerRefresh(client, 'liza-viktor')).resolves.toBeUndefined();
   });
 });
+

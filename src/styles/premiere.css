@@ -153,7 +153,8 @@
 
 .premiere-standby__locomotive {
   width: clamp(5.5rem, 11vw, 10rem);
-  color: rgba(210, 189, 120, 0.66);
+  opacity: 0.66;
+  filter: sepia(0.9) saturate(0.65) brightness(1.35);
   animation: idle-drift 18s ease-in-out infinite alternate;
 }
 
@@ -327,3 +328,4 @@
     animation: none;
   }
 }
+
