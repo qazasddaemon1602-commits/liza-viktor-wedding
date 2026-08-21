@@ -28,5 +28,10 @@ describe('CarriageCallScene', () => {
     expect(screen.getByTestId('carriage-call-c2')).toHaveStyle({ '--call-accent': '#9A6348' });
     expect(screen.getByTestId('carriage-call-c4')).toHaveStyle({ '--call-accent': '#78806A' });
     expect(screen.queryByText('НОВЫЙ ПАССАЖИР')).not.toBeInTheDocument();
+    expect(screen.getByTestId('carriage-call-train')).toHaveAttribute(
+      'src',
+      '/images/wedding/arrival-train-sprite-v2.png',
+    );
+    expect(screen.getByTestId('carriage-call-manifest')).toHaveAttribute('data-motion', 'rail-call');
   });
 });

@@ -63,6 +63,8 @@ describe('QuizScreenScene', () => {
     expect(screen.getByTestId('quiz-editorial-spread')).toBeInTheDocument();
     expect(screen.getByTestId('quiz-route-mark')).toBeInTheDocument();
     expect(screen.getByText('WEDDING EDITION · LV')).toBeInTheDocument();
+    expect(screen.getByTestId('quiz-editorial-spread')).toHaveAttribute('data-phase', 'voting');
+    expect(screen.getByTestId('quiz-transition-curtain')).toHaveAttribute('aria-hidden', 'true');
   });
 });
 

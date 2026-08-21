@@ -135,7 +135,7 @@ export function AdminBunkerDock({
 
   if (!deps || availability === 'unavailable') {
     return (
-      <aside className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
+      <aside id="admin-bunker" className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
         <div className="admin-bunker-dock__unavailable" role="status">
           <strong>OWNER-ДАННЫЕ НЕДОСТУПНЫ</strong>
           <span>ПУЛЬТ СКРЫТ · ПРОВЕРЬТЕ OWNER-СЕССИЮ И СВЯЗЬ</span>
@@ -146,7 +146,7 @@ export function AdminBunkerDock({
 
   if (!dashboard || availability !== 'current') {
     return (
-      <aside className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
+      <aside id="admin-bunker" className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
         <div className="admin-bunker-dock__freshness" role="status">
           <span>OWNER-ДОСТУП · ПРОВЕРЯЕМ</span>
         </div>
@@ -155,7 +155,7 @@ export function AdminBunkerDock({
   }
 
   return (
-    <aside className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
+    <aside id="admin-bunker" className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
       {lastSuccessAt && (
         <div className="admin-bunker-dock__freshness" role="status">
           <span>OWNER-ДАННЫЕ ПОДТВЕРЖДЕНЫ</span>

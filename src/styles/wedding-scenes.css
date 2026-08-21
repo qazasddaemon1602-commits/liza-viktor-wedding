@@ -977,3 +977,144 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Full-width registration pass. Copy is mounted to the four real wagon panels. */
+.train-arrival--convoy {
+  display: block;
+  padding: 0;
+  background: #eee5d8;
+  animation: arrival-scene-lifecycle 14s linear both;
+}
+
+.train-arrival--convoy::before {
+  z-index: 6;
+}
+
+.train-arrival--convoy::after {
+  z-index: 6;
+}
+
+.train-arrival__atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.72;
+  filter: sepia(0.08) saturate(0.72) contrast(0.96);
+}
+
+.train-arrival__convoy {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 3;
+  width: max(166vw, 106rem);
+  aspect-ratio: 2080 / 756;
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translate3d(105vw, -50%, 0);
+  animation: arrival-convoy-pass 10.75s 1.25s cubic-bezier(.22, .58, .32, .96) both;
+}
+
+.train-arrival__sprite,
+.train-arrival__smoke {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+}
+
+.train-arrival__sprite {
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 1.4rem 1.25rem rgba(40, 34, 27, 0.26));
+}
+
+.train-arrival__smoke {
+  z-index: 1;
+  top: -28%;
+  left: 1.5%;
+  width: 104%;
+  height: auto;
+  opacity: 0.66;
+  filter: sepia(0.14) saturate(0.62) contrast(0.9);
+  animation: arrival-smoke-drift 3.6s ease-in-out infinite alternate;
+}
+
+.train-arrival__wagon-copy {
+  position: absolute;
+  top: 57%;
+  z-index: 4;
+  width: 13.4%;
+  color: #f4e7cd;
+  font-size: clamp(0.68rem, 1.02vw, 1.28rem);
+  font-weight: 850;
+  line-height: 1.08;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+  text-wrap: balance;
+  text-shadow: 0 1px 0 #111, 0 0 0.7rem rgba(0, 0, 0, 0.92);
+  transform: translate(-50%, -50%);
+}
+
+.train-arrival__wagon-copy--1 { left: 41.2%; }
+.train-arrival__wagon-copy--2 { left: 59.2%; color: #fff3d8; font-family: Georgia, "Times New Roman", serif; font-size: clamp(0.84rem, 1.25vw, 1.62rem); font-weight: 600; letter-spacing: 0.025em; text-transform: none; }
+.train-arrival__wagon-copy--3 { left: 77.1%; color: color-mix(in srgb, var(--arrival-accent) 54%, #fff3d8); }
+.train-arrival__wagon-copy--4 { left: 93.4%; font-size: clamp(0.58rem, 0.86vw, 1.05rem); }
+
+@keyframes arrival-scene-lifecycle {
+  0% { opacity: 0; }
+  4%, 90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes arrival-convoy-pass {
+  0% { opacity: 0; transform: translate3d(105vw, -50%, 0); }
+  4% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(-176vw, -50%, 0); }
+}
+
+@keyframes arrival-smoke-drift {
+  from { opacity: 0.52; transform: translate3d(0, 0.3rem, 0) scale(0.985); }
+  to { opacity: 0.72; transform: translate3d(1.8rem, -0.35rem, 0) scale(1.015); }
+}
+
+@media (max-aspect-ratio: 4 / 3) {
+  .train-arrival__convoy {
+    width: max(205vw, 92rem);
+    animation-name: arrival-convoy-pass-portrait;
+  }
+}
+
+@keyframes arrival-convoy-pass-portrait {
+  0% { opacity: 0; transform: translate3d(105vw, -50%, 0); }
+  4% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(-216vw, -50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .train-arrival--convoy,
+  .train-arrival--convoy * {
+    animation: none !important;
+  }
+
+  .train-arrival__convoy {
+    left: 50%;
+    width: min(96vw, 80rem);
+    opacity: 1;
+    transform: translate3d(-50%, -50%, 0);
+  }
+
+  .train-arrival__smoke {
+    opacity: 0.35;
+  }
+}

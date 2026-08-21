@@ -72,6 +72,7 @@ export type ScreenPageDependencies = {
   subscribeToPremiereRefresh?: (callback: () => void) => () => void;
   subscribeToMkRefresh?: (callback: () => void) => () => void;
   broadcastPremierePresence?: (presence: PremiereScreenPresence) => Promise<void>;
+  prepareArrival?: () => Promise<boolean>;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
   stopArrivalAudio?: () => void;
@@ -132,6 +133,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
       eventSlug,
       presence,
     ),
+    prepareArrival: () => prepareArrivalExperience(audio.prepareArrival),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
     stopArrivalAudio: audio.stopArrival,
@@ -170,6 +172,47 @@ function browserLooksOnline(): boolean {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
 }
 
+const ARRIVAL_VISUAL_ASSETS = [
+  '/images/wedding/arrival-train-sprite-v2.png',
+  '/images/wedding/arrival-train-smoke-v2.png',
+] as const;
+
+function preloadDecodedImage(src: string): Promise<boolean> {
+  if (typeof Image === 'undefined') return Promise.resolve(false);
+
+  return new Promise<boolean>((resolve) => {
+    const image = new Image();
+    let settled = false;
+    const finish = (ready: boolean) => {
+      if (settled) return;
+      settled = true;
+      image.onload = null;
+      image.onerror = null;
+      resolve(ready);
+    };
+    image.decoding = 'async';
+    image.onload = () => {
+      if (typeof image.decode !== 'function') {
+        finish(image.naturalWidth > 0);
+        return;
+      }
+      void image.decode()
+        .then(() => finish(image.naturalWidth > 0))
+        .catch(() => finish(image.complete && image.naturalWidth > 0));
+    };
+    image.onerror = () => finish(false);
+    image.src = src;
+  });
+}
+
+async function prepareArrivalExperience(prepareAudio: () => Promise<boolean>): Promise<boolean> {
+  const readiness = await Promise.all([
+    prepareAudio(),
+    ...ARRIVAL_VISUAL_ASSETS.map((src) => preloadDecodedImage(src)),
+  ]);
+  return readiness.every(Boolean);
+}
+
 function armWithTimeout(
   arm: (() => Promise<boolean>) | undefined,
   timeoutMs = 1500,
@@ -189,11 +232,28 @@ function armWithTimeout(
   });
 }
 
+function prepareWithTimeout(
+  prepare: () => Promise<boolean>,
+  timeoutMs = 4_000,
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (ready: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(ready);
+    };
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+    void prepare().then((ready) => finish(Boolean(ready))).catch(() => finish(false));
+  });
+}
+
 export function ScreenPage({
   joinUrl,
   eventSlug = 'liza-viktor',
   screenId,
-  sceneDurationMs = 5600,
+  sceneDurationMs = 14_000,
   carriageCallDurationMs,
   expectedGuestCount = 40,
   dependencies,
@@ -203,7 +263,7 @@ export function ScreenPage({
     [dependencies, eventSlug],
   );
   const resolvedCarriageCallDurationMs = carriageCallDurationMs
-    ?? (sceneDurationMs === 5600 ? 12_000 : sceneDurationMs);
+    ?? (sceneDurationMs === 14_000 ? 12_000 : sceneDurationMs);
   const [resolvedScreenId] = useState(() => screenId?.trim() || `screen-${getOrCreateDeviceKey()}`);
   const hasAudioArm = Boolean(deps.armArrivalAudio || deps.armPremiereAudio);
   const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
@@ -227,6 +287,8 @@ export function ScreenPage({
   const presentationProtectedRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
   const autoAudioAttemptedRef = useRef(false);
+  const arrivalReadyRef = useRef(!deps.prepareArrival);
+  const arrivalPreparationRef = useRef<Promise<boolean> | null>(null);
 
   const soundEnabled = audioSettings.enabled && audioSettings.volume > 0;
   const premiereProtected = isPremiereProtected(premiereState);
@@ -239,6 +301,29 @@ export function ScreenPage({
   const markConnection = useCallback((source: ConnectionSource, healthy: boolean) => {
     setConnectionFailures((current) => updateConnectionHealth(current, source, healthy));
   }, []);
+
+  const ensureArrivalPrepared = useCallback((): Promise<boolean> => {
+    if (!deps.prepareArrival || arrivalReadyRef.current) return Promise.resolve(true);
+    if (arrivalPreparationRef.current) return arrivalPreparationRef.current;
+
+    const preparation = prepareWithTimeout(deps.prepareArrival)
+      .then((ready) => {
+        arrivalReadyRef.current = Boolean(ready);
+        return Boolean(ready);
+      })
+      .catch(() => false)
+      .finally(() => {
+        if (!arrivalReadyRef.current) arrivalPreparationRef.current = null;
+      });
+    arrivalPreparationRef.current = preparation;
+    return preparation;
+  }, [deps]);
+
+  useEffect(() => {
+    arrivalReadyRef.current = !deps.prepareArrival;
+    arrivalPreparationRef.current = null;
+    void ensureArrivalPrepared();
+  }, [deps, ensureArrivalPrepared]);
 
   const armAudio = useCallback(async () => {
     if (!hasAudioArm || armingAudio) return;
@@ -476,9 +561,10 @@ export function ScreenPage({
 
   useEffect(() => {
     if (!presentationProtected) return;
+    if (activeEvent?.kind === 'guest_registered') deps.stopArrivalAudio?.();
     setQueue([]);
     setActiveEvent(null);
-  }, [presentationProtected]);
+  }, [activeEvent, deps, presentationProtected]);
 
   useEffect(() => () => {
     deps.disposeAudio?.();
@@ -488,9 +574,22 @@ export function ScreenPage({
   useEffect(() => {
     if (presentationProtected || activeEvent || queue.length === 0) return;
     const [next, ...rest] = queue;
-    setQueue(rest);
-    setActiveEvent(next);
-  }, [activeEvent, presentationProtected, queue]);
+    if (next.kind !== 'guest_registered' || !deps.prepareArrival) {
+      setQueue(rest);
+      setActiveEvent(next);
+      return;
+    }
+
+    let cancelled = false;
+    void ensureArrivalPrepared().then(() => {
+      if (cancelled || presentationProtectedRef.current) return;
+      setQueue(rest);
+      setActiveEvent(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeEvent, deps.prepareArrival, ensureArrivalPrepared, presentationProtected, queue]);
 
   useEffect(() => {
     if (!activeEvent || presentationProtected) return;

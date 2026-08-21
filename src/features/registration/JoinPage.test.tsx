@@ -1,6 +1,6 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JoinPage, type JoinPageDependencies } from './JoinPage';
 
 const guest = {
@@ -30,6 +30,10 @@ function dependencies(overrides: Partial<JoinPageDependencies> = {}): JoinPageDe
 }
 
 describe('JoinPage', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('restores the existing guest from the same device and opens their ticket', async () => {
     const restore = vi.fn().mockResolvedValue({ status: 'restored', guest });
     render(<JoinPage dependencies={dependencies({ restore })} />);
@@ -55,6 +59,76 @@ describe('JoinPage', () => {
     expect(await screen.findByRole('button', { name: /получить билет/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Имя')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'ПОСЛЕДНИЙ КРУГ · УЧАСТВОВАТЬ' })).not.toBeInTheDocument();
+  });
+
+  it('returns an already-open guest page to registration after the owner reset deletes its binding', async () => {
+    vi.useFakeTimers();
+    const restore = vi.fn()
+      .mockResolvedValueOnce({ status: 'restored', guest })
+      .mockResolvedValueOnce({ status: 'not_found' });
+
+    render(
+      <JoinPage
+        dependencies={dependencies({ restore })}
+        guestRecheckIntervalMs={15_000}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('LV-031');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    expect(screen.getByRole('button', { name: /получить билет/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('virtual-ticket')).not.toBeInTheDocument();
+  });
+
+  it('keeps the ticket visible when a background guest recheck has a transient network error', async () => {
+    const restore = vi.fn()
+      .mockResolvedValueOnce({ status: 'restored', guest })
+      .mockRejectedValueOnce(new Error('offline'));
+
+    render(<JoinPage dependencies={dependencies({ restore })} />);
+
+    expect(await screen.findByTestId('virtual-ticket')).toHaveTextContent('LV-031');
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    window.dispatchEvent(new Event('focus'));
+    await waitFor(() => expect(restore).toHaveBeenCalledTimes(2));
+
+    expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('LV-031');
+    expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
+  });
+
+  it('refreshes the same guest ticket and carriage subscription after owner reassignment', async () => {
+    const reassignedGuest = {
+      ...guest,
+      carriage: {
+        id: 'carriage-4', number: 4, label: 'ВАГОН №4', accentHex: '#78806A', visualMark: '04',
+      },
+    };
+    const restore = vi.fn()
+      .mockResolvedValueOnce({ status: 'restored', guest })
+      .mockResolvedValueOnce({ status: 'restored', guest: reassignedGuest });
+    const loadCarriageCalls = vi.fn().mockResolvedValue({ status: 'ok', calls: [] });
+    const subscribeToCarriageCalls = vi.fn(() => vi.fn());
+
+    render(<JoinPage dependencies={dependencies({ restore, loadCarriageCalls, subscribeToCarriageCalls })} />);
+
+    expect(await screen.findByTestId('virtual-ticket')).toHaveTextContent('ВАГОН №3');
+    window.dispatchEvent(new Event('focus'));
+
+    await waitFor(() => expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('ВАГОН №4'));
+    await waitFor(() => {
+      expect(subscribeToCarriageCalls).toHaveBeenLastCalledWith('carriage-4', expect.any(Function));
+    });
   });
 
   it('recovers the old ticket from an owner-issued code on a new phone', async () => {

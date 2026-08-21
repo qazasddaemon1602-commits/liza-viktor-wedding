@@ -9,7 +9,7 @@ const liveFight: MkTournamentProjection = {
   tournamentId: 't1',
   state: 'active',
   activeCount: 16,
-  maxPlayers: 16,
+  maxPlayers: 40,
   ownRegistrationStatus: null,
   waitlistPosition: null,
   players: [
@@ -64,6 +64,58 @@ describe('ScreenPage Mortal Kombat integration', () => {
 
     expect(screen.queryByText('Поздний Гость')).not.toBeInTheDocument();
     expect(screen.getByText('ТЕКУЩИЙ БОЙ')).toBeInTheDocument();
+  });
+
+  it('stops an active arrival recording when Mortal Kombat protection takes over the projector', async () => {
+    let emitScreenEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    let refreshMk: (() => void) | undefined;
+    const stopArrivalAudio = vi.fn();
+    const loadMortalKombat = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'idle' } satisfies MkTournamentProjection)
+      .mockResolvedValueOnce(liveFight);
+    const dependencies: ScreenPageDependencies = {
+      subscribe: (callback) => {
+        emitScreenEvent = callback;
+        return vi.fn();
+      },
+      loadMortalKombat,
+      subscribeToMkRefresh: (callback) => {
+        refreshMk = callback;
+        return vi.fn();
+      },
+      playArrivalSignal: vi.fn(),
+      stopArrivalAudio,
+    };
+
+    render(<ScreenPage joinUrl="https://wedding.test/join" dependencies={dependencies} />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    act(() => emitScreenEvent?.({
+      id: 'event-before-mk',
+      kind: 'guest_registered',
+      createdAt: '2026-08-30T16:00:00.000Z',
+      payload: {
+        displayName: 'Гость Перед Боем',
+        carriage: {
+          id: 'carriage-2',
+          number: 2,
+          label: 'ВАГОН №2',
+          accentHex: '#31483A',
+          visualMark: '02',
+        },
+      },
+    }));
+    expect(screen.getByRole('heading', { name: 'Гость Перед Боем' })).toBeInTheDocument();
+
+    act(() => refreshMk?.());
+    expect(await screen.findByText('ТЕКУЩИЙ БОЙ')).toBeInTheDocument();
+
+    expect(screen.queryByRole('heading', { name: 'Гость Перед Боем' })).not.toBeInTheDocument();
+    expect(stopArrivalAudio).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -27,7 +27,28 @@ export function QuizScreenScene({
 
   return (
     <section className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`} aria-live="polite">
-      <div className="quiz-screen-frame" data-testid="quiz-editorial-spread">
+      <div
+        className="quiz-screen-frame"
+        data-testid="quiz-editorial-spread"
+        data-phase={state.phase}
+      >
+        <picture
+          className="quiz-screen-transition-curtain generated-artwork-picture"
+          data-testid="quiz-transition-curtain"
+          aria-hidden="true"
+        >
+          <source
+            type="image/avif"
+            srcSet="/images/ticket/paper-texture-512.avif 512w, /images/ticket/paper-texture-1024.avif 1024w"
+            sizes="100vw"
+          />
+          <source
+            type="image/webp"
+            srcSet="/images/ticket/paper-texture-512.webp 512w, /images/ticket/paper-texture-1024.webp 1024w"
+            sizes="100vw"
+          />
+          <img src="/images/ticket/paper-texture.png" alt="" />
+        </picture>
         <div className="quiz-screen-editorial-meta" aria-hidden="true">
           <span>WEDDING EDITION · LV</span>
           <span>30 AUG 2026</span>

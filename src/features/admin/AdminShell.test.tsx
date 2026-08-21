@@ -76,11 +76,23 @@ describe('AdminShell', () => {
     expect(screen.getByRole('link', { name: 'ОТКРЫТЬ ТВ' })).toHaveAttribute('href', '/screen');
     expect(screen.getByRole('link', { name: 'РЕГИСТРАЦИЯ ГОСТЯ' })).toHaveAttribute('href', '/join');
     expect(screen.getByRole('link', { name: 'КВИЗ' })).toHaveAttribute('href', '/play');
-    expect(screen.getByRole('link', { name: 'ТУРНИР' })).toHaveAttribute('href', '/mortal-kombat');
+    expect(
+      screen.getAllByRole('link', { name: 'ТУРНИР' })
+        .some((link) => link.getAttribute('href') === '/mortal-kombat'),
+    ).toBe(true);
     expect(screen.getByRole('link', { name: 'ТУРНИР НА ТВ' })).toHaveAttribute('href', '/mortal-kombat/screen');
     expect(screen.getByText('Иван Петров')).toBeInTheDocument();
     expect(screen.getByText(/зарегистрировано: 1/i)).toBeInTheDocument();
     expect(screen.getByText(/регистрация открыта/i)).toBeInTheDocument();
+  });
+
+  it('anchors the mobile operations index to the live admin sections', async () => {
+    render(<AdminShell dependencies={dependencies()} />);
+
+    await screen.findByText('Лиза × Виктор');
+    expect(screen.getByRole('navigation', { name: 'Быстрая навигация по админке' })).toBeInTheDocument();
+    expect(document.querySelector('#admin-now')).toBeInTheDocument();
+    expect(document.querySelector('#admin-guests')).toBeInTheDocument();
   });
 
   it('accepts the recommended carriage distribution without closing late registration', async () => {

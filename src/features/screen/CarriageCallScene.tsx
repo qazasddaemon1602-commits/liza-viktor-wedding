@@ -26,6 +26,20 @@ export function CarriageCallScene({ event }: CarriageCallSceneProps) {
     <section className="carriage-call-scene" aria-live="assertive" aria-atomic="true">
       <div className="carriage-call-scene__frame" aria-hidden="true" />
 
+      <div
+        className="carriage-call-scene__manifest"
+        data-testid="carriage-call-manifest"
+        data-motion="rail-call"
+        aria-hidden="true"
+      >
+        <img
+          className="carriage-call-scene__train"
+          data-testid="carriage-call-train"
+          src="/images/wedding/arrival-train-sprite-v2.png"
+          alt=""
+        />
+      </div>
+
       <header className="carriage-call-scene__meta">
         <span>ПОЕЗД ВИКТОРА</span>
         <span>30 · 08 · 2026</span>

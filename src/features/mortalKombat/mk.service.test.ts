@@ -15,8 +15,8 @@ const hiddenActiveTournament = {
   status: 'active',
   tournamentId: 't1',
   state: 'active',
-  activeCount: 16,
-  maxPlayers: 16,
+  activeCount: 40,
+  maxPlayers: 40,
   ownRegistrationStatus: null,
   waitlistPosition: null,
   players: [{ registrationId: 'r1', guestId: 'g1', displayName: 'Иван Петров', seed: 1 }],
@@ -69,13 +69,28 @@ describe('Mortal Kombat service', () => {
     expect(result).toMatchObject({ status: 'active', state: 'active', presentOnMainScreen: false });
   });
 
+  it('accepts the 40-player contract and opening r64 matches', async () => {
+    const client = clientWith({
+      ...hiddenActiveTournament,
+      presentOnMainScreen: true,
+      matches: [{
+        id: 'm1', matchKey: 'r64-1', round: 'r64', position: 1,
+        player1GuestId: 'g1', player2GuestId: 'g40', winnerGuestId: null,
+        status: 'ready', current: true,
+      }],
+    });
+
+    await expect(getMkTournamentDedicatedScreenState(client, 'liza-viktor'))
+      .resolves.toMatchObject({ maxPlayers: 40, matches: [{ round: 'r64' }] });
+  });
+
   it('rejects active tournament payloads that omit the main-screen presentation flag', async () => {
     const client = clientWith({
       status: 'active',
       tournamentId: 't1',
       state: 'active',
-      activeCount: 16,
-      maxPlayers: 16,
+      activeCount: 40,
+      maxPlayers: 40,
       ownRegistrationStatus: null,
       waitlistPosition: null,
       players: [],
@@ -91,8 +106,8 @@ describe('Mortal Kombat service', () => {
     const client = clientWith({
       status: 'joined',
       registrationStatus: 'waitlist',
-      activeCount: 16,
-      maxPlayers: 16,
+      activeCount: 40,
+      maxPlayers: 40,
       waitlistPosition: 1,
     });
 

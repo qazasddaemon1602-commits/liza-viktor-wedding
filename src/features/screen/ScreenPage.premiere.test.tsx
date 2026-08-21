@@ -143,6 +143,48 @@ describe('ScreenPage premiere protection', () => {
     expect(dependencies.playArrivalSignal).not.toHaveBeenCalled();
   });
 
+  it('stops an active arrival recording when premiere protection takes over the projector', async () => {
+    let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    let refresh: (() => void) | undefined;
+    const stopArrivalAudio = vi.fn();
+    const loadPremiere = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'idle', serverNow } satisfies PremiereScreenState)
+      .mockResolvedValueOnce(countdownState);
+    const dependencies = {
+      subscribe: (callback: (event: ScreenPresentationEvent) => void) => {
+        pushEvent = callback;
+        return vi.fn();
+      },
+      loadPremiere,
+      subscribeToPremiereRefresh: (callback: () => void) => {
+        refresh = callback;
+        return vi.fn();
+      },
+      playArrivalSignal: vi.fn(),
+      stopArrivalAudio,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    act(() => pushEvent?.(anna));
+    expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
+
+    act(() => refresh?.());
+    await flushPromises();
+
+    expect(screen.getByText('ПРЕМЬЕРА ЧЕРЕЗ')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
+    expect(stopArrivalAudio).toHaveBeenCalledTimes(1);
+  });
+
   it('auto-arms normal and premiere audio together and lets the operator mute the screen', async () => {
     const armArrivalAudio = vi.fn().mockResolvedValue(true);
     const armPremiereAudio = vi.fn().mockResolvedValue(true);

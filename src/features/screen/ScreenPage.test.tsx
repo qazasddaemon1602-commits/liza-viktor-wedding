@@ -97,6 +97,145 @@ describe('ScreenPage', () => {
     expect(dependencies.playArrivalSignal).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps the cinematic arrival on screen for the complete fourteen-second sound sequence', async () => {
+    let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    const dependencies: ScreenPageDependencies = {
+      subscribe: (callback) => {
+        pushEvent = callback;
+        return vi.fn();
+      },
+      playArrivalSignal: vi.fn(),
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+
+    act(() => pushEvent?.(anna));
+    expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
+
+    await act(async () => vi.advanceTimersByTime(13_999));
+    expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
+
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole('heading', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
+  });
+
+  it('waits for decoded audio and both train images before mounting the timed arrival scene', async () => {
+    let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    let resolvePreparation: ((ready: boolean) => void) | undefined;
+    const prepareArrival = vi.fn(() => new Promise<boolean>((resolve) => {
+      resolvePreparation = resolve;
+    }));
+    const playArrivalSignal = vi.fn();
+    const dependencies = {
+      subscribe: (callback: (event: ScreenPresentationEvent) => void) => {
+        pushEvent = callback;
+        return vi.fn();
+      },
+      prepareArrival,
+      playArrivalSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+
+    act(() => pushEvent?.(anna));
+
+    expect(prepareArrival).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('heading', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
+    expect(playArrivalSignal).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolvePreparation?.(true);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
+    expect(playArrivalSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['reports unavailable', () => Promise.resolve(false)],
+    ['rejects', () => Promise.reject(new Error('asset preload failed'))],
+  ])(
+    'shows a visual arrival fallback instead of blocking the event queue when preparation %s',
+    async (_label, prepare) => {
+      let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+      const prepareArrival = vi.fn(prepare);
+      const playArrivalSignal = vi.fn();
+      const dependencies = {
+        subscribe: (callback: (event: ScreenPresentationEvent) => void) => {
+          pushEvent = callback;
+          return vi.fn();
+        },
+        prepareArrival,
+        playArrivalSignal,
+      };
+
+      render(
+        <ScreenPage
+          joinUrl="https://wedding.example/join"
+          eventSlug="liza-viktor"
+          dependencies={dependencies}
+        />,
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      act(() => pushEvent?.(anna));
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
+      expect(playArrivalSignal).toHaveBeenCalledTimes(1);
+      expect(prepareArrival).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('releases the visual fallback after a deterministic preparation timeout', async () => {
+    let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    const prepareArrival = vi.fn(() => new Promise<boolean>(() => undefined));
+    const playArrivalSignal = vi.fn();
+    const dependencies = {
+      subscribe: (callback: (event: ScreenPresentationEvent) => void) => {
+        pushEvent = callback;
+        return vi.fn();
+      },
+      prepareArrival,
+      playArrivalSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+    act(() => pushEvent?.(anna));
+
+    await act(async () => vi.advanceTimersByTime(3_999));
+    expect(screen.queryByRole('heading', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
+
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
+    expect(playArrivalSignal).toHaveBeenCalledTimes(1);
+  });
+
   it('queues owner carriage announcements after arrivals and does not play the arrival chime for them', async () => {
     let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
     const playArrivalSignal = vi.fn();

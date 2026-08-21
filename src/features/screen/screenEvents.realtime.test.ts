@@ -100,6 +100,34 @@ describe('subscribeToScreenEvents', () => {
     cleanup();
   });
 
+  it('retries catch-up immediately when the realtime channel reports a degraded subscription', async () => {
+    const callback = vi.fn();
+    const subscribe = vi.fn();
+    const channel = { on: vi.fn().mockReturnThis(), subscribe, unsubscribe: vi.fn() };
+    const order = vi.fn()
+      .mockRejectedValueOnce(new Error('temporary network failure'))
+      .mockResolvedValueOnce({ data: [guestRow('recovered-1')], error: null });
+    const query = {
+      eq: vi.fn().mockReturnThis(),
+      gt: vi.fn().mockReturnThis(),
+      order,
+    };
+    const client: ScreenEventsRealtimeClient = {
+      channel: vi.fn().mockReturnValue(channel),
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(query) }),
+    };
+
+    const cleanup = subscribeToScreenEvents(client, 'liza-viktor', callback);
+    await vi.waitFor(() => expect(order).toHaveBeenCalledTimes(1));
+
+    const onStatus = subscribe.mock.calls[0]?.[0] as ((status: string) => void) | undefined;
+    expect(onStatus).toEqual(expect.any(Function));
+    onStatus?.('TIMED_OUT');
+
+    await vi.waitFor(() => expect(callback).toHaveBeenCalledWith(expect.objectContaining({ id: 'recovered-1' })));
+    cleanup();
+  });
+
   it('parses owner-published carriage call screen events', () => {
     const callback = vi.fn();
     const on = vi.fn().mockReturnThis();

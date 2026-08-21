@@ -6,7 +6,7 @@ import {
   type MkOwnerRpcClient,
   type MkResultResponse,
 } from '../../mortalKombat/mk.owner.service';
-import type { MkOwnerControl } from '../../mortalKombat/mk.types';
+import { MK_MAX_PLAYERS, type MkOwnerControl } from '../../mortalKombat/mk.types';
 import { MatchEditor } from './MatchEditor';
 import { PlayerPoolEditor } from './PlayerPoolEditor';
 
@@ -119,7 +119,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <section className="admin-mk-control">
         <div className="admin-mk-heading">
           <div>
-            <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
+            <p className="eyebrow">ДО {MK_MAX_PLAYERS} ИГРОКОВ · OWNER CONTROL</p>
             <h2>ТУРНИРНЫЙ ПУЛЬТ</h2>
           </div>
           <span>НЕ ОТКРЫТ</span>
@@ -138,9 +138,11 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
 
   const active = state.registrations.filter((registration) => registration.status === 'active');
   const waitlist = state.registrations.filter((registration) => registration.status === 'waitlist');
+  const activeSeeds = active.map((registration) => registration.seed);
   const allSeeded = active.length >= 2
-    && active.length <= 16
-    && active.every((registration) => registration.seed !== null);
+    && active.length <= state.maxPlayers
+    && activeSeeds.every((seed) => seed !== null && seed >= 1 && seed <= active.length)
+    && new Set(activeSeeds).size === active.length;
   const setupOpen = state.state === 'registration' || state.state === 'draw_ready';
   const needsReseed = state.state === 'draw_ready' && active.length >= 2 && !allSeeded;
 
@@ -148,14 +150,14 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     <section className="admin-mk-control">
       <div className="admin-mk-heading">
         <div>
-          <p className="eyebrow">ДО 16 ИГРОКОВ · OWNER CONTROL</p>
+          <p className="eyebrow">ДО {state.maxPlayers} ИГРОКОВ · OWNER CONTROL</p>
           <h2>ТУРНИРНЫЙ ПУЛЬТ</h2>
         </div>
         <span>{state.state.toUpperCase()}</span>
       </div>
 
       <div className="admin-mk-stats">
-        <div><span>ОСНОВНАЯ СЕТКА</span><strong>{state.activeCount} / 16</strong></div>
+        <div><span>ОСНОВНАЯ СЕТКА</span><strong>{state.activeCount} / {state.maxPlayers}</strong></div>
         <div><span>ЛИСТ ОЖИДАНИЯ</span><strong>{state.waitlistCount}</strong></div>
         <div><span>БОЁВ</span><strong>{Math.max(state.activeCount - 1, 0)}</strong></div>
       </div>
@@ -175,10 +177,20 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               <button
                 type="button"
                 className="registration-secondary"
-                disabled={busy}
+                disabled={busy || active.length < 2}
                 onClick={() => void run(() => dependencies.close(eventId))}
               >
                 ЗАКРЫТЬ РЕГИСТРАЦИЮ ТУРНИРА
+              </button>
+            )}
+            {state.state === 'draw_ready' && active.length < 2 && (
+              <button
+                type="button"
+                className="registration-secondary"
+                disabled={busy}
+                onClick={() => void run(() => dependencies.open(eventId))}
+              >
+                ВОЗОБНОВИТЬ РЕГИСТРАЦИЮ
               </button>
             )}
           </div>
@@ -206,7 +218,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
                   <button
                     type="button"
                     className="registration-secondary"
-                    disabled={busy || state.activeCount >= 16}
+                    disabled={busy || state.activeCount >= state.maxPlayers}
                     onClick={() => void run(() => dependencies.promote(registration.registrationId))}
                   >
                     В ОСНОВНУЮ СЕТКУ
@@ -224,12 +236,16 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
             </div>
           )}
 
-          {state.state === 'draw_ready' && (
+          {(state.state === 'draw_ready' || (state.state === 'registration' && active.length < 2)) && (
             <div className="admin-mk-launch">
               <p>
-                {allSeeded
-                  ? `${active.length} игроков расставлены. Старт создаст сетку (${Math.max(active.length - 1, 0)} реальных боёв) и выведет её на главный ТВ.`
-                  : 'Для старта нужно от 2 до 16 игроков и расставленные позиции.'}
+                {active.length === 0
+                  ? 'ЖДЁМ ИГРОКОВ · регистрация открыта, сетка пока не запускается.'
+                  : active.length === 1
+                    ? 'НУЖЕН ЕЩЁ ОДИН ИГРОК · турнир можно запустить от двух участников.'
+                    : allSeeded
+                      ? `${active.length} игроков расставлены. Старт создаст сетку (${active.length - 1} реальных боёв) и выведет её на главный ТВ.`
+                      : `Расставьте уникальные позиции для всех игроков перед стартом. Поддерживается от 2 до ${state.maxPlayers} участников.`}
               </p>
               <button
                 type="button"

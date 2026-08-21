@@ -23,6 +23,8 @@ import {
 } from './quiz/AdminCouplePreanswersPanel';
 import { AdminFinalFivePanel, type AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import { AdminQuizPanel, type AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
+import { isOwnerSessionExpired } from './ownerSession';
+import { AdminMobileNavigation } from './AdminMobileNavigation';
 
 export type AdminShellDependencies = {
   load: () => Promise<AdminDashboard>;
@@ -47,6 +49,7 @@ export type AdminShellDependencies = {
   quiz?: AdminQuizPanelDependencies;
   finalFive?: AdminFinalFivePanelDependencies;
   mortalKombat?: AdminMkControlDependencies;
+  onSessionExpired?: () => void;
 };
 
 type AdminShellProps = {
@@ -121,8 +124,12 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
     try {
       const fresh = await dependencies.load();
       storeFreshDashboard(fresh, true);
-    } catch {
-      setSyncWarning(true);
+    } catch (refreshError) {
+      if (isOwnerSessionExpired(refreshError) && dependencies.onSessionExpired) {
+        dependencies.onSessionExpired();
+      } else {
+        setSyncWarning(true);
+      }
     }
   }, [dependencies, storeFreshDashboard]);
 
@@ -135,8 +142,13 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
           setError('');
         }
       })
-      .catch(() => {
-        if (!cancelled) setError('Не удалось загрузить админку. Проверьте связь и доступ владельца.');
+      .catch((loadError) => {
+        if (cancelled) return;
+        if (isOwnerSessionExpired(loadError) && dependencies.onSessionExpired) {
+          dependencies.onSessionExpired();
+        } else {
+          setError('Не удалось загрузить админку. Проверьте связь и доступ владельца.');
+        }
       });
 
     return () => {
@@ -270,9 +282,17 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
       throw new Error('Test reset is not configured');
     }
     const result = await dependencies.resetEventTestData(dashboard.event.id, confirmation);
-    const fresh = await dependencies.load();
     setNotices([]);
-    storeFreshDashboard(fresh, false);
+    try {
+      const fresh = await dependencies.load();
+      storeFreshDashboard(fresh, false);
+    } catch (refreshError) {
+      if (isOwnerSessionExpired(refreshError) && dependencies.onSessionExpired) {
+        dependencies.onSessionExpired();
+      } else {
+        setSyncWarning(true);
+      }
+    }
     return result;
   };
 
@@ -294,25 +314,29 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
         </div>
       </header>
 
+      <AdminMobileNavigation />
+
       {syncWarning && (
         <div className="admin-sync-warning" role="status">
           СВЯЗЬ С АДМИНКОЙ · ПЕРЕПОДКЛЮЧЕНИЕ
         </div>
       )}
 
-      <AdminRehearsalPanel
-        eventId={dashboard.event.id}
-        currentModule={dashboard.state?.currentModule ?? 'idle'}
-        currentScreenMode={dashboard.state?.screenMode ?? 'idle'}
-        expectedScreenCount={2}
-        registrationOpen={dashboard.event.registrationOpen}
-        compositionLocked={dashboard.event.compositionLocked}
-        guestCount={dashboard.guests.length}
-        premiere={dependencies.premiere}
-        couplePreanswers={dependencies.couplePreanswers}
-      />
+      <div id="admin-now" className="admin-section-anchor">
+        <AdminRehearsalPanel
+          eventId={dashboard.event.id}
+          currentModule={dashboard.state?.currentModule ?? 'idle'}
+          currentScreenMode={dashboard.state?.screenMode ?? 'idle'}
+          expectedScreenCount={2}
+          registrationOpen={dashboard.event.registrationOpen}
+          compositionLocked={dashboard.event.compositionLocked}
+          guestCount={dashboard.guests.length}
+          premiere={dependencies.premiere}
+          couplePreanswers={dependencies.couplePreanswers}
+        />
+      </div>
 
-      <section className="admin-operations" aria-label="Управление составом">
+      <section id="admin-composition" className="admin-operations admin-section-anchor" aria-label="Управление составом">
         <AdminCarriageDistribution
           guestCount={dashboard.guests.length}
           compositionLocked={dashboard.event.compositionLocked}
@@ -333,17 +357,21 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
       )}
 
       {dependencies.premiere && (
-        <AdminPremiereControl
-          eventId={dashboard.event.id}
-          registeredCount={dashboard.guests.length}
-          expectedGuestCount={dashboard.event.expectedGuestCount}
-          lastRegisteredAt={latestRegistrationAt(dashboard)}
-          dependencies={dependencies.premiere}
-        />
+        <div id="admin-premiere" className="admin-section-anchor">
+          <AdminPremiereControl
+            eventId={dashboard.event.id}
+            registeredCount={dashboard.guests.length}
+            expectedGuestCount={dashboard.event.expectedGuestCount}
+            lastRegisteredAt={latestRegistrationAt(dashboard)}
+            dependencies={dependencies.premiere}
+          />
+        </div>
       )}
 
       {dependencies.quiz && (
-        <AdminQuizPanel eventId={dashboard.event.id} dependencies={dependencies.quiz} />
+        <div id="admin-quiz" className="admin-section-anchor">
+          <AdminQuizPanel eventId={dashboard.event.id} dependencies={dependencies.quiz} />
+        </div>
       )}
 
       {dependencies.finalFive && (
@@ -351,7 +379,9 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
       )}
 
       {dependencies.mortalKombat && (
-        <AdminMkControl eventId={dashboard.event.id} dependencies={dependencies.mortalKombat} />
+        <div id="admin-tournament" className="admin-section-anchor">
+          <AdminMkControl eventId={dashboard.event.id} dependencies={dependencies.mortalKombat} />
+        </div>
       )}
 
       {dependencies.sendCarriageCall && dependencies.clearCarriageCall && (
@@ -362,19 +392,23 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
         />
       )}
 
-      <AdminGuestsPage
-        guests={dashboard.guests}
-        carriages={dashboard.carriages.filter((carriage) => carriage.enabled)}
-        onDelete={handleDelete}
-        onReassign={handleReassign}
-        onIssueRecovery={dependencies.issueGuestRecovery}
-      />
+      <div id="admin-guests" className="admin-section-anchor">
+        <AdminGuestsPage
+          guests={dashboard.guests}
+          carriages={dashboard.carriages.filter((carriage) => carriage.enabled)}
+          onDelete={handleDelete}
+          onReassign={handleReassign}
+          onIssueRecovery={dependencies.issueGuestRecovery}
+        />
+      </div>
 
       {dependencies.resetEventTestData && (
-        <AdminTestResetPanel
-          guestCount={dashboard.guests.length}
-          onReset={handleTestReset}
-        />
+        <div id="admin-reset" className="admin-section-anchor">
+          <AdminTestResetPanel
+            guestCount={dashboard.guests.length}
+            onReset={handleTestReset}
+          />
+        </div>
       )}
     </main>
   );

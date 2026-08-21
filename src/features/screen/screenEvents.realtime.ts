@@ -40,7 +40,7 @@ export type ScreenEventsRealtimeChannel = {
     },
     callback: (payload: ScreenEventsRealtimePayload) => void,
   ) => ScreenEventsRealtimeChannel;
-  subscribe: () => unknown;
+  subscribe: (callback?: (status: string) => void) => unknown;
   unsubscribe: () => unknown;
 };
 
@@ -159,21 +159,6 @@ export function subscribeToScreenEvents(
     onEvent(event);
   };
 
-  channel
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'screen_events',
-        filter: `event_slug=eq.${eventSlug}`,
-      },
-      (payload) => {
-        if (payload.new) deliver(payload.new);
-      },
-    )
-    .subscribe();
-
   const catchUp = async () => {
     if (!active || !client.from) return;
     try {
@@ -192,15 +177,48 @@ export function subscribeToScreenEvents(
     }
   };
 
+  channel
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'screen_events',
+        filter: `event_slug=eq.${eventSlug}`,
+      },
+      (payload) => {
+        if (payload.new) deliver(payload.new);
+      },
+    )
+    .subscribe((status) => {
+      if (
+        status === 'SUBSCRIBED'
+        || status === 'CHANNEL_ERROR'
+        || status === 'TIMED_OUT'
+        || status === 'CLOSED'
+      ) {
+        void catchUp();
+      }
+    });
+
   let interval: ReturnType<typeof setInterval> | undefined;
   if (client.from) {
     void catchUp();
     interval = setInterval(() => { void catchUp(); }, 1_500);
   }
 
+  const catchUpWhenVisible = () => {
+    if (document.visibilityState === 'visible') void catchUp();
+  };
+  const catchUpWhenOnline = () => { void catchUp(); };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', catchUpWhenVisible);
+  if (typeof window !== 'undefined') window.addEventListener('online', catchUpWhenOnline);
+
   return () => {
     active = false;
     if (interval !== undefined) clearInterval(interval);
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', catchUpWhenVisible);
+    if (typeof window !== 'undefined') window.removeEventListener('online', catchUpWhenOnline);
     void channel.unsubscribe();
   };
 }

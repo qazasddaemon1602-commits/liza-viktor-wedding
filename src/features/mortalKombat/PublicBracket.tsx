@@ -1,19 +1,11 @@
 import { useEffect, useState, type UIEvent } from 'react';
-import type { MkTournamentProjection } from './mk.types';
-import type { MkRound } from './mk.types';
+import { MK_ROUNDS, MK_ROUND_LABELS, type MkRound, type MkTournamentProjection } from './mk.types';
 
 type ActiveProjection = Extract<MkTournamentProjection, { status: 'active' }>;
 
 type PublicBracketProps = {
   state: ActiveProjection;
 };
-
-const roundLabels = {
-  r16: '1/8 ФИНАЛА',
-  qf: '1/4 ФИНАЛА',
-  sf: '1/2 ФИНАЛА',
-  final: 'ФИНАЛ',
-} as const;
 
 export function PublicBracket({ state }: PublicBracketProps) {
   const playerById = new Map(state.players.map((player) => [player.guestId, player]));
@@ -29,7 +21,7 @@ export function PublicBracket({ state }: PublicBracketProps) {
   const realMatches = state.matches.filter(
     (match) => Boolean(match.player1GuestId) && Boolean(match.player2GuestId),
   );
-  const visibleRounds = (['r16', 'qf', 'sf', 'final'] as const)
+  const visibleRounds = MK_ROUNDS
     .filter((round) => realMatches.some((match) => match.round === round));
   const firstVisibleRound = visibleRounds[0] ?? null;
   const currentMatchRound = state.matches.find((match) => match.current)?.round ?? null;
@@ -86,7 +78,7 @@ export function PublicBracket({ state }: PublicBracketProps) {
         <p className="eyebrow">ARENA BOARD</p>
         <h2>ЖДЁМ ЖЕРЕБЬЁВКУ</h2>
         <p className="mk-bracket-live-label">LIVE BRACKET</p>
-        <p>Игроков в основной сетке: {state.activeCount} / 16.</p>
+        <p>Игроков в основной сетке: {state.activeCount} / {state.maxPlayers}.</p>
       </section>
     );
   }
@@ -115,7 +107,7 @@ export function PublicBracket({ state }: PublicBracketProps) {
             aria-current={activeRound === round ? 'step' : undefined}
             onClick={() => selectRound(round)}
           >
-            {roundLabels[round]}
+            {MK_ROUND_LABELS[round]}
           </button>
         ))}
       </nav>
@@ -138,7 +130,7 @@ export function PublicBracket({ state }: PublicBracketProps) {
           >
             <div className="mk-bracket-round__heading">
               <span>0{roundIndex + 1}</span>
-              <h3 id={`mk-round-${round}-title`}>{roundLabels[round]}</h3>
+              <h3 id={`mk-round-${round}-title`}>{MK_ROUND_LABELS[round]}</h3>
             </div>
             {realMatches
               .filter((match) => match.round === round)

@@ -21,24 +21,35 @@ type TrainArrivalSceneProps = {
   onSignal?: () => void;
 };
 
+function formatEventDate(createdAt: string): string {
+  const date = createdAt.slice(0, 10).split('-');
+  if (date.length !== 3) return '30.08.2026';
+  return `${date[2]}.${date[1]}.${date[0]}`;
+}
+
 export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
   useEffect(() => {
+    // The real 14 s recording begins first; the CSS train pass starts 1.25 s later.
     onSignal?.();
   }, [event.id, onSignal]);
 
   const accentStyle = {
     '--arrival-accent': event.payload.carriage.accentHex,
   } as CSSProperties;
+  const eventDate = formatEventDate(event.createdAt);
+  const wagonCopy = [
+    'ПРИБЫЛ НОВЫЙ ИГРОК',
+    event.payload.displayName,
+    event.payload.carriage.label,
+    `ПОСАДКА · ${eventDate}`,
+  ];
 
   return (
     <section
-      className="train-arrival train-arrival--editorial"
+      className="train-arrival train-arrival--editorial train-arrival--convoy"
       data-testid="train-arrival-scene"
       style={accentStyle}
-      aria-live="assertive"
-      aria-atomic="true"
     >
-      <div className="train-arrival__wash" aria-hidden="true" />
       <picture className="generated-artwork-picture">
         <source
           type="image/avif"
@@ -51,102 +62,48 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
           sizes="100vw"
         />
         <img
-          className="train-arrival__paper-grain"
-          data-testid="arrival-paper-texture"
+          className="train-arrival__atmosphere"
           src="/images/ticket/paper-texture.png"
-          sizes="100vw"
           alt=""
           aria-hidden="true"
         />
       </picture>
-      <picture className="generated-artwork-picture">
-        <source
-          type="image/avif"
-          srcSet="/images/wedding/train-arrival-wide-960.avif 960w, /images/wedding/train-arrival-wide-1920.avif 1920w"
-          sizes="(max-width: 900px) 96vw, min(67vw, 88rem)"
-        />
-        <source
-          type="image/webp"
-          srcSet="/images/wedding/train-arrival-wide-960.webp 960w, /images/wedding/train-arrival-wide-1920.webp 1920w"
-          sizes="(max-width: 900px) 96vw, min(67vw, 88rem)"
-        />
-        <img
-          className="train-arrival__plate"
-          data-testid="arrival-train-plate"
-          src="/images/wedding/train-arrival-wide.png"
-          sizes="(max-width: 900px) 96vw, min(67vw, 88rem)"
-          alt=""
-          aria-hidden="true"
-        />
-      </picture>
-
-      <div className="train-arrival__meta">
-        <span>ПОЕЗД ВИКТОРА</span>
-        <span>PLATFORM ANNOUNCEMENT</span>
-        <span>30 · 08 · 2026</span>
-      </div>
 
       <div
-        className="train-arrival__platform-ticket"
-        data-testid="arrival-platform-ticket"
-        role="group"
-        aria-label={`Посадка ${event.payload.displayName}, ${event.payload.carriage.label}`}
+        className="train-arrival__convoy"
+        data-testid="arrival-convoy"
+        data-reduced-motion="static-pass"
+        aria-hidden="true"
       >
-        <div className="train-arrival__ticket-index" aria-hidden="true">
-          <span>ARRIVAL</span>
-          <strong>{event.payload.carriage.visualMark}</strong>
-          <span>LV · TYUMEN</span>
-        </div>
-
-        <div className="train-arrival__copy">
-          <p className="train-arrival__eyebrow">НОВЫЙ ПАССАЖИР</p>
-          <h2>{event.payload.displayName}</h2>
-          <div className="train-arrival__assignment">
-            <span className="train-arrival__mark">{event.payload.carriage.visualMark}</span>
-            <div>
-              <small>МЕСТО В СОСТАВЕ</small>
-              <strong>{event.payload.carriage.label}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="train-arrival__editorial-seal" data-testid="arrival-editorial-seal" aria-hidden="true">
-          <picture className="generated-artwork-picture">
-            <source
-              type="image/avif"
-              srcSet="/images/ticket/railway-seal-128.avif 128w, /images/ticket/railway-seal-256.avif 256w"
-              sizes="120px"
-            />
-            <source
-              type="image/webp"
-              srcSet="/images/ticket/railway-seal-128.webp 128w, /images/ticket/railway-seal-256.webp 256w"
-              sizes="120px"
-            />
-            <img
-              className="train-arrival__seal-emblem"
-              data-testid="arrival-railway-seal"
-              src="/images/ticket/railway-seal.png"
-              sizes="120px"
-              alt=""
-              aria-hidden="true"
-            />
-          </picture>
-          <span>PASSENGER ACCEPTED</span>
-          <i />
-          <span>LOVE RAILWAY · 2026</span>
-        </div>
-
-        <div className="train-arrival__ticket-route" aria-hidden="true">
-          <span>WELCOME</span>
-          <i />
-          <span>CARRIAGE {event.payload.carriage.visualMark}</span>
-        </div>
+        <img
+          className="train-arrival__smoke"
+          data-testid="arrival-train-smoke"
+          data-motion="rig-parallax"
+          src="/images/wedding/arrival-train-smoke-v2.png"
+          alt=""
+        />
+        <img
+          className="train-arrival__sprite"
+          data-testid="arrival-train-sprite"
+          src="/images/wedding/arrival-train-sprite-v2.png"
+          alt=""
+        />
+        {wagonCopy.map((copy, index) => (
+          <span
+            key={`${index}-${copy}`}
+            className={`train-arrival__wagon-copy train-arrival__wagon-copy--${index + 1}`}
+            data-testid={`arrival-wagon-copy-${index + 1}`}
+          >
+            {copy}
+          </span>
+        ))}
       </div>
 
-      <div className="train-arrival__destination">
-        <span>ПАССАЖИР ПРИНЯТ</span>
-        <i />
-        <span>{event.payload.carriage.label}</span>
+      <div className="sr-only" role="status" aria-live="assertive" aria-atomic="true">
+        <h2>{event.payload.displayName}</h2>
+        <p>
+          Прибыл новый игрок. {event.payload.displayName}. Назначен {event.payload.carriage.label}.
+        </p>
       </div>
     </section>
   );

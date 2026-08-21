@@ -106,4 +106,58 @@ describe('AdminShell rehearsal reset', () => {
     expect(screen.getByRole('button', { name: 'ПРИНЯТЬ РАСПРЕДЕЛЕНИЕ' })).toBeInTheDocument();
     expect(screen.getByText(/регистрация открыта/i)).toBeInTheDocument();
   });
+
+  it('reports a completed reset even when the follow-up dashboard refresh is temporarily unavailable', async () => {
+    const user = userEvent.setup();
+    const load = vi.fn()
+      .mockResolvedValueOnce(structuredClone(beforeReset))
+      .mockRejectedValueOnce(new Error('temporary network failure'));
+    const resetEventTestData = vi.fn().mockResolvedValue({
+      deletedGuests: 1,
+      preservedCoupleAnswers: 30,
+      premiereConfigured: true,
+      mortalKombatReset: true,
+      bunkerReset: true,
+      registrationOpen: true,
+      nextTicketSequence: 1,
+    });
+
+    render(
+      <AdminShell
+        dependencies={baseDependencies({ load, resetEventTestData })}
+        refreshIntervalMs={0}
+      />,
+    );
+
+    await screen.findByText('Тест Гость');
+    await user.click(screen.getByRole('button', { name: 'СБРОСИТЬ ТЕСТОВЫЕ ДАННЫЕ' }));
+    await user.type(screen.getByLabelText('Введите СБРОСИТЬ'), 'СБРОСИТЬ');
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ СБРОС' }));
+
+    expect(await screen.findByText(/СБРОШЕНО · удалено гостей: 1/i)).toBeInTheDocument();
+    expect(screen.getByText('СВЯЗЬ С АДМИНКОЙ · ПЕРЕПОДКЛЮЧЕНИЕ')).toBeInTheDocument();
+    expect(screen.queryByText(/ничего не повторяйте вслепую/i)).not.toBeInTheDocument();
+  });
+
+  it('expires the owner session after a committed reset when the follow-up load returns 401', async () => {
+    const user = userEvent.setup();
+    const expired = Object.assign(new Error('jwt expired'), { status: 401 });
+    const load = vi.fn()
+      .mockResolvedValueOnce(structuredClone(beforeReset))
+      .mockRejectedValueOnce(expired);
+    const onSessionExpired = vi.fn();
+    const resetEventTestData = vi.fn().mockResolvedValue({
+      deletedGuests: 1, preservedCoupleAnswers: 30, premiereConfigured: true,
+      mortalKombatReset: true, bunkerReset: true, registrationOpen: true, nextTicketSequence: 1,
+    });
+
+    render(<AdminShell dependencies={baseDependencies({ load, resetEventTestData, onSessionExpired })} refreshIntervalMs={0} />);
+    await screen.findByText('Тест Гость');
+    await user.click(screen.getByRole('button', { name: 'СБРОСИТЬ ТЕСТОВЫЕ ДАННЫЕ' }));
+    await user.type(screen.getByLabelText('Введите СБРОСИТЬ'), 'СБРОСИТЬ');
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ СБРОС' }));
+
+    expect(await screen.findByText(/СБРОШЕНО · удалено гостей: 1/i)).toBeInTheDocument();
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+  });
 });

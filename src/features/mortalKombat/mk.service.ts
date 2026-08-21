@@ -1,4 +1,14 @@
-import type { MkJoinResult, MkMatch, MkPlayer, MkRegistrationStatus, MkTournamentProjection, MkTournamentState } from './mk.types';
+import {
+  MK_MAX_PLAYERS,
+  MK_ROUNDS,
+  type MkJoinResult,
+  type MkMatch,
+  type MkPlayer,
+  type MkRegistrationStatus,
+  type MkRound,
+  type MkTournamentProjection,
+  type MkTournamentState,
+} from './mk.types';
 
 export type MkRpcError = Error | { message?: string; code?: string } | null;
 export type MkRpcClient = {
@@ -37,7 +47,7 @@ function parseMatch(value: unknown): MkMatch {
   if (!isRecord(value)
     || typeof value.id !== 'string'
     || typeof value.matchKey !== 'string'
-    || !['r16', 'qf', 'sf', 'final'].includes(String(value.round))
+    || !MK_ROUNDS.includes(String(value.round) as MkRound)
     || typeof value.position !== 'number'
     || !['pending', 'ready', 'complete'].includes(String(value.status))
     || typeof value.current !== 'boolean') {
@@ -58,7 +68,7 @@ function parseTournament(data: unknown): MkTournamentProjection {
     || typeof data.tournamentId !== 'string'
     || !tournamentStates.has(data.state as MkTournamentState)
     || typeof data.activeCount !== 'number'
-    || data.maxPlayers !== 16
+    || data.maxPlayers !== MK_MAX_PLAYERS
     || !Array.isArray(data.players)
     || !Array.isArray(data.matches)
     || typeof data.presentOnMainScreen !== 'boolean'
@@ -76,7 +86,7 @@ function parseTournament(data: unknown): MkTournamentProjection {
     tournamentId: data.tournamentId,
     state: data.state as MkTournamentState,
     activeCount: data.activeCount,
-    maxPlayers: 16,
+    maxPlayers: MK_MAX_PLAYERS,
     ownRegistrationStatus: (ownStatus ?? null) as MkRegistrationStatus | null,
     waitlistPosition: typeof data.waitlistPosition === 'number' ? data.waitlistPosition : null,
     players: data.players.map(parsePlayer),
@@ -91,14 +101,14 @@ function parseJoin(data: unknown): MkJoinResult {
     || !['joined', 'already_joined'].includes(String(data.status))
     || !['active', 'waitlist'].includes(String(data.registrationStatus))
     || typeof data.activeCount !== 'number'
-    || data.maxPlayers !== 16) {
+    || data.maxPlayers !== MK_MAX_PLAYERS) {
     throw new Error('Unexpected MK signup response');
   }
   return {
     status: data.status as MkJoinResult['status'],
     registrationStatus: data.registrationStatus as MkJoinResult['registrationStatus'],
     activeCount: data.activeCount,
-    maxPlayers: 16,
+    maxPlayers: MK_MAX_PLAYERS,
     waitlistPosition: typeof data.waitlistPosition === 'number' ? data.waitlistPosition : null,
   };
 }

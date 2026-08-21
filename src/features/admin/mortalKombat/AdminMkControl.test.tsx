@@ -10,7 +10,7 @@ const ready: MkOwnerControl = {
   state: 'draw_ready',
   activeCount: 16,
   waitlistCount: 1,
-  maxPlayers: 16,
+  maxPlayers: 40,
   registrations: [
     ...Array.from({ length: 16 }, (_, index) => ({
       registrationId: `r${index + 1}`,
@@ -60,7 +60,7 @@ describe('AdminMkControl', () => {
     expect(await screen.findByRole('heading', { name: 'ТУРНИРНЫЙ ПУЛЬТ' })).toBeInTheDocument();
     expect(screen.getAllByTestId('seed-slot')).toHaveLength(16);
     expect(screen.getByText('Запасной Игрок')).toBeInTheDocument();
-    expect(screen.getByText('16 / 16')).toBeInTheDocument();
+    expect(screen.getByText('16 / 40')).toBeInTheDocument();
     expect(screen.queryByText(/MORTAL KOMBAT|FATALITY/i)).not.toBeInTheDocument();
   });
 
@@ -79,7 +79,7 @@ describe('AdminMkControl', () => {
       />,
     );
 
-    await screen.findByText('16 / 16');
+    await screen.findByText('16 / 40');
     await user.click(screen.getByRole('button', { name: 'ПЕРЕМЕШАТЬ 16 ИГРОКОВ' }));
     expect(randomize).toHaveBeenCalledWith('event-1');
     expect(broadcastRefresh).toHaveBeenCalled();
@@ -125,14 +125,14 @@ describe('AdminMkControl', () => {
       />,
     );
 
-    await screen.findByText('16 / 16');
+    await screen.findByText('16 / 40');
     await user.click(screen.getByRole('button', { name: 'УБРАТЬ ИЗ СЕТКИ · Игрок 1' }));
     expect(remove).toHaveBeenCalledWith('r1');
-    expect(await screen.findByText('15 / 16')).toBeInTheDocument();
+    expect(await screen.findByText('15 / 40')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'В ОСНОВНУЮ СЕТКУ' }));
     expect(promote).toHaveBeenCalledWith('wait-1');
-    expect(await screen.findByText('16 / 16')).toBeInTheDocument();
+    expect(await screen.findByText('16 / 40')).toBeInTheDocument();
   });
 
   it('switches the live projector to the full bracket and can return it to the main wedding screen', async () => {
@@ -182,8 +182,8 @@ describe('AdminMkControl with fewer than sixteen players', () => {
     const finalize = vi.fn().mockResolvedValue(undefined);
     render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(nine), finalize })} />);
 
-    expect(await screen.findByText('9 / 16')).toBeInTheDocument();
-    expect(screen.getAllByText('ДО 16 ИГРОКОВ · OWNER CONTROL').length).toBeGreaterThan(0);
+    expect(await screen.findByText('9 / 40')).toBeInTheDocument();
+    expect(screen.getAllByText('ДО 40 ИГРОКОВ · OWNER CONTROL').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'ПЕРЕМЕШАТЬ 9 ИГРОКОВ' })).toBeEnabled();
 
     const launch = screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 9 ИГРОКОВ' });
@@ -193,10 +193,65 @@ describe('AdminMkControl with fewer than sixteen players', () => {
   });
 
   it('keeps the launch disabled with fewer than two players', async () => {
-    const one: MkOwnerControl = { ...nine, activeCount: 1, registrations: [nine.registrations[0]] };
+    const one: MkOwnerControl = { ...nine, state: 'registration', activeCount: 1, registrations: [nine.registrations[0]] };
     render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(one) })} />);
 
     expect(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 1 ИГРОКОВ' })).toBeDisabled();
+    expect(screen.getByText('НУЖЕН ЕЩЁ ОДИН ИГРОК · турнир можно запустить от двух участников.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ЗАКРЫТЬ РЕГИСТРАЦИЮ ТУРНИРА' })).toBeDisabled();
+  });
+
+  it('keeps an empty tournament open as an explicit preparation state', async () => {
+    const empty: MkOwnerControl = { ...nine, state: 'registration', activeCount: 0, registrations: [] };
+    render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(empty) })} />);
+
+    expect(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 0 ИГРОКОВ' })).toBeDisabled();
+    expect(screen.getByText('ЖДЁМ ИГРОКОВ · регистрация открыта, сетка пока не запускается.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ЗАКРЫТЬ РЕГИСТРАЦИЮ ТУРНИРА' })).toBeDisabled();
+  });
+
+  it('recovers a legacy closed preparation with one player by reopening registration', async () => {
+    const user = userEvent.setup();
+    const oneClosed: MkOwnerControl = { ...nine, activeCount: 1, registrations: [nine.registrations[0]] };
+    const open = vi.fn().mockResolvedValue(undefined);
+    render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(oneClosed), open })} />);
+
+    await user.click(await screen.findByRole('button', { name: 'ВОЗОБНОВИТЬ РЕГИСТРАЦИЮ' }));
+    expect(open).toHaveBeenCalledWith('event-1');
+  });
+
+  it('disables launch when seeds contain a gap instead of the exact 1..N range', async () => {
+    const gapped: MkOwnerControl = {
+      ...nine,
+      activeCount: 2,
+      registrations: [
+        { ...nine.registrations[0], seed: 1 },
+        { ...nine.registrations[1], seed: 3 },
+      ],
+    };
+    render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(gapped) })} />);
+
+    expect(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 2 ИГРОКОВ' })).toBeDisabled();
+    expect(screen.getByText(/СОСТАВ ИЗМЕНИЛСЯ/i)).toBeInTheDocument();
+  });
+
+  it.each([17, 40])('allows launching with %s seeded players', async (count) => {
+    const sized: MkOwnerControl = {
+      ...nine,
+      activeCount: count,
+      registrations: Array.from({ length: count }, (_, index) => ({
+        registrationId: `r${index + 1}`,
+        guestId: `g${index + 1}`,
+        displayName: `Игрок ${index + 1}`,
+        status: 'active' as const,
+        seed: index + 1,
+        registeredAt: '2026-08-30T12:00:00.000Z',
+      })),
+    };
+    render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(sized) })} />);
+
+    expect(await screen.findByRole('button', { name: `ЗАПУСТИТЬ ТУРНИР · ${count} ИГРОКОВ` })).toBeEnabled();
+    expect(screen.getByText(`${count} / 40`)).toBeInTheDocument();
   });
 });
 

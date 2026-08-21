@@ -1,17 +1,11 @@
 import type { MkAffectedMatch } from '../../mortalKombat/mk.owner.service';
+import { MK_ROUND_LABELS } from '../../mortalKombat/mk.types';
 
 type CorrectionImpactDialogProps = {
   affected: MkAffectedMatch[];
   onCancel: () => void;
   onConfirm: () => void;
 };
-
-const roundLabels = {
-  r16: '1/8 ФИНАЛА',
-  qf: '1/4 ФИНАЛА',
-  sf: '1/2 ФИНАЛА',
-  final: 'ФИНАЛ',
-} as const;
 
 export function CorrectionImpactDialog({ affected, onCancel, onConfirm }: CorrectionImpactDialogProps) {
   return (
@@ -25,7 +19,7 @@ export function CorrectionImpactDialog({ affected, onCancel, onConfirm }: Correc
         <ul>
           {affected.map((match) => (
             <li key={match.matchId}>
-              {roundLabels[match.round]} · БОЙ {match.position}
+              {MK_ROUND_LABELS[match.round]} · БОЙ {match.position}
             </li>
           ))}
         </ul>

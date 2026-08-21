@@ -23,9 +23,14 @@ export type JoinPageDependencies = {
 type JoinPageProps = {
   dependencies: JoinPageDependencies;
   revealDelayMs?: number;
+  guestRecheckIntervalMs?: number;
 };
 
-export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
+export function JoinPage({
+  dependencies,
+  revealDelayMs,
+  guestRecheckIntervalMs = 15_000,
+}: JoinPageProps) {
   const [guest, setGuest] = useState<RegisteredGuest | null>(null);
   const [activeCall, setActiveCall] = useState<GuestCarriageCall | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -60,6 +65,36 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   useEffect(() => {
     void restore();
   }, [restore]);
+
+  useEffect(() => {
+    if (!guest) return;
+
+    let active = true;
+    const recheck = async () => {
+      try {
+        const result = await dependencies.restore(dependencies.getDeviceKey());
+        if (!active) return;
+        if (result.status === 'not_found') {
+          setGuest(null);
+          setActiveCall(null);
+          return;
+        }
+        setGuest(result.guest);
+      } catch {
+        // A background connectivity failure must never hide an already issued ticket.
+      }
+    };
+
+    const interval = window.setInterval(() => void recheck(), guestRecheckIntervalMs);
+    const onFocus = () => void recheck();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [dependencies, guest, guestRecheckIntervalMs]);
 
   useEffect(() => {
     if (!guest || !dependencies.loadCarriageCalls) {

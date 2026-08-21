@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { MkResultResponse } from '../../mortalKombat/mk.owner.service';
-import type { MkMatch, MkOwnerRegistration } from '../../mortalKombat/mk.types';
+import { MK_ROUND_LABELS, type MkMatch, type MkOwnerRegistration } from '../../mortalKombat/mk.types';
 import { CorrectionImpactDialog } from './CorrectionImpactDialog';
 
 type MatchEditorProps = {
@@ -15,13 +15,6 @@ type MatchEditorProps = {
 type PendingCorrection =
   | { kind: 'winner'; matchId: string; winnerGuestId: string; impact: Extract<MkResultResponse, { status: 'impact' }> }
   | { kind: 'undo'; matchId: string; impact: Extract<MkResultResponse, { status: 'impact' }> };
-
-const roundLabels = {
-  r16: '1/8 ФИНАЛА',
-  qf: '1/4 ФИНАЛА',
-  sf: '1/2 ФИНАЛА',
-  final: 'ФИНАЛ',
-} as const;
 
 export function MatchEditor({
   matches,
@@ -97,7 +90,7 @@ export function MatchEditor({
     <div className="admin-mk-matches">
       {current && (
         <section className="admin-mk-current-match">
-          <p className="eyebrow">ТЕКУЩИЙ БОЙ · {roundLabels[current.round]}</p>
+          <p className="eyebrow">ТЕКУЩИЙ БОЙ · {MK_ROUND_LABELS[current.round]}</p>
           <h3>
             {current.player1GuestId ? names.get(current.player1GuestId) ?? 'ИГРОК 1' : '—'}
             <span aria-hidden="true"> × </span>
@@ -137,7 +130,7 @@ export function MatchEditor({
       <div className="admin-mk-match-list">
         {realMatches.map((match) => (
           <article key={match.id} className={match.current ? 'is-current' : ''}>
-            <span>{roundLabels[match.round]} · БОЙ {match.position}</span>
+            <span>{MK_ROUND_LABELS[match.round]} · БОЙ {match.position}</span>
             <strong>
               {match.player1GuestId ? names.get(match.player1GuestId) ?? '—' : '—'} ×{' '}
               {match.player2GuestId ? names.get(match.player2GuestId) ?? '—' : '—'}

@@ -1,4 +1,4 @@
-import type { MkTournamentProjection } from './mk.types';
+import type { MkRound, MkTournamentProjection } from './mk.types';
 
 export type MkMilestone = {
   key: string;
@@ -10,7 +10,7 @@ export type MkMilestone = {
 
 type ActiveMkState = Extract<MkTournamentProjection, { status: 'active' }>;
 
-function completedCount(state: ActiveMkState, round: 'r16' | 'qf' | 'sf' | 'final'): number {
+function completedCount(state: ActiveMkState, round: MkRound): number {
   return state.matches.filter((match) => match.round === round && match.status === 'complete').length;
 }
 
@@ -27,15 +27,20 @@ export function deriveMkMilestone(
   const before = previous?.status === 'active' ? previous : null;
 
   if (current.state === 'registration') {
-    for (const threshold of [16, 12, 8] as const) {
+    const thresholds = [
+      current.maxPlayers,
+      Math.ceil(current.maxPlayers * 0.75),
+      Math.ceil(current.maxPlayers * 0.5),
+    ];
+    for (const threshold of thresholds) {
       const previousCount = before?.activeCount ?? 0;
       if (previousCount < threshold && current.activeCount >= threshold) {
         return {
           key: `players-${threshold}`,
           eyebrow: 'АРЕНА · НАБОР ИГРОКОВ',
-          title: `${threshold} / 16 ИГРОКОВ`,
-          detail: threshold === 16 ? 'ОСНОВНАЯ СЕТКА СОБРАНА' : 'АРЕНА ЗАПОЛНЯЕТСЯ',
-          durationMs: threshold === 16 ? 5200 : 3800,
+          title: `${threshold} / ${current.maxPlayers} ИГРОКОВ`,
+          detail: threshold === current.maxPlayers ? 'ОСНОВНАЯ СЕТКА СОБРАНА' : 'АРЕНА ЗАПОЛНЯЕТСЯ',
+          durationMs: threshold === current.maxPlayers ? 5200 : 3800,
         };
       }
     }
@@ -46,7 +51,7 @@ export function deriveMkMilestone(
       key: 'draw-locked',
       eyebrow: 'АРЕНА · ПОСЛЕДНИЙ КРУГ',
       title: 'СЕТКА ЗАФИКСИРОВАНА',
-      detail: '16 ИГРОКОВ · 15 БОЁВ · ОДИН ЧЕМПИОН',
+      detail: `${current.activeCount} ИГРОКОВ · ${Math.max(current.activeCount - 1, 0)} БОЁВ · ОДИН ЧЕМПИОН`,
       durationMs: 5200,
     };
   }

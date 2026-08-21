@@ -1,4 +1,12 @@
-import type { MkMatch, MkOwnerControl, MkOwnerRegistration, MkTournamentState } from './mk.types';
+import {
+  MK_MAX_PLAYERS,
+  MK_ROUNDS,
+  type MkMatch,
+  type MkOwnerControl,
+  type MkOwnerRegistration,
+  type MkRound,
+  type MkTournamentState,
+} from './mk.types';
 
 export type MkOwnerRpcError = Error | { message?: string; code?: string } | null;
 export type MkOwnerRpcClient = {
@@ -11,7 +19,7 @@ export type MkOwnerRpcClient = {
 export type MkAffectedMatch = {
   matchId: string;
   matchKey: string;
-  round: 'r16' | 'qf' | 'sf' | 'final';
+  round: MkRound;
   position: number;
 };
 
@@ -52,7 +60,7 @@ function parseMatch(value: unknown): MkMatch {
   if (!isRecord(value)
     || typeof value.id !== 'string'
     || typeof value.matchKey !== 'string'
-    || !['r16', 'qf', 'sf', 'final'].includes(String(value.round))
+    || !MK_ROUNDS.includes(String(value.round) as MkRound)
     || typeof value.position !== 'number'
     || !['pending', 'ready', 'complete'].includes(String(value.status))
     || typeof value.current !== 'boolean') {
@@ -65,7 +73,7 @@ function parseAffectedMatch(value: unknown): MkAffectedMatch {
   if (!isRecord(value)
     || typeof value.matchId !== 'string'
     || typeof value.matchKey !== 'string'
-    || !['r16', 'qf', 'sf', 'final'].includes(String(value.round))
+    || !MK_ROUNDS.includes(String(value.round) as MkRound)
     || typeof value.position !== 'number') {
     throw new Error('Unexpected MK correction impact payload');
   }
@@ -109,7 +117,7 @@ export async function getOwnerMkControl(
     || !['registration', 'draw_ready', 'active', 'complete'].includes(String(data.state))
     || typeof data.activeCount !== 'number'
     || typeof data.waitlistCount !== 'number'
-    || data.maxPlayers !== 16
+    || data.maxPlayers !== MK_MAX_PLAYERS
     || !Array.isArray(data.registrations)
     || !Array.isArray(data.matches)
   ) {
@@ -121,7 +129,7 @@ export async function getOwnerMkControl(
     state: data.state as MkTournamentState,
     activeCount: data.activeCount,
     waitlistCount: data.waitlistCount,
-    maxPlayers: 16,
+    maxPlayers: MK_MAX_PLAYERS,
     registrations: data.registrations.map(parseRegistration),
     matches: data.matches.map(parseMatch),
     championGuestId: typeof data.championGuestId === 'string' ? data.championGuestId : null,

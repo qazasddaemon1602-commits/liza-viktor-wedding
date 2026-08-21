@@ -29,7 +29,7 @@ const state: ActiveProjection = {
   tournamentId: 't1',
   state: 'active',
   activeCount: 9,
-  maxPlayers: 16,
+  maxPlayers: 40,
   ownRegistrationStatus: null,
   waitlistPosition: null,
   players,
@@ -163,6 +163,27 @@ describe('PublicBracket with byes', () => {
     render(<PublicBracket state={longNameState} />);
 
     expect(screen.getByText('Александра-Екатерина Константинопольская')).toBeInTheDocument();
+  });
+
+  it('renders 64-slot and 32-slot rounds before the legacy tournament rounds', () => {
+    const expanded: ActiveProjection = {
+      ...state,
+      activeCount: 40,
+      matches: [
+        match({ id: 'm64', matchKey: 'r64-1', round: 'r64' as never, position: 1, player1GuestId: 'g1', player2GuestId: 'g2', status: 'complete', winnerGuestId: 'g1' }),
+        match({ id: 'm32', matchKey: 'r32-1', round: 'r32' as never, position: 1, player1GuestId: 'g1', player2GuestId: 'g3', status: 'ready', current: true }),
+        match({ id: 'm16', matchKey: 'r16-1', round: 'r16', position: 1, player1GuestId: 'g1', player2GuestId: 'g4', status: 'ready' }),
+      ],
+    };
+
+    render(<PublicBracket state={expanded} />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Этапы турнира' });
+    expect(within(navigation).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '1/32 ФИНАЛА',
+      '1/16 ФИНАЛА',
+      '1/8 ФИНАЛА',
+    ]);
   });
 });
 

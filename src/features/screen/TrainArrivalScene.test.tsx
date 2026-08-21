@@ -1,6 +1,14 @@
 import { render, screen } from '@testing-library/react';
+// @ts-expect-error Vitest runs this contract test in Node; the browser app intentionally omits Node types.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { TrainArrivalScene } from './TrainArrivalScene';
+
+const testRuntime = globalThis as typeof globalThis & { process: { cwd: () => string } };
+const weddingScenesCss = readFileSync(
+  `${testRuntime.process.cwd()}/src/styles/wedding-scenes.css`,
+  'utf8',
+);
 
 const event = {
   id: 'screen-event-1',
@@ -19,66 +27,66 @@ const event = {
 };
 
 describe('TrainArrivalScene', () => {
-  it('announces who arrived and exactly which carriage they joined', () => {
+  it('moves one full four-carriage train with the whole announcement attached to its wagons', () => {
     const onSignal = vi.fn();
 
     render(<TrainArrivalScene event={event} onSignal={onSignal} />);
 
-    expect(screen.getByText('НОВЫЙ ПАССАЖИР')).toBeInTheDocument();
+    const convoy = screen.getByTestId('arrival-convoy');
+    expect(convoy).toContainElement(screen.getByTestId('arrival-train-sprite'));
+    expect(convoy).toHaveAttribute('data-reduced-motion', 'static-pass');
+    expect(screen.getByTestId('arrival-train-sprite')).toHaveAttribute(
+      'src',
+      '/images/wedding/arrival-train-sprite-v2.png',
+    );
+    expect(screen.getByTestId('arrival-train-smoke')).toHaveAttribute(
+      'src',
+      '/images/wedding/arrival-train-smoke-v2.png',
+    );
+    expect(screen.getByTestId('arrival-train-smoke')).toHaveAttribute('data-motion', 'rig-parallax');
+    expect(screen.getAllByTestId(/arrival-wagon-copy-/)).toHaveLength(4);
+    expect(screen.getByTestId('arrival-wagon-copy-1')).toHaveTextContent('ПРИБЫЛ НОВЫЙ ИГРОК');
+    expect(screen.getByTestId('arrival-wagon-copy-2')).toHaveTextContent('Анна Смирнова');
+    expect(screen.getByTestId('arrival-wagon-copy-3')).toHaveTextContent('ВАГОН №4');
+    expect(screen.getByTestId('arrival-wagon-copy-4')).toHaveTextContent('ПОСАДКА · 30.08.2026');
     expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
-    expect(screen.getAllByText('ВАГОН №4')).toHaveLength(2);
     expect(screen.getByTestId('train-arrival-scene')).toHaveStyle({ '--arrival-accent': '#78806A' });
     expect(onSignal).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the generated cinematic train plate as decoration behind the live announcement', () => {
+  it('keeps the visual convoy decorative and duplicates the complete message only for assistive tech', () => {
     render(<TrainArrivalScene event={event} />);
 
-    const plate = screen.getByTestId('arrival-train-plate');
-    expect(plate).toHaveAttribute('src', '/images/wedding/train-arrival-wide.png');
-    expect(plate).toHaveAttribute('alt', '');
-    expect(plate).toHaveAttribute('aria-hidden', 'true');
-
-    const paper = screen.getByTestId('arrival-paper-texture');
-    expect(paper).toHaveAttribute('src', '/images/ticket/paper-texture.png');
-    expect(paper).toHaveAttribute('alt', '');
-    expect(paper).toHaveAttribute('aria-hidden', 'true');
-  });
-
-  it('offers crop-sized AVIF and WebP sources for the arrival plate and paper layer', () => {
-    render(<TrainArrivalScene event={event} />);
-
-    const plate = screen.getByTestId('arrival-train-plate');
-    const platePicture = plate.closest('picture');
-    expect(platePicture).not.toBeNull();
-    expect(platePicture?.querySelector('source[type="image/avif"]')).toHaveAttribute(
-      'srcset',
-      '/images/wedding/train-arrival-wide-960.avif 960w, /images/wedding/train-arrival-wide-1920.avif 1920w',
+    expect(screen.getByTestId('arrival-convoy')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByRole('status')).toHaveClass('sr-only');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Прибыл новый игрок. Анна Смирнова. Назначен ВАГОН №4.',
     );
-    expect(platePicture?.querySelector('source[type="image/webp"]')).toHaveAttribute(
-      'srcset',
-      '/images/wedding/train-arrival-wide-960.webp 960w, /images/wedding/train-arrival-wide-1920.webp 1920w',
-    );
-    expect(plate).toHaveAttribute('sizes', '(max-width: 900px) 96vw, min(67vw, 88rem)');
-
-    for (const testId of ['arrival-paper-texture', 'arrival-railway-seal']) {
-      const image = screen.getByTestId(testId);
-      expect(image.closest('picture')?.querySelector('source[type="image/avif"]')).toHaveAttribute('srcset');
-      expect(image.closest('picture')?.querySelector('source[type="image/webp"]')).toHaveAttribute('srcset');
-    }
+    expect(screen.queryByTestId('arrival-platform-ticket')).not.toBeInTheDocument();
   });
 
-  it('frames the arrival as an editorial platform ticket without changing the announcement data', () => {
-    render(<TrainArrivalScene event={event} />);
+  it.each([390, 1920])(
+    'fits and centers every wagon announcement inside a %ipx reduced-motion viewport',
+    (viewportWidth) => {
+      const reducedMotionStart = weddingScenesCss.lastIndexOf('@media (prefers-reduced-motion: reduce)');
+      const reducedMotionCss = weddingScenesCss.slice(reducedMotionStart);
+      const convoyRule = reducedMotionCss.match(/\.train-arrival__convoy\s*\{([^}]*)\}/)?.[1] ?? '';
 
-    expect(screen.getByTestId('arrival-platform-ticket')).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Посадка Анна Смирнова, ВАГОН №4' })).toBeInTheDocument();
-    expect(screen.getByTestId('arrival-editorial-seal')).toBeInTheDocument();
-    const seal = screen.getByTestId('arrival-railway-seal');
-    expect(seal).toHaveAttribute('src', '/images/ticket/railway-seal.png');
-    expect(seal).toHaveAttribute('alt', '');
-    expect(seal).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByText('PLATFORM ANNOUNCEMENT')).toBeInTheDocument();
-    expect(screen.getByText('PASSENGER ACCEPTED')).toBeInTheDocument();
-  });
+      expect(reducedMotionStart).toBeGreaterThan(-1);
+      expect(convoyRule).toMatch(/left:\s*50%/);
+      expect(convoyRule).toMatch(/width:\s*min\(96vw,\s*80rem\)/);
+      expect(convoyRule).toMatch(/transform:\s*translate3d\(-50%,\s*-50%,\s*0\)/);
+      expect(convoyRule).not.toMatch(/translate3d\(-34vw/);
+
+      const convoyWidth = Math.min(viewportWidth * 0.96, 80 * 16);
+      const convoyLeft = (viewportWidth - convoyWidth) / 2;
+      const wagonWidth = convoyWidth * 0.134;
+
+      [41.2, 59.2, 77.1, 93.4].forEach((wagonCenterPercent) => {
+        const wagonCenter = convoyLeft + convoyWidth * (wagonCenterPercent / 100);
+        expect(wagonCenter - wagonWidth / 2).toBeGreaterThanOrEqual(0);
+        expect(wagonCenter + wagonWidth / 2).toBeLessThanOrEqual(viewportWidth);
+      });
+    },
+  );
 });

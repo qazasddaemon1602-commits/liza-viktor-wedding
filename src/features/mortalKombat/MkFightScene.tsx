@@ -1,16 +1,9 @@
-import type { MkMatch, MkPlayer } from './mk.types';
+import { MK_ROUND_LABELS, type MkMatch, type MkPlayer } from './mk.types';
 
 type MkFightSceneProps = {
   match: MkMatch;
   players: MkPlayer[];
 };
-
-const roundLabels = {
-  r16: '1/8 ФИНАЛА',
-  qf: '1/4 ФИНАЛА',
-  sf: '1/2 ФИНАЛА',
-  final: 'ФИНАЛ',
-} as const;
 
 function fighterMeta(player: MkPlayer | undefined, fallback: string) {
   return {
@@ -54,7 +47,7 @@ export function MkFightScene({ match, players }: MkFightSceneProps) {
           <span className="mk-fight-kicker">ARENA BOUT</span>
           <em>ТЕКУЩИЙ БОЙ</em>
         </div>
-        <strong>{roundLabels[match.round]} · BOUT {String(match.position).padStart(2, '0')}</strong>
+        <strong>{MK_ROUND_LABELS[match.round]} · BOUT {String(match.position).padStart(2, '0')}</strong>
       </div>
 
       <div className="mk-fight-versus">

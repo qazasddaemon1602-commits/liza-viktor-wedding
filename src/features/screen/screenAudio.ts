@@ -33,6 +33,7 @@ type AudioContextLike = {
 
 export type ScreenAudioController = {
   arm: () => Promise<boolean>;
+  prepareArrival: () => Promise<boolean>;
   playArrival: () => void;
   stopArrival: () => void;
   playCarriageCall: () => void;
@@ -54,7 +55,7 @@ function browserAudioContextFactory(): AudioContextLike {
 
 export function createScreenAudioController(
   factory: AudioContextFactory = browserAudioContextFactory,
-  samplePlayer: Pick<SampleAudioController, 'arm' | 'playCue' | 'stopCue'> = sampleAudio,
+  samplePlayer: Pick<SampleAudioController, 'arm' | 'preloadCue' | 'playCue' | 'stopCue'> = sampleAudio,
   hasSample: (id: AudioCueId) => boolean = hasLocalAudioSource,
 ): ScreenAudioController {
   let context: AudioContextLike | null = null;
@@ -84,9 +85,15 @@ export function createScreenAudioController(
 
   const arm = async (): Promise<boolean> => {
     if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
-    const needsArrivalFallback = !hasSample('arrival.chime');
+    const needsArrivalFallback = !hasSample('arrival.sequence');
     const needsSequenceFallback = !hasSample('arrival.sequence');
-    if (!needsArrivalFallback && !needsSequenceFallback) return samplePlayer.arm();
+    if (!needsArrivalFallback && !needsSequenceFallback) {
+      const [armed, arrivalBuffer] = await Promise.all([
+        samplePlayer.arm(),
+        samplePlayer.preloadCue('arrival.sequence'),
+      ]);
+      return Boolean(armed && arrivalBuffer);
+    }
     try {
       context ??= factory();
       if (context.state !== 'running') await context.resume();
@@ -99,6 +106,11 @@ export function createScreenAudioController(
     } catch {
       return false;
     }
+  };
+
+  const prepareArrival = async (): Promise<boolean> => {
+    if (!hasSample('arrival.sequence')) return true;
+    return Boolean(await samplePlayer.preloadCue('arrival.sequence'));
   };
 
   const rearmFromProjectorControl = () => {
@@ -135,8 +147,8 @@ export function createScreenAudioController(
   };
 
   const playArrival = () => {
-    if (hasSample('arrival.chime')) {
-      void samplePlayer.playCue('arrival.chime', { priority: 'scene' });
+    if (hasSample('arrival.sequence')) {
+      void samplePlayer.playCue('arrival.sequence', { priority: 'scene' });
       return;
     }
     if (!context || context.state !== 'running') return;
@@ -179,7 +191,7 @@ export function createScreenAudioController(
   };
 
   const stopArrival = () => {
-    if (hasSample('arrival.chime')) samplePlayer.stopCue('arrival.chime');
+    if (hasSample('arrival.sequence')) samplePlayer.stopCue('arrival.sequence');
     stopOscillators();
   };
   const stopCarriageCall = () => {
@@ -203,6 +215,7 @@ export function createScreenAudioController(
 
   return {
     arm,
+    prepareArrival,
     playArrival,
     stopArrival,
     playCarriageCall,

@@ -146,6 +146,7 @@ describe('createScreenAudioController', () => {
     const { context } = fakeAudioContext();
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),
+      preloadCue: vi.fn().mockResolvedValue({ duration: 14 }),
       playCue: vi.fn().mockResolvedValue('played'),
       stopCue: vi.fn(),
     };
@@ -161,11 +162,33 @@ describe('createScreenAudioController', () => {
     audio.stopArrival();
     audio.stopCarriageCall();
 
-    expect(samplePlayer.playCue).toHaveBeenCalledWith('arrival.chime', { priority: 'scene' });
-    expect(samplePlayer.playCue).toHaveBeenCalledWith('arrival.sequence', { priority: 'scene' });
-    expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.chime');
+    expect(samplePlayer.playCue).toHaveBeenNthCalledWith(1, 'arrival.sequence', { priority: 'scene' });
+    expect(samplePlayer.playCue).toHaveBeenNthCalledWith(2, 'arrival.sequence', { priority: 'scene' });
+    expect(samplePlayer.stopCue).not.toHaveBeenCalledWith('arrival.chime');
     expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.sequence');
     expect(context.createOscillator).not.toHaveBeenCalled();
+    audio.dispose();
+  });
+
+  it('decodes the arrival recording during preparation without starting or arming playback', async () => {
+    const { context } = fakeAudioContext();
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      preloadCue: vi.fn().mockResolvedValue({ duration: 14 }),
+      playCue: vi.fn().mockResolvedValue('played'),
+      stopCue: vi.fn(),
+    };
+    const audio = createScreenAudioController(
+      () => context,
+      samplePlayer,
+      () => true,
+    );
+
+    await expect(audio.prepareArrival()).resolves.toBe(true);
+
+    expect(samplePlayer.preloadCue).toHaveBeenCalledWith('arrival.sequence');
+    expect(samplePlayer.arm).not.toHaveBeenCalled();
+    expect(samplePlayer.playCue).not.toHaveBeenCalled();
     audio.dispose();
   });
 });

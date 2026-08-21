@@ -153,6 +153,15 @@ const GLOBAL_STATE_NEXT: Partial<Record<BunkerGlobalGameState, {
   BUNKER_OPEN: { state: 'FINISHED', label: 'ЗАВЕРШИТЬ ИГРУ' },
 };
 
+class BunkerCommandFailure extends Error {
+  constructor(readonly stage: string, cause: unknown) {
+    const detail = cause instanceof Error && cause.message.trim()
+      ? cause.message.trim().slice(0, 180)
+      : 'сервер отклонил команду';
+    super(`${stage}: ${detail}`);
+  }
+}
+
 export function AdminBunkerControl({
   eventId,
   dependencies,
@@ -212,7 +221,9 @@ export function AdminBunkerControl({
 
   const reload = async () => {
     if (!deps) return;
-    storeState(await deps.load(eventId));
+    const next = await deps.load(eventId);
+    storeState(next);
+    return next;
   };
 
   useEffect(() => {
@@ -275,8 +286,23 @@ export function AdminBunkerControl({
     try {
       try {
         await command();
-      } catch {
-        setError('Команда Бункера не выполнена. Проверьте связь и owner-доступ.');
+      } catch (commandError) {
+        if (commandError instanceof BunkerCommandFailure
+          && commandError.stage === 'ЭТАП ЗАПУСКА НА ТВ') {
+          try {
+            const authoritative = await reload();
+            if (authoritative?.status === 'active') {
+              setError('Ответ запуска потерян, но статус перечитан · БУНКЕР АКТИВЕН. Повторный запуск не нужен.');
+              return;
+            }
+          } catch {
+            // Keep the stage-specific failure below when the authoritative read also fails.
+          }
+        }
+        const detail = commandError instanceof BunkerCommandFailure
+          ? commandError.message
+          : 'КОМАНДА БУНКЕРА: проверьте связь и owner-сессию';
+        setError(`Не выполнено · ${detail}. Повторный запуск не отправлен.`);
         return;
       }
 
@@ -301,11 +327,24 @@ export function AdminBunkerControl({
 
   const launch = async () => {
     await run(async () => {
-      const prepared = await deps.prepare(eventId, 'production');
-      if (prepared.globalGameState === 'LOBBY') {
-        await deps.distribute(eventId);
+      let prepared: PreparedBunkerGame;
+      try {
+        prepared = await deps.prepare(eventId, 'production');
+      } catch (cause) {
+        throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ', cause);
       }
-      await deps.start(eventId, 1800);
+      if (prepared.globalGameState === 'LOBBY') {
+        try {
+          await deps.distribute(eventId);
+        } catch (cause) {
+          throw new BunkerCommandFailure('ЭТАП РАСПРЕДЕЛЕНИЯ ПЕРСОНАЖЕЙ', cause);
+        }
+      }
+      try {
+        await deps.start(eventId, 1800);
+      } catch (cause) {
+        throw new BunkerCommandFailure('ЭТАП ЗАПУСКА НА ТВ', cause);
+      }
     });
     setArmed(false);
   };
@@ -337,12 +376,14 @@ export function AdminBunkerControl({
     ? activeWagons
     : previewSizes.map((count, index) => ({ id: `preview-${index + 1}`, label: `ВАГОН №${index + 1}`, count }));
   const presenceSummary = getPremierePresenceSummary(screenPresence, presenceNowMs);
-  const currentStage = quest.state?.status === 'active'
-    ? bunkerPhaseTitle(quest.state.phase)
-    : state?.status === 'active'
-      ? 'ПОЛУЧАЕМ СТАТУС'
-      : 'ОЖИДАНИЕ ЗАПУСКА';
   const globalState = state?.globalGameState;
+  const currentStage = globalState
+    ? GLOBAL_STATE_LABELS[globalState]
+    : quest.state?.status === 'active'
+      ? bunkerPhaseTitle(quest.state.phase)
+      : state?.status === 'active'
+        ? 'ПОЛУЧАЕМ СТАТУС'
+        : 'ОЖИДАНИЕ ЗАПУСКА';
   const nextGlobalState = globalState ? GLOBAL_STATE_NEXT[globalState] : undefined;
   const advanceGlobalState = deps.advance;
 

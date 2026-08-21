@@ -90,22 +90,6 @@ export function GuestHub({
         <span className="guest-hub-online">LIVE</span>
       </header>
 
-      {bunkerRuntimeLoading && (
-        <p className="guest-hub-notice" role="status">
-          Проверяем защищённый канал Бункера. Ваш билет и остальные активности остаются доступны.
-        </p>
-      )}
-      {bunkerRuntimeError && (
-        <p className="guest-hub-notice" role="alert">{bunkerRuntimeError}</p>
-      )}
-
-      <section className="guest-hub-section guest-hub-ticket" aria-label="Мой билет">
-        <div className="guest-hub-section-heading">
-          <p className="eyebrow">МОЙ БИЛЕТ</p>
-        </div>
-        <VirtualTicket guest={guest} />
-      </section>
-
       <section className="guest-hub-section guest-hub-now" aria-label="Сейчас происходит">
         <div className="guest-hub-section-heading">
           <p className="eyebrow">СЕЙЧАС ПРОИСХОДИТ</p>
@@ -125,6 +109,22 @@ export function GuestHub({
           onQuizVote={onQuizVote}
           onQuizDeadline={onQuizDeadline}
         />
+      </section>
+
+      {bunkerRuntimeLoading && (
+        <p className="guest-hub-notice" role="status">
+          Проверяем защищённый канал Бункера. Ваш билет и остальные активности остаются доступны.
+        </p>
+      )}
+      {bunkerRuntimeError && (
+        <p className="guest-hub-notice" role="alert">{bunkerRuntimeError}</p>
+      )}
+
+      <section className="guest-hub-section guest-hub-ticket" aria-label="Мой билет">
+        <div className="guest-hub-section-heading">
+          <p className="eyebrow">МОЙ БИЛЕТ</p>
+        </div>
+        <VirtualTicket guest={guest} />
       </section>
 
       <section className="guest-hub-section" aria-label="Мои активности">
@@ -151,6 +151,33 @@ export function GuestHub({
             <strong>ОТКРЫТЬ АРЕНУ</strong>
             <p>Регистрация и статус турнира. После проверки вернитесь сюда.</p>
           </a>
+        </div>
+      </section>
+
+      <section className="guest-hub-section guest-hub-inventory" aria-label="Инвентарь">
+        <div className="guest-hub-section-heading">
+          <p className="eyebrow">ИНВЕНТАРЬ</p>
+          <span>БУНКЕР · ЛИЧНОЕ СНАРЯЖЕНИЕ</span>
+        </div>
+        <div className="guest-hub-inventory__empty">
+          <picture className="generated-artwork-picture" aria-hidden="true">
+            <source
+              type="image/avif"
+              srcSet="/images/ticket/railway-seal-128.avif 128w, /images/ticket/railway-seal-256.avif 256w"
+              sizes="72px"
+            />
+            <source
+              type="image/webp"
+              srcSet="/images/ticket/railway-seal-128.webp 128w, /images/ticket/railway-seal-256.webp 256w"
+              sizes="72px"
+            />
+            <img src="/images/ticket/railway-seal.png" alt="" width="256" height="256" />
+          </picture>
+          <div>
+            <strong>ИНВЕНТАРЬ ПУСТ</strong>
+            <p>Предметы вагона появятся здесь после запуска Бункера и будут обновляться автоматически.</p>
+          </div>
+          <span>ПОЯВИТСЯ ПОСЛЕ ЗАПУСКА БУНКЕРА</span>
         </div>
       </section>
 

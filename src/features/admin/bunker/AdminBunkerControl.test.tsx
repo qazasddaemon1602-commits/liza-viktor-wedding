@@ -156,7 +156,8 @@ describe('AdminBunkerControl', () => {
     const bunkerDependencies = dependencies({
       load: vi.fn().mockResolvedValue({
         status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
-        remainingSeconds: 1500, soundEnabled: true, serverNow: '2026-08-30T12:05:00.000Z',
+        remainingSeconds: 1500, soundEnabled: true, globalGameState: 'MISSION_01',
+        serverNow: '2026-08-30T12:05:00.000Z',
       }),
       subscribeScreenPresence: (callback) => {
         emitPresence = callback;
@@ -173,8 +174,8 @@ describe('AdminBunkerControl', () => {
       />,
     );
 
-    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · КОМАНДНАЯ ЗАДАЧА A')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'ОТКРЫТЬ ЗАДАНИЕ B' })).toHaveClass('admin-bunker-stage-primary');
+    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · МИССИЯ 01')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'ОТКРЫТЬ ЗАДАНИЕ B' })).toHaveClass('admin-bunker-stage-primary');
 
     act(() => {
       emitPresence?.({ screenId: 'tv-hall', videoReady: true, audioArmed: false });
@@ -328,11 +329,11 @@ describe('AdminBunkerControl', () => {
 
     render(<AdminBunkerControl eventId="event-1" dependencies={deps} />);
 
-    expect(await screen.findByText('ГОТОВНОСТЬ ПЕРСОНАЖЕЙ')).toBeInTheDocument();
+    expect((await screen.findAllByText('ГОТОВНОСТЬ ПЕРСОНАЖЕЙ')).length).toBeGreaterThan(0);
     await user.click(screen.getByRole('button', { name: 'НАЧАТЬ МИССИЮ 01' }));
 
     expect(advance).toHaveBeenCalledWith('event-1', 'MISSION_01');
-    expect(await screen.findByText('МИССИЯ 01')).toBeInTheDocument();
+    expect((await screen.findAllByText('МИССИЯ 01')).length).toBeGreaterThan(0);
   });
 
   it('prepares the run and distributes characters before the first emergency start', async () => {
@@ -423,6 +424,7 @@ describe('AdminBunkerControl', () => {
   it.each([
     ['preparation', 'prepare'],
     ['character distribution', 'distribute'],
+    ['projector start', 'start'],
   ] as const)('does not activate or broadcast when %s fails', async (_label, failingCommand) => {
     const user = userEvent.setup();
     const prepare = failingCommand === 'prepare'
@@ -435,7 +437,9 @@ describe('AdminBunkerControl', () => {
     const distribute = failingCommand === 'distribute'
       ? vi.fn().mockRejectedValue(new Error('distribution failed'))
       : vi.fn().mockResolvedValue({ status: 'characters_ready' });
-    const start = vi.fn().mockResolvedValue({ status: 'active' });
+    const start = failingCommand === 'start'
+      ? vi.fn().mockRejectedValue(new Error('start failed'))
+      : vi.fn().mockResolvedValue({ status: 'active' });
     const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -452,8 +456,22 @@ describe('AdminBunkerControl', () => {
     await user.click(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
     await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/команда бункера не выполнена/i);
-    expect(start).not.toHaveBeenCalled();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      failingCommand === 'prepare'
+        ? /этап подготовки/i
+        : failingCommand === 'distribute'
+          ? /этап распределения персонажей/i
+          : /этап запуска на тв/i,
+    );
+    expect(alert).toHaveTextContent(
+      failingCommand === 'prepare'
+        ? /prepare failed/i
+        : failingCommand === 'distribute'
+          ? /distribution failed/i
+          : /start failed/i,
+    );
+    expect(start).toHaveBeenCalledTimes(failingCommand === 'start' ? 1 : 0);
     expect(broadcastRefresh).not.toHaveBeenCalled();
     if (failingCommand === 'prepare') expect(distribute).not.toHaveBeenCalled();
   });
@@ -550,5 +568,35 @@ describe('AdminBunkerControl', () => {
     expect(await screen.findByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' })).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent(/команда выполнена/i);
     expect(screen.getByRole('alert')).not.toHaveTextContent(/не выполнена/i);
+  });
+
+  it('reconciles an ambiguous projector-start response before the owner can retry', async () => {
+    const user = userEvent.setup();
+    const active = {
+      status: 'active' as const, startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+      remainingSeconds: 1800, soundEnabled: true, globalGameState: 'CHARACTERS_READY' as const,
+      serverNow: '2026-08-30T12:00:00.000Z',
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'idle' as const, durationSeconds: 1800, soundEnabled: true,
+        serverNow: '2026-08-30T11:59:59.000Z',
+      })
+      .mockResolvedValueOnce(active);
+    const start = vi.fn().mockRejectedValue(new Error('connection closed after commit'));
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({ load, start })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
+    await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
+
+    expect(await screen.findByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' })).toBeInTheDocument();
+    expect(await screen.findByText(/статус перечитан.*бункер активен/i)).toBeInTheDocument();
+    expect(screen.queryByText(/не выполнено/i)).not.toBeInTheDocument();
   });
 });

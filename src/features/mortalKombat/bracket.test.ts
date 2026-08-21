@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { affectedDownstreamMatches, buildBracket, nextMatchSlot } from './bracket';
 
 describe('Mortal Kombat bracket model', () => {
-  it('requires exactly sixteen players', () => {
+  it('requires at least two players', () => {
     expect(() => buildBracket(['p1'])).toThrow(/2/i);
   });
 
@@ -49,12 +49,34 @@ describe('Mortal Kombat bracket model', () => {
 describe('Mortal Kombat bracket with fewer than sixteen players', () => {
   const seededPlayers = (count: number) => Array.from({ length: count }, (_, index) => `p${index + 1}`);
 
-  it('rejects fewer than two players but accepts 2..16', () => {
+  it('rejects fewer than two players but accepts every meaningful size through forty', () => {
     expect(() => buildBracket(seededPlayers(1))).toThrow(/2/);
     expect(() => buildBracket(seededPlayers(2))).not.toThrow();
     expect(() => buildBracket(seededPlayers(9))).not.toThrow();
-    expect(() => buildBracket(seededPlayers(17))).toThrow();
+    expect(() => buildBracket(seededPlayers(16))).not.toThrow();
+    expect(() => buildBracket(seededPlayers(17))).not.toThrow();
+    expect(() => buildBracket(seededPlayers(40))).not.toThrow();
+    expect(() => buildBracket(seededPlayers(41))).toThrow(/40/);
   });
+
+  it.each([
+    { players: 2, firstRound: 'final', firstRoundMatches: 1, internalMatches: 1, realOpeningFights: 1 },
+    { players: 9, firstRound: 'r16', firstRoundMatches: 8, internalMatches: 15, realOpeningFights: 1 },
+    { players: 16, firstRound: 'r16', firstRoundMatches: 8, internalMatches: 15, realOpeningFights: 8 },
+    { players: 17, firstRound: 'r32', firstRoundMatches: 16, internalMatches: 31, realOpeningFights: 1 },
+    { players: 40, firstRound: 'r64', firstRoundMatches: 32, internalMatches: 63, realOpeningFights: 8 },
+  ])(
+    'builds the smallest deterministic bracket for $players players',
+    ({ players, firstRound, firstRoundMatches, internalMatches, realOpeningFights }) => {
+      const bracket = buildBracket(seededPlayers(players));
+      const opening = bracket.filter((match) => match.round === firstRound);
+
+      expect(bracket).toHaveLength(internalMatches);
+      expect(opening).toHaveLength(firstRoundMatches);
+      expect(opening.filter((match) => match.player1GuestId && match.player2GuestId))
+        .toHaveLength(realOpeningFights);
+    },
+  );
 
   it('places 16 seeds in standard tournament slot order', () => {
     const bracket = buildBracket(seededPlayers(16));
@@ -85,22 +107,26 @@ describe('Mortal Kombat bracket with fewer than sixteen players', () => {
     expect(bracket).toHaveLength(15);
   });
 
-  it('gives 8 players no real R16 fight so play effectively starts at the quarterfinals', () => {
+  it('starts an eight-player bracket directly at the quarterfinals', () => {
     const bracket = buildBracket(seededPlayers(8));
-    const r16 = bracket.filter((match) => match.round === 'r16');
+    const quarterfinals = bracket.filter((match) => match.round === 'qf');
 
-    expect(r16.filter((match) => match.player1GuestId && match.player2GuestId)).toHaveLength(0);
-    expect(r16.filter((match) => match.player1GuestId || match.player2GuestId)).toHaveLength(8);
+    expect(bracket.some((match) => match.round === 'r16')).toBe(false);
+    expect(quarterfinals.filter((match) => match.player1GuestId && match.player2GuestId)).toHaveLength(4);
   });
 
   it('gives 4 players only semifinal-level play and 2 players only a final', () => {
-    const four = buildBracket(seededPlayers(4)).filter((match) => match.round === 'r16');
-    expect(four.filter((match) => match.player1GuestId || match.player2GuestId)).toHaveLength(4);
+    const four = buildBracket(seededPlayers(4)).filter((match) => match.round === 'sf');
+    expect(four.filter((match) => match.player1GuestId || match.player2GuestId)).toHaveLength(2);
 
-    const two = buildBracket(seededPlayers(2)).filter((match) => match.round === 'r16');
-    expect(two.filter((match) => match.player1GuestId || match.player2GuestId)).toHaveLength(2);
-    expect(two.find((match) => match.matchKey === 'r16-1')?.player1GuestId).toBe('p1');
-    expect(two.find((match) => match.matchKey === 'r16-8')?.player1GuestId).toBe('p2');
+    const two = buildBracket(seededPlayers(2)).filter((match) => match.round === 'final');
+    expect(two).toHaveLength(1);
+    expect(two[0]).toMatchObject({ player1GuestId: 'p1', player2GuestId: 'p2' });
+  });
+
+  it('maps 64-player and 32-player rounds through the same authoritative branch', () => {
+    expect(nextMatchSlot({ round: 'r64' as never, position: 32 })).toEqual({ matchKey: 'r32-16', slot: 'player2' });
+    expect(nextMatchSlot({ round: 'r32' as never, position: 1 })).toEqual({ matchKey: 'r16-1', slot: 'player1' });
   });
 });
 

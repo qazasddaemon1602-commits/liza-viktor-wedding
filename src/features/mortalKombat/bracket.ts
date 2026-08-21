@@ -1,4 +1,4 @@
-import type { BracketMatch, MkRound } from './mk.types';
+import { MK_MAX_PLAYERS, MK_ROUNDS, type BracketMatch, type MkRound } from './mk.types';
 
 type MatchAddress = Pick<BracketMatch, 'round' | 'position'>;
 
@@ -7,35 +7,71 @@ type NextSlot = {
   slot: 'player1' | 'player2';
 };
 
-const ROUND_SIZES: Array<{ round: MkRound; count: number }> = [
-  { round: 'r16', count: 8 },
-  { round: 'qf', count: 4 },
-  { round: 'sf', count: 2 },
-  { round: 'final', count: 1 },
-];
+const ROUND_MATCH_COUNTS: Record<MkRound, number> = {
+  r64: 32,
+  r32: 16,
+  r16: 8,
+  qf: 4,
+  sf: 2,
+  final: 1,
+};
 
-export const SEED_SLOT_ORDER = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15] as const;
+const FIRST_ROUND_BY_SIZE: Record<number, MkRound> = {
+  2: 'final',
+  4: 'sf',
+  8: 'qf',
+  16: 'r16',
+  32: 'r32',
+  64: 'r64',
+};
+
+function bracketSize(playerCount: number): number {
+  let size = 2;
+  while (size < playerCount) size *= 2;
+  return size;
+}
+
+function seedSlotOrder(size: number): number[] {
+  let order = size >= 16
+    ? [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
+    : [1, 2];
+  let currentSize = size >= 16 ? 16 : 2;
+  while (currentSize < size) {
+    const nextSize = currentSize * 2;
+    order = order.flatMap((seed) => [seed, nextSize + 1 - seed]);
+    currentSize = nextSize;
+  }
+  return order;
+}
+
+export const SEED_SLOT_ORDER = seedSlotOrder(16);
 
 export function buildBracket(playerIds: string[]): BracketMatch[] {
-  if (playerIds.length < 2 || playerIds.length > 16) {
-    throw new Error('Tournament bracket requires between 2 and 16 players');
+  if (playerIds.length < 2 || playerIds.length > MK_MAX_PLAYERS) {
+    throw new Error(`Tournament bracket requires between 2 and ${MK_MAX_PLAYERS} players`);
   }
   if (new Set(playerIds).size !== playerIds.length || playerIds.some((playerId) => !playerId.trim())) {
     throw new Error('Tournament bracket requires unique player ids');
   }
 
+  const size = bracketSize(playerIds.length);
+  const firstRound = FIRST_ROUND_BY_SIZE[size];
+  const firstRoundIndex = MK_ROUNDS.indexOf(firstRound);
+  const activeRounds = MK_ROUNDS.slice(firstRoundIndex);
+  const slotOrder = seedSlotOrder(size);
   const bySeed = (seed: number): string | null => playerIds[seed - 1] ?? null;
 
   const matches: BracketMatch[] = [];
-  for (const { round, count } of ROUND_SIZES) {
+  for (const round of activeRounds) {
+    const count = ROUND_MATCH_COUNTS[round];
     for (let position = 1; position <= count; position += 1) {
       const slotIndex = (position - 1) * 2;
       matches.push({
         matchKey: `${round}-${position}`,
         round,
         position,
-        player1GuestId: round === 'r16' ? bySeed(SEED_SLOT_ORDER[slotIndex]) : null,
-        player2GuestId: round === 'r16' ? bySeed(SEED_SLOT_ORDER[slotIndex + 1]) : null,
+        player1GuestId: round === firstRound ? bySeed(slotOrder[slotIndex]) : null,
+        player2GuestId: round === firstRound ? bySeed(slotOrder[slotIndex + 1]) : null,
       });
     }
   }
@@ -47,6 +83,8 @@ export function nextMatchSlot(match: MatchAddress): NextSlot | null {
   if (match.position < 1) return null;
 
   const downstreamRound: Partial<Record<MkRound, MkRound>> = {
+    r64: 'r32',
+    r32: 'r16',
     r16: 'qf',
     qf: 'sf',
     sf: 'final',

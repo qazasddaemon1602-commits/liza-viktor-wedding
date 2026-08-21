@@ -59,8 +59,8 @@
   }
 }
 
-/* 320px phones do not have enough usable width for two large quiz answers. */
-@media (max-width: 420px) {
+/* Very narrow phones stack the answers; 390px devices keep both actions above the fold. */
+@media (max-width: 350px) {
   .quiz-live-meta {
     flex-direction: column;
     align-items: flex-start;

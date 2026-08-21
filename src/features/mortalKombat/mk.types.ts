@@ -1,6 +1,16 @@
 export type MkTournamentState = 'registration' | 'draw_ready' | 'active' | 'complete';
 export type MkRegistrationStatus = 'active' | 'waitlist' | 'withdrawn';
-export type MkRound = 'r16' | 'qf' | 'sf' | 'final';
+export const MK_MAX_PLAYERS = 40 as const;
+export const MK_ROUNDS = ['r64', 'r32', 'r16', 'qf', 'sf', 'final'] as const;
+export type MkRound = typeof MK_ROUNDS[number];
+export const MK_ROUND_LABELS: Record<MkRound, string> = {
+  r64: '1/32 ФИНАЛА',
+  r32: '1/16 ФИНАЛА',
+  r16: '1/8 ФИНАЛА',
+  qf: '1/4 ФИНАЛА',
+  sf: '1/2 ФИНАЛА',
+  final: 'ФИНАЛ',
+};
 export type MkMatchStatus = 'pending' | 'ready' | 'complete';
 
 export type MkPlayer = {
@@ -29,7 +39,7 @@ export type MkTournamentProjection =
       tournamentId: string;
       state: MkTournamentState;
       activeCount: number;
-      maxPlayers: 16;
+      maxPlayers: typeof MK_MAX_PLAYERS;
       ownRegistrationStatus: MkRegistrationStatus | null;
       waitlistPosition: number | null;
       players: MkPlayer[];
@@ -51,7 +61,7 @@ export type MkOwnerControl =
       state: MkTournamentState;
       activeCount: number;
       waitlistCount: number;
-      maxPlayers: 16;
+      maxPlayers: typeof MK_MAX_PLAYERS;
       registrations: MkOwnerRegistration[];
       matches: MkMatch[];
       championGuestId: string | null;
@@ -69,7 +79,7 @@ export type MkJoinResult = {
   status: 'joined' | 'already_joined';
   registrationStatus: 'active' | 'waitlist';
   activeCount: number;
-  maxPlayers: 16;
+  maxPlayers: typeof MK_MAX_PLAYERS;
   waitlistPosition: number | null;
 };
 

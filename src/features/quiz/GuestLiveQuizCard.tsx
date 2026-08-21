@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { siteAudio } from '../../lib/siteAudio';
 import type { GuestQuizState, QuizChoice } from './quiz.service';
 import { QuizPhaseTimer } from './QuizPhaseTimer';
@@ -27,6 +27,7 @@ export function GuestLiveQuizCard({
   onDeadline,
   compact = false,
 }: GuestLiveQuizCardProps) {
+  const questionId = useId();
   const locked = state.phase === 'results' || Boolean(state.selectedChoice) || Boolean(submitting);
   const lizaPercent = state.phase === 'results' ? percentage(state.results.liza, state.results.total) : null;
   const viktorPercent = state.phase === 'results' ? percentage(state.results.viktor, state.results.total) : null;
@@ -40,13 +41,16 @@ export function GuestLiveQuizCard({
   }, [error]);
 
   return (
-    <section className={`quiz-live-card guest-live-quiz-card${compact ? ' guest-live-quiz-card--compact' : ''}`} aria-live="polite">
-      <header className="quiz-heading">
+    <section
+      className={`quiz-live-card guest-live-quiz-card${compact ? ' guest-live-quiz-card--compact' : ''}`}
+      aria-labelledby={questionId}
+    >
+      <header className="quiz-heading guest-live-quiz-card__header">
         <div className="quiz-live-meta">
           <p className="eyebrow">LIVE QUIZ · ЛИЗА ИЛИ ВИКТОР?</p>
           <QuizPhaseTimer endsAt={state.phaseEndsAt} onExpire={onDeadline} />
         </div>
-        <h1>{state.question.text}</h1>
+        <h1 id={questionId}>{state.question.text}</h1>
         <p className="quiz-answered">{state.answeredCount} ответили</p>
       </header>
 
@@ -59,6 +63,7 @@ export function GuestLiveQuizCard({
           type="button"
           data-audio-cue="select"
           className={`quiz-choice quiz-choice-liza${state.selectedChoice === 'liza' ? ' is-selected' : ''}`}
+          aria-pressed={state.selectedChoice === 'liza'}
           disabled={locked}
           onClick={() => onVote('liza')}
         >
@@ -69,6 +74,7 @@ export function GuestLiveQuizCard({
           type="button"
           data-audio-cue="select"
           className={`quiz-choice quiz-choice-viktor${state.selectedChoice === 'viktor' ? ' is-selected' : ''}`}
+          aria-pressed={state.selectedChoice === 'viktor'}
           disabled={locked}
           onClick={() => onVote('viktor')}
         >
@@ -77,15 +83,15 @@ export function GuestLiveQuizCard({
         </button>
       </div>
 
-      {submitting && <p className="quiz-status">ФИКСИРУЕМ ОТВЕТ…</p>}
+      {submitting && <p className="quiz-status" role="status">ФИКСИРУЕМ ОТВЕТ…</p>}
       {!submitting && state.phase === 'voting' && state.selectedChoice && (
-        <p className="quiz-status">ОТВЕТ ПРИНЯТ</p>
+        <p className="quiz-status" role="status">ОТВЕТ ПРИНЯТ</p>
       )}
       {state.phase === 'voting' && !state.selectedChoice && !submitting && (
-        <p className="quiz-status quiz-status-open">ВЫБЕРИТЕ ОТВЕТ ДО КОНЦА ТАЙМЕРА</p>
+        <p className="quiz-status quiz-status-open" role="status">ВЫБЕРИТЕ ОТВЕТ ДО КОНЦА ТАЙМЕРА</p>
       )}
       {state.phase === 'results' && (
-        <p className="quiz-status quiz-status-results">РЕЗУЛЬТАТЫ · СЛЕДУЮЩИЙ ЭТАП СКОРО</p>
+        <p className="quiz-status quiz-status-results" role="status">РЕЗУЛЬТАТЫ · СЛЕДУЮЩИЙ ЭТАП СКОРО</p>
       )}
       {error && <p className="quiz-error" role="alert">{error}</p>}
     </section>

@@ -62,7 +62,7 @@ describe('AdminPage', () => {
     render(<AdminPage dependencies={dependencies()} />);
 
     expect(await screen.findByRole('button', { name: 'ВОЙТИ В АДМИНКУ' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Email владельца')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email владельца')).toHaveValue('qazasddaemon1602@gmail.com');
     expect(screen.getByLabelText('Пароль')).toBeInTheDocument();
     expect(screen.queryByText(/создать аккаунт/i)).not.toBeInTheDocument();
   });
@@ -77,6 +77,7 @@ describe('AdminPage', () => {
     render(<AdminPage dependencies={dependencies({ getSession, signIn, loadDashboard })} />);
 
     await screen.findByRole('button', { name: 'ВОЙТИ В АДМИНКУ' });
+    await user.clear(screen.getByLabelText('Email владельца'));
     await user.type(screen.getByLabelText('Email владельца'), 'ilya@example.test');
     await user.type(screen.getByLabelText('Пароль'), 'secret-password');
     await user.click(screen.getByRole('button', { name: 'ВОЙТИ В АДМИНКУ' }));
@@ -85,6 +86,83 @@ describe('AdminPage', () => {
     expect(getSession).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('Лиза × Виктор')).toBeInTheDocument();
     expect(loadDashboard).toHaveBeenCalled();
+  });
+
+  it('returns to login with an explicit message when the authenticated owner session expires', async () => {
+    let authCallback: ((session: { userId: string } | null) => void) | undefined;
+    const subscribeToAuthState = vi.fn((callback: typeof authCallback) => {
+      authCallback = callback;
+      return vi.fn();
+    });
+
+    render(
+      <AdminPage
+        dependencies={dependencies({
+          getSession: vi.fn().mockResolvedValue({ userId: 'owner-1' }),
+          subscribeToAuthState,
+        })}
+      />,
+    );
+
+    await screen.findByText('Лиза × Виктор');
+    await act(async () => authCallback?.(null));
+
+    expect(await screen.findByRole('button', { name: 'ВОЙТИ В АДМИНКУ' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Owner-сессия истекла. Войдите снова.');
+    expect(screen.queryByText('Лиза × Виктор')).not.toBeInTheDocument();
+  });
+
+  it('explains an expired owner session when the initial session check is rejected by auth', async () => {
+    const expired = Object.assign(new Error('Auth session missing'), { status: 401 });
+
+    render(
+      <AdminPage
+        dependencies={dependencies({
+          getSession: vi.fn().mockRejectedValue(expired),
+        })}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'ВОЙТИ В АДМИНКУ' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Owner-сессия истекла. Войдите снова.');
+  });
+
+  it('keeps the dashboard open and shows a visible error when local sign-out fails', async () => {
+    const user = userEvent.setup();
+    const signOut = vi.fn().mockRejectedValue(new Error('offline'));
+
+    render(
+      <AdminPage
+        dependencies={dependencies({
+          getSession: vi.fn().mockResolvedValue({ userId: 'owner-1' }),
+          signOut,
+        })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ВЫЙТИ ИЗ АДМИНКИ' }));
+
+    expect(screen.getByText('Лиза × Виктор')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Не удалось завершить owner-сессию. Проверьте связь.',
+    );
+  });
+
+  it('treats an authentication failure while loading owner data as an expired session', async () => {
+    const expired = Object.assign(new Error('owner authentication required'), { code: '42501' });
+
+    render(
+      <AdminPage
+        dependencies={dependencies({
+          getSession: vi.fn().mockResolvedValue({ userId: 'owner-1' }),
+          loadDashboard: vi.fn().mockRejectedValue(expired),
+        })}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'ВОЙТИ В АДМИНКУ' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Owner-сессия истекла. Войдите снова.');
+    expect(screen.queryByRole('heading', { name: 'АДМИНКА НЕДОСТУПНА' })).not.toBeInTheDocument();
   });
 
   it('keeps private dashboard data hidden when an authenticated user is not the event owner', async () => {

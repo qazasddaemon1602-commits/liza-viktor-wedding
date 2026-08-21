@@ -17,6 +17,17 @@
   margin-inline: auto;
 }
 
+.guest-hub-now {
+  border-color: rgba(154, 99, 72, 0.34);
+  border-top-width: 0.25rem;
+  background: rgba(247, 242, 234, 0.94);
+  box-shadow: 0 1.2rem 3rem rgba(37, 39, 36, 0.08);
+}
+
+.guest-hub-now > .guest-hub-section-heading .eyebrow {
+  color: var(--wedding-cinnamon);
+}
+
 .guest-hub-header {
   display: flex;
   align-items: flex-end;
@@ -126,6 +137,15 @@
   line-height: 1.5;
 }
 
+.guest-hub-notice {
+  width: min(100%, 58rem);
+  margin: 0 auto;
+  padding: 0.7rem 0.85rem;
+  border-inline-start: 0.2rem solid var(--wedding-cinnamon);
+  background: rgba(247, 242, 234, 0.84);
+  font-size: 0.78rem;
+}
+
 .guest-live-activity .guest-call-banner {
   position: relative;
   inset: auto;
@@ -171,6 +191,66 @@
   color: rgba(37, 39, 36, 0.58);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+.guest-hub-inventory {
+  background:
+    linear-gradient(112deg, rgba(49, 72, 58, 0.055), transparent 48%),
+    rgba(247, 242, 234, 0.68);
+}
+
+.guest-hub-inventory__empty {
+  min-height: 7.5rem;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-top: 1px solid rgba(37, 39, 36, 0.12);
+  border-bottom: 1px solid rgba(37, 39, 36, 0.12);
+}
+
+.guest-hub-inventory__empty picture,
+.guest-hub-inventory__empty img {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+.guest-hub-inventory__empty img {
+  display: block;
+  object-fit: contain;
+  opacity: 0.38;
+  filter: grayscale(1) sepia(0.18);
+}
+
+.guest-hub-inventory__empty > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.guest-hub-inventory__empty strong {
+  color: var(--wedding-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.2rem, 3vw, 1.75rem);
+  font-weight: 400;
+}
+
+.guest-hub-inventory__empty p {
+  margin: 0;
+  color: rgba(37, 39, 36, 0.6);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.guest-hub-inventory__empty > span {
+  max-width: 13rem;
+  color: var(--wedding-cinnamon);
+  font-size: 0.56rem;
+  font-weight: 900;
+  line-height: 1.45;
+  letter-spacing: 0.1em;
+  text-align: right;
 }
 
 .guest-hub-history-list {
@@ -231,14 +311,32 @@
 
   .guest-hub-header {
     align-items: flex-start;
+    padding-block: 0.2rem 0;
   }
 
   .guest-hub-header p:last-child {
-    font-size: 0.86rem;
+    max-width: 31ch;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .guest-hub-header h1 {
+    font-size: clamp(2.45rem, 13vw, 3.4rem);
+    line-height: 0.88;
+  }
+
+  .guest-hub-online {
+    min-width: 3.15rem;
+    padding: 0.48rem 0.5rem;
   }
 
   .guest-hub-section {
     padding: 0.9rem;
+  }
+
+  .guest-hub-now {
+    gap: 0.7rem;
+    padding: 0.75rem;
   }
 
   .guest-hub-ticket {
@@ -255,6 +353,24 @@
 
   .guest-hub-history-result {
     justify-content: start;
+  }
+
+  .guest-hub-inventory__empty {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    align-items: start;
+    padding-inline: 0;
+  }
+
+  .guest-hub-inventory__empty picture,
+  .guest-hub-inventory__empty img {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .guest-hub-inventory__empty > span {
+    grid-column: 2;
+    max-width: none;
+    text-align: left;
   }
 }
 

@@ -155,3 +155,35 @@
     animation: none !important;
   }
 }
+
+.carriage-call-scene__manifest {
+  position: absolute;
+  z-index: -1;
+  right: -11vw;
+  bottom: -4vh;
+  width: min(96vw, 104rem);
+  opacity: 0.14;
+  pointer-events: none;
+  animation: carriage-call-train-pass 11s cubic-bezier(.2, .7, .25, 1) both;
+}
+
+.carriage-call-scene__train {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: sepia(0.2) saturate(0.55);
+}
+
+@keyframes carriage-call-train-pass {
+  from { opacity: 0; transform: translate3d(18vw, 0.8rem, 0); }
+  12%, 82% { opacity: 0.18; }
+  to { opacity: 0; transform: translate3d(-7vw, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carriage-call-scene__manifest {
+    animation: none !important;
+    opacity: 0.12;
+    transform: none;
+  }
+}

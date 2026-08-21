@@ -77,6 +77,22 @@ describe('GuestHub', () => {
     expect(screen.queryByText(/MORTAL KOMBAT|FATALITY/i)).not.toBeInTheDocument();
   });
 
+  it('places the live event before the ticket so it is the first actionable phone card', () => {
+    render(
+      <GuestHub
+        guest={guest}
+        activeCall={null}
+        quizState={liveQuiz}
+        onQuizVote={vi.fn()}
+      />,
+    );
+
+    const now = screen.getByLabelText('Сейчас происходит');
+    const ticket = screen.getByLabelText('Мой билет');
+
+    expect(now.compareDocumentPosition(ticket) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('shows an idle live area while keeping the personal cabinet', () => {
     render(
       <GuestHub
@@ -89,6 +105,9 @@ describe('GuestHub', () => {
 
     expect(screen.getByText('ОЖИДАЕМ СЛЕДУЮЩЕЕ СОБЫТИЕ')).toBeInTheDocument();
     expect(screen.getByLabelText('История вечера')).toBeInTheDocument();
+    const inventory = screen.getByLabelText('Инвентарь');
+    expect(inventory).toHaveTextContent('ИНВЕНТАРЬ ПУСТ');
+    expect(inventory).toHaveTextContent('ПОЯВИТСЯ ПОСЛЕ ЗАПУСКА БУНКЕРА');
   });
 
   it('mounts the Bunker dashboard only for an authoritative active runtime', () => {
@@ -146,5 +165,9 @@ describe('GuestHub', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent(/не удалось обновить защищённый архив/i);
     expect(screen.getByTestId('virtual-ticket')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Сейчас происходит').compareDocumentPosition(screen.getByRole('alert'))
+      & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

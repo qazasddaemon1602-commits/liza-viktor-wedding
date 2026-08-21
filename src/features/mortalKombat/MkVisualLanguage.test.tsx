@@ -31,7 +31,7 @@ const bracketState: ActiveProjection = {
   tournamentId: 't1',
   state: 'active',
   activeCount: 16,
-  maxPlayers: 16,
+  maxPlayers: 40,
   ownRegistrationStatus: null,
   waitlistPosition: null,
   players,
@@ -93,10 +93,10 @@ describe('Mortal Kombat artbook visual language', () => {
     const previous: ActiveProjection = {
       ...bracketState,
       state: 'registration',
-      activeCount: 7,
+      activeCount: 19,
       matches: [],
     };
-    const current: ActiveProjection = { ...previous, activeCount: 8 };
+    const current: ActiveProjection = { ...previous, activeCount: 20 };
     const milestone = deriveMkMilestone(previous, current);
     if (!milestone) throw new Error('Expected a registration milestone');
 

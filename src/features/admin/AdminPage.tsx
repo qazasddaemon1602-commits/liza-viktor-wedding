@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   broadcastBunkerRefresh,
   type BunkerRealtimeClient,
@@ -105,13 +105,16 @@ import type { AdminPremiereControlDependencies } from './premiere/AdminPremiereC
 import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCouplePreanswersPanel';
 import type { AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import type { AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
+import { isOwnerSessionExpired } from './ownerSession';
 
 const EVENT_SLUG = 'liza-viktor';
+const OWNER_EMAIL = 'qazasddaemon1602@gmail.com';
 
 export type AdminSession = { userId: string };
 
 export type AdminPageDependencies = {
   getSession: () => Promise<AdminSession | null>;
+  subscribeToAuthState?: (callback: (session: AdminSession | null) => void) => () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   loadDashboard: () => Promise<AdminDashboard>;
@@ -184,12 +187,18 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       if (error) throw error;
       return data.session ? { userId: data.session.user.id } : null;
     },
+    subscribeToAuthState: (callback) => {
+      const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
+        callback(nextSession ? { userId: nextSession.user.id } : null);
+      });
+      return () => data.subscription.unsubscribe();
+    },
     signIn: async (email, password) => {
       const { error } = await client.auth.signInWithPassword({ email, password });
       if (error) throw error;
     },
     signOut: async () => {
-      const { error } = await client.auth.signOut();
+      const { error } = await client.auth.signOut({ scope: 'local' });
       if (error) throw error;
     },
     loadDashboard,
@@ -201,7 +210,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     issueGuestRecovery: (guestId) => issueGuestRecoveryRpc(client, guestId),
     resetEventTestData: async (eventId, confirmation) => {
       const result = await resetEventTestDataRpc(client, eventId, confirmation);
-      await Promise.all([
+      await Promise.allSettled([
         broadcastPremiereRefresh(premiereRealtimeClient, EVENT_SLUG),
         broadcastQuizRefresh(quizRealtimeClient, EVENT_SLUG),
         broadcastMkRefresh(mkRealtimeClient, EVENT_SLUG),
@@ -345,19 +354,35 @@ export function AdminPage({ dependencies }: AdminPageProps) {
   const deps = useMemo(() => dependencies ?? createAdminPageDependencies(), [dependencies]);
   const [checking, setChecking] = useState(true);
   const [session, setSession] = useState<AdminSession | null>(null);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(OWNER_EMAIL);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const hadOwnerSession = useRef(false);
+  const signingOut = useRef(false);
+
+  const expireOwnerSession = useCallback(() => {
+    hadOwnerSession.current = false;
+    setSession(null);
+    setPassword('');
+    setError('Owner-сессия истекла. Войдите снова.');
+  }, []);
 
   useEffect(() => {
     let active = true;
     void deps.getSession()
       .then((nextSession) => {
-        if (active) setSession(nextSession);
+        if (active) {
+          hadOwnerSession.current = Boolean(nextSession);
+          setSession(nextSession);
+        }
       })
-      .catch(() => {
-        if (active) setError('Не удалось проверить owner-сессию.');
+      .catch((sessionError) => {
+        if (active) {
+          setError(isOwnerSessionExpired(sessionError)
+            ? 'Owner-сессия истекла. Войдите снова.'
+            : 'Не удалось проверить owner-сессию.');
+        }
       })
       .finally(() => {
         if (active) setChecking(false);
@@ -366,6 +391,40 @@ export function AdminPage({ dependencies }: AdminPageProps) {
       active = false;
     };
   }, [deps]);
+
+  useEffect(() => {
+    if (!deps.subscribeToAuthState) return undefined;
+    return deps.subscribeToAuthState((nextSession) => {
+      if (nextSession) {
+        hadOwnerSession.current = true;
+        setSession(nextSession);
+        setError('');
+        return;
+      }
+      if (signingOut.current) {
+        hadOwnerSession.current = false;
+        setSession(null);
+        setError('');
+        return;
+      }
+      if (hadOwnerSession.current) expireOwnerSession();
+    });
+  }, [deps, expireOwnerSession]);
+
+  const handleSignOut = async () => {
+    signingOut.current = true;
+    try {
+      await deps.signOut();
+      hadOwnerSession.current = false;
+      setSession(null);
+      setPassword('');
+      setError('');
+    } catch {
+      setError('Не удалось завершить owner-сессию. Проверьте связь.');
+    } finally {
+      signingOut.current = false;
+    }
+  };
 
   if (checking) {
     return (
@@ -381,13 +440,16 @@ export function AdminPage({ dependencies }: AdminPageProps) {
   if (session) {
     return (
       <>
-        <button
-          type="button"
-          className="admin-signout"
-          onClick={() => void deps.signOut().then(() => setSession(null))}
-        >
-          ВЫЙТИ ИЗ АДМИНКИ
-        </button>
+        <div className="admin-owner-toolbar">
+          <button
+            type="button"
+            className="admin-signout"
+            onClick={() => void handleSignOut()}
+          >
+            ВЫЙТИ ИЗ АДМИНКИ
+          </button>
+          {error && <p className="admin-owner-toolbar__status" role="alert">{error}</p>}
+        </div>
         <AdminShell
           dependencies={{
             load: deps.loadDashboard,
@@ -405,6 +467,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
             quiz: deps.quiz,
             finalFive: deps.finalFive,
             mortalKombat: deps.mortalKombat,
+            onSessionExpired: expireOwnerSession,
           }}
         />
       </>
@@ -423,6 +486,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
       await deps.signIn(email.trim(), password);
       const nextSession = await deps.getSession();
       setSession(nextSession);
+      hadOwnerSession.current = Boolean(nextSession);
       if (!nextSession) setError('Owner-сессия не создана.');
     } catch (signInError) {
       const code = errorCode(signInError);
