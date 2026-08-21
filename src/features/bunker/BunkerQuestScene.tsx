@@ -102,7 +102,7 @@ export function BunkerQuestScene({
   remainingSeconds,
   motionPreference = 'full',
   missionOne,
-  bunkerContractVersion = 1,
+  bunkerContractVersion,
 }: BunkerQuestSceneProps) {
   // Экран должен показывать «Задание 1» и тогда, когда версия контракта ещё не
   // получена: иначе при задержке проекции ТВ оставался пустым.
