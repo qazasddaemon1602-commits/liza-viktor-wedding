@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUNKER_CHARACTER_PROFILES } from './characterPool';
+import { CHARACTER_CATEGORY_KEYS } from './v2/characterCatalog';
 import {
   assignV2Characters,
   assignCharacterProfiles,
@@ -23,6 +24,18 @@ function frequencies(assignments: readonly { profileKey: string }[]): number[] {
   }, new Map<string, number>()).values()];
 }
 
+function separatedRepeatCount(
+  assignments: readonly { guestId: string; profileKey: string }[],
+  wagonByGuest: ReadonlyMap<string, string>,
+): number {
+  const guestsByProfile = new Map<string, string[]>();
+  assignments.forEach(({ guestId, profileKey }) => {
+    guestsByProfile.set(profileKey, [...(guestsByProfile.get(profileKey) ?? []), guestId]);
+  });
+  return [...guestsByProfile.values()].filter((profileGuests) => profileGuests.length === 2
+    && wagonByGuest.get(profileGuests[0]) !== wagonByGuest.get(profileGuests[1])).length;
+}
+
 describe('controlled Bunker character assignment', () => {
   it.each(Array.from({ length: 26 }, (_, index) => index + 15))(
     'assigns the V2 quota mix deterministically for %i guests',
@@ -37,6 +50,30 @@ describe('controlled Bunker character assignment', () => {
       expect(assignV2Characters(guestIds, wagonByGuest, 'run-seed')).toEqual(result);
     },
   );
+
+  it('shuffles V2 role allocation across run nonces without mutating guest inputs', () => {
+    const guestIds = guests(20);
+    const wagonByGuest = balancedWagons(20);
+    const originalGuestIds = [...guestIds];
+    const originalWagons = [...wagonByGuest.entries()];
+    const allocations = ['seed-a', 'seed-b', 'seed-c', 'seed-d'].map((runNonce) =>
+      assignV2Characters(guestIds, wagonByGuest, runNonce),
+    );
+    expect(guestIds).toEqual(originalGuestIds);
+    expect([...wagonByGuest.entries()]).toEqual(originalWagons);
+    expect(new Set(allocations.map((assignment) => JSON.stringify(assignment))).size).toBeGreaterThan(1);
+    expect(allocations.some((assignment) => !CHARACTER_CATEGORY_KEYS.technical.includes(
+      assignment.find(({ guestId }) => guestId === 'guest-1')?.profileKey as never,
+    ))).toBe(true);
+    expect(allocations.some((assignment) => !CHARACTER_CATEGORY_KEYS.medical.includes(
+      assignment.find(({ guestId }) => guestId === 'guest-3')?.profileKey as never,
+    ))).toBe(true);
+  });
+
+  it('rejects V2 guest counts outside the supported range', () => {
+    expect(() => assignV2Characters(guests(14), balancedWagons(14), 'too-few')).toThrow(/15 to 40/i);
+    expect(() => assignV2Characters(guests(41), balancedWagons(41), 'too-many')).toThrow(/15 to 40/i);
+  });
 
   it.each(Array.from({ length: 26 }, (_, index) => index + 15))('meets the approved V2 category quotas for %i guests', (count) => {
     const counts = v2CharacterCategoryCounts(assignV2Characters(
@@ -88,6 +125,16 @@ describe('controlled Bunker character assignment', () => {
     }, new Map<string, number>())]) {
       if (count === 2) expect(wagonsByProfile.get(profileKey)?.size).toBe(2);
     }
+  });
+
+  it('maximizes separated repeat pairs when full separation is impossible', () => {
+    const guestIds = Array.from({ length: 40 }, (_, index) => `g${index + 1}`);
+    const wagonByGuest = new Map(guestIds.map((guestId, index) => [
+      guestId,
+      index < 35 ? 'A' : index === 35 ? 'B' : index < 39 ? 'A' : 'B',
+    ]));
+    const assignments = assignV2Characters(guestIds, wagonByGuest, 'fallback-0');
+    expect(separatedRepeatCount(assignments, wagonByGuest)).toBe(2);
   });
 
   it.each(Array.from({ length: 26 }, (_, index) => index + 15))(

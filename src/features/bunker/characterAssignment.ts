@@ -142,27 +142,34 @@ function assignLegacyCharacters(guestIds: readonly string[], runSeed: string): C
   return guestIds.map((guestId) => ({ guestId, profileKey: byGuest.get(guestId) as string }));
 }
 
-function matchedSeparatedRepeats(
+function maximizedSeparatedRepeats(
   repeatGuestIds: readonly string[],
   profiles: readonly BunkerCharacterProfile[],
   primaryByKey: ReadonlyMap<string, string>,
   wagonByGuest: ReadonlyMap<string, string>,
   random: () => number,
-): string[] | undefined {
+): Array<string | undefined> {
   const candidates = shuffle(profiles, random);
-  const search = (index: number, used: ReadonlySet<string>): string[] | undefined => {
-    if (index === repeatGuestIds.length) return [];
+  type Match = { profileKeys: Array<string | undefined>; separatedCount: number };
+  const search = (index: number, used: ReadonlySet<string>): Match => {
+    if (index === repeatGuestIds.length) return { profileKeys: [], separatedCount: 0 };
     const guestId = repeatGuestIds[index];
+    const skipped = search(index + 1, used);
+    let best: Match = { profileKeys: [undefined, ...skipped.profileKeys], separatedCount: skipped.separatedCount };
     for (const profile of candidates) {
       if (used.has(profile.key)) continue;
       const primaryGuestId = primaryByKey.get(profile.key);
       if (wagonByGuest.get(primaryGuestId as string) === wagonByGuest.get(guestId)) continue;
       const remaining = search(index + 1, new Set([...used, profile.key]));
-      if (remaining) return [profile.key, ...remaining];
+      const candidate: Match = {
+        profileKeys: [profile.key, ...remaining.profileKeys],
+        separatedCount: remaining.separatedCount + 1,
+      };
+      if (candidate.separatedCount > best.separatedCount) best = candidate;
     }
-    return undefined;
+    return best;
   };
-  return search(0, new Set());
+  return search(0, new Set()).profileKeys;
 }
 
 export function assignV2Characters(guestIds: readonly string[], wagonByGuest: ReadonlyMap<string, string>, runNonce: string): CharacterAssignment[] {
@@ -174,24 +181,27 @@ export function assignV2Characters(guestIds: readonly string[], wagonByGuest: Re
   const random = seededRandom(runNonce);
   const selected = selectedUniqueProfiles(guestIds.length, random);
   const uniqueCount = Math.min(guestIds.length, BUNKER_CHARACTER_PROFILES.length);
-  const assignments = selected.map((profile, index) => ({ guestId: guestIds[index], profileKey: profile.key }));
+  const uniqueGuestIds = shuffle(guestIds.slice(0, uniqueCount), random);
+  const assignments = selected.map((profile, index) => ({ guestId: uniqueGuestIds[index], profileKey: profile.key }));
   const primaryByKey = new Map(assignments.map((assignment) => [assignment.profileKey, assignment.guestId]));
   const repeatGuestIds = guestIds.slice(uniqueCount);
-  const separatedRepeats = matchedSeparatedRepeats(
+  const separatedRepeats = maximizedSeparatedRepeats(
     repeatGuestIds, selected.slice(0, uniqueCount), primaryByKey, wagonByGuest, random,
   );
   const repeated = new Set<string>();
+  const reservedSeparatedKeys = new Set(separatedRepeats.filter((profileKey): profileKey is string => Boolean(profileKey)));
 
   for (let index = 0; index < repeatGuestIds.length; index += 1) {
     const guestId = repeatGuestIds[index];
     const candidates = shuffle(selected.slice(0, uniqueCount), random);
     const profileKey = separatedRepeats?.[index]
-      ?? candidates.find((profile) => !repeated.has(profile.key))?.key;
+      ?? candidates.find((profile) => !repeated.has(profile.key) && !reservedSeparatedKeys.has(profile.key))?.key;
     if (!profileKey) throw new Error('Character pool cannot provide distinct controlled repeats');
     repeated.add(profileKey);
     assignments.push({ guestId, profileKey });
   }
-  return assignments;
+  const profileKeyByGuest = new Map(assignments.map((assignment) => [assignment.guestId, assignment.profileKey]));
+  return guestIds.map((guestId) => ({ guestId, profileKey: profileKeyByGuest.get(guestId) as string }));
 }
 
 export function assignCharacterProfiles(guestIds: readonly string[], runSeed: string): CharacterAssignment[] {

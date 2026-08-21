@@ -1,14 +1,14 @@
 import { BUNKER_CHARACTER_CATALOG } from './v2/characterCatalog';
 
 export type BunkerCharacterProfile = {
-  key: string;
-  profession: string;
-  health: string;
-  visibleSkill: string;
-  hiddenTrait: string;
-  specialAbility: string;
-  abilityDescription: string;
-  tags: readonly string[];
+  readonly key: string;
+  readonly profession: string;
+  readonly health: string;
+  readonly visibleSkill: string;
+  readonly hiddenTrait: string;
+  readonly specialAbility: string;
+  readonly abilityDescription: string;
+  readonly tags: readonly string[];
 };
 
 export const BUNKER_CHARACTER_PROFILES: readonly BunkerCharacterProfile[] = BUNKER_CHARACTER_CATALOG;
