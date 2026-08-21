@@ -23,7 +23,6 @@ export type BunkerScreenState =
   | { status: 'idle' | 'not_found'; serverNow: string }
   | {
       status: 'active';
-      contractVersion?: 1 | 2;
       startedAt: string;
       durationSeconds: number;
       remainingSeconds: number;
@@ -180,9 +179,6 @@ function parseScreen(data: unknown): BunkerScreenState {
   }
   return {
     status: 'active',
-    ...(data.contractVersion === 1 || data.contractVersion === 2
-      ? { contractVersion: data.contractVersion }
-      : {}),
     startedAt: date(data.startedAt),
     durationSeconds: positiveInteger(data.durationSeconds),
     remainingSeconds: positiveInteger(data.remainingSeconds),

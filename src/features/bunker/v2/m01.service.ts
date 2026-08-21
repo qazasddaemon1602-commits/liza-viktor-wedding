@@ -43,6 +43,12 @@ export type MissionOneLegacyReadModel = {
   serverNow: string;
 };
 
+export type MissionOneScreenUnavailableReadModel = {
+  contractVersion: 2;
+  status: 'idle' | 'not_found';
+  serverNow: string;
+};
+
 export type MissionOneGuestMember = {
   guestId: string;
   realName: string;
@@ -86,19 +92,22 @@ export type MissionOneOwnerReadModel =
       wagons: MissionOneOwnerWagonReadModel[];
     };
 
-export type MissionOneScreenReadModel = MissionOneUnavailableReadModel | {
-  contractVersion: 2;
-  status: 'active';
-  serverNow: string;
-  deadlineAt: string;
-  title: string;
-  publicSummary: string;
-  wagons: Array<{
-    wagonId: string;
-    label: string;
-    status: 'active' | 'completed';
-  }>;
-};
+export type MissionOneScreenReadModel =
+  | MissionOneLegacyReadModel
+  | MissionOneScreenUnavailableReadModel
+  | {
+      contractVersion: 2;
+      status: 'active';
+      serverNow: string;
+      deadlineAt: string;
+      title: string;
+      publicSummary: string;
+      wagons: Array<{
+        wagonId: string;
+        label: string;
+        status: 'active' | 'completed';
+      }>;
+    };
 
 export type OverrideMissionOneSelectionInput = {
   eventId: string;
@@ -286,8 +295,23 @@ export function parseMissionOneOwnerReadModel(value: unknown): MissionOneOwnerRe
 }
 
 export function parseMissionOneScreenReadModel(value: unknown): MissionOneScreenReadModel {
-  const inactive = unavailable(value);
-  if (inactive) return inactive;
+  const input = object(value, 'public read model');
+  if (input.contractVersion === 1 && input.status === 'legacy') {
+    const legacy = exactObject(value, ['contractVersion', 'status', 'serverNow'], 'legacy read model');
+    return { contractVersion: 1, status: 'legacy', serverNow: timestamp(legacy.serverNow) };
+  }
+  if (input.contractVersion === 2 && (input.status === 'idle' || input.status === 'not_found')) {
+    const inactive = exactObject(
+      value,
+      ['contractVersion', 'status', 'serverNow'],
+      'public read model',
+    );
+    return {
+      contractVersion: 2,
+      status: inactive.status as MissionOneScreenUnavailableReadModel['status'],
+      serverNow: timestamp(inactive.serverNow),
+    };
+  }
   const model = exactObject(value, [
     'contractVersion', 'status', 'serverNow', 'deadlineAt', 'title',
     'publicSummary', 'wagons',

@@ -88,6 +88,7 @@ export function BunkerScreenGuard({
   const deps = dependencies ?? browserDeps;
   const [state, setState] = useState<BunkerScreenState | null>(null);
   const [missionOne, setMissionOne] = useState<TimedMissionOne | null>(null);
+  const [missionOneContractVersion, setMissionOneContractVersion] = useState<1 | 2 | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [motionPreference, setMotionPreference] = useState<'full' | 'reduced'>(() => (
     typeof window !== 'undefined'
@@ -141,6 +142,7 @@ export function BunkerScreenGuard({
         .then(([next, nextMissionOne]) => {
           if (!active) return;
           if (applyServerState(next)) {
+            setMissionOneContractVersion(nextMissionOne?.contractVersion ?? null);
             setMissionOne(
               nextMissionOne?.status === 'active'
                 ? { model: nextMissionOne, receivedAt: Date.now() }
@@ -193,6 +195,7 @@ export function BunkerScreenGuard({
       ])
         .then(([next, nextMissionOne]) => {
           if (active && applyServerState(next)) {
+            setMissionOneContractVersion(nextMissionOne?.contractVersion ?? null);
             setMissionOne(
               nextMissionOne?.status === 'active'
                 ? { model: nextMissionOne, receivedAt: Date.now() }
@@ -281,7 +284,7 @@ export function BunkerScreenGuard({
           remainingSeconds={remainingSeconds}
           motionPreference={motionPreference}
           missionOne={missionOneScreenModel(missionOne, nowMs)}
-          bunkerContractVersion={state.contractVersion ?? (missionOne ? 2 : 1)}
+          bunkerContractVersion={missionOneContractVersion ?? undefined}
         />
       )}
     </>

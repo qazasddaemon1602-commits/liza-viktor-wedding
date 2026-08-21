@@ -151,6 +151,54 @@ const guestReadModel = {
 } as const;
 
 describe('Mission one server read models', () => {
+  it('parses the exact V1 legacy screen contract returned by the public RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        contractVersion: 1,
+        status: 'legacy',
+        serverNow: '2026-08-21T18:00:01.000Z',
+      },
+      error: null,
+    });
+
+    await expect(getMissionOneScreenReadModel({ rpc }, 'liza-viktor')).resolves.toEqual({
+      contractVersion: 1,
+      status: 'legacy',
+      serverNow: '2026-08-21T18:00:01.000Z',
+    });
+  });
+
+  it('preserves V2 contract identity while M01 is idle during a screen transition', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        contractVersion: 2,
+        status: 'idle',
+        serverNow: '2026-08-21T18:04:01.000Z',
+      },
+      error: null,
+    });
+
+    await expect(getMissionOneScreenReadModel({ rpc }, 'liza-viktor')).resolves.toEqual({
+      contractVersion: 2,
+      status: 'idle',
+      serverNow: '2026-08-21T18:04:01.000Z',
+    });
+  });
+
+  it('rejects guest-only unavailable statuses on the public screen RPC', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        contractVersion: 2,
+        status: 'guest_not_found',
+        serverNow: '2026-08-21T18:04:01.000Z',
+      },
+      error: null,
+    });
+
+    await expect(getMissionOneScreenReadModel({ rpc }, 'liza-viktor'))
+      .rejects.toThrow(/public read model/i);
+  });
+
   it('loads the guest frozen quota and registered members without private traits', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: guestReadModel, error: null });
 
@@ -290,5 +338,32 @@ describe('M01 read-model SQL boundary', () => {
     expect(overrideFunction).toMatch(/instance_version/);
     expect(overrideFunction).toMatch(/bunker_command_receipts/);
     expect(overrideFunction).toMatch(/bunker_game_events/);
+  });
+});
+
+describe('M01 public screen contract-version migration', () => {
+  const migration = readFileSync(
+    `${(globalThis as typeof globalThis & { process: { cwd: () => string } }).process.cwd()}/supabase/migrations/20260821193853_bunker_v2_m01_screen_contract_version.sql`,
+    'utf8',
+  );
+
+  it('returns an authoritative V1 legacy or V2 idle contract without private TV data', () => {
+    const screenFunction = migration.match(
+      /create or replace function public\.get_bunker_v2_m01_screen[\s\S]+?end;\s*\$\$;/i,
+    )?.[0] ?? '';
+
+    expect(screenFunction).toMatch(/security definer\s+set search_path = ''/i);
+    expect(screenFunction).toMatch(/v_contract_version = 1[\s\S]+?'contractVersion', 1[\s\S]+?'status', 'legacy'/i);
+    expect(screenFunction).toMatch(/v_contract_version is distinct from 2[\s\S]+?'contractVersion', 2[\s\S]+?'status', 'idle'/i);
+    expect(screenFunction).not.toMatch(/public\.guests|bunker_guest_profiles|hidden_fact|realName/i);
+  });
+
+  it('resets the default execute privilege and grants only the public read roles', () => {
+    expect(migration).toMatch(
+      /revoke all on function public\.get_bunker_v2_m01_screen\(text\)\s+from public, anon, authenticated/i,
+    );
+    expect(migration).toMatch(
+      /grant execute on function public\.get_bunker_v2_m01_screen\(text\)\s+to anon, authenticated/i,
+    );
   });
 });

@@ -19,7 +19,7 @@ describe('BunkerScreenGuard', () => {
     render(
       <BunkerScreenGuard dependencies={{
         load: vi.fn().mockResolvedValue({
-          contractVersion: 1,
+          contractVersion: 2,
           status: 'active',
           startedAt: '2026-08-21T18:00:00.000Z',
           durationSeconds: 1800,
@@ -36,6 +36,11 @@ describe('BunkerScreenGuard', () => {
           currentMission: { id: 'legacy-mission-01', state: 'MISSION_01', plan: null },
           serverNow: '2026-08-21T18:00:01.000Z',
         }),
+        loadMissionOne: vi.fn().mockResolvedValue({
+          contractVersion: 1,
+          status: 'legacy',
+          serverNow: '2026-08-21T18:00:01.000Z',
+        }),
       }}>
         <div>ОБЫЧНЫЙ ЭКРАН</div>
       </BunkerScreenGuard>,
@@ -45,6 +50,41 @@ describe('BunkerScreenGuard', () => {
     expect(screen.getByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).toBeInTheDocument();
     expect(screen.getByText('СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Миссия 01 · экран' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the V2 M01 screen protected during an authoritative idle transition race', async () => {
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue({
+          contractVersion: 1,
+          status: 'active',
+          startedAt: '2026-08-21T18:00:00.000Z',
+          durationSeconds: 1800,
+          remainingSeconds: 999,
+          soundEnabled: false,
+          phase: 'dossier_1',
+          unlocked: false,
+          teams: [],
+          characterCounts: { active: 12, saved: 0, excluded: 0 },
+          globalGameState: 'MISSION_01',
+          currentMission: { id: 'mission-01', state: 'MISSION_01', plan: null },
+          serverNow: '2026-08-21T18:00:01.000Z',
+        }),
+        loadMissionOne: vi.fn().mockResolvedValue({
+          contractVersion: 2,
+          status: 'idle',
+          serverNow: '2026-08-21T18:00:01.000Z',
+        }),
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(screen.getByRole('region', { name: 'Миссия 01 · экран' })).toHaveTextContent(
+      'ПОЛУЧАЕМ СЕРВЕРНЫЙ ПРОГРЕСС ВАГОНОВ…',
+    );
+    expect(screen.queryByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).not.toBeInTheDocument();
   });
 
   it('uses the public V2 M01 instance projection instead of legacy missionA team progress', async () => {
