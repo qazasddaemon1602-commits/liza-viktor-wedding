@@ -1,0 +1,198 @@
+.admin-rehearsal {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2.6vw, 1.7rem);
+  border: 1px solid rgba(49, 72, 58, 0.18);
+  background:
+    linear-gradient(125deg, rgba(154, 99, 72, 0.06), transparent 48%),
+    rgba(243, 236, 223, 0.8);
+  box-shadow: 0 1.5rem 4rem rgba(39, 51, 43, 0.045);
+}
+
+.admin-rehearsal__heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.admin-rehearsal__heading h2 {
+  margin-top: 0.35rem;
+  color: var(--forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.9rem, 5vw, 3.2rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.admin-rehearsal__heading > p {
+  max-width: 32rem;
+  margin: 0;
+  color: rgba(39, 51, 43, 0.58);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.admin-rehearsal__readiness {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(49, 72, 58, 0.16);
+  background: rgba(255, 252, 246, 0.44);
+}
+
+.admin-rehearsal__verdict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border-left: 3px solid rgba(154, 99, 72, 0.68);
+  background: rgba(154, 99, 72, 0.06);
+}
+
+.admin-rehearsal__verdict.is-ready {
+  border-left-color: rgba(49, 72, 58, 0.72);
+  background: rgba(49, 72, 58, 0.06);
+}
+
+.admin-rehearsal__verdict.is-info {
+  border-left-color: rgba(49, 72, 58, 0.38);
+  background: rgba(49, 72, 58, 0.035);
+}
+
+.admin-rehearsal__verdict span {
+  color: rgba(39, 51, 43, 0.5);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.admin-rehearsal__verdict strong {
+  color: var(--forest);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: right;
+}
+
+.admin-rehearsal__checks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.admin-rehearsal__checks span {
+  min-width: 0;
+  padding: 0.58rem 0.65rem;
+  border: 1px solid rgba(49, 72, 58, 0.12);
+  color: rgba(39, 51, 43, 0.7);
+  background: rgba(255, 252, 246, 0.38);
+  font-size: 0.6rem;
+  font-weight: 850;
+  line-height: 1.3;
+  letter-spacing: 0.055em;
+}
+
+.admin-rehearsal__checks .is-ready {
+  border-color: rgba(49, 72, 58, 0.22);
+  color: var(--forest);
+  background: rgba(49, 72, 58, 0.045);
+}
+
+.admin-rehearsal__checks .is-watch {
+  border-color: rgba(154, 99, 72, 0.2);
+  color: rgba(112, 72, 53, 0.88);
+  background: rgba(154, 99, 72, 0.035);
+}
+
+.admin-rehearsal__links {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.admin-rehearsal__links a {
+  min-width: 0;
+  min-height: 5.6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: space-between;
+  gap: 0.55rem;
+  border: 1px solid rgba(49, 72, 58, 0.14);
+  padding: 0.8rem;
+  color: var(--forest);
+  background: rgba(255, 252, 246, 0.42);
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.admin-rehearsal__links a:hover,
+.admin-rehearsal__links a:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(154, 99, 72, 0.48);
+  background: rgba(255, 252, 246, 0.72);
+  outline: none;
+}
+
+.admin-rehearsal__links span {
+  grid-column: 1 / -1;
+  color: rgba(39, 51, 43, 0.48);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-rehearsal__links strong {
+  align-self: end;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+}
+
+.admin-rehearsal__links i {
+  align-self: end;
+  color: var(--cinnamon);
+  font-size: 1rem;
+  font-style: normal;
+}
+
+@media (max-width: 900px) {
+  .admin-rehearsal__checks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-rehearsal__links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-rehearsal__heading,
+  .admin-rehearsal__verdict {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-rehearsal__verdict strong {
+    text-align: left;
+  }
+
+  .admin-rehearsal__checks,
+  .admin-rehearsal__links {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-rehearsal__links a {
+    min-height: 4.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-rehearsal__links a {
+    transition: none;
+  }
+}
+

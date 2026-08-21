@@ -1,0 +1,157 @@
+.carriage-call-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: clamp(2rem, 3.5vw, 4.8rem) clamp(2.5rem, 5vw, 7rem) clamp(2rem, 3vw, 4rem);
+  color: #f1e4cf;
+  background:
+    linear-gradient(110deg, rgba(126, 63, 60, 0.12), transparent 35%),
+    linear-gradient(150deg, #eadfcd 0%, #f0e8dc 47%, #dfd2be 100%);
+  animation: carriage-call-in 320ms ease-out both;
+  isolation: isolate;
+}
+
+.carriage-call-scene__frame {
+  position: absolute;
+  inset: 2.2rem;
+  z-index: -1;
+  border: 1px solid rgba(49, 72, 58, 0.16);
+}
+
+.carriage-call-scene::after {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  width: min(48vw, 52rem);
+  aspect-ratio: 1;
+  right: -12vw;
+  bottom: -24vw;
+  border-radius: 50%;
+  background: var(--forest);
+  opacity: 0.07;
+}
+
+.carriage-call-scene__meta,
+.carriage-call-scene__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  color: rgba(39, 51, 43, 0.62);
+  font-size: clamp(0.62rem, 0.78vw, 0.88rem);
+  font-weight: 850;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.carriage-call-scene__meta span:first-child {
+  color: var(--forest);
+}
+
+.carriage-call-scene__content {
+  width: min(100%, 96rem);
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  gap: clamp(1.4rem, 2.5vh, 2.8rem);
+}
+
+.carriage-call-scene__eyebrow {
+  color: var(--wine);
+  font-size: clamp(0.72rem, 0.9vw, 1rem);
+  font-weight: 850;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  animation: carriage-call-copy 480ms 100ms ease-out both;
+}
+
+.carriage-call-scene__content h2 {
+  max-width: 13ch;
+  color: var(--forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4.2rem, 7.2vw, 9rem);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.052em;
+  text-wrap: balance;
+  animation: carriage-call-copy 560ms 160ms cubic-bezier(.2,.75,.2,1) both;
+}
+
+.carriage-call-scene__targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.75rem, 1.4vw, 1.4rem);
+  margin-top: clamp(0.5rem, 1.5vh, 1.5rem);
+  animation: carriage-call-copy 520ms 250ms ease-out both;
+}
+
+.carriage-call-scene__target {
+  --call-accent: var(--forest);
+  min-width: clamp(12rem, 17vw, 18rem);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-top: 3px solid var(--call-accent);
+  padding: 1rem 1.1rem 1.1rem;
+  color: var(--forest);
+  background: color-mix(in srgb, var(--call-accent) 8%, rgba(243, 236, 223, 0.7));
+}
+
+.carriage-call-scene__mark {
+  color: var(--call-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 3.2vw, 4rem);
+  line-height: 0.9;
+}
+
+.carriage-call-scene__target strong {
+  font-size: clamp(0.82rem, 1vw, 1.1rem);
+  letter-spacing: 0.11em;
+}
+
+.carriage-call-scene__footer {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-self: end;
+  padding-top: clamp(1.2rem, 2vh, 2rem);
+  border-top: 1px solid rgba(49, 72, 58, 0.13);
+  font-size: clamp(0.56rem, 0.67vw, 0.74rem);
+}
+
+.carriage-call-scene__footer i {
+  height: 1px;
+  background: rgba(49, 72, 58, 0.18);
+}
+
+@keyframes carriage-call-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes carriage-call-copy {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 900px) {
+  .carriage-call-scene { padding: 1.4rem; }
+  .carriage-call-scene__frame { inset: 0.75rem; }
+  .carriage-call-scene__content { text-align: center; justify-items: center; }
+  .carriage-call-scene__content h2 { max-width: 11ch; font-size: clamp(3.4rem, 13vw, 6rem); }
+  .carriage-call-scene__targets { justify-content: center; }
+  .carriage-call-scene__footer { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carriage-call-scene,
+  .carriage-call-scene__eyebrow,
+  .carriage-call-scene__content h2,
+  .carriage-call-scene__targets {
+    animation: none !important;
+  }
+}

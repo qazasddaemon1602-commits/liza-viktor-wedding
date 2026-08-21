@@ -1,0 +1,213 @@
+.train-arrival {
+  --arrival-accent: var(--sage);
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: clamp(2rem, 3.5vw, 4.8rem) clamp(2.5rem, 5vw, 7rem) clamp(2rem, 3vw, 4rem);
+  color: var(--ivory);
+  background:
+    radial-gradient(circle at 78% 52%, color-mix(in srgb, var(--arrival-accent) 20%, transparent), transparent 30%),
+    radial-gradient(circle at 22% 28%, rgba(241, 228, 207, 0.055), transparent 28%),
+    linear-gradient(118deg, #101915 0%, #263a30 49%, #111b16 100%);
+  animation: train-scene-in 380ms cubic-bezier(.2,.75,.2,1) both;
+  isolation: isolate;
+}
+
+.train-arrival::before {
+  content: "";
+  position: absolute;
+  inset: 2.2rem;
+  z-index: 4;
+  border: 1px solid rgba(243, 236, 223, 0.13);
+  pointer-events: none;
+}
+
+.train-arrival__wash {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0 48%,
+    color-mix(in srgb, var(--arrival-accent) 8%, transparent) 72%,
+    transparent 100%
+  );
+  opacity: 0.85;
+}
+
+.train-arrival__plate {
+  position: absolute;
+  right: -3vw;
+  bottom: 6vh;
+  z-index: 2;
+  width: min(67vw, 88rem);
+  height: min(33vh, 25rem);
+  object-fit: cover;
+  object-position: 82% center;
+  pointer-events: none;
+  animation: train-plate-in 900ms 90ms cubic-bezier(.2,.75,.2,1) both;
+}
+
+.train-arrival__meta,
+.train-arrival__destination {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  font-size: clamp(0.62rem, 0.78vw, 0.88rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.train-arrival__meta { color: rgba(243, 236, 223, 0.68); }
+.train-arrival__meta span:first-child { color: #f1e4cf; }
+
+.train-arrival__copy {
+  position: relative;
+  z-index: 5;
+  align-self: center;
+  width: min(54vw, 68rem);
+  display: grid;
+  gap: clamp(1rem, 1.8vh, 1.8rem);
+  transform: translateY(-8vh);
+}
+
+.train-arrival__eyebrow {
+  color: color-mix(in srgb, var(--arrival-accent) 62%, #f1e4cf);
+  font-size: clamp(0.72rem, 0.9vw, 1rem);
+  font-weight: 850;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  animation: train-copy-in 500ms 120ms ease-out both;
+}
+
+.train-arrival__copy h2 {
+  max-width: 9.5ch;
+  color: #f1e4cf;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(5.2rem, 9.5vw, 11.5rem);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.06em;
+  text-wrap: balance;
+  text-shadow: 0 0.25rem 2.4rem rgba(0, 0, 0, 0.14);
+  animation: train-copy-in 600ms 180ms cubic-bezier(.2,.75,.2,1) both;
+}
+
+.train-arrival__assignment {
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: clamp(1.25rem, 2vw, 2.5rem);
+  margin-top: clamp(0.7rem, 1.5vh, 1.4rem);
+  padding-top: clamp(1rem, 1.8vh, 1.8rem);
+  border-top: 1px solid rgba(243, 236, 223, 0.18);
+  animation: train-copy-in 600ms 280ms ease-out both;
+}
+
+.train-arrival__mark {
+  min-width: 1.5em;
+  color: var(--arrival-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.8rem, 6.2vw, 7.8rem);
+  line-height: 0.8;
+}
+
+.train-arrival__assignment > div { display: grid; gap: 0.35rem; }
+
+.train-arrival__assignment small {
+  color: rgba(243, 236, 223, 0.5);
+  font-size: clamp(0.58rem, 0.66vw, 0.76rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.train-arrival__assignment strong {
+  color: #f1e4cf;
+  font-size: clamp(1.15rem, 1.8vw, 2.2rem);
+  font-weight: 750;
+  letter-spacing: 0.11em;
+}
+
+.train-arrival__destination {
+  align-self: end;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  color: rgba(243, 236, 223, 0.58);
+}
+
+.train-arrival__destination i {
+  height: 1px;
+  background: rgba(243, 236, 223, 0.18);
+}
+
+.train-arrival__destination span:last-child { color: var(--arrival-accent); }
+
+@keyframes train-scene-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes train-copy-in {
+  from { opacity: 0; transform: translateY(1rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes train-plate-in {
+  from { opacity: 0; transform: translate3d(5vw, 1rem, 0) scale(1.015); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@media (max-width: 1100px) {
+  .train-arrival__copy { width: 58vw; }
+  .train-arrival__plate { width: 78vw; }
+}
+
+@media (max-width: 900px) {
+  .train-arrival { padding: 1.4rem; }
+  .train-arrival::before { inset: 0.75rem; }
+
+  .train-arrival__copy {
+    width: 100%;
+    justify-items: center;
+    text-align: center;
+    transform: translateY(-10vh);
+  }
+
+  .train-arrival__copy h2 {
+    max-width: 10ch;
+    font-size: clamp(4rem, 15vw, 7rem);
+  }
+
+  .train-arrival__plate {
+    right: -2vw;
+    bottom: 5vh;
+    width: 96vw;
+    height: 27vh;
+    object-position: 82% center;
+  }
+
+  .train-arrival__assignment { justify-content: center; }
+  .train-arrival__destination { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .train-arrival,
+  .train-arrival__eyebrow,
+  .train-arrival__copy h2,
+  .train-arrival__assignment,
+  .train-arrival__plate {
+    animation: none !important;
+  }
+
+  .train-arrival__plate { transform: none; }
+}

@@ -1,0 +1,930 @@
+/* Original wedding tournament artbook layer.
+   Reference 04 informs editorial rhythm and density only; accepted Task 10 imagery is integrated below. */
+
+.mk-page,
+.mk-screen-page,
+.screen-page--mk {
+  --mk-black: #0a0a09;
+  --mk-panel: #11110f;
+  --mk-panel-raised: #171612;
+  --mk-ivory: #eee8dc;
+  --mk-muted: #aaa69d;
+  --mk-gold: #b9a26f;
+  --mk-gold-bright: #d9c58d;
+  --mk-oxblood: #59312b;
+  --mk-line: rgba(238, 232, 220, 0.2);
+  --mk-line-strong: rgba(217, 197, 141, 0.52);
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--mk-ivory);
+  background-color: var(--mk-black);
+  background-image: url('/images/tournament/stone-texture.png');
+  background-image: image-set(
+    url('/images/tournament/stone-texture-1254.avif') type('image/avif'),
+    url('/images/tournament/stone-texture-1254.webp') type('image/webp'),
+    url('/images/tournament/stone-texture.png') type('image/png')
+  );
+  background-size: 40rem 40rem;
+}
+
+.mk-page::before,
+.mk-screen-page::before,
+.mk-hero::before,
+.mk-hero::after,
+.mk-signup-card::before,
+.mk-public-bracket::before,
+.mk-fight-scene::before,
+.mk-fight-scene::after,
+.mk-champion-scene::before,
+.mk-milestone-scene::before,
+.mk-milestone-scene__line,
+.mk-fighter-emblem,
+.mk-fighter-portrait {
+  content: none;
+  display: none;
+}
+
+.mk-page {
+  display: grid;
+  gap: clamp(0.75rem, 1.5vw, 1.25rem);
+  padding: clamp(0.75rem, 2vw, 2rem);
+}
+
+.mk-page > *,
+.mk-screen-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mk-page .eyebrow,
+.mk-screen-page .eyebrow,
+.mk-hero-meta > span,
+.mk-hero-note,
+.mk-bracket-russian,
+.mk-bracket-live-label {
+  margin: 0;
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.72rem, 0.8vw, 0.82rem);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.mk-loading {
+  width: min(52rem, 100%);
+  min-height: 74vh;
+  margin: auto;
+  display: grid;
+  align-content: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+.mk-loading h1,
+.mk-hero h1,
+.mk-editorial-intro h2,
+.mk-section-heading h2,
+.mk-public-bracket--waiting h2,
+.mk-screen-scene h1,
+.mk-screen-scene h2 {
+  margin: 0;
+  color: var(--mk-ivory);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+}
+
+.mk-loading h1 {
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 0.9;
+}
+
+.mk-loading p:not(.eyebrow) {
+  color: var(--mk-muted);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.mk-hero {
+  min-height: clamp(31rem, 58vw, 50rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: clamp(1.25rem, 4vw, 5rem);
+  padding: clamp(1.25rem, 4.5vw, 5.5rem);
+  border: 1px solid var(--mk-line);
+  background: var(--mk-panel);
+  overflow: hidden;
+}
+
+.mk-hero-art,
+.mk-fight-art,
+.mk-champion-art {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mk-hero-art img,
+.mk-fight-art img,
+.mk-champion-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mk-hero-art {
+  opacity: 0.5;
+}
+
+.mk-hero-art img {
+  object-position: 50% 50%;
+  filter: brightness(0.72) saturate(0.72);
+}
+
+.mk-hero-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.mk-hero-meta {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: clamp(2rem, 5vw, 6rem);
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--mk-line);
+}
+
+.mk-hero h1 {
+  max-width: 11ch;
+  font-size: clamp(5rem, 13vw, 13.5rem);
+  font-style: italic;
+  line-height: 0.74;
+  text-wrap: balance;
+}
+
+.mk-hero h1 span {
+  color: var(--mk-gold-bright);
+}
+
+.mk-hero-note {
+  margin-top: clamp(1.5rem, 3vw, 3rem);
+  color: var(--mk-gold-bright);
+}
+
+.mk-hero-counter {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: end;
+  align-content: end;
+  min-width: clamp(7.5rem, 11vw, 11rem);
+  padding-left: clamp(1rem, 2vw, 2rem);
+  border-left: 1px solid var(--mk-line);
+  font-variant-numeric: tabular-nums;
+}
+
+.mk-hero-counter small,
+.mk-hero-counter span {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.mk-hero-counter strong {
+  color: var(--mk-ivory);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(5rem, 10vw, 10rem);
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.mk-editorial-intro {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.45fr) minmax(16rem, 1fr) minmax(18rem, 1.1fr);
+  align-items: start;
+  gap: clamp(1.25rem, 3vw, 4rem);
+  padding: clamp(2rem, 5vw, 5rem) clamp(1.25rem, 3vw, 3rem);
+  border-block: 1px solid var(--mk-line);
+}
+
+.mk-editorial-intro h2 {
+  font-size: clamp(2.4rem, 5vw, 5.5rem);
+  font-style: italic;
+  line-height: 0.9;
+}
+
+.mk-editorial-intro > p:last-child {
+  margin: 0;
+  color: var(--mk-muted);
+  font-size: clamp(1rem, 1.2vw, 1.2rem);
+  line-height: 1.7;
+}
+
+.mk-signup-card,
+.mk-public-bracket {
+  border: 1px solid var(--mk-line);
+  background-color: var(--mk-panel);
+  background-image: url('/images/tournament/stone-texture.png');
+  background-image: image-set(
+    url('/images/tournament/stone-texture-1254.avif') type('image/avif'),
+    url('/images/tournament/stone-texture-1254.webp') type('image/webp'),
+    url('/images/tournament/stone-texture.png') type('image/png')
+  );
+  background-size: 48rem 48rem;
+  box-shadow: none;
+}
+
+.mk-signup-card {
+  min-height: 17rem;
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.45fr) minmax(12rem, 0.75fr) minmax(18rem, 1fr) auto;
+  align-items: center;
+  gap: clamp(1rem, 3vw, 3rem);
+  padding: clamp(1.5rem, 3vw, 3rem);
+}
+
+.mk-signup-card > strong {
+  color: var(--mk-ivory);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.8rem, 5vw, 5.5rem);
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.mk-signup-card > p:not(.eyebrow) {
+  margin: 0;
+  color: var(--mk-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.mk-signup-card--confirmed {
+  border-color: var(--mk-line-strong);
+  background: var(--mk-panel-raised);
+}
+
+.mk-signup-card--waitlist {
+  border-color: var(--mk-line);
+}
+
+.mk-primary-button {
+  min-width: 12rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 1.15rem;
+  border: 1px solid var(--mk-gold);
+  border-radius: 0;
+  color: var(--mk-gold-bright);
+  background: transparent;
+  box-shadow: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-decoration: none;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.mk-primary-button:hover:not(:disabled) {
+  color: var(--mk-black);
+  background: var(--mk-gold-bright);
+  border-color: var(--mk-gold-bright);
+  box-shadow: none;
+  transform: none;
+}
+
+.mk-primary-button:focus-visible,
+.mk-round-navigation button:focus-visible,
+.mk-bracket-round:focus-visible {
+  outline: 3px solid var(--mk-ivory);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+.mk-public-bracket {
+  padding: clamp(1.25rem, 3vw, 3rem);
+}
+
+.mk-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: clamp(1.5rem, 3vw, 3rem);
+  border-bottom: 1px solid var(--mk-line);
+}
+
+.mk-section-heading h2,
+.mk-public-bracket--waiting h2 {
+  margin-top: 0.6rem;
+  font-size: clamp(3.3rem, 7vw, 8rem);
+  font-style: italic;
+  line-height: 0.78;
+}
+
+.mk-bracket-status {
+  display: grid;
+  justify-items: end;
+  gap: 0.45rem;
+  flex: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.mk-bracket-status span {
+  color: var(--mk-muted);
+}
+
+.mk-bracket-status strong {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--mk-line-strong);
+  color: var(--mk-gold-bright);
+}
+
+.mk-round-navigation {
+  display: flex;
+  gap: 0;
+  margin-top: 1rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mk-gold) transparent;
+}
+
+.mk-round-navigation button {
+  min-width: max(10rem, 25%);
+  min-height: 44px;
+  flex: 1 0 auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--mk-line);
+  border-right: 0;
+  color: var(--mk-muted);
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mk-round-navigation button:last-child {
+  border-right: 1px solid var(--mk-line);
+}
+
+.mk-round-navigation button[aria-current='step'] {
+  color: var(--mk-black);
+  background: var(--mk-gold-bright);
+  border-color: var(--mk-gold-bright);
+}
+
+.mk-bracket-scroll {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0;
+  padding-top: 1rem;
+}
+
+.mk-bracket-round {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-left: 1px solid var(--mk-line);
+  scroll-margin-inline: 1rem;
+}
+
+.mk-bracket-round:last-child {
+  border-right: 1px solid var(--mk-line);
+}
+
+.mk-bracket-round__heading {
+  min-height: 3rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--mk-line);
+}
+
+.mk-bracket-round__heading > span {
+  color: var(--mk-gold-bright);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+}
+
+.mk-bracket-round h3 {
+  margin: 0;
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+}
+
+.mk-bracket-match {
+  min-height: 10rem;
+  display: grid;
+  align-content: center;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid var(--mk-line);
+  background: var(--mk-black);
+  overflow: hidden;
+}
+
+.mk-bracket-match::after {
+  content: none;
+  display: none;
+}
+
+.mk-bracket-match--current {
+  border-color: var(--mk-gold-bright);
+  background: var(--mk-panel-raised);
+  box-shadow: inset 3px 0 0 var(--mk-gold-bright);
+}
+
+.mk-bracket-match header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.mk-bracket-match header em {
+  color: var(--mk-gold-bright);
+  font-style: normal;
+}
+
+.mk-bracket-fighter {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.mk-bracket-fighter b {
+  color: var(--mk-gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+}
+
+.mk-bracket-fighter strong {
+  min-width: 0;
+  color: var(--mk-ivory);
+  font-size: clamp(0.88rem, 1.1vw, 1.05rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.mk-bracket-fighter strong.is-winner {
+  color: var(--mk-gold-bright);
+}
+
+.mk-bracket-match > i {
+  color: var(--mk-muted);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+  font-style: italic;
+}
+
+.mk-public-bracket--waiting {
+  min-height: 22rem;
+  display: grid;
+  align-content: center;
+  gap: 0.75rem;
+}
+
+.mk-public-bracket--waiting > p:last-child {
+  color: var(--mk-muted);
+}
+
+.mk-screen-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.mk-screen-scene {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(1.5rem, 5vw, 6rem);
+  background: var(--mk-black);
+}
+
+.mk-screen-waiting {
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.mk-fight-scene {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(1.25rem, 3vw, 3rem);
+  background: var(--mk-panel);
+  overflow: hidden;
+}
+
+.mk-fight-art {
+  opacity: 0.46;
+}
+
+.mk-fight-art img {
+  object-position: 50% 50%;
+  filter: brightness(0.72) saturate(0.7);
+}
+
+.mk-fight-topline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--mk-line);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.mk-fight-topline__label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.mk-fight-kicker {
+  color: var(--mk-gold-bright);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.mk-fight-topline__label em,
+.mk-fight-topline > strong {
+  color: var(--mk-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  letter-spacing: 0.1em;
+}
+
+.mk-fight-versus {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: clamp(1rem, 3vw, 4rem);
+  padding-block: clamp(1rem, 3vw, 3rem);
+  border-bottom: 1px solid var(--mk-line);
+}
+
+.mk-fighter {
+  min-width: 0;
+  min-height: min(62vh, 44rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
+.mk-fighter--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.mk-fighter > span,
+.mk-fighter small {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+  letter-spacing: 0.12em;
+}
+
+.mk-fighter > span {
+  color: var(--mk-gold-bright);
+  font-weight: 700;
+}
+
+.mk-fighter h2 {
+  max-width: 8ch;
+  margin-top: 0.65rem;
+  color: var(--mk-ivory);
+  font-size: clamp(4rem, 9vw, 11rem);
+  font-style: italic;
+  line-height: 0.72;
+  overflow-wrap: anywhere;
+  text-shadow: 0 0.18rem 1.3rem rgba(0, 0, 0, 0.95);
+}
+
+.mk-fighter--right h2 {
+  margin-left: auto;
+}
+
+.mk-fighter.is-winner h2 {
+  color: var(--mk-gold-bright);
+}
+
+.mk-vs-mark {
+  align-self: center;
+  color: var(--mk-gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.5rem, 8vw, 8rem);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.08em;
+  text-shadow: none;
+  animation: none;
+}
+
+.mk-fight-winner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mk-fight-winner span {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.12em;
+}
+
+.mk-fight-winner strong {
+  color: var(--mk-gold-bright);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 5vw, 5rem);
+  font-weight: 400;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.mk-champion-scene {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1rem;
+  text-align: center;
+  background: var(--mk-panel);
+  overflow: hidden;
+}
+
+.mk-champion-art {
+  opacity: 0.46;
+}
+
+.mk-champion-art img {
+  object-position: 50% 50%;
+  filter: brightness(0.68) saturate(0.68);
+}
+
+.mk-champion-scene > :not(.mk-champion-art) {
+  position: relative;
+  z-index: 1;
+}
+
+.mk-champion-index {
+  position: absolute;
+  top: clamp(1.5rem, 4vw, 4rem);
+  left: clamp(1.5rem, 5vw, 5rem);
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.mk-champion-scene > .mk-champion-finish {
+  margin: 0;
+  color: var(--mk-gold-bright);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.8rem, 1.2vw, 1.1rem);
+  font-style: normal;
+  letter-spacing: 0.18em;
+}
+
+.mk-champion-scene > span,
+.mk-champion-scene i {
+  color: var(--mk-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.76rem;
+  font-style: normal;
+  letter-spacing: 0.14em;
+}
+
+.mk-champion-scene h2 {
+  max-width: 10ch;
+  padding-block: 1rem 1.5rem;
+  border-bottom: 1px solid var(--mk-gold);
+  font-size: clamp(5rem, 16vw, 19rem);
+  font-style: italic;
+  line-height: 0.7;
+  overflow-wrap: anywhere;
+}
+
+.mk-milestone-scene,
+.mk-milestone-scene__frame {
+  background: var(--mk-panel);
+}
+
+.screen-connection-indicator {
+  border: 1px solid var(--mk-gold-bright);
+  color: var(--mk-gold-bright);
+  background: var(--mk-black);
+}
+
+@media (max-width: 900px) {
+  .mk-hero {
+    min-height: 38rem;
+    grid-template-columns: 1fr;
+    align-items: end;
+  }
+
+  .mk-hero-meta {
+    display: grid;
+    margin-bottom: 3rem;
+  }
+
+  .mk-hero-counter {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    min-width: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .mk-hero-counter strong {
+    font-size: 4rem;
+  }
+
+  .mk-editorial-intro,
+  .mk-signup-card {
+    grid-template-columns: 1fr;
+  }
+
+  .mk-primary-button {
+    width: 100%;
+  }
+
+  .mk-bracket-scroll {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(84%, 1fr);
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-behavior: smooth;
+    scroll-snap-type: inline mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: var(--mk-gold) transparent;
+  }
+
+  .mk-bracket-round {
+    border-right: 1px solid var(--mk-line);
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+}
+
+@media (max-width: 620px) {
+  .mk-page {
+    padding: 0.55rem;
+  }
+
+  .mk-hero {
+    min-height: 34rem;
+    padding: 1.1rem;
+  }
+
+  .mk-hero h1 {
+    max-width: 9ch;
+    font-size: clamp(3.9rem, 18vw, 6.5rem);
+  }
+
+  .mk-hero-art img,
+  .mk-fight-art img {
+    object-position: 50% 44%;
+  }
+
+  .mk-hero-note {
+    max-width: 22ch;
+  }
+
+  .mk-editorial-intro,
+  .mk-signup-card,
+  .mk-public-bracket {
+    padding: 1.15rem;
+  }
+
+  .mk-editorial-intro h2,
+  .mk-section-heading h2,
+  .mk-public-bracket--waiting h2 {
+    font-size: clamp(2.8rem, 14vw, 4.7rem);
+  }
+
+  .mk-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mk-bracket-status {
+    justify-items: start;
+  }
+
+  .mk-round-navigation button {
+    min-width: 10.75rem;
+  }
+
+  .mk-bracket-scroll {
+    grid-auto-columns: minmax(92%, 1fr);
+  }
+
+  .mk-screen-scene {
+    padding: 1.15rem;
+  }
+
+  .mk-fight-topline {
+    display: grid;
+  }
+
+  .mk-fight-versus {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .mk-fighter,
+  .mk-fighter--right {
+    min-height: 9.5rem;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .mk-fighter--right {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .mk-fighter h2 {
+    max-width: 10ch;
+    font-size: clamp(3rem, 15vw, 5.2rem);
+  }
+
+  .mk-vs-mark {
+    justify-self: center;
+    font-size: 3rem;
+  }
+
+  .mk-fight-winner {
+    display: grid;
+  }
+
+  .mk-champion-index {
+    top: 1.15rem;
+    left: 1.15rem;
+  }
+
+  .mk-champion-scene h2 {
+    font-size: clamp(4rem, 21vw, 7rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-primary-button,
+  .mk-round-navigation button {
+    transition: none;
+  }
+
+  .mk-bracket-scroll {
+    scroll-behavior: auto;
+    scroll-snap-stop: normal;
+  }
+}

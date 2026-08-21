@@ -7,6 +7,12 @@ on:
     paths:
       - 'supabase/**'
       - '.github/workflows/db-tests.yml'
+  push:
+    branches:
+      - feat/admin-rehearsal-links
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/db-tests.yml'
 
 concurrency:
   group: database-tests-${{ github.event.pull_request.number || github.ref }}
@@ -28,3 +34,4 @@ jobs:
       - name: Stop local Supabase database
         if: always()
         run: supabase stop --no-backup
+
