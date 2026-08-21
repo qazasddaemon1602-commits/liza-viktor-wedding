@@ -198,31 +198,10 @@ export function BunkerScreenGuard({
 
   useEffect(() => {
     if (!deps) return;
-    let active = true;
-    const interval = window.setInterval(() => {
-      void Promise.all([
-        deps.load(),
-        deps.loadMissionOne?.() ?? Promise.resolve(null),
-      ])
-        .then(([next, nextMissionOne]) => {
-          if (active && applyServerState(next)) {
-            setMissionOneContractVersion(nextMissionOne?.contractVersion ?? null);
-            setMissionOne(
-              nextMissionOne?.status === 'active'
-                ? { model: nextMissionOne, receivedAt: Date.now() }
-                : null,
-            );
-          }
-        })
-        .catch(() => {
-          // Keep the last valid screen state until connectivity returns.
-        });
-    }, bunkerActive ? 2_000 : 1_500);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
+    const interval = window.setInterval(() => refreshRef.current(), bunkerActive ? 2_000 : 1_500);
+    return () => window.clearInterval(interval);
   }, [deps, bunkerActive]);
+
 
   useEffect(() => {
     const audio = deps?.audio;
