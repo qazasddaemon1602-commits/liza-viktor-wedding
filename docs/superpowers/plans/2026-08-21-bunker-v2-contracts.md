@@ -286,16 +286,18 @@ Commit: `git commit -m "feat: support bunker v2 late guests and reset"`
 **Files:**
 - Modify: `docs/superpowers/plans/2026-08-21-bunker-v2-contracts.md` only to check completed boxes during execution.
 
-- [ ] **Step 1: Run focused gates**
+- [x] **Step 1: Run focused gates**
 
 Run: `npm test -- src/features/bunker/v2 src/features/bunker/characterAssignment.test.ts src/features/bunker/characterPool.test.ts src/features/bunker/bunkerSession.service.test.ts src/features/bunker/useGuestBunkerLiveState.test.ts`  
 Expected: PASS.
 
-- [ ] **Step 2: Run global static gates**
+- [x] **Step 2: Run global static gates**
 
 Run: `npm run typecheck && npm run build && git diff --check`  
 Expected: PASS; only existing Vite chunk advisory is allowed.
 
-- [ ] **Step 3: Request two-stage review and commit plan progress**
+- [x] **Step 3: Request two-stage review and commit plan progress**
 
 First reviewer checks spec compliance; second reviewer checks code quality/security. Fix findings through the original implementer, rerun gates, then commit: `chore: verify bunker v2 contracts`.
+
+Execution note: all JavaScript/TypeScript/build/static-security gates and both review stages passed. PostgreSQL/pgTAP runtime remains an explicit pre-release gate because the local Supabase database was unavailable at `127.0.0.1:54322`.
