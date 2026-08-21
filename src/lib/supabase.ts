@@ -14,8 +14,8 @@ let singleton: SupabaseClient | null = null;
 // Public (publishable) backend values, used as a build-time fallback when the
 // hosting build does not expose the VITE_* variables. Both are safe to ship in
 // the browser bundle; RLS protects the data.
-const FALLBACK_BACKEND_URL = 'https://fvnukxcdzfuhifarltry.supabase.co';
-const FALLBACK_PUBLISHABLE_KEY = 'sb_publishable_KSulk4WKCpmtJvxci7kAGQ_osYyPkrM';
+const FALLBACK_BACKEND_URL = 'https://vogcchocbpqqwhfnzzwy.supabase.co';
+const FALLBACK_PUBLISHABLE_KEY = 'sb_publishable_5qVXua51ZEO5-WFq5UUOZg_2CaPSswA';
 
 export function getSupabaseClient(): SupabaseClient {
   if (singleton) return singleton;
