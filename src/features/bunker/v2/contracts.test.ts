@@ -96,6 +96,31 @@ describe('strict Bunker V2 contracts', () => {
     })).toThrow(/mission state/i);
   });
 
+  it('requires a current mission throughout every mission-instance state', () => {
+    expect(() => parseBunkerV2Runtime({
+      ...activeGuestRuntime,
+      currentMission: null,
+    })).toThrow(/current mission/i);
+    expect(() => parseBunkerV2Runtime({
+      ...activeGuestRuntime,
+      state: 'UNKNOWN_PASSENGER',
+      currentMission: null,
+    })).toThrow(/current mission/i);
+    expect(() => parseBunkerV2Runtime({
+      ...activeGuestRuntime,
+      state: 'FINAL_30',
+      currentMission: null,
+    })).toThrow(/current mission/i);
+  });
+
+  it('requires currentMission to be null outside mission-instance states', () => {
+    expect(() => parseBunkerV2Runtime({
+      ...activeGuestRuntime,
+      state: 'BREAK',
+      currentMission: { ...activeGuestRuntime.currentMission, code: 'MISSION_01' },
+    })).toThrow(/current mission/i);
+  });
+
   it.each(['LOBBY', 'CHARACTERS_READY', 'BREAK', 'BUNKER_OPEN', 'FINISHED'])(
     'rejects %s as a mission instance code even when the runtime state matches',
     (state) => {

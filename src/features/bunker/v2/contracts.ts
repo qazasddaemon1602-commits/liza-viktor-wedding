@@ -456,6 +456,13 @@ export function parseBunkerV2Runtime(value: unknown): BunkerV2Runtime {
   const viewerInput = object(input.viewer, 'viewer');
   const state = globalState(input.state);
   const currentMission = parseCurrentMission(input.currentMission);
+  const requiresCurrentMission = V2_MISSION_CODES.has(state);
+  if (requiresCurrentMission && currentMission === null) {
+    throw new Error('Unexpected Bunker V2 current mission');
+  }
+  if (!requiresCurrentMission && currentMission !== null) {
+    throw new Error('Unexpected Bunker V2 current mission');
+  }
   if (currentMission !== null && currentMission.code !== state) {
     throw new Error('Unexpected Bunker V2 mission state');
   }

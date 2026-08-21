@@ -69,4 +69,40 @@ describe('submitBunkerCommand', () => {
       { type: 'cast_vote', payload: { instanceId: 'instance-6', vote: 'route-a' } },
     )).rejects.toThrow(/receipt/i);
   });
+
+  it('rejects a stale or misrouted receipt that does not correlate to the request', async () => {
+    const command = {
+      type: 'cast_vote',
+      payload: { instanceId: 'instance-6', vote: 'route-a' },
+    } as const;
+    await expect(submitBunkerCommand(
+      {
+        rpc: vi.fn().mockResolvedValue({
+          data: {
+            contractVersion: 2,
+            status: 'accepted',
+            commandId: 'older-command',
+            commandType: 'cast_vote',
+          },
+          error: null,
+        }),
+      },
+      'wedding', 'device-key', 'command-1', command,
+    )).rejects.toThrow(/receipt correlation/i);
+
+    await expect(submitBunkerCommand(
+      {
+        rpc: vi.fn().mockResolvedValue({
+          data: {
+            contractVersion: 2,
+            status: 'accepted',
+            commandId: 'command-1',
+            commandType: 'send_message',
+          },
+          error: null,
+        }),
+      },
+      'wedding', 'device-key', 'command-1', command,
+    )).rejects.toThrow(/receipt correlation/i);
+  });
 });

@@ -40,5 +40,9 @@ export async function submitBunkerCommand(
     p_payload: parsed.payload,
   });
   if (error) throwBunkerV2RpcError(error, 'Bunker V2 command failed');
-  return parseBunkerCommandReceipt(data);
+  const receipt = parseBunkerCommandReceipt(data);
+  if (receipt.commandId !== commandId || receipt.commandType !== parsed.type) {
+    throw new Error('Unexpected Bunker V2 receipt correlation');
+  }
+  return receipt;
 }
