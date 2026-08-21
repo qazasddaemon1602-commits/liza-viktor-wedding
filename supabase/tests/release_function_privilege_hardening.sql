@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(17);
+select plan(18);
 
 select is(
   (
@@ -184,6 +184,21 @@ select ok(
     'EXECUTE'
   ),
   'the intended public guest registration RPC remains callable'
+);
+
+select ok(
+  not exists (
+    select 1
+    from pg_proc procedure
+    cross join lateral aclexplode(
+      coalesce(procedure.proacl, acldefault('f', procedure.proowner))
+    ) privilege
+    where procedure.oid =
+      'public.register_guest(text,text,text,text,text,text,boolean)'::regprocedure
+      and privilege.grantee = 0
+      and privilege.privilege_type = 'EXECUTE'
+  ),
+  'guest registration is granted to explicit API roles without PUBLIC execute'
 );
 
 select is(
