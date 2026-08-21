@@ -22,7 +22,7 @@ export function MissionOneScreen({ model }: { model: MissionOneScreenReadModel }
   const completed = model.wagons.filter((wagon) => wagon.status === 'completed').length;
 
   return (
-    <section className="bunker-mission-one-screen" aria-label="Миссия 01 · экран">
+    <section className="bunker-mission-one-screen" aria-label="Задание 1 · общий экран">
       <BunkerResponsivePicture
         asset="bunker-exterior"
         className="bunker-mission-one-screen__backdrop"
@@ -31,10 +31,10 @@ export function MissionOneScreen({ model }: { model: MissionOneScreenReadModel }
       />
       <header className="bunker-mission-one-screen__header">
         <div>
-          <p>ПОЕЗД ВИКТОРА · ПРОТОКОЛ БУНКЕРА · МИССИЯ 01</p>
+          <p>ПОЕЗД ВИКТОРА · ПРОТОКОЛ БУНКЕРА · ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР</p>
           <h1>{model.title.toLocaleUpperCase('ru-RU')}</h1>
         </div>
-        <time dateTime={`PT${Math.max(0, model.remainingSeconds)}S`} aria-label="До завершения миссии">
+        <time dateTime={`PT${Math.max(0, model.remainingSeconds)}S`} aria-label="До конца задания">
           {formatTimer(model.remainingSeconds)}
         </time>
       </header>
