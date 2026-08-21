@@ -219,6 +219,11 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
             <ul>
               {draftMembers.map((member) => <li key={member.guestId}>{member.realName}</li>)}
             </ul>
+            {error && (
+              <p className="bunker-mission-one-player__error" role="alert" aria-live="assertive">
+                {error}
+              </p>
+            )}
             <div>
               <button
                 type="button"
@@ -288,7 +293,9 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
         </>
       )}
 
-      {error && <p className="bunker-mission-one-player__error" role="alert">{error}</p>}
+      {error && !reviewing && (
+        <p className="bunker-mission-one-player__error" role="alert">{error}</p>
+      )}
     </section>
   );
 }

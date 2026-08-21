@@ -132,6 +132,26 @@ describe('MissionOnePlayer', () => {
     expect(container).not.toHaveAttribute('inert');
   });
 
+  it('announces a failed confirmation inside the active modal instead of the inert page', async () => {
+    const user = userEvent.setup();
+    render(
+      <MissionOnePlayer
+        model={model()}
+        onConfirm={vi.fn().mockRejectedValue(new Error('still active'))}
+      />,
+    );
+
+    await user.click(screen.getByRole('checkbox', { name: /александра-мария/i }));
+    await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить решение' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' });
+    await user.click(within(dialog).getByRole('button', { name: 'Подтвердить решение' }));
+
+    const error = await within(dialog).findByRole('alert');
+    expect(error).toHaveTextContent(/состояние задания/i);
+    expect(error.closest('[aria-modal="true"]')).toBe(dialog);
+  });
+
   it('replaces reconnecting controls with the authoritative completed outcome', () => {
     const { rerender } = render(
       <MissionOnePlayer

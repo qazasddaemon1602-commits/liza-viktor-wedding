@@ -15,10 +15,43 @@ async function flushLoadedState() {
 }
 
 describe('BunkerScreenGuard', () => {
+  it('keeps the exact legacy M01 dossier scene for an authoritative V1 run', async () => {
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue({
+          contractVersion: 1,
+          status: 'active',
+          startedAt: '2026-08-21T18:00:00.000Z',
+          durationSeconds: 1800,
+          remainingSeconds: 999,
+          soundEnabled: false,
+          phase: 'dossier_1',
+          unlocked: false,
+          teams: [
+            { carriageNumber: 1, label: 'ВАГОН №1', missionAComplete: false, missionBComplete: false },
+            { carriageNumber: 2, label: 'ВАГОН №2', missionAComplete: true, missionBComplete: false },
+          ],
+          characterCounts: { active: 12, saved: 0, excluded: 0 },
+          globalGameState: 'MISSION_01',
+          currentMission: { id: 'legacy-mission-01', state: 'MISSION_01', plan: null },
+          serverNow: '2026-08-21T18:00:01.000Z',
+        }),
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(screen.getByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).toBeInTheDocument();
+    expect(screen.getByText('СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Миссия 01 · экран' })).not.toBeInTheDocument();
+  });
+
   it('uses the public V2 M01 instance projection instead of legacy missionA team progress', async () => {
     render(
       <BunkerScreenGuard dependencies={{
         load: vi.fn().mockResolvedValue({
+          contractVersion: 2,
           status: 'active',
           startedAt: '2026-08-21T18:00:00.000Z',
           durationSeconds: 1800,

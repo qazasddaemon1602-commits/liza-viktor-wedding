@@ -114,6 +114,78 @@ describe('useGuestBunkerLiveState', () => {
     }));
   });
 
+  it('recovers a completed authoritative M01 outcome after an ambiguous confirm failure', async () => {
+    const active = {
+      contractVersion: 2 as const,
+      status: 'active' as const,
+      serverNow: '2026-08-21T18:00:01.000Z',
+      deadlineAt: '2026-08-21T18:04:00.000Z',
+      instanceId: '41000000-0000-4000-8000-000000000010',
+      instanceVersion: 1,
+      wagon: { id: 'carriage-2', number: 2, label: 'ВАГОН №2' },
+      quota: 1,
+      members: [{
+        guestId: 'guest-1', realName: 'Анна Петрова', profession: 'Инженер',
+        health: 'Здорова', visibleSkill: 'Чинит механизмы',
+      }],
+      selectedGuestIds: [],
+    };
+    const completed = {
+      ...active,
+      status: 'completed' as const,
+      serverNow: '2026-08-21T18:00:03.000Z',
+      selectedGuestIds: ['guest-1'],
+    };
+    const loadMissionOne = vi.fn()
+      .mockResolvedValueOnce(active)
+      .mockResolvedValueOnce(completed);
+    const dependencies = deps({
+      loadMissionOne,
+      confirmMissionOne: vi.fn().mockRejectedValue(new Error('response lost')),
+    });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
+    await waitFor(() => expect(result.current.missionOne?.status).toBe('active'));
+
+    await act(async () => result.current.confirmMissionOne(['guest-1']));
+
+    expect(loadMissionOne).toHaveBeenCalledTimes(2);
+    expect(result.current.missionOne).toMatchObject({
+      status: 'completed', selectedGuestIds: ['guest-1'],
+    });
+  });
+
+  it('rereads an active M01 after an ambiguous confirm failure before allowing retry', async () => {
+    const active = {
+      contractVersion: 2 as const,
+      status: 'active' as const,
+      serverNow: '2026-08-21T18:00:01.000Z',
+      deadlineAt: '2026-08-21T18:04:00.000Z',
+      instanceId: '41000000-0000-4000-8000-000000000010',
+      instanceVersion: 1,
+      wagon: { id: 'carriage-2', number: 2, label: 'ВАГОН №2' },
+      quota: 1,
+      members: [{
+        guestId: 'guest-1', realName: 'Анна Петрова', profession: 'Инженер',
+        health: 'Здорова', visibleSkill: 'Чинит механизмы',
+      }],
+      selectedGuestIds: [],
+    };
+    const loadMissionOne = vi.fn().mockResolvedValue(active);
+    const failure = new Error('response lost');
+    const dependencies = deps({
+      loadMissionOne,
+      confirmMissionOne: vi.fn().mockRejectedValue(failure),
+    });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
+    await waitFor(() => expect(result.current.missionOne?.status).toBe('active'));
+
+    await expect(act(async () => result.current.confirmMissionOne(['guest-1'])))
+      .rejects.toThrow('response lost');
+
+    expect(loadMissionOne).toHaveBeenCalledTimes(2);
+    expect(result.current.missionOne).toMatchObject({ status: 'active', connection: 'online' });
+  });
+
   it('keeps a reconnected late V2 guest on the active polling cadence', async () => {
     const interval = vi.spyOn(window, 'setInterval');
     const dependencies = deps({

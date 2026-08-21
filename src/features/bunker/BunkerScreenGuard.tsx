@@ -281,6 +281,7 @@ export function BunkerScreenGuard({
           remainingSeconds={remainingSeconds}
           motionPreference={motionPreference}
           missionOne={missionOneScreenModel(missionOne, nowMs)}
+          bunkerContractVersion={state.contractVersion ?? (missionOne ? 2 : 1)}
         />
       )}
     </>

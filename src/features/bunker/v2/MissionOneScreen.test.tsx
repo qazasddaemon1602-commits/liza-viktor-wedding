@@ -78,6 +78,7 @@ describe('Mission one TV integration', () => {
       <BunkerQuestScene
         state={activeScreen}
         remainingSeconds={184}
+        bunkerContractVersion={2}
         missionOne={{
           title: 'Лишний пассажир',
           publicSummary: 'Команды принимают решение по досье.',

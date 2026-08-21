@@ -250,13 +250,33 @@ export function useGuestBunkerLiveState({
     if (!deps?.confirmMissionOne || !missionOne) {
       throw new Error('M01 confirmation is unavailable');
     }
-    await deps.confirmMissionOne(deps.getDeviceKey(), {
-      commandId: commandId(),
-      instanceId: missionOne.instanceId,
-      instanceVersion: missionOne.instanceVersion,
-      selectedGuestIds,
-    });
-    await reload();
+    const deviceKey = deps.getDeviceKey();
+    try {
+      await deps.confirmMissionOne(deviceKey, {
+        commandId: commandId(),
+        instanceId: missionOne.instanceId,
+        instanceVersion: missionOne.instanceVersion,
+        selectedGuestIds,
+      });
+      await reload();
+    } catch (failure) {
+      if (deps.loadMissionOne) {
+        try {
+          const authoritative = await deps.loadMissionOne(deviceKey);
+          const next = missionOnePlayerModel(authoritative);
+          setMissionOne(next);
+          if (
+            next?.status === 'completed'
+            && next.instanceId === missionOne.instanceId
+          ) return;
+        } catch {
+          setMissionOne((current) => (
+            current ? { ...current, connection: 'reconnecting' } : current
+          ));
+        }
+      }
+      throw failure;
+    }
   }, [deps, missionOne, reload]);
 
   return {

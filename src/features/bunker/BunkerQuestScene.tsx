@@ -15,6 +15,7 @@ type BunkerQuestSceneProps = {
   remainingSeconds: number;
   motionPreference?: 'full' | 'reduced';
   missionOne?: MissionOneScreenReadModel;
+  bunkerContractVersion?: 1 | 2;
 };
 
 function formatTimer(seconds: number): string {
@@ -101,8 +102,9 @@ export function BunkerQuestScene({
   remainingSeconds,
   motionPreference = 'full',
   missionOne,
+  bunkerContractVersion = 1,
 }: BunkerQuestSceneProps) {
-  if (state.globalGameState === 'MISSION_01') {
+  if (state.globalGameState === 'MISSION_01' && bunkerContractVersion === 2) {
     if (!missionOne) {
       return (
         <section className="bunker-mission-one-screen" aria-label="Миссия 01 · экран">
