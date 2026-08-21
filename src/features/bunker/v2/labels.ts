@@ -69,6 +69,9 @@ const STATUS_LABELS: Record<string, string> = {
   contaminated: 'Загрязнено',
   empty: 'Пусто',
   legacy: 'Старая версия истории',
+  wagon: 'Материал вагона',
+  global: 'Общий материал',
+  personal: 'Личный материал',
 };
 
 const ITEM_LABELS: Record<string, string> = {

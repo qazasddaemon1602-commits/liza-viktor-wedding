@@ -3,6 +3,13 @@ import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
 import type { BunkerV2ActiveGuestRuntime } from './v2/contracts';
 import {
+  bunkerArchiveLabel,
+  bunkerContentTypeLabel,
+  bunkerItemLabel,
+  bunkerStageLabel,
+  bunkerStatusLabel,
+} from './v2/labels';
+import {
   MissionOnePlayer,
   type MissionOnePlayerReadModel,
 } from './v2/MissionOnePlayer';
@@ -12,10 +19,6 @@ const SECTIONS = [
   'АРХИВ', 'СОСТОЯНИЕ', 'ТЕКУЩЕЕ ЗАДАНИЕ',
 ] as const;
 type Section = typeof SECTIONS[number];
-
-const ITEM_STATUS: Record<string, string> = {
-  available: 'ДОСТУПНО', used: 'ИСПОЛЬЗОВАНО', transferred: 'ПЕРЕДАНО', lost: 'ПОТЕРЯНО',
-};
 
 function rows(value: unknown[]): Record<string, unknown>[] {
   return value.filter((entry): entry is Record<string, unknown> => (
@@ -115,7 +118,7 @@ export function BunkerPlayerDashboard({
           </h2>
         </div>
         <span className="bunker-player-dashboard__state">
-          {missionOne ? 'МИССИЯ 01' : gameState}
+          {missionOne ? 'ЗАДАНИЕ 1' : bunkerStageLabel(gameState).toLocaleUpperCase('ru-RU')}
         </span>
       </header>
 
@@ -218,8 +221,8 @@ export function BunkerPlayerDashboard({
           <div className="bunker-player-list">
             {inventory.map((item) => (
               <article key={String(item.id)}>
-                <h3>{String(item.itemKey).toLocaleUpperCase('ru-RU')}</h3>
-                <strong>{ITEM_STATUS[String(item.status)] ?? String(item.status).toLocaleUpperCase('ru-RU')}</strong>
+                <h3>{bunkerItemLabel(String(item.itemKey)).toLocaleUpperCase('ru-RU')}</h3>
+                <strong>{bunkerStatusLabel(String(item.status)).toLocaleUpperCase('ru-RU')}</strong>
                 <p>Количество: {String(item.quantity)}</p>
               </article>
             ))}
@@ -245,10 +248,11 @@ export function BunkerPlayerDashboard({
                           sizes="(max-width: 760px) calc(100vw - 3.3rem), 24rem"
                         />
                       )}
-                      <h3>{entry.artifactKey.toLocaleUpperCase('ru-RU')}</h3>
-                      <strong>{entry.contentType.toLocaleUpperCase('ru-RU')}</strong>
-                      <p>{entry.decryptionStatus.toLocaleUpperCase('ru-RU')}</p>
-                      <small>{entry.scope.toLocaleUpperCase('ru-RU')}</small>
+                      <h3>{bunkerArchiveLabel(entry.artifactKey).title.toLocaleUpperCase('ru-RU')}</h3>
+                      <strong>{bunkerContentTypeLabel(entry.contentType)}</strong>
+                      <p>{bunkerStatusLabel(entry.decryptionStatus)}</p>
+                      <small>{bunkerStatusLabel(entry.scope)}</small>
+                      <p className="bunker-player-archive__hint">{bunkerArchiveLabel(entry.artifactKey).hint}</p>
                     </article>
                   );
                 })}
@@ -261,7 +265,7 @@ export function BunkerPlayerDashboard({
           isV2 ? (
             <article><h3>СОСТОЯНИЕ ВАГОНА</h3><p>Данные вагона будут открыты на следующих этапах.</p></article>
           ) : (
-            <article><h3>СОСТОЯНИЕ ВАГОНА</h3><p>ПИТАНИЕ · {String(runtime.wagonState.powerStatus).toLocaleUpperCase('ru-RU')}</p><p>СВЯЗЬ · {String(runtime.wagonState.communicationStatus).toLocaleUpperCase('ru-RU')}</p><p>НАВИГАЦИЯ · {String(runtime.wagonState.navigationStatus).toLocaleUpperCase('ru-RU')}</p></article>
+            <article><h3>СОСТОЯНИЕ ВАГОНА</h3><p>ПИТАНИЕ · {bunkerStatusLabel(String(runtime.wagonState.powerStatus)).toLocaleUpperCase('ru-RU')}</p><p>СВЯЗЬ · {bunkerStatusLabel(String(runtime.wagonState.communicationStatus)).toLocaleUpperCase('ru-RU')}</p><p>НАВИГАЦИЯ · {bunkerStatusLabel(String(runtime.wagonState.navigationStatus)).toLocaleUpperCase('ru-RU')}</p></article>
           )
         )}
 
@@ -273,8 +277,8 @@ export function BunkerPlayerDashboard({
             ) : (
               <>
                 <dl className="bunker-player-mission-meta">
-                  <div><dt>Текущий этап</dt><dd>{gameState}</dd></div>
-                  {mission && <div><dt>Идентификатор задания</dt><dd>{mission.id}</dd></div>}
+                  <div><dt>Текущий этап</dt><dd>{bunkerStageLabel(gameState)}</dd></div>
+                  {mission && <div><dt>Задание</dt><dd>{bunkerStageLabel(gameState)}</dd></div>}
                 </dl>
                 {!mission && <p>Для текущего этапа активное задание не назначено.</p>}
               </>
