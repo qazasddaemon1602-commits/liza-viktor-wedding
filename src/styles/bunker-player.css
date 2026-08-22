@@ -363,6 +363,127 @@
   font-size: 1rem;
 }
 
+.bunker-m03-problem-board {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bunker-m03-problem-board li {
+  display: grid;
+  grid-template-columns: clamp(4rem, 19vw, 5.25rem) minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  padding: 0.85rem;
+  border: 1px solid var(--bunker-player-rule);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-m03-problem-board li[data-status="resolved"] {
+  border-color: #638370;
+  background: color-mix(in srgb, #638370 16%, var(--bunker-player-graphite));
+}
+
+.bunker-m03-problem-board img {
+  width: clamp(4rem, 19vw, 5.25rem);
+  height: clamp(4rem, 19vw, 5.25rem);
+  border: 1px solid var(--bunker-player-rule);
+  object-fit: cover;
+}
+
+.bunker-m03-problem-board li > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.bunker-m03-problem-board p,
+.bunker-m03-problem-board h4,
+.bunker-m03-problem-board span,
+.bunker-m03-problem-board strong {
+  margin: 0;
+}
+
+.bunker-m03-problem-board p,
+.bunker-m03-problem-board strong,
+.bunker-m03-preview h4 {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bunker-m03-problem-board p {
+  color: var(--bunker-player-muted);
+  font-size: 0.78rem;
+}
+
+.bunker-m03-problem-board h4,
+.bunker-m03-preview h4 {
+  font-size: 1.1rem;
+  line-height: 1.15;
+}
+
+.bunker-m03-problem-board span {
+  color: var(--bunker-player-ivory);
+  line-height: 1.45;
+}
+
+.bunker-m03-problem-board strong {
+  color: var(--bunker-player-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.bunker-m03-preview {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-left: 3px solid var(--bunker-player-ivory);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-m03-preview h4,
+.bunker-m03-preview p,
+.bunker-m03-preview ul {
+  margin: 0;
+}
+
+.bunker-m03-preview ul {
+  display: grid;
+  gap: 0.45rem;
+  padding-left: 1.25rem;
+}
+
+.bunker-m03-item-choices label {
+  grid-template-columns: auto 3.5rem minmax(0, 1fr);
+  gap: 0.7rem;
+}
+
+.bunker-m03-item-choices img {
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 1px solid var(--bunker-player-rule);
+  object-fit: cover;
+}
+
+.bunker-m03-item-choices label > span {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.bunker-m03-item-choices label > span > strong {
+  color: var(--bunker-player-ivory);
+  font: inherit;
+}
+
+.bunker-m03-item-choices label > span > small {
+  color: var(--bunker-player-muted);
+  font-family: inherit;
+  font-size: 0.92rem;
+  letter-spacing: normal;
+}
+
 .bunker-global-action__routes {
   padding: 0;
   border: 0;

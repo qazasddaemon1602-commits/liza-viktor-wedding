@@ -6,7 +6,7 @@ import {
 } from './bunkerGlobalMission.service';
 import type { BunkerMissionStage, GuestBunkerQuestState } from './bunkerQuest.types';
 import type { GuestBunkerGlobalMissionAction } from './bunkerRuntime.service';
-import type { BunkerMissionContent } from './v2/content/missionContent';
+import { M03_PROBLEMS, type BunkerMissionContent } from './v2/content/missionContent';
 
 type ActiveQuestState = Extract<GuestBunkerQuestState, { status: 'active' }>;
 type InventoryRow = Record<string, unknown>;
@@ -271,11 +271,51 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
   if (action.missionState === 'MISSION_03') {
     const minItems = positiveInteger(requirements.minItems, 1);
     const maxItems = positiveInteger(requirements.maxItems, 3);
+    const selectedProblems = M03_PROBLEMS.filter((problem) => selectedItems.includes(problem.resolvingItemKey));
+    const unresolvedProblems = M03_PROBLEMS.filter((problem) => !selectedItems.includes(problem.resolvingItemKey));
+    const unassignedItems = selectedItems.filter((key) => !M03_PROBLEMS.some((problem) => problem.resolvingItemKey === key));
     return (
       <div className="bunker-global-action bunker-global-action--selection">
         <h3>РАСПРЕДЕЛИТЕ АВАРИЙНЫЙ ЗАПАС</h3>
-        <p>Выберите от {minItems} до {maxItems} доступных предметов. Использованные, потерянные и переданные предметы выбрать нельзя.</p>
-        <div className="bunker-global-action__choices">
+        <p>Сначала выберите риск, который важнее закрыть. Затем отметьте предмет под ним. Использованные, потерянные и переданные предметы выбрать нельзя.</p>
+        <ol className="bunker-m03-problem-board" aria-label="Риски вагона">
+          {M03_PROBLEMS.map((problem) => {
+            const guide = itemGuide({ itemKey: problem.resolvingItemKey });
+            const resolved = selectedItems.includes(problem.resolvingItemKey);
+            const available = availableForMission.includes(problem.resolvingItemKey);
+            return (
+              <li key={problem.key} data-status={resolved ? 'resolved' : 'open'}>
+                <img src={guide.asset} alt={guide.label} width="96" height="96" loading="lazy" />
+                <div>
+                  <p>{resolved ? 'ЗАКРЫТО ВЫБРАННЫМ ЗАПАСОМ' : 'РИСК ОСТАЁТСЯ'}</p>
+                  <h4>{problem.label}</h4>
+                  <span>{problem.risk}</span>
+                  <strong>{resolved
+                    ? `Выбран предмет: ${guide.label}. Этот риск закрыт.`
+                    : available
+                      ? `${guide.label}: отметьте ниже, чтобы закрыть этот риск.`
+                      : `Нужный предмет сейчас недоступен в инвентаре вагона.`}</strong>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+        <section className="bunker-m03-preview" aria-label="Предварительный итог" aria-live="polite">
+          <h4>ПРОВЕРКА РЕШЕНИЯ</h4>
+          <p>Выбрано решений: {selectedItems.length} из {maxItems}</p>
+          <p>Осталось рисков: {unresolvedProblems.length} из {M03_PROBLEMS.length}</p>
+          {selectedProblems.length > 0 ? (
+            <ul>
+              {selectedProblems.map((problem) => (
+                <li key={problem.key}>{itemGuide({ itemKey: problem.resolvingItemKey }).label} закрывает риск «{problem.label}».</li>
+              ))}
+            </ul>
+          ) : <p>Пока не выбран ни один предмет.</p>}
+          {unassignedItems.length > 0 && (
+            <p>{unassignedItems.map((key) => itemGuide({ itemKey: key }).label).join(', ')} пока не закрывает один из пяти рисков на этой доске.</p>
+          )}
+        </section>
+        <div className="bunker-global-action__choices bunker-m03-item-choices" aria-label="Доступный аварийный запас">
           {availableForMission.map((key) => {
             const guide = itemGuide({ itemKey: key });
             return (
@@ -286,7 +326,8 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
                   disabled={submitting || (!selectedItems.includes(key) && selectedItems.length >= maxItems)}
                   onChange={() => setSelectedItems(toggle(selectedItems, key, maxItems))}
                 />
-                <span>{guide.label} · {guide.purpose}</span>
+                <img src={guide.asset} alt="" width="64" height="64" loading="lazy" />
+                <span><strong>{guide.label}</strong><small>{guide.purpose}</small></span>
               </label>
             );
           })}

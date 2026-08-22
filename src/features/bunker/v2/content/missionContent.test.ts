@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  M03_PROBLEMS,
   getBunkerMissionContent,
   normalizeBunkerMissionKey,
   type BunkerMissionKey,
@@ -9,6 +10,30 @@ import {
 const ALL_MISSIONS: BunkerMissionKey[] = ['M01', 'M02', 'M03', 'M04', 'M05', 'M06', 'FINAL'];
 
 describe('mission content registry', () => {
+  it('defines five canonical M03 risks with a real resolving inventory item for each', () => {
+    const mission = getBunkerMissionContent('M03');
+
+    expect(M03_PROBLEMS.map((problem) => problem.key)).toEqual([
+      'water',
+      'medical',
+      'power',
+      'communication',
+      'mechanical_navigation',
+    ]);
+    expect(M03_PROBLEMS.map((problem) => problem.resolvingItemKey)).toEqual([
+      'water',
+      'medkit',
+      'generator',
+      'radio',
+      'tools',
+    ]);
+    for (const problem of M03_PROBLEMS) {
+      expect(problem.label.trim()).not.toBe('');
+      expect(problem.risk.trim()).not.toBe('');
+      expect(mission?.items).toContainEqual(expect.objectContaining({ key: problem.resolvingItemKey }));
+    }
+  });
+
   it('provides a complete guest, TV and host briefing for every playable stage', () => {
     for (const key of ALL_MISSIONS) {
       const content = getBunkerMissionContent(key);

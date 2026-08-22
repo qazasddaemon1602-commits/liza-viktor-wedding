@@ -29,6 +29,46 @@ export type BunkerMissionContent = {
   };
 };
 
+export type M03Problem = {
+  key: 'water' | 'medical' | 'power' | 'communication' | 'mechanical_navigation';
+  label: string;
+  risk: string;
+  resolvingItemKey: 'water' | 'medkit' | 'generator' | 'radio' | 'tools';
+};
+
+export const M03_PROBLEMS: readonly M03Problem[] = [
+  {
+    key: 'water',
+    label: 'Вода и перегрев',
+    risk: 'Запас воды почти исчерпан: людям грозит перегрев во время перехода.',
+    resolvingItemKey: 'water',
+  },
+  {
+    key: 'medical',
+    label: 'Медицинская помощь',
+    risk: 'В вагоне есть пострадавший: без аптечки его состояние ухудшится.',
+    resolvingItemKey: 'medkit',
+  },
+  {
+    key: 'power',
+    label: 'Резервное питание',
+    risk: 'Питание нестабильно: без генератора системы вагона могут отключиться.',
+    resolvingItemKey: 'generator',
+  },
+  {
+    key: 'communication',
+    label: 'Связь с составом',
+    risk: 'Радиоканал прерывается: без рации вагон не сможет сверять данные с соседями.',
+    resolvingItemKey: 'radio',
+  },
+  {
+    key: 'mechanical_navigation',
+    label: 'Механика и навигация',
+    risk: 'Повреждены механизмы и маршрутная часть: без инструментов состав рискует застрять.',
+    resolvingItemKey: 'tools',
+  },
+];
+
 const M01: BunkerMissionContent = {
   key: 'M01',
   title: 'Лишний пассажир',

@@ -105,6 +105,50 @@ describe('global Bunker phone mission actions', () => {
     expect(onGlobalMission).toHaveBeenCalledWith('MISSION_03', { itemKeys: ['water', 'radio'] });
   });
 
+  it('shows five M03 risks and updates the chosen-item preview before submission', async () => {
+    const onGlobalMission = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <BunkerMissionActions
+        globalMissionState="MISSION_03"
+        globalAction={action('MISSION_03', {
+          availableItemKeys: ['water', 'medkit', 'generator', 'radio', 'tools'],
+          minItems: 1,
+          maxItems: 3,
+        })}
+        inventory={[
+          { id: 'water-1', itemKey: 'water', quantity: 1, status: 'available' },
+          { id: 'medkit-1', itemKey: 'medkit', quantity: 1, status: 'available' },
+          { id: 'generator-1', itemKey: 'generator', quantity: 1, status: 'available' },
+          { id: 'radio-1', itemKey: 'radio', quantity: 1, status: 'available' },
+          { id: 'tools-1', itemKey: 'tools', quantity: 1, status: 'available' },
+        ]}
+        onGlobalMission={onGlobalMission}
+        onMission={noop}
+        onFinalCode={noop}
+      />,
+    );
+
+    const region = screen.getByLabelText('Действие вагона');
+    const risks = within(region).getByRole('list', { name: 'Риски вагона' });
+    expect(within(risks).getAllByRole('listitem')).toHaveLength(5);
+    expect(risks).toHaveTextContent(/вода и перегрев/i);
+    expect(risks).toHaveTextContent(/медицинская помощь/i);
+    expect(risks).toHaveTextContent(/резервное питание/i);
+    expect(risks).toHaveTextContent(/связь с составом/i);
+    expect(risks).toHaveTextContent(/механика и навигация/i);
+    expect(within(risks).getAllByRole('img')).toHaveLength(5);
+    expect(region).toHaveTextContent(/выбрано решений: 0 из 3/i);
+    expect(region).toHaveTextContent(/осталось рисков: 5 из 5/i);
+
+    await user.click(within(region).getByRole('checkbox', { name: /вода/i }));
+
+    expect(region).toHaveTextContent(/выбрано решений: 1 из 3/i);
+    expect(region).toHaveTextContent(/осталось рисков: 4 из 5/i);
+    expect(region).toHaveTextContent(/вода закрывает риск «вода и перегрев»/i);
+    expect(risks).toHaveTextContent(/выбран предмет: вода\. этот риск закрыт/i);
+  });
+
   it('shows M04 partner and group wagon labels and submits the message without raw IDs', async () => {
     const { user, onGlobalMission } = renderGlobal(action('MISSION_04', {
       groupWagons: [
