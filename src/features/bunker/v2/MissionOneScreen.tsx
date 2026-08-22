@@ -15,7 +15,7 @@ export function MissionOneScreen({ model }: { model: MissionOneScreenReadModel }
       <BunkerResponsivePicture asset="bunker-exterior" className="bunker-mission-one-screen__backdrop" testId="bunker-mission-one-backdrop" loading="eager" />
       <header className="bunker-mission-one-screen__header">
         <div>
-          <p>ПОЕЗД ВИКТОРА · ПРОТОКОЛ БУНКЕРА · ЗАДАНИЕ 1</p>
+          <p>ПОЕЗД ВИКТОРА · ПРОТОКОЛ БУНКЕРА · ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР</p>
           <h1>{model.title.toLocaleUpperCase('ru-RU')}</h1>
         </div>
         <time dateTime={`PT${Math.max(0, model.remainingSeconds)}S`} aria-label="До конца задания">{formatTimer(model.remainingSeconds)}</time>
