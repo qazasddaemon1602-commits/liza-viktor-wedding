@@ -15,9 +15,24 @@ export function FinalOwnerPanel({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const run = (action?: () => Promise<void> | void) => {
+  const [error, setError] = useState('');
+
+  const run = async (
+    action: (() => Promise<void> | void) | undefined,
+    failureCopy: string,
+  ): Promise<boolean> => {
+    if (!action || busy) return false;
     setBusy(true);
-    Promise.resolve(action?.()).finally(() => setBusy(false));
+    setError('');
+    try {
+      await action();
+      return true;
+    } catch {
+      setError(failureCopy);
+      return false;
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -33,18 +48,46 @@ export function FinalOwnerPanel({
       </header>
       <p>{model.solved}/{model.total} параметров подтверждено · неудачных проверок: {model.wrongAttempts}</p>
       <p>Ответы намеренно скрыты. Пульт помогает только временем и подсказками.</p>
+
+      {error && <p role="alert">{error}</p>}
+
       <div className="admin-bunker-final__actions">
-        <button type="button" disabled={busy || model.unlocked} onClick={() => run(onAddTime)}>+2 МИНУТЫ</button>
-        <button type="button" disabled={busy || model.unlocked || model.hintLevel >= 3} onClick={() => run(onHint)}>ДАТЬ ПОДСКАЗКУ</button>
+        <button
+          type="button"
+          disabled={busy || model.unlocked || !onAddTime}
+          onClick={() => void run(onAddTime, 'Не удалось добавить время. Проверьте связь и повторите один раз.')}
+        >
+          +2 МИНУТЫ
+        </button>
+        <button
+          type="button"
+          disabled={busy || model.unlocked || model.hintLevel >= 3 || !onHint}
+          onClick={() => void run(onHint, 'Не удалось выдать подсказку. Проверьте связь и повторите один раз.')}
+        >
+          ДАТЬ ПОДСКАЗКУ
+        </button>
         {!confirmOpen ? (
-          <button type="button" disabled={busy || model.unlocked} onClick={() => setConfirmOpen(true)}>АВАРИЙНО ОТКРЫТЬ</button>
+          <button
+            type="button"
+            disabled={busy || model.unlocked || !onEmergencyOpen}
+            onClick={() => {
+              setError('');
+              setConfirmOpen(true);
+            }}
+          >
+            АВАРИЙНО ОТКРЫТЬ
+          </button>
         ) : (
           <button
             type="button"
-            disabled={busy || model.unlocked}
+            disabled={busy || model.unlocked || !onEmergencyOpen}
             onClick={() => {
-              run(onEmergencyOpen);
-              setConfirmOpen(false);
+              void run(
+                onEmergencyOpen,
+                'Аварийное открытие не выполнено. Бункер остаётся закрыт — проверьте связь перед повтором.',
+              ).then((completed) => {
+                if (completed) setConfirmOpen(false);
+              });
             }}
           >
             ПОДТВЕРДИТЬ АВАРИЙНОЕ ОТКРЫТИЕ
