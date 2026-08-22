@@ -5,11 +5,15 @@ const OWNER_EMAIL = 'owner@wedding.test';
 const OWNER_PASSWORD = 'WeddingTest!2026';
 const EVENT_SLUG = 'liza-viktor';
 
-async function ownerClient(): Promise<SupabaseClient> {
+function publicClient(): SupabaseClient {
   const url = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !anonKey) throw new Error('E2E Supabase environment is missing');
-  const client = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+async function ownerClient(): Promise<SupabaseClient> {
+  const client = publicClient();
   const { error } = await client.auth.signInWithPassword({ email: OWNER_EMAIL, password: OWNER_PASSWORD });
   if (error) throw error;
   return client;
@@ -49,6 +53,27 @@ async function simulate(client: SupabaseClient, id: string) {
   return rpc<Record<string, any>>(client, 'owner_bunker_v2_test_simulate_current', { p_event_id: id });
 }
 
+async function registerDeviceGuest(client: SupabaseClient, deviceKey: string) {
+  const result = await rpc<Record<string, any>>(client, 'register_guest', {
+    p_event_slug: EVENT_SLUG,
+    p_device_key: deviceKey,
+    p_first_name: 'E2E',
+    p_last_name: 'Dashboard',
+    p_affiliation_type: 'common',
+    p_affiliation_detail: 'persistent-dashboard',
+    p_confirm_duplicate: true,
+  });
+  expect(result.status).toBe('registered');
+  return result.guest as Record<string, any>;
+}
+
+async function guestDashboard(client: SupabaseClient, deviceKey: string) {
+  return rpc<Record<string, any>>(client, 'get_guest_bunker_v2_dashboard', {
+    p_event_slug: EVENT_SLUG,
+    p_device_key: deviceKey,
+  });
+}
+
 for (const [guestCount, expectedWagons] of [[15, 2], [20, 3], [30, 4], [40, 5]] as const) {
   test(`Bunker V2 prepares a balanced ${guestCount}-guest rehearsal with ${expectedWagons} wagons`, async () => {
     const client = await ownerClient();
@@ -82,46 +107,112 @@ for (const [guestCount, expectedWagons] of [[15, 2], [20, 3], [30, 4], [40, 5]] 
   });
 }
 
-test('Bunker V2 rehearsal can traverse the entire story without a dead end', async () => {
-  const client = await ownerClient();
-  const id = await eventId(client);
-  await resetGameAndRegistrations(client, id);
+test('Bunker V2 rehearsal can traverse the entire story with a persistent device-bound guest dashboard', async () => {
+  const owner = await ownerClient();
+  const guestClient = publicClient();
+  const id = await eventId(owner);
+  const deviceKey = `e2e-dashboard-${crypto.randomUUID()}`;
+  await resetGameAndRegistrations(owner, id);
 
-  await rpc(client, 'owner_bunker_v2_seed_test_guests', { p_event_id: id, p_count: 20 });
-  await rpc(client, 'owner_prepare_bunker_v2_test', { p_event_id: id, p_command_id: commandId() });
+  // Nineteen synthetic guests establish the 3-wagon rehearsal layout. The twentieth
+  // guest is registered through the public contract so the dashboard has a real device identity.
+  await rpc(owner, 'owner_bunker_v2_seed_test_guests', { p_event_id: id, p_count: 19 });
+  const deviceGuest = await registerDeviceGuest(guestClient, deviceKey);
+  const wagonNumber = Number(deviceGuest.carriage?.number);
+  expect(wagonNumber).toBeGreaterThanOrEqual(1);
+  expect(wagonNumber).toBeLessThanOrEqual(3);
 
-  await transition(client, id, 'CHARACTERS_READY');
-  await transition(client, id, 'MISSION_01');
-  expect(await simulate(client, id)).toMatchObject({ status: 'simulated', state: 'MISSION_01' });
-  await transition(client, id, 'BREAK');
+  const prepared = await rpc<Record<string, any>>(owner, 'owner_prepare_bunker_v2_test', {
+    p_event_id: id,
+    p_command_id: commandId(),
+  });
+  expect(prepared).toMatchObject({ guestCount: 20, wagonCount: 3, gameMode: 'test' });
 
-  for (const stage of ['MISSION_02', 'MISSION_03', 'MISSION_04', 'MISSION_05', 'MISSION_06']) {
-    await transition(client, id, stage);
-    expect(await simulate(client, id)).toMatchObject({ status: 'simulated', state: stage });
-  }
+  await transition(owner, id, 'CHARACTERS_READY');
+  await transition(owner, id, 'MISSION_01');
+  expect(await simulate(owner, id)).toMatchObject({ status: 'simulated', state: 'MISSION_01' });
+  await transition(owner, id, 'BREAK');
 
-  const story = await transition(client, id, 'UNKNOWN_PASSENGER');
+  await transition(owner, id, 'MISSION_02');
+  expect(await simulate(owner, id)).toMatchObject({ status: 'simulated', state: 'MISSION_02' });
+
+  await transition(owner, id, 'MISSION_03');
+  await rpc(owner, 'owner_bunker_v2_test_set_inventory', {
+    p_event_id: id,
+    p_wagon_number: wagonNumber,
+    p_item_key: 'water',
+    p_quantity: 2,
+  });
+  await rpc(owner, 'owner_bunker_v2_test_set_wagon_state', {
+    p_event_id: id,
+    p_wagon_number: wagonNumber,
+    p_power: 'stable',
+    p_communication: 'degraded',
+    p_navigation: 'working',
+  });
+
+  const dashboardDuringM03 = await guestDashboard(guestClient, deviceKey);
+  expect(dashboardDuringM03).toMatchObject({
+    contractVersion: 2,
+    status: 'active',
+    wagon: { number: wagonNumber },
+    wagonState: { powerStatus: 'stable', communicationStatus: 'degraded', navigationStatus: 'working' },
+  });
+  expect(dashboardDuringM03.passengers.some((passenger: any) => passenger.guestId === deviceGuest.id)).toBe(true);
+  expect(dashboardDuringM03.inventory).toEqual(expect.arrayContaining([
+    expect.objectContaining({ itemKey: 'water', available: 2 }),
+  ]));
+
+  expect(await simulate(owner, id)).toMatchObject({ status: 'simulated', state: 'MISSION_03' });
+  await transition(owner, id, 'MISSION_04');
+  expect(await simulate(owner, id)).toMatchObject({ status: 'simulated', state: 'MISSION_04' });
+  await transition(owner, id, 'MISSION_05');
+
+  const dashboardDuringM05 = await guestDashboard(guestClient, deviceKey);
+  expect(dashboardDuringM05.passengers.some((passenger: any) => passenger.guestId === deviceGuest.id)).toBe(true);
+  expect(dashboardDuringM05.inventory).toEqual(expect.arrayContaining([
+    expect.objectContaining({ itemKey: 'water', available: 2 }),
+  ]));
+  expect(dashboardDuringM05.wagonState).toMatchObject({
+    powerStatus: 'stable', communicationStatus: 'degraded', navigationStatus: 'working',
+  });
+
+  expect(await simulate(owner, id)).toMatchObject({ status: 'simulated', state: 'MISSION_05' });
+  await transition(owner, id, 'MISSION_06');
+  expect(await simulate(owner, id)).toMatchObject({ status: 'simulated', state: 'MISSION_06' });
+
+  const story = await transition(owner, id, 'UNKNOWN_PASSENGER');
   expect(story.globalGameState).toBe('UNKNOWN_PASSENGER');
-  const ownerStory = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_unknown_passenger', { p_event_id: id });
+  const ownerStory = await rpc<Record<string, any>>(owner, 'get_owner_bunker_v2_unknown_passenger', { p_event_id: id });
   expect(ownerStory).toMatchObject({ status: 'active', dossierId: 'BK-17', sector: '04' });
 
-  await transition(client, id, 'BREAK_BEFORE_FINAL');
-  const finalTransition = await transition(client, id, 'FINAL_30');
+  const storyDashboard = await guestDashboard(guestClient, deviceKey);
+  expect(storyDashboard.archive).toEqual(expect.arrayContaining([
+    expect.objectContaining({ artifactKey: 'UNKNOWN-BK17', scope: 'global', decryptionStatus: 'decoded' }),
+  ]));
+
+  await transition(owner, id, 'BREAK_BEFORE_FINAL');
+  const afterStoryDashboard = await guestDashboard(guestClient, deviceKey);
+  expect(afterStoryDashboard.archive).toEqual(expect.arrayContaining([
+    expect.objectContaining({ artifactKey: 'UNKNOWN-BK17', scope: 'global', decryptionStatus: 'decoded' }),
+  ]));
+
+  const finalTransition = await transition(owner, id, 'FINAL_30');
   expect(finalTransition.globalGameState).toBe('FINAL_30');
 
-  const finalBefore = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_final', { p_event_id: id });
+  const finalBefore = await rpc<Record<string, any>>(owner, 'get_owner_bunker_v2_final', { p_event_id: id });
   expect(finalBefore).toMatchObject({ contractVersion: 2, status: 'active', total: 5 });
 
-  const simulatedFinal = await simulate(client, id);
+  const simulatedFinal = await simulate(owner, id);
   expect(simulatedFinal).toMatchObject({ status: 'simulated', state: 'FINAL_30', opened: true });
 
-  const finalAfter = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_final', { p_event_id: id });
+  const finalAfter = await rpc<Record<string, any>>(owner, 'get_owner_bunker_v2_final', { p_event_id: id });
   expect(finalAfter.unlocked).toBe(true);
 
-  const testState = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_test_state', { p_event_id: id });
+  const testState = await rpc<Record<string, any>>(owner, 'get_owner_bunker_v2_test_state', { p_event_id: id });
   expect(testState.globalState).toBe('BUNKER_OPEN');
 
-  const results = await rpc<Record<string, any>>(client, 'get_bunker_v2_results', { p_event_slug: EVENT_SLUG });
+  const results = await rpc<Record<string, any>>(owner, 'get_bunker_v2_results', { p_event_slug: EVENT_SLUG });
   expect(results).toMatchObject({
     contractVersion: 2,
     status: 'completed',
@@ -134,6 +225,6 @@ test('Bunker V2 rehearsal can traverse the entire story without a dead end', asy
   expect(results.coordinationScore).toBeGreaterThanOrEqual(0);
   expect(results.coordinationScore).toBeLessThanOrEqual(100);
 
-  await resetGameAndRegistrations(client, id);
-  await client.auth.signOut();
+  await resetGameAndRegistrations(owner, id);
+  await owner.auth.signOut();
 });
