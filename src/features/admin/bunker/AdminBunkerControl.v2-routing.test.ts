@@ -1,11 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-
-const source = readFileSync(
-  fileURLToPath(new URL('./AdminBunkerControl.tsx', import.meta.url)),
-  'utf8',
-);
+import source from './AdminBunkerControl.tsx?raw';
 
 describe('AdminBunkerControl V2 routing release guard', () => {
   it('labels the Unknown Passenger stage explicitly', () => {
