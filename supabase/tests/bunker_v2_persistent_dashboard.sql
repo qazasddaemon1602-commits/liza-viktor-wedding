@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(15);
 
 select has_function(
   'public',
@@ -91,6 +91,12 @@ select ok(
   and coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
     ~ 'carriage_id',
   'dashboard archive is limited to global or viewer-wagon entitlement scope'
+);
+
+select ok(
+  coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
+    !~ 'entry\.content|archive\.content',
+  'dashboard archive projection never reads archive content payloads'
 );
 
 select ok(
