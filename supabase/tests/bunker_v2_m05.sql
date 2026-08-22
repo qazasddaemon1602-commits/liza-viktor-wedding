@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(19);
 select has_function('public','get_guest_bunker_v2_m05',array['text','text'],'M05 guest read model');
 select has_function('public','get_bunker_v2_m05_screen',array['text'],'M05 TV read model');
 select has_function('public','get_owner_bunker_v2_m05',array['uuid'],'M05 owner read model');
@@ -45,5 +45,16 @@ select ok(
 );
 select has_trigger('public','bunker_state','bunker_v2_finalize_m05_on_transition','M05 fallback finalizer is attached');
 select ok(not has_function_privilege('anon','public._bunker_v2_apply_m05_outcome(uuid,uuid,uuid,text,boolean)','EXECUTE'),'M05 outcome helper is server-only');
+select has_function('public','_bunker_v2_m05_scenario_key',array['uuid','text'],'M05 has deterministic frozen scenario key helper');
+select like(
+  public._bunker_v2_m05_scenario_key('00000000-0000-4000-8000-000000000001'::uuid,'wagon-1'),
+  'route_____________',
+  'M05 scenario key has route_ plus twelve deterministic hex characters'
+);
+select ok(
+  pg_get_functiondef('public._bunker_v2_enrich_m05_instance()'::regprocedure)~'scenarioKey'
+  and pg_get_functiondef('public._bunker_v2_enrich_m05_instance()'::regprocedure)~'_bunker_v2_m05_scenario_key',
+  'new M05 instances freeze their scenario key in the mission definition'
+);
 select * from finish();
 rollback;
