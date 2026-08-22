@@ -46,9 +46,8 @@ select ok(
 select has_trigger('public','bunker_state','bunker_v2_finalize_m05_on_transition','M05 fallback finalizer is attached');
 select ok(not has_function_privilege('anon','public._bunker_v2_apply_m05_outcome(uuid,uuid,uuid,text,boolean)','EXECUTE'),'M05 outcome helper is server-only');
 select has_function('public','_bunker_v2_m05_scenario_key',array['uuid','text'],'M05 has deterministic frozen scenario key helper');
-select like(
-  public._bunker_v2_m05_scenario_key('00000000-0000-4000-8000-000000000001'::uuid,'wagon-1'),
-  'route_____________',
+select ok(
+  public._bunker_v2_m05_scenario_key('00000000-0000-4000-8000-000000000001'::uuid,'wagon-1') ~ '^route_[0-9a-f]{12}$',
   'M05 scenario key has route_ plus twelve deterministic hex characters'
 );
 select ok(
