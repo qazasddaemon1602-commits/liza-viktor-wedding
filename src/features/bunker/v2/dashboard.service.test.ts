@@ -40,14 +40,12 @@ const activePayload = {
       contentType: 'document',
       decryptionStatus: 'decoded',
       scope: 'wagon',
-      content: { title: 'BK-17' },
     },
     {
       artifactKey: 'SEALED',
       contentType: 'document',
       decryptionStatus: 'locked',
       scope: 'global',
-      content: {},
     },
   ],
   wagonState: {
@@ -86,15 +84,19 @@ describe('persistent Bunker V2 dashboard service', () => {
     })).toThrow(/hidden trait/i);
   });
 
-  it('rejects locked archive content instead of displaying a leaked payload', () => {
-    const locked = {
-      ...activePayload.archive[1],
-      content: { accessCode: '4719' },
-    };
-    expect(() => parseBunkerV2DashboardReadModel({
-      ...activePayload,
-      archive: [locked],
-    })).toThrow(/locked archive/i);
+  it('rejects archive content at every decryption level instead of widening the persistent projection', () => {
+    for (const decryptionStatus of ['locked', 'partial', 'decoded'] as const) {
+      expect(() => parseBunkerV2DashboardReadModel({
+        ...activePayload,
+        archive: [{
+          artifactKey: 'SECRET',
+          contentType: 'document',
+          decryptionStatus,
+          scope: 'wagon',
+          content: { accessCode: '4719' },
+        }],
+      })).toThrow(/archive/i);
+    }
   });
 
   it('rejects invalid inventory quantities and wagon-state enums', () => {
