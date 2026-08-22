@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(14);
 select has_function('public','get_guest_bunker_v2_final',array['text','text'],'final guest read model');
 select has_function('public','get_bunker_v2_final_screen',array['text'],'final TV read model');
 select has_function('public','get_owner_bunker_v2_final',array['uuid'],'final owner read model');
@@ -12,5 +12,20 @@ select ok(pg_get_functiondef('public._submit_bunker_command_final(text,text,uuid
 select ok(pg_get_functiondef('public.get_bunker_v2_final_screen(text)'::regprocedure)!~'4719' and pg_get_functiondef('public.get_bunker_v2_final_screen(text)'::regprocedure)!~'LV0830','TV source does not contain final secrets');
 select ok(not has_function_privilege('anon','public.owner_bunker_v2_add_final_time(uuid,integer)','EXECUTE'),'anonymous users cannot change final time');
 select ok(not has_function_privilege('anon','public.owner_bunker_v2_emergency_open(uuid)','EXECUTE'),'anonymous users cannot force the bunker open');
+select ok(
+  pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)~'sum\(w\.route_bonus\).*\*60'
+  and pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)~'greatest\(-300,least\(600',
+  'final duration uses M05 route bonus minutes with approved -300/+600 second clamp'
+);
+select ok(
+  pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)!~'bunker_inventory_transfers'
+  and pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)!~'track_damage'
+  and pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)!~'power_instability',
+  'trade count and damage do not silently change the approved final duration formula'
+);
+select ok(
+  pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)~'1800\+v_bonus',
+  'final base remains 1800 seconds before bounded M05 bonus'
+);
 select * from finish();
 rollback;
