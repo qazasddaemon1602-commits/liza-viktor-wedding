@@ -29,6 +29,12 @@ select ok(
   'authenticated owner sessions can invoke carriage distribution RPC'
 );
 
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-4000-8000-000000000001',
+  true
+);
+
 select throws_ok(
   $$ select public.owner_apply_carriage_distribution(
     '00000000-0000-0000-0000-000000000000'::uuid,

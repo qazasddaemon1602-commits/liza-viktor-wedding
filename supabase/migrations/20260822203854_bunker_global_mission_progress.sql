@@ -952,6 +952,7 @@ set search_path = ''
 as $$
 declare
   v_state public.bunker_state%rowtype;
+  v_expected_state text;
   v_summary jsonb;
   v_result jsonb;
 begin
@@ -960,6 +961,32 @@ begin
   from public.bunker_state state
   where state.event_id = p_event_id
   for update;
+
+  if p_next_state is null then
+    raise exception 'invalid Bunker global state transition: % -> <NULL>',
+      v_state.global_game_state using errcode = '22023';
+  end if;
+  if p_next_state is distinct from v_state.global_game_state then
+    v_expected_state := case v_state.global_game_state
+      when 'CHARACTERS_READY' then 'MISSION_01'
+      when 'MISSION_01' then 'BREAK'
+      when 'BREAK' then 'MISSION_02'
+      when 'MISSION_02' then 'MISSION_03'
+      when 'MISSION_03' then 'MISSION_04'
+      when 'MISSION_04' then 'MISSION_05'
+      when 'MISSION_05' then 'MISSION_06'
+      when 'MISSION_06' then 'STORY_BUNKER'
+      when 'STORY_BUNKER' then 'BREAK_BEFORE_FINAL'
+      when 'BREAK_BEFORE_FINAL' then 'FINAL_30'
+      when 'FINAL_30' then 'BUNKER_OPEN'
+      when 'BUNKER_OPEN' then 'FINISHED'
+      else null
+    end;
+    if v_expected_state is null or p_next_state <> v_expected_state then
+      raise exception 'invalid Bunker global state transition: % -> %',
+        v_state.global_game_state, p_next_state using errcode = '22023';
+    end if;
+  end if;
 
   if v_state.global_game_state in (
     'MISSION_01', 'MISSION_02', 'MISSION_03',

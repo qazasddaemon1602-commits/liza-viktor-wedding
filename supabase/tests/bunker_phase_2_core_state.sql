@@ -14,11 +14,11 @@ select hasnt_column(
   'public', 'bunker_character_profiles', 'name',
   'character configuration never stores fictional names'
 );
-select has_column('public', 'bunker_guest_profiles', 'character_profile_key');
-select has_column('public', 'bunker_guest_profiles', 'character_status');
-select has_column('public', 'bunker_guest_profiles', 'ability_uses_remaining');
-select has_column('public', 'bunker_state', 'global_game_state');
-select has_column('public', 'bunker_state', 'final_started_at');
+select has_column('public', 'bunker_guest_profiles', 'character_profile_key', 'guest profile keeps its assigned character key');
+select has_column('public', 'bunker_guest_profiles', 'character_status', 'guest profile keeps its character status');
+select has_column('public', 'bunker_guest_profiles', 'ability_uses_remaining', 'guest profile tracks remaining ability uses');
+select has_column('public', 'bunker_state', 'global_game_state', 'Bunker state stores the authoritative global stage');
+select has_column('public', 'bunker_state', 'final_started_at', 'Bunker state stores the final countdown anchor');
 select col_has_check(
   'public', 'bunker_inventory_lots', 'quantity',
   'inventory quantity is protected by a database check'
