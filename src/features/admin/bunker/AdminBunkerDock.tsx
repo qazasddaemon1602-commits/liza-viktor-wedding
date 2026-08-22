@@ -518,7 +518,7 @@ export function AdminBunkerDock({
           dashboard={dashboard}
           onAcceptDistribution={acceptDistribution}
           bunkerContractVersion={effectiveContractVersion}
-          missionOne={missionOnePanel(missionOne)}
+          missionOne={one}
           onMissionOneOverride={deps.overrideMissionOne ? applyMissionOneOverride : undefined}
         />
       ) : (
@@ -527,7 +527,17 @@ export function AdminBunkerDock({
         </div>
       )}
 
+      {hostScript && one && (
+        <MissionHostScript
+          content={hostScript}
+          statusLine={one.status === 'completed'
+            ? 'Все вагоны завершили задание'
+            : 'Задание идёт сейчас'}
+        />
+      )}
+
       {two && <MissionTwoOwnerPanel model={two} />}
+
       {three && <MissionThreeOwnerPanel model={three} />}
       {four && <MissionFourOwnerPanel model={four} />}
       {five && <MissionFiveOwnerPanel model={five} />}
