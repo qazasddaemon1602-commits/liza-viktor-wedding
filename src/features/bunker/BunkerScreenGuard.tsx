@@ -210,9 +210,10 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   const bunkerActive = state?.status === 'active';
   const phase = state?.status === 'active' ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency') : null;
   const emergency = bunkerActive && phase === 'emergency';
-  const storyActive = bunkerActive && state?.status === 'active' && state.globalGameState === 'UNKNOWN_PASSENGER';
-  const finalActive = bunkerActive && state?.status === 'active' && state.globalGameState === 'FINAL_30';
-  const resultsActive = bunkerActive && state?.status === 'active' && (state.globalGameState === 'BUNKER_OPEN' || state.globalGameState === 'FINISHED');
+  const notKnownLegacy = contractVersion !== 1;
+  const storyActive = bunkerActive && notKnownLegacy && state?.status === 'active' && state.globalGameState === 'UNKNOWN_PASSENGER';
+  const finalActive = bunkerActive && notKnownLegacy && state?.status === 'active' && state.globalGameState === 'FINAL_30';
+  const resultsActive = bunkerActive && notKnownLegacy && state?.status === 'active' && (state.globalGameState === 'BUNKER_OPEN' || state.globalGameState === 'FINISHED');
   const storyView = storyModel(unknown, nowMs);
   const finalView = finalModel(final, nowMs);
   const resultsView = resultModel(results);
