@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
 import type { BunkerV2ActiveGuestRuntime } from './v2/contracts';
+import type { BunkerV2DashboardReadModel } from './v2/dashboard.service';
 import { bunkerArchiveLabel, bunkerContentTypeLabel, bunkerItemLabel, bunkerStageLabel, bunkerStatusLabel } from './v2/labels';
 import { MissionOnePlayer, type MissionOnePlayerReadModel } from './v2/MissionOnePlayer';
 import { MissionTwoPlayer, type MissionTwoPlayerReadModel } from './v2/MissionTwoPlayer';
@@ -16,14 +17,31 @@ import { BunkerResultsLivePlayer } from './v2/BunkerResultsLivePlayer';
 
 const SECTIONS = ['МОЙ ВАГОН','ПЕРСОНАЖ','ПАССАЖИРЫ','ИНВЕНТАРЬ','АРХИВ','СОСТОЯНИЕ','ТЕКУЩЕЕ ЗАДАНИЕ'] as const;
 type Section = typeof SECTIONS[number];
-function rows(value: unknown[]): Record<string, unknown>[] { return value.filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null && !Array.isArray(entry)); }
+type ActiveDashboard = Extract<BunkerV2DashboardReadModel, { status: 'active' }>;
+
+function rows(value: unknown[]): Record<string, unknown>[] {
+  return value.filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null && !Array.isArray(entry));
+}
 type ArchiveEntry = { artifactKey: string; contentType: string; decryptionStatus: string; scope: string };
 function nonEmptyText(value: unknown) { return typeof value === 'string' && value.trim() ? value : null; }
-function archiveEntries(value: unknown[]): ArchiveEntry[] { return rows(value).flatMap((entry) => { const artifactKey=nonEmptyText(entry.artifactKey),contentType=nonEmptyText(entry.contentType),decryptionStatus=nonEmptyText(entry.decryptionStatus),scope=nonEmptyText(entry.scope); return artifactKey&&contentType&&decryptionStatus&&scope ? [{artifactKey,contentType,decryptionStatus,scope}] : []; }); }
-function artwork(entry: ArchiveEntry): BunkerAsset | null { const key=entry.artifactKey.toLowerCase(),type=entry.contentType.toLowerCase(); if(key.includes('bk17')||key.includes('bk-17'))return'archive-bk17'; if(type==='card')return'archive-card'; if(type==='document')return'archive-document'; return null; }
+function archiveEntries(value: unknown[]): ArchiveEntry[] {
+  return rows(value).flatMap((entry) => {
+    const artifactKey=nonEmptyText(entry.artifactKey),contentType=nonEmptyText(entry.contentType),decryptionStatus=nonEmptyText(entry.decryptionStatus),scope=nonEmptyText(entry.scope);
+    return artifactKey&&contentType&&decryptionStatus&&scope ? [{artifactKey,contentType,decryptionStatus,scope}] : [];
+  });
+}
+function artwork(entry: ArchiveEntry): BunkerAsset | null {
+  const key=entry.artifactKey.toLowerCase(),type=entry.contentType.toLowerCase();
+  if(key.includes('bk17')||key.includes('bk-17')) return 'archive-bk17';
+  if(type==='card') return 'archive-card';
+  if(type==='document') return 'archive-document';
+  return null;
+}
+function signed(value: number) { return value > 0 ? `+${value}` : String(value); }
 
 type Props = {
   runtime: ActiveGuestBunkerRuntime | BunkerV2ActiveGuestRuntime;
+  dashboard?: ActiveDashboard;
   connectionError?: string;
   missionOne?: MissionOnePlayerReadModel;
   missionTwo?: MissionTwoPlayerReadModel;
@@ -50,18 +68,18 @@ type Props = {
   onRequestFinalAccess?: (values: FinalValues) => Promise<void> | void;
 };
 
-export function BunkerPlayerDashboard({ runtime, connectionError='', missionOne, missionTwo, missionThree, missionFour, missionFive, missionSix, unknownPassenger, final, onConfirmMissionOne, onSubmitMissionTwo, onUseMissionTwoAbility, onConfirmMissionThree, onUseMissionThreeAbility, onSendMissionFourMessage, onProposeMissionFourTrade, onRespondMissionFourTrade, onSubmitMissionFourAnswer, onCastMissionFiveVote, onUseMissionFiveAbility, onRevealMissionSixFragment, onCastMissionSixVote, onUseMissionSixAbility, onRequestFinalAccess }: Props) {
+export function BunkerPlayerDashboard({ runtime, dashboard, connectionError='', missionOne, missionTwo, missionThree, missionFour, missionFive, missionSix, unknownPassenger, final, onConfirmMissionOne, onSubmitMissionTwo, onUseMissionTwoAbility, onConfirmMissionThree, onUseMissionThreeAbility, onSendMissionFourMessage, onProposeMissionFourTrade, onRespondMissionFourTrade, onSubmitMissionFourAnswer, onCastMissionFiveVote, onUseMissionFiveAbility, onRevealMissionSixFragment, onCastMissionSixVote, onUseMissionSixAbility, onRequestFinalAccess }: Props) {
   const isV2 = 'contractVersion' in runtime;
   const guest = isV2 ? { ...runtime.viewer.guest, joinedLate: runtime.character.m01Eligibility === 'late_joiner' } : runtime.guest;
   const activeId = missionOne?.instanceId ?? missionTwo?.instanceId ?? missionThree?.instanceId ?? missionFour?.instanceId ?? missionFive?.instanceId ?? missionSix?.instanceId ?? '';
-  const wagon = isV2 ? { id: activeId, ...runtime.viewer.wagon } : runtime.wagon;
+  const wagon = isV2 ? { id: dashboard?.wagon.id ?? activeId, ...(dashboard?.wagon ?? runtime.viewer.wagon) } : runtime.wagon;
   const gameState = isV2 ? runtime.state : runtime.game.state;
-  const v2Passengers = missionOne?.members.map((member) => ({ ...member, hiddenTraitRevealed: false })) ?? [];
+  const fallbackV2Passengers = missionOne?.members.map((member) => ({ ...member, hiddenTraitRevealed: false })) ?? [];
   const hasMission = Boolean(missionOne || missionTwo || missionThree || missionFour || missionFive || missionSix || unknownPassenger || final);
   const [section, setSection] = useState<Section>(hasMission ? 'ТЕКУЩЕЕ ЗАДАНИЕ' : 'МОЙ ВАГОН');
-  const inventory = rows(isV2 ? (missionThree?.inventory ?? missionFour?.inventory ?? []) : runtime.inventory);
-  const passengers = rows(isV2 ? v2Passengers : runtime.passengers);
-  const archive = archiveEntries(isV2 ? [] : runtime.archive);
+  const fallbackInventory = rows(isV2 ? (missionThree?.inventory ?? missionFour?.inventory ?? []) : runtime.inventory);
+  const passengers = rows(isV2 ? (dashboard?.passengers ?? fallbackV2Passengers) : runtime.passengers);
+  const archive = archiveEntries(isV2 ? (dashboard?.archive ?? []) : runtime.archive);
   const mission = isV2 ? runtime.currentMission : null;
   const resultsStage = isV2 && (gameState === 'BUNKER_OPEN' || gameState === 'FINISHED');
   const hiddenTrait = 'hiddenTrait' in runtime.character && runtime.character.hiddenTraitRevealed ? runtime.character.hiddenTrait : null;
@@ -89,10 +107,10 @@ export function BunkerPlayerDashboard({ runtime, connectionError='', missionOne,
     <div className="bunker-player-dashboard__content">
       {section==='МОЙ ВАГОН'&&<article><h3>{wagon.label}</h3><p>{passengers.length} пассажиров · решения синхронизируются автоматически.</p></article>}
       {section==='ПЕРСОНАЖ'&&<article className="bunker-player-character"><h3>{runtime.character.profession}</h3><p>Здоровье: {runtime.character.health}</p><p>Навык: {runtime.character.visibleSkill}</p><p>Скрытая характеристика: {hiddenTrait ?? 'пока скрыта'}</p><p>Особая способность: {runtime.character.abilityDescription}</p></article>}
-      {section==='ПАССАЖИРЫ'&&<div className="bunker-player-list">{passengers.length?passengers.map((passenger)=><article key={String(passenger.guestId)}><h3>{String(passenger.realName)}</h3>{passenger.profession&&<strong>{String(passenger.profession)}</strong>}{passenger.visibleSkill&&<p>{String(passenger.visibleSkill)}</p>}<small>{passenger.hiddenTraitRevealed&&passenger.hiddenTrait?String(passenger.hiddenTrait):'Скрытая характеристика пока неизвестна'}</small></article>):<article><h3>СОСТАВ ВАГОНА</h3><p>Список пассажиров появится после синхронизации.</p></article>}</div>}
-      {section==='ИНВЕНТАРЬ'&&<div className="bunker-player-list">{inventory.length?inventory.map((item,index)=><article key={`${String(item.itemKey)}:${index}`}><h3>{bunkerItemLabel(String(item.itemKey))}</h3>{item.status&&<strong>{bunkerStatusLabel(String(item.status))}</strong>}<p>Количество: {String(item.quantity)}</p></article>):<article><h3>ИНВЕНТАРЬ ПОКА ПУСТ</h3><p>Предметы появятся здесь, когда вагон получит аварийный запас.</p></article>}</div>}
+      {section==='ПАССАЖИРЫ'&&<div className="bunker-player-list">{passengers.length?passengers.map((passenger)=><article key={String(passenger.guestId)}><h3>{String(passenger.realName)}</h3>{passenger.profession&&<strong>{String(passenger.profession)}</strong>}{passenger.visibleSkill&&<p>{String(passenger.visibleSkill)}</p>}{passenger.hiddenTraitRevealed&&passenger.hiddenTrait?<small>{String(passenger.hiddenTrait)}</small>:<small>Скрытая характеристика пока неизвестна</small>}</article>):<article><h3>СОСТАВ ВАГОНА</h3><p>Список пассажиров появится после синхронизации.</p></article>}</div>}
+      {section==='ИНВЕНТАРЬ'&&<div className="bunker-player-list" aria-label="Инвентарь вагона">{isV2&&dashboard ? (dashboard.inventory.length?dashboard.inventory.map((item)=><article key={item.itemKey}><h3>{bunkerItemLabel(item.itemKey)}</h3><p>Доступно: {item.available}</p>{item.used>0&&<p>Использовано: {item.used}</p>}{item.transferred>0&&<p>Передано: {item.transferred}</p>}{item.lost>0&&<p>Потеряно: {item.lost}</p>}</article>):<article><h3>ИНВЕНТАРЬ ПОКА ПУСТ</h3><p>Доступных и использованных ресурсов пока нет.</p></article>) : (fallbackInventory.length?fallbackInventory.map((item,index)=><article key={`${String(item.itemKey)}:${index}`}><h3>{bunkerItemLabel(String(item.itemKey))}</h3>{item.status&&<strong>{bunkerStatusLabel(String(item.status))}</strong>}<p>Количество: {String(item.quantity)}</p></article>):<article><h3>ИНВЕНТАРЬ ПОКА ПУСТ</h3><p>Предметы появятся здесь, когда вагон получит аварийный запас.</p></article>)}</div>}
       {section==='АРХИВ'&&<article aria-label="Архив вагона"><h3>АРХИВ ВАГОНА</h3>{archive.length?<div className="bunker-player-list">{archive.map((entry)=>{const image=artwork(entry),label=bunkerArchiveLabel(entry.artifactKey);return <article key={`${entry.scope}:${entry.artifactKey}`}>{image&&<BunkerResponsivePicture asset={image} className="bunker-player-archive__artwork" testId="bunker-archive-artwork"/>}<h3>{label.title}</h3><strong>{bunkerContentTypeLabel(entry.contentType)}</strong><p>{bunkerStatusLabel(entry.decryptionStatus)}</p><small>{bunkerStatusLabel(entry.scope)}</small><p>{label.hint}</p></article>})}</div>:<p>Архив вагона пока пуст. Найденные материалы появятся здесь автоматически.</p>}</article>}
-      {section==='СОСТОЯНИЕ'&&<article><h3>СОСТОЯНИЕ ВАГОНА</h3><p>{isV2?'Состояние меняется от решений команды и сохраняется автоматически.':`Питание · ${bunkerStatusLabel(String(runtime.wagonState.powerStatus))}`}</p>{!isV2&&<><p>Связь · {bunkerStatusLabel(String(runtime.wagonState.communicationStatus))}</p><p>Навигация · {bunkerStatusLabel(String(runtime.wagonState.navigationStatus))}</p></>}</article>}
+      {section==='СОСТОЯНИЕ'&&<article aria-label="Состояние вагона"><h3>СОСТОЯНИЕ ВАГОНА</h3>{isV2&&dashboard?<><p>Питание · {bunkerStatusLabel(dashboard.wagonState.powerStatus)}</p><p>Связь · {bunkerStatusLabel(dashboard.wagonState.communicationStatus)}</p><p>Навигация · {bunkerStatusLabel(dashboard.wagonState.navigationStatus)}</p><p>Техническая дверь · {bunkerStatusLabel(dashboard.wagonState.technicalDoorStatus)}</p><p>Повреждение пути · {dashboard.wagonState.trackDamage}%</p><p>Вода · {bunkerStatusLabel(dashboard.wagonState.waterStatus)}</p><p>Маршрут · {dashboard.wagonState.routeChoice ?? 'не выбран'}</p><p>Бонус маршрута · {signed(dashboard.wagonState.routeBonus)}</p><p>Нестабильность питания · {dashboard.wagonState.powerInstability}</p><p>Сектор 04 · {dashboard.wagonState.sector04Found?'найден':'не найден'}</p><p>Координация · {dashboard.wagonState.coordinationBonus?'бонус активен':'обычный режим'}</p></>:isV2?<p>Состояние вагона синхронизируется…</p>:<><p>Питание · {bunkerStatusLabel(String(runtime.wagonState.powerStatus))}</p><p>Связь · {bunkerStatusLabel(String(runtime.wagonState.communicationStatus))}</p><p>Навигация · {bunkerStatusLabel(String(runtime.wagonState.navigationStatus))}</p></>}</article>}
       {section==='ТЕКУЩЕЕ ЗАДАНИЕ'&&<article aria-label="Текущее задание"><h3>ТЕКУЩЕЕ ЗАДАНИЕ</h3><p>{hasMission?'Активное задание находится в верхней части экрана.':mission?`Сейчас: ${bunkerStageLabel(gameState)}`:`Сейчас активного задания нет. Текущий этап: ${bunkerStageLabel(gameState)}.`}</p></article>}
     </div>
   </section>;
