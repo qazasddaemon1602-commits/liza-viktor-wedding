@@ -77,7 +77,7 @@ begin
     select
       g.id,
       row_number() over (
-        order by coalesce(g.ticket_sequence, 2147483647), g.created_at, g.id
+        order by coalesce(g.ticket_sequence, 2147483647), g.registered_at, g.id
       ) as rn
     from public.guests g
     where g.event_id = p_event_id
