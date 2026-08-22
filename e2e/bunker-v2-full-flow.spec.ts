@@ -221,7 +221,8 @@ test('Bunker V2 rehearsal can traverse the entire story with a persistent device
     missionsTotal: expect.any(Number),
     coordinationScore: expect.any(Number),
   });
-  expect(results.missionsCompleted).toBe(results.missionsTotal);
+  expect(results.missionsTotal).toBe(6);
+  expect(results.missionsCompleted).toBe(6);
   expect(results.coordinationScore).toBeGreaterThanOrEqual(0);
   expect(results.coordinationScore).toBeLessThanOrEqual(100);
 
