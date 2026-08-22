@@ -22,4 +22,8 @@ describe('Bunker phone mission action sizing', () => {
   it('gives inventory icons a stable visual slot', () => {
     expect(css).toMatch(/\.bunker-inventory-card__icon\s*\{[^}]*width:\s*clamp\(4rem,[^;]*6rem\)[^}]*height:\s*clamp\(4rem,[^;]*6rem\)/);
   });
+
+  it('keeps additional-item guidance readable in the normal phone mode', () => {
+    expect(css).toMatch(/\.bunker-m03-additional-items__choices label > span > small\s*\{[^}]*font-size:\s*1rem/);
+  });
 });

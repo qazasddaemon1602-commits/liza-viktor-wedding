@@ -519,7 +519,7 @@
 .bunker-m03-additional-items__choices label > span > small {
   color: var(--bunker-player-muted);
   font-family: inherit;
-  font-size: 0.92rem;
+  font-size: 1rem;
   letter-spacing: normal;
 }
 
