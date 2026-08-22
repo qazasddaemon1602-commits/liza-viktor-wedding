@@ -1,10 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BunkerRpcClient } from './bunker.service';
 import {
+  type BunkerGlobalMissionPayload,
   forceCompleteBunkerGlobalMission,
   parseGuestBunkerGlobalMissionSubmission,
   submitGuestBunkerGlobalMission,
 } from './bunkerGlobalMission.service';
+
+// @ts-expect-error A real M04 transfer is invalid without its destination wagon.
+const incompleteM04Transfer: BunkerGlobalMissionPayload = {
+  message: 'Сектор 04 найден через тоннель',
+  transferItemKey: 'radio',
+};
+void incompleteM04Transfer;
 
 const completedAt = '2026-08-30T18:10:00.000Z';
 
@@ -100,6 +108,24 @@ describe('global Bunker mission service', () => {
         transferToWagonId: 'wagon-5',
       },
     });
+  });
+
+  it('rejects an incomplete M04 transfer before calling the RPC boundary', async () => {
+    const client: BunkerRpcClient = {
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
+    await expect(submitGuestBunkerGlobalMission(
+      client,
+      'liza-viktor',
+      'device-secret',
+      'MISSION_04',
+      {
+        message: 'Сектор 04 найден через тоннель',
+        transferItemKey: 'radio',
+      } as unknown as BunkerGlobalMissionPayload,
+    )).rejects.toThrow(/transfer destination/i);
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 
   it('calls the owner recovery RPC for one wagon in the current mission', async () => {

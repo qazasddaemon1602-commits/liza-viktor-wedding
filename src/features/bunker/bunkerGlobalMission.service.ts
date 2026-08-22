@@ -11,16 +11,21 @@ export const BUNKER_GLOBAL_MISSION_STATES = [
 
 export type BunkerGlobalMissionState = typeof BUNKER_GLOBAL_MISSION_STATES[number];
 
+type BunkerM04Message = {
+  message: string;
+  partnerWagonIds?: string[];
+};
+
+export type BunkerM04MissionPayload = BunkerM04Message & (
+  | { transferItemKey?: never; transferToWagonId?: never }
+  | { transferItemKey: string; transferToWagonId: string }
+);
+
 export type BunkerGlobalMissionPayload =
   | { selectedProfileIds: string[] }
   | { chronology: string }
   | { itemKeys: string[] }
-  | {
-    message: string;
-    partnerWagonIds?: string[];
-    transferItemKey?: string;
-    transferToWagonId?: string;
-  }
+  | BunkerM04MissionPayload
   | { routeChoice: 'safe' | 'short'; itemKey?: string | null }
   | { protocolConfirmed: true; protocolCode: string };
 
@@ -77,6 +82,17 @@ export async function submitGuestBunkerGlobalMission(
   missionState: BunkerGlobalMissionState,
   payload: BunkerGlobalMissionPayload,
 ): Promise<GuestBunkerGlobalMissionSubmission> {
+  if (missionState === 'MISSION_04') {
+    const transferItem = 'transferItemKey' in payload
+      && typeof payload.transferItemKey === 'string'
+      && Boolean(payload.transferItemKey.trim());
+    const transferDestination = 'transferToWagonId' in payload
+      && typeof payload.transferToWagonId === 'string'
+      && Boolean(payload.transferToWagonId.trim());
+    if (transferItem !== transferDestination) {
+      throw new Error('Bunker M04 transfer item and transfer destination must be provided together');
+    }
+  }
   const { data, error } = await client.rpc('submit_guest_bunker_global_mission', {
     p_event_slug: eventSlug,
     p_device_key: deviceKey,

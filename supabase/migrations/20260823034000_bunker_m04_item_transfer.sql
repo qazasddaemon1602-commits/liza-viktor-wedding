@@ -103,6 +103,9 @@ declare
   v_transfer_to_wagon_id uuid;
   v_source public.bunker_inventory_lots%rowtype;
   v_destination_lot_id uuid;
+  v_transfer_item_label text;
+  v_transfer_to_wagon_label text;
+  v_transfer_summary text;
   v_submitted_payload jsonb;
 begin
   v_result := public._submit_guest_bunker_global_mission_core(
@@ -171,6 +174,16 @@ begin
     raise exception 'invalid Mission 04 transfer destination' using errcode = '22023';
   end if;
 
+  select carriage.label into v_transfer_to_wagon_label
+  from public.carriages carriage
+  where carriage.id = v_transfer_to_wagon_id
+    and carriage.event_id = v_event_id
+    and carriage.enabled;
+
+  if v_transfer_to_wagon_label is null then
+    raise exception 'invalid Mission 04 transfer destination' using errcode = '22023';
+  end if;
+
   select item.* into v_source
   from public.bunker_inventory_lots item
   where item.event_id = v_event_id
@@ -185,6 +198,19 @@ begin
   if v_source.id is null then
     raise exception 'invalid Mission 04 inventory item' using errcode = '22023';
   end if;
+
+  v_transfer_item_label := case v_source.item_key
+    when 'medkit' then 'Аптечка'
+    when 'radio' then 'Рация'
+    when 'generator' then 'Генератор'
+    when 'tools' then 'Инструменты'
+    when 'water' then 'Вода'
+    when 'gas_mask' then 'Противогаз'
+    else initcap(replace(v_source.item_key, '_', ' '))
+  end;
+  v_transfer_summary := v_transfer_item_label
+    || ' → ' || v_transfer_to_wagon_label
+    || ' · ' || v_source.quantity::text || ' ШТ.';
 
   update public.bunker_inventory_lots item
   set status = 'transferred',
@@ -243,6 +269,9 @@ begin
       'quantity', v_source.quantity,
       'fromWagonId', v_carriage_id,
       'toWagonId', v_transfer_to_wagon_id,
+      'itemLabel', v_transfer_item_label,
+      'toWagonLabel', v_transfer_to_wagon_label,
+      'summary', v_transfer_summary,
       'sourceLotId', v_source.id,
       'destinationLotId', v_destination_lot_id
     )
@@ -252,7 +281,10 @@ begin
     || jsonb_build_object(
       'transferItemKey', v_source.item_key,
       'transferToWagonId', v_transfer_to_wagon_id,
-      'transferQuantity', v_source.quantity
+      'transferQuantity', v_source.quantity,
+      'transferItemLabel', v_transfer_item_label,
+      'transferToWagonLabel', v_transfer_to_wagon_label,
+      'transferSummary', v_transfer_summary
     );
 
   update public.bunker_global_mission_progress progress

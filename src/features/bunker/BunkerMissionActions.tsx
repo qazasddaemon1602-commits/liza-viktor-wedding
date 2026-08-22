@@ -396,6 +396,21 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
       && normalizedIncludes(message, requiredIncludes)
       && normalizedIncludesAny(message, requiredTerms);
     const transferValid = !transferItem || Boolean(selectedTransfer && transferDestination);
+    const submitExchange = () => {
+      const base = {
+        message: message.trim(),
+        ...(partners.ids.length > 0 ? { partnerWagonIds: partners.ids } : {}),
+      };
+      if (selectedTransfer && transferDestination) {
+        onSubmit(action.missionState, {
+          ...base,
+          transferItemKey: selectedTransfer.itemKey,
+          transferToWagonId,
+        });
+        return;
+      }
+      onSubmit(action.missionState, base);
+    };
     return (
       <div className="bunker-global-action bunker-m04-exchange">
         <h3>МЕЖВАГОННАЯ СВЯЗЬ</h3>
@@ -488,14 +503,7 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
         <button
           type="button"
           disabled={submitting || !messageValid || !transferValid}
-          onClick={() => onSubmit(action.missionState, {
-            message: message.trim(),
-            ...(partners.ids.length > 0 ? { partnerWagonIds: partners.ids } : {}),
-            ...(selectedTransfer && transferDestination ? {
-              transferItemKey: selectedTransfer.itemKey,
-              transferToWagonId,
-            } : {}),
-          })}
+          onClick={submitExchange}
         >ОТПРАВИТЬ СООБЩЕНИЕ</button>
       </div>
     );

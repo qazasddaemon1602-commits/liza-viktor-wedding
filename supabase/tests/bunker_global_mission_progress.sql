@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(55);
+select plan(56);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -300,6 +300,15 @@ select is(
     ->> 'transferItemKey',
   'tools',
   'Mission 04 stores the transferred item in the human-readable submitted payload'
+);
+select is(
+  (select progress.submitted_payload->>'transferSummary'
+   from public.bunker_global_mission_progress progress
+   where progress.event_id = '00000000-0000-4000-8000-000000000902'
+     and progress.carriage_id = '00000000-0000-4000-8000-000000000911'
+     and progress.mission_state = 'MISSION_04'),
+  'Инструменты → ВАГОН №2 · 1 ШТ.',
+  'Mission 04 stores a trusted server-derived item and target wagon summary'
 );
 select is(
   (select item.status || ':' || item.transferred_to::text
