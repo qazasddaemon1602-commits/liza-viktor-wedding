@@ -1,4 +1,323 @@
-import type { CSSProperties } from 'react';import type { BunkerPhase } from './bunkerQuest.types';import type { BunkerScreenState,BunkerScreenTeamState } from './bunker.service';import { BunkerResponsivePicture,type BunkerAsset } from './BunkerResponsivePicture';import type { BunkerGlobalGameState } from './bunkerSession.service';import { MissionOneScreen,type MissionOneScreenReadModel } from './v2/MissionOneScreen';import { MissionTwoScreen,type MissionTwoScreenModel } from './v2/MissionTwoScreen';import { MissionThreeScreen,type MissionThreeScreenModel } from './v2/MissionThreeScreen';import { MissionFourScreen,type MissionFourScreenModel } from './v2/MissionFourScreen';import { MissionFiveScreen,type MissionFiveScreenModel } from './v2/MissionFiveScreen';import { MissionSixScreen,type MissionSixScreenModel } from './v2/MissionSixScreen';import { bunkerStageLabel } from './v2/labels';
-type Active=Extract<BunkerScreenState,{status:'active'}>;type Props={state:Active;remainingSeconds:number;motionPreference?:'full'|'reduced';missionOne?:MissionOneScreenReadModel;missionTwo?:MissionTwoScreenModel;missionThree?:MissionThreeScreenModel;missionFour?:MissionFourScreenModel;missionFive?:MissionFiveScreenModel;missionSix?:MissionSixScreenModel;bunkerContractVersion?:1|2};function ft(s:number){const n=Math.max(0,Math.floor(s));return`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}function pt(p:BunkerPhase){switch(p){case'dossier_1':return'ЛИЧНЫЕ ДОСЬЕ · ЭТАП I';case'dossier_2':return'ЛИЧНЫЕ ДОСЬЕ · ЭТАП II';case'mission_a':return'КОМАНДНОЕ ЗАДАНИЕ';case'mission_b':return'ОБЩЕЕ ЗАДАНИЕ';case'final':return'ФИНАЛЬНЫЙ ДОСТУП';case'completed':return'ДОСТУП ПОЛУЧЕН';case'emergency':return'ЭКСТРЕННОЕ СООБЩЕНИЕ';}}export function phaseForGlobalGameState(s:BunkerGlobalGameState|undefined,f:BunkerPhase):BunkerPhase{switch(s){case'LOBBY':case'CHARACTERS_READY':return'emergency';case'MISSION_01':return'dossier_1';case'BREAK':case'MISSION_02':return'dossier_2';case'MISSION_03':case'MISSION_04':return'mission_a';case'MISSION_05':case'MISSION_06':case'STORY_BUNKER':return'mission_b';case'BREAK_BEFORE_FINAL':case'FINAL_30':return'final';case'BUNKER_OPEN':case'FINISHED':return'completed';default:return f;}}function mh(s:Active,p:BunkerPhase){const m=s.currentMission;if(!m||!/^MISSION_\d{2}$/.test(m.state))return pt(p);const plan=m.plan,o=plan&&!Array.isArray(plan)&&typeof plan.objective==='string'?plan.objective.trim().toLocaleUpperCase('ru-RU'):'',base=bunkerStageLabel(m.state).toLocaleUpperCase('ru-RU');return o?`${base} · ${o}`:base;}function tc(t:BunkerScreenTeamState,p:BunkerPhase){if(p==='mission_a')return t.missionAComplete;if(p==='mission_b'||p==='final'||p==='completed')return t.missionBComplete;return false;}function pl(s:Active,p:BunkerPhase){if(!s.teams.length)return null;if(p==='mission_a')return`${s.teams.filter(t=>t.missionAComplete).length} / ${s.teams.length} ГОТОВО`;if(p==='mission_b')return`${s.teams.filter(t=>t.missionBComplete).length} / ${s.teams.length} ГОТОВО`;if(p==='final'||p==='completed')return`${s.teams.filter(t=>t.missionBComplete).length} / ${s.teams.length} ФРАГМЕНТОВ`;return null;}function back(s:Active,p:BunkerPhase):BunkerAsset{if(p==='final'||p==='completed')return s.unlocked?'bunker-door-open':'bunker-door-closed';if(p==='mission_a'||p==='mission_b')return'tunnel-map-master';return'bunker-exterior';}
-export function BunkerQuestScene({state,remainingSeconds,motionPreference='full',missionOne,missionTwo,missionThree,missionFour,missionFive,missionSix,bunkerContractVersion}:Props){if(state.globalGameState==='MISSION_01'&&bunkerContractVersion!==1)return missionOne?<MissionOneScreen model={missionOne}/>:<section className="bunker-mission-one-screen" aria-label="Задание 1 · общий экран"><p role="status">ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР — ЗАГРУЖАЕМ ДАННЫЕ…</p></section>;if(state.globalGameState==='MISSION_02'&&bunkerContractVersion!==1)return missionTwo?<MissionTwoScreen model={missionTwo}/>:<section className="bunker-v2-screen" aria-label="Задание 2 · общий экран"><h1>ЧЁРНЫЙ ЯЩИК</h1></section>;if(state.globalGameState==='MISSION_03'&&bunkerContractVersion!==1)return missionThree?<MissionThreeScreen model={missionThree}/>:<section className="bunker-v2-screen" aria-label="Задание 3 · общий экран"><h1>АВАРИЙНЫЙ ЗАПАС</h1></section>;if(state.globalGameState==='MISSION_04'&&bunkerContractVersion!==1)return missionFour?<MissionFourScreen model={missionFour}/>:<section className="bunker-v2-screen" aria-label="Задание 4 · общий экран"><h1>МЕЖВАГОННАЯ СВЯЗЬ</h1></section>;if(state.globalGameState==='MISSION_05'&&bunkerContractVersion!==1)return missionFive?<MissionFiveScreen model={missionFive}/>:<section className="bunker-v2-screen" aria-label="Задание 5 · общий экран"><h1>ОДИН ШАНС</h1></section>;if(state.globalGameState==='MISSION_06'&&bunkerContractVersion!==1)return missionSix?<MissionSixScreen model={missionSix}/>:<section className="bunker-v2-screen bunker-v2-screen--m06" aria-label="Задание 6 · общий экран"><h1>ОБЩИЙ ПРОТОКОЛ</h1><p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p></section>;const phase=phaseForGlobalGameState(state.globalGameState,state.phase),progress=pl(state,phase),arrived=remainingSeconds<=0,finalPhase=phase==='final'||phase==='completed',has=state.teams.length>0,counts=state.characterCounts??{active:0,saved:0,excluded:0},headline=arrived&&finalPhase?(state.unlocked?'ПРИБЫТИЕ · ДОСТУП РАЗРЕШЁН':'ПРИБЫТИЕ · ШЛЮЗ ЗАБЛОКИРОВАН'):mh(state,phase);return <section className={`bunker-quest-scene bunker-quest-scene--${phase}`} aria-label="Бункер · общий экран" data-motion={motionPreference} data-phase={phase}><BunkerResponsivePicture asset={back(state,phase)} className="bunker-quest-scene__backdrop" testId="bunker-scene-backdrop" loading="eager"/><div className="bunker-quest-scene__grid" aria-hidden="true"/><header className="bunker-quest-scene__header"><div><p>ПОЕЗД ВИКТОРА · ПРОТОКОЛ БУНКЕРА · 30.08.2026</p><h1>{headline}</h1></div><strong>{ft(remainingSeconds)}</strong></header>{(phase==='mission_a'||phase==='mission_b')&&<div className="bunker-quest-scene__mission"><div className="bunker-quest-scene__progress-heading"><span>СОСТОЯНИЕ ВАГОНОВ</span>{progress&&<strong>{progress}</strong>}</div><p>ПЕРСОНАЖИ · {counts.active} АКТИВНЫ · {counts.saved} СПАСЕНЫ · {counts.excluded} ИСКЛЮЧЕНЫ</p>{has?<div className="bunker-wagon-grid" data-count={state.teams.length}>{state.teams.map(team=>{const done=tc(team,phase);return <article key={team.carriageNumber} className={done?'is-complete':''}><span>{String(team.carriageNumber).padStart(2,'0')}</span><strong>{team.label}</strong><i>{done?'ГОТОВ':'В РАБОТЕ'}</i></article>;})}</div>:<p>ДАННЫЕ О ВАГОНАХ ЗАГРУЖАЮТСЯ</p>}</div>}{finalPhase&&<div className="bunker-quest-scene__final"><div className="bunker-quest-scene__progress-heading"><span>ФИНАЛЬНЫЙ ДОСТУП</span>{progress&&<strong>{progress}</strong>}</div>{has&&<div className="bunker-wagon-grid" data-count={state.teams.length}>{state.teams.map((team,index)=><article key={team.carriageNumber} className={team.missionBComplete?'is-open':''}><BunkerResponsivePicture asset="tunnel-map-master" className="bunker-map-fragment" testId="bunker-map-fragment" fragmentIndex={index} fragmentCount={state.teams.length} style={{'--bunker-fragment-offset':`${index*-100}%`,'--bunker-fragment-width':`${state.teams.length*100}%`}as CSSProperties}/><span>ВАГОН {team.carriageNumber}</span><strong>{team.missionBComplete?'ОТКРЫТО':'ЗАКРЫТО'}</strong></article>)}</div>}</div>}<footer><span>АРХИВ БУНКЕРА</span><span>СИСТЕМА · В СЕТИ</span></footer></section>;
+import type { CSSProperties } from 'react';
+import type { BunkerPhase } from './bunkerQuest.types';
+import type { BunkerScreenState, BunkerScreenTeamState } from './bunker.service';
+import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
+import type { BunkerGlobalGameState } from './bunkerSession.service';
+import { MissionOneScreen, type MissionOneScreenReadModel } from './v2/MissionOneScreen';
+import { MissionTwoScreen, type MissionTwoScreenModel } from './v2/MissionTwoScreen';
+import { MissionThreeScreen, type MissionThreeScreenModel } from './v2/MissionThreeScreen';
+import { MissionFourScreen, type MissionFourScreenModel } from './v2/MissionFourScreen';
+import { MissionFiveScreen, type MissionFiveScreenModel } from './v2/MissionFiveScreen';
+import { MissionSixScreen, type MissionSixScreenModel } from './v2/MissionSixScreen';
+
+type ActiveBunkerScreen = Extract<BunkerScreenState, { status: 'active' }>;
+
+type BunkerQuestSceneProps = {
+  state: ActiveBunkerScreen;
+  remainingSeconds: number;
+  motionPreference?: 'full' | 'reduced';
+  missionOne?: MissionOneScreenReadModel;
+  missionTwo?: MissionTwoScreenModel;
+  missionThree?: MissionThreeScreenModel;
+  missionFour?: MissionFourScreenModel;
+  missionFive?: MissionFiveScreenModel;
+  missionSix?: MissionSixScreenModel;
+  bunkerContractVersion?: 1 | 2;
+};
+
+function formatTimer(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+}
+
+function phaseTitle(phase: BunkerPhase): string {
+  switch (phase) {
+    case 'dossier_1': return 'ЛИЧНЫЕ ДОСЬЕ · ЭТАП I';
+    case 'dossier_2': return 'ЛИЧНЫЕ ДОСЬЕ · ЭТАП II';
+    case 'mission_a': return 'КОМАНДНАЯ ЗАДАЧА A';
+    case 'mission_b': return 'КОМАНДНАЯ ЗАДАЧА B';
+    case 'final': return 'ФИНАЛЬНЫЙ ДОСТУП';
+    case 'completed': return 'ДОСТУП ПОЛУЧЕН';
+    case 'emergency': return 'ЭКСТРЕННОЕ СООБЩЕНИЕ';
+  }
+}
+
+export function phaseForGlobalGameState(
+  state: BunkerGlobalGameState | undefined,
+  fallback: BunkerPhase,
+): BunkerPhase {
+  switch (state) {
+    case 'LOBBY':
+    case 'CHARACTERS_READY': return 'emergency';
+    case 'MISSION_01': return 'dossier_1';
+    case 'BREAK':
+    case 'MISSION_02': return 'dossier_2';
+    case 'MISSION_03':
+    case 'MISSION_04': return 'mission_a';
+    case 'MISSION_05':
+    case 'MISSION_06':
+    case 'STORY_BUNKER': return 'mission_b';
+    case 'BREAK_BEFORE_FINAL':
+    case 'FINAL_30': return 'final';
+    case 'BUNKER_OPEN':
+    case 'FINISHED': return 'completed';
+    default: return fallback;
+  }
+}
+
+function missionHeadline(state: ActiveBunkerScreen, phase: BunkerPhase): string {
+  const mission = state.currentMission;
+  if (!mission || !/^MISSION_\d{2}$/.test(mission.state)) return phaseTitle(phase);
+  const number = mission.state.slice(-2);
+  const plan = mission.plan;
+  const objective = plan && !Array.isArray(plan) && typeof plan.objective === 'string'
+    ? plan.objective.trim().toLocaleUpperCase('ru-RU')
+    : '';
+  return objective ? `МИССИЯ ${number} · ${objective}` : `МИССИЯ ${number}`;
+}
+
+function teamComplete(team: BunkerScreenTeamState, phase: BunkerPhase): boolean {
+  if (phase === 'mission_a') return team.missionAComplete;
+  if (phase === 'mission_b' || phase === 'final' || phase === 'completed') {
+    return team.missionBComplete;
+  }
+  return false;
+}
+
+function progressLabel(state: ActiveBunkerScreen, phase: BunkerPhase): string | null {
+  if (state.teams.length === 0) return null;
+  if (phase === 'mission_a') {
+    return `${state.teams.filter((team) => team.missionAComplete).length} / ${state.teams.length} ГОТОВО`;
+  }
+  if (phase === 'mission_b') {
+    return `${state.teams.filter((team) => team.missionBComplete).length} / ${state.teams.length} ГОТОВО`;
+  }
+  if (phase === 'final' || phase === 'completed') {
+    return `${state.teams.filter((team) => team.missionBComplete).length} / ${state.teams.length} ФРАГМЕНТОВ`;
+  }
+  return null;
+}
+
+function sceneBackdrop(state: ActiveBunkerScreen, phase: BunkerPhase): BunkerAsset {
+  if (phase === 'final' || phase === 'completed') {
+    return state.unlocked ? 'bunker-door-open' : 'bunker-door-closed';
+  }
+  if (phase === 'mission_a' || phase === 'mission_b') return 'tunnel-map-master';
+  return 'bunker-exterior';
+}
+
+export function BunkerQuestScene({
+  state,
+  remainingSeconds,
+  motionPreference = 'full',
+  missionOne,
+  missionTwo,
+  missionThree,
+  missionFour,
+  missionFive,
+  missionSix,
+  bunkerContractVersion,
+}: BunkerQuestSceneProps) {
+  // Preserve the latest M01 fallback from main: while the V2 contract projection
+  // is still loading, do not flash the unrelated legacy dossier screen.
+  if (state.globalGameState === 'MISSION_01' && bunkerContractVersion !== 1) {
+    return missionOne ? (
+      <MissionOneScreen model={missionOne} />
+    ) : (
+      <section className="bunker-mission-one-screen" aria-label="Задание 1 · общий экран">
+        <p className="bunker-quest-scene__empty" role="status">
+          ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР — ЗАГРУЖАЕМ ДАННЫЕ ВАГОНОВ…
+        </p>
+      </section>
+    );
+  }
+
+  // Later V2 stages switch only on an explicit V2 contract. If the contract
+  // read is temporarily unavailable, a legacy run must keep its legacy screen.
+  if (state.globalGameState === 'MISSION_02' && bunkerContractVersion === 2) {
+    return missionTwo ? <MissionTwoScreen model={missionTwo} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 2 · общий экран">
+        <h1>ЧЁРНЫЙ ЯЩИК</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_03' && bunkerContractVersion === 2) {
+    return missionThree ? <MissionThreeScreen model={missionThree} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 3 · общий экран">
+        <h1>АВАРИЙНЫЙ ЗАПАС</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_04' && bunkerContractVersion === 2) {
+    return missionFour ? <MissionFourScreen model={missionFour} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 4 · общий экран">
+        <h1>МЕЖВАГОННАЯ СВЯЗЬ</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_05' && bunkerContractVersion === 2) {
+    return missionFive ? <MissionFiveScreen model={missionFive} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 5 · общий экран">
+        <h1>ОДИН ШАНС</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_06' && bunkerContractVersion === 2) {
+    return missionSix ? <MissionSixScreen model={missionSix} /> : (
+      <section className="bunker-v2-screen bunker-v2-screen--m06" aria-label="Задание 6 · общий экран">
+        <h1>ОБЩИЙ ПРОТОКОЛ</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+
+  const phase = phaseForGlobalGameState(state.globalGameState, state.phase);
+  const progress = progressLabel(state, phase);
+  const arrived = remainingSeconds <= 0;
+  const finalPhase = phase === 'final' || phase === 'completed';
+  const hasAuthoritativeWagons = state.teams.length > 0;
+  const characterCounts = state.characterCounts ?? { active: 0, saved: 0, excluded: 0 };
+
+  const headline = arrived && finalPhase
+    ? state.unlocked
+      ? 'ПРИБЫТИЕ · ДОСТУП РАЗРЕШЁН'
+      : 'ПРИБЫТИЕ · ШЛЮЗ ЗАБЛОКИРОВАН'
+    : missionHeadline(state, phase);
+
+  return (
+    <section
+      className={`bunker-quest-scene bunker-quest-scene--${phase}`}
+      aria-label="Бункер · экран квеста"
+      data-motion={motionPreference}
+      data-phase={phase}
+    >
+      <BunkerResponsivePicture
+        asset={sceneBackdrop(state, phase)}
+        className="bunker-quest-scene__backdrop"
+        testId="bunker-scene-backdrop"
+        loading="eager"
+      />
+      {motionPreference === 'full' && (
+        <picture
+          className="bunker-quest-scene__train-wipe"
+          aria-hidden="true"
+          data-testid="bunker-train-window-wipe"
+        >
+          <source srcSet="/images/bunker/train-window-wipe.avif" type="image/avif" />
+          <source srcSet="/images/bunker/train-window-wipe.webp" type="image/webp" />
+          <img
+            src="/images/bunker/train-window-wipe.png"
+            alt=""
+            width="2048"
+            height="1152"
+            decoding="async"
+          />
+        </picture>
+      )}
+      <div className="bunker-quest-scene__grid" aria-hidden="true" />
+      <header className="bunker-quest-scene__header">
+        <div>
+          <p>ПОЕЗД ВИКТОРА · ПРОТОКОЛ БУНКЕРА · 30.08.2026</p>
+          <h1>{headline}</h1>
+        </div>
+        <strong>{formatTimer(remainingSeconds)}</strong>
+      </header>
+
+      {(phase === 'dossier_1' || phase === 'dossier_2') && (
+        <div className="bunker-quest-scene__briefing">
+          <span>ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ</span>
+          <strong>
+            {phase === 'dossier_1'
+              ? 'СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА'
+              : 'ДОСЬЕ РАСКРЫТО · ГОТОВЬТЕСЬ К КОМАНДНОЙ ЗАДАЧЕ'}
+          </strong>
+          <p>Телефоны гостей синхронизированы с текущим этапом.</p>
+        </div>
+      )}
+
+      {(phase === 'mission_a' || phase === 'mission_b') && (
+        <div className="bunker-quest-scene__mission">
+          <div className="bunker-quest-scene__progress-heading">
+            <span>СОСТОЯНИЕ ВАГОНОВ</span>
+            {progress && <strong>{progress}</strong>}
+          </div>
+          <p className="bunker-quest-scene__character-counts">
+            ПЕРСОНАЖИ · {characterCounts.active} АКТИВНЫ · {characterCounts.saved} СПАСЕНЫ · {characterCounts.excluded} ИСКЛЮЧЁН
+          </p>
+          {hasAuthoritativeWagons ? (
+            <div
+              className="bunker-wagon-grid bunker-quest-scene__teams"
+              data-count={state.teams.length}
+              aria-label="Активные вагоны"
+            >
+              {state.teams.map((team) => {
+                const complete = teamComplete(team, phase);
+                return (
+                  <article key={team.carriageNumber} className={complete ? 'is-complete' : ''}>
+                    <span>{String(team.carriageNumber).padStart(2, '0')}</span>
+                    <strong>{team.label}</strong>
+                    <i>{complete ? 'ГОТОВ' : 'В РАБОТЕ'}</i>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="bunker-quest-scene__empty">ДАННЫЕ ОБ АКТИВНЫХ ВАГОНАХ НЕ ПОЛУЧЕНЫ</p>
+          )}
+        </div>
+      )}
+
+      {finalPhase && (
+        <div className="bunker-quest-scene__final">
+          <div className="bunker-quest-scene__progress-heading">
+            <span>КОНТУР ФИНАЛЬНОГО ДОСТУПА</span>
+            {progress && <strong>{progress}</strong>}
+          </div>
+          {hasAuthoritativeWagons ? (
+            <div
+              className="bunker-wagon-grid bunker-quest-scene__slots"
+              data-count={state.teams.length}
+              aria-label="Активные вагоны"
+            >
+              {state.teams.map((team, index) => (
+                <article key={team.carriageNumber} className={team.missionBComplete ? 'is-open' : ''}>
+                  <BunkerResponsivePicture
+                    asset="tunnel-map-master"
+                    className="bunker-map-fragment"
+                    testId="bunker-map-fragment"
+                    fragmentIndex={index}
+                    fragmentCount={state.teams.length}
+                    sizes={`${Math.ceil(100 / state.teams.length)}vw`}
+                    style={{
+                      '--bunker-fragment-offset': `${index * -100}%`,
+                      '--bunker-fragment-width': `${state.teams.length * 100}%`,
+                    } as CSSProperties}
+                  />
+                  <span>ВАГОН {String(team.carriageNumber).padStart(2, '0')}</span>
+                  <strong>{team.missionBComplete ? 'OPEN' : 'LOCKED'}</strong>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="bunker-quest-scene__empty">ДАННЫЕ ОБ АКТИВНЫХ ВАГОНАХ НЕ ПОЛУЧЕНЫ</p>
+          )}
+          {state.unlocked && remainingSeconds > 0 && (
+            <div className="bunker-quest-scene__unlock-state">
+              <strong>ДОСТУП ПОЛУЧЕН</strong>
+              <span>ОЖИДАЕМ ПРИБЫТИЕ</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <footer>
+        <span>АРХИВ БУНКЕРА</span>
+        <span>СИСТЕМА · В СЕТИ</span>
+      </footer>
+    </section>
+  );
 }
