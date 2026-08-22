@@ -19,16 +19,20 @@ select ok(
   pg_get_functiondef('public.owner_bunker_v2_reset_game_and_registrations(uuid,text)'::regprocedure)
     ~ '_delete_bunker_game_run'
   and pg_get_functiondef('public.owner_bunker_v2_reset_game_and_registrations(uuid,text)'::regprocedure)
-    ~ 'contract_version = 2',
-  'game plus registrations reset removes every remaining historical V2 run for the event'
+    ~ 'from public\.bunker_game_runs'
+  and pg_get_functiondef('public.owner_bunker_v2_reset_game_and_registrations(uuid,text)'::regprocedure)
+    !~ 'contract_version = 2',
+  'game plus registrations reset removes every remaining historical Bunker run for the event'
 );
 
 select ok(
   pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure)
     ~ '_delete_bunker_game_run'
   and pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure)
-    ~ 'contract_version = 2',
-  'full evening reset removes every remaining historical V2 run for the event'
+    ~ 'from public\.bunker_game_runs'
+  and pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure)
+    !~ 'contract_version = 2',
+  'full evening reset removes every remaining historical Bunker run for the event'
 );
 
 select ok(
