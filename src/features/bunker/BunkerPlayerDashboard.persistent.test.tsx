@@ -81,7 +81,7 @@ const dashboard: Extract<BunkerV2DashboardReadModel, { status: 'active' }> = {
     trackDamage: 20,
     waterStatus: 'limited',
     routeChoice: 'A',
-    routeBonus: 60,
+    routeBonus: 7,
     powerInstability: 1,
     sector04Found: true,
     coordinationBonus: true,
@@ -121,9 +121,17 @@ describe('persistent Bunker V2 player dashboard', () => {
     expect(state.getByText(/Повреждение пути · 20%/i)).toBeInTheDocument();
     expect(state.getByText(/Вода · Ограничено/i)).toBeInTheDocument();
     expect(state.getByText(/Маршрут · A/i)).toBeInTheDocument();
-    expect(state.getByText(/Бонус маршрута · \+60/i)).toBeInTheDocument();
+    expect(state.getByText(/Бонус маршрута · \+7 мин/i)).toBeInTheDocument();
     expect(state.getByText(/Нестабильность питания · 1/i)).toBeInTheDocument();
     expect(state.getByText(/Сектор 04 · найден/i)).toBeInTheDocument();
     expect(state.getByText(/Координация · бонус активен/i)).toBeInTheDocument();
+  });
+
+  it('renders a negative B-route time adjustment without a fake plus sign', async () => {
+    const user = userEvent.setup();
+    render(<BunkerPlayerDashboard runtime={runtime} dashboard={{ ...dashboard, wagonState: { ...dashboard.wagonState, routeChoice: 'B', routeBonus: -5 } }} />);
+    await user.click(screen.getByRole('button', { name: 'СОСТОЯНИЕ' }));
+    expect(screen.getByText(/Бонус маршрута · -5 мин/i)).toBeInTheDocument();
+    expect(screen.queryByText(/\+-5/)).not.toBeInTheDocument();
   });
 });
