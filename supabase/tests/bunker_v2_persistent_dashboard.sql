@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(14);
 
 select has_function(
   'public',
@@ -61,6 +61,16 @@ select ok(
   coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
     ~ 'bunker_inventory_lots',
   'dashboard inventory comes from the durable inventory ledger'
+);
+
+select ok(
+  coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
+    ~ 'bunker_inventory_transfers'
+  and coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
+    ~ 'status = ''accepted'''
+  and coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
+    ~ 'from_carriage_id',
+  'dashboard transfer history counts accepted transfer quantities including partial lot transfers'
 );
 
 select ok(
