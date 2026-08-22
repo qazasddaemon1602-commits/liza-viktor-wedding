@@ -2,7 +2,7 @@ import { submitBunkerCommand, throwBunkerV2RpcError, type BunkerV2RpcClient } fr
 import type { BunkerCommandReceipt } from './contracts';
 export type MissionFiveRpcClient = BunkerV2RpcClient;
 export type MissionFiveRoute = { key: 'A' | 'B'; title: string; description: string; risk: string };
-export type MissionFiveOutcome = { routeChoice: 'A' | 'B'; routeBonus: number; trackDamage: number; powerInstability: number; sector04Found: boolean; fallback?: boolean };
+export type MissionFiveOutcome = { routeChoice: 'A' | 'B'; routeBonusMinutes: number; trackDamage: number; powerInstability: number; sector04Found: boolean; tier: 'best'|'medium'|'poor'|'safe'; fallback?: boolean };
 export type MissionFiveGuestReadModel =
   | { contractVersion: 2; status: 'idle' | 'legacy' | 'not_found'; serverNow: string }
   | { contractVersion: 2; status: 'active' | 'completed'; serverNow: string; deadlineAt: string; instanceId: string; instanceVersion: number; title: string; intro: string; wagon: { number: number; label: string }; routes: MissionFiveRoute[]; selectedVote: 'A' | 'B' | null; voteCounts: { A: number; B: number; total: number; required: number }; ability: { available: boolean; key: string; label: string; hint: string } | null; outcome?: MissionFiveOutcome };
@@ -14,9 +14,25 @@ export type MissionFiveOwnerReadModel = MissionFiveScreenReadModel;
 function object(value: unknown, label: string): Record<string, unknown> { if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Unexpected mission five ${label}`); return value as Record<string, unknown>; }
 function text(value: unknown, label: string): string { if (typeof value !== 'string' || !value.trim()) throw new Error(`Unexpected mission five ${label}`); return value; }
 function integer(value: unknown, label: string): number { if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) throw new Error(`Unexpected mission five ${label}`); return value; }
+function signedInteger(value: unknown, label: string): number { if (typeof value !== 'number' || !Number.isInteger(value)) throw new Error(`Unexpected mission five ${label}`); return value; }
 function timestamp(value: unknown): string { const result = text(value, 'timestamp'); if (!Number.isFinite(Date.parse(result))) throw new Error('Unexpected mission five timestamp'); return result; }
 function parseRoute(value: unknown): MissionFiveRoute { const row = object(value, 'route'); if (row.key !== 'A' && row.key !== 'B') throw new Error('Unexpected mission five route key'); return { key: row.key, title: text(row.title,'route title'), description: text(row.description,'route description'), risk: text(row.risk,'route risk') }; }
-function parseOutcome(value: unknown): MissionFiveOutcome | undefined { if (value === undefined || value === null) return undefined; const row = object(value,'outcome'); if (row.routeChoice !== 'A' && row.routeChoice !== 'B') throw new Error('Unexpected mission five outcome'); return { routeChoice: row.routeChoice, routeBonus: integer(row.routeBonus,'route bonus'), trackDamage: integer(row.trackDamage,'track damage'), powerInstability: integer(row.powerInstability,'power instability'), sector04Found: Boolean(row.sector04Found), ...(typeof row.fallback === 'boolean' ? { fallback: row.fallback } : {}) }; }
+function parseOutcome(value: unknown): MissionFiveOutcome | undefined {
+  if (value === undefined || value === null) return undefined;
+  const row = object(value,'outcome');
+  if (row.routeChoice !== 'A' && row.routeChoice !== 'B') throw new Error('Unexpected mission five outcome');
+  const tier = row.tier;
+  if (tier !== 'best' && tier !== 'medium' && tier !== 'poor' && tier !== 'safe') throw new Error('Unexpected mission five outcome tier');
+  return {
+    routeChoice: row.routeChoice,
+    routeBonusMinutes: signedInteger(row.routeBonusMinutes,'route bonus minutes'),
+    trackDamage: integer(row.trackDamage,'track damage'),
+    powerInstability: integer(row.powerInstability,'power instability'),
+    sector04Found: Boolean(row.sector04Found),
+    tier,
+    ...(typeof row.fallback === 'boolean' ? { fallback: row.fallback } : {}),
+  };
+}
 export function parseMissionFiveGuestReadModel(value: unknown): MissionFiveGuestReadModel {
   const row = object(value,'read model'); if (row.contractVersion !== 2 || typeof row.status !== 'string') throw new Error('Unexpected mission five read model');
   if (row.status === 'idle' || row.status === 'legacy' || row.status === 'not_found') return { contractVersion: 2, status: row.status, serverNow: timestamp(row.serverNow) };
