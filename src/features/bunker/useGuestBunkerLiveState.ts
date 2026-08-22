@@ -228,14 +228,14 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
       });
     };
 
-    projection('MISSION_01', deps.loadMissionOne, m01, setMissionOne, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_02', deps.loadMissionTwo, m02, setMissionTwo, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_03', deps.loadMissionThree, m03, setMissionThree, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_04', deps.loadMissionFour, m04, setMissionFour, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_05', deps.loadMissionFive, m05, setMissionFive, (current) => ({ ...current, connection: 'reconnecting' }));
-    projection('MISSION_06', deps.loadMissionSix, m06, setMissionSix, (current) => ({ ...current, connection: 'reconnecting' }));
+    projection('MISSION_01', deps.loadMissionOne, m01, setMissionOne, (current) => ({ ...current, connection: 'reconnecting' as const }));
+    projection('MISSION_02', deps.loadMissionTwo, m02, setMissionTwo, (current) => ({ ...current, connection: 'reconnecting' as const }));
+    projection('MISSION_03', deps.loadMissionThree, m03, setMissionThree, (current) => ({ ...current, connection: 'reconnecting' as const }));
+    projection('MISSION_04', deps.loadMissionFour, m04, setMissionFour, (current) => ({ ...current, connection: 'reconnecting' as const }));
+    projection('MISSION_05', deps.loadMissionFive, m05, setMissionFive, (current) => ({ ...current, connection: 'reconnecting' as const }));
+    projection('MISSION_06', deps.loadMissionSix, m06, setMissionSix, (current) => ({ ...current, connection: 'reconnecting' as const }));
     projection('UNKNOWN_PASSENGER', deps.loadUnknownPassenger, unknown, setUnknownPassenger);
-    projection('FINAL_30', deps.loadFinal, finalModel, setFinal, (current) => ({ ...current, connection: 'reconnecting' }));
+    projection('FINAL_30', deps.loadFinal, finalModel, setFinal, (current) => ({ ...current, connection: 'reconnecting' as const }));
 
     try {
       const next = await deps.load(key);
