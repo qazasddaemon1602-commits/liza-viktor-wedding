@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(16);
 select has_function('public','get_guest_bunker_v2_final',array['text','text'],'final guest read model');
 select has_function('public','get_bunker_v2_final_screen',array['text'],'final TV read model');
 select has_function('public','get_owner_bunker_v2_final',array['uuid'],'final owner read model');
@@ -26,6 +26,17 @@ select ok(
 select ok(
   pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)~'1800\+v_bonus',
   'final base remains 1800 seconds before bounded M05 bonus'
+);
+select ok(
+  pg_get_functiondef('public.get_bunker_v2_final_screen(text)'::regprocedure)~'bunker_game_runs'
+  and pg_get_functiondef('public.get_bunker_v2_final_screen(text)'::regprocedure)~'contract_version'
+  and pg_get_functiondef('public.get_bunker_v2_final_screen(text)'::regprocedure)~'''legacy''',
+  'final TV read is explicitly guarded by the active V2 contract'
+);
+select ok(
+  pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)~'final_started_at'
+  and pg_get_functiondef('public._bunker_v2_final_transition()'::regprocedure)~'v_started.*make_interval',
+  'final mission deadline is derived from the same authoritative final start timestamp'
 );
 select * from finish();
 rollback;
