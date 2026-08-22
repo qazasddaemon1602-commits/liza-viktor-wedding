@@ -12,6 +12,7 @@ import { MissionFiveOwnerPanel } from './MissionFiveOwnerPanel';
 import { MissionSixOwnerPanel } from './MissionSixOwnerPanel';
 import { UnknownPassengerOwnerPanel } from './UnknownPassengerOwnerPanel';
 import { FinalOwnerPanel } from './FinalOwnerPanel';
+import { resolveBunkerContractVersion } from './bunkerContractVersion';
 import { getOwnerMissionOneReadModel,overrideMissionOneSelection,type MissionOneOwnerReadModel,type MissionOneRpcClient,type OverrideMissionOneSelectionInput } from '../../bunker/v2/m01.service';
 import { getOwnerMissionTwoReadModel,type MissionTwoOwnerReadModel } from '../../bunker/v2/m02.service';
 import { getOwnerMissionThreeReadModel,type MissionThreeOwnerReadModel } from '../../bunker/v2/m03.service';
@@ -60,7 +61,7 @@ export function AdminBunkerDock({dependencies,pollIntervalMs=15000}:Props={}){
  const finalAction=async(action:((eventId:string)=>Promise<unknown>)|undefined)=>{if(!action||!ref.current||command.current)return;command.current=true;try{await action(ref.current.event.id);try{await deps?.broadcastRefresh?.();}catch{}refresh();}finally{command.current=false;}};
  if(!deps||availability==='unavailable')return <aside id="admin-bunker" className="admin-bunker-dock"><strong>ДАННЫЕ ВЕДУЩЕГО НЕДОСТУПНЫ</strong><p>Пульт скрыт. Проверьте вход организатора и интернет.</p></aside>;
  if(!dashboard||availability==='loading')return <aside id="admin-bunker" className="admin-bunker-dock"><span>ПРОВЕРЯЕМ ДОСТУП ВЕДУЩЕГО…</span></aside>;
- const two=p2(m2),three=p3(m3),four=p4(m4),five=p5(m5),six=p6(m6),storyPanel=ps(story),finalPanel=pf(final),contract=m1?.contractVersion??m2?.contractVersion??m3?.contractVersion??m4?.contractVersion??m5?.contractVersion??m6?.contractVersion??story?.contractVersion??final?.contractVersion;
+ const two=p2(m2),three=p3(m3),four=p4(m4),five=p5(m5),six=p6(m6),storyPanel=ps(story),finalPanel=pf(final),contract=resolveBunkerContractVersion([m1,m2,m3,m4,m5,m6,story,final]);
  return <aside id="admin-bunker" className="admin-bunker-dock">
    {last&&<div className="admin-bunker-dock__freshness"><span>{availability==='stale'?'СВЯЗЬ ВОССТАНАВЛИВАЕТСЯ · ПОКАЗАНЫ ПОСЛЕДНИЕ ДАННЫЕ':'ДАННЫЕ ВЕДУЩЕГО АКТУАЛЬНЫ'}</span></div>}
    <AdminBunkerControl eventId={dashboard.event.id} dependencies={deps.bunkerControl} dashboard={dashboard} onAcceptDistribution={accept} bunkerContractVersion={contract} missionOne={p1(m1)} onMissionOneOverride={deps.overrideMissionOne?override:undefined}/>
