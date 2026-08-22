@@ -575,6 +575,79 @@ describe('AdminBunkerControl', () => {
     expect(screen.getByText('30:00')).toBeInTheDocument();
   });
 
+  it('disables the normal Bunker opening until the final code unlocks the server state', async () => {
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          advance: vi.fn(),
+          load: vi.fn().mockResolvedValue({
+            status: 'active',
+            startedAt: '2026-08-30T19:30:00.000Z',
+            durationSeconds: 1800,
+            remainingSeconds: 1200,
+            soundEnabled: true,
+            globalGameState: 'FINAL_30',
+            currentMission: null,
+            unlocked: false,
+            serverNow: '2026-08-30T19:40:00.000Z',
+          }),
+        })}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'ОТКРЫТЬ БУНКЕР' })).toBeDisabled();
+    expect(screen.getByText(/штатное открытие станет доступно после правильного финального кода/i)).toBeInTheDocument();
+  });
+
+  it('requires a recovery reason and exact phrase before the owner can force the Bunker open', async () => {
+    const user = userEvent.setup();
+    const forceOpen = vi.fn().mockResolvedValue({
+      status: 'transitioned', globalGameState: 'BUNKER_OPEN', changed: true, forced: true,
+    });
+    const taskDependencies = Object.assign(dependencies({
+      advance: vi.fn(),
+      load: vi.fn().mockResolvedValue({
+        status: 'active',
+        startedAt: '2026-08-30T19:30:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 1200,
+        soundEnabled: true,
+        globalGameState: 'FINAL_30',
+        currentMission: null,
+        unlocked: false,
+        serverNow: '2026-08-30T19:40:00.000Z',
+      }),
+    }), { forceOpen });
+
+    render(<AdminBunkerControl eventId="event-1" dependencies={taskDependencies} />);
+
+    const recovery = await screen.findByRole('region', { name: 'Аварийное открытие Бункера' });
+    const submit = within(recovery).getByRole('button', { name: 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО' });
+    expect(submit).toBeDisabled();
+
+    await user.type(within(recovery).getByRole('textbox', { name: 'Причина аварийного открытия' }), 'Сбой');
+    await user.type(
+      within(recovery).getByRole('textbox', { name: 'Контрольная фраза' }),
+      'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    );
+    expect(submit).toBeDisabled();
+
+    await user.clear(within(recovery).getByRole('textbox', { name: 'Причина аварийного открытия' }));
+    await user.type(
+      within(recovery).getByRole('textbox', { name: 'Причина аварийного открытия' }),
+      'Финальный телефон не отвечает',
+    );
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+
+    expect(forceOpen).toHaveBeenCalledWith(
+      'event-1',
+      'Финальный телефон не отвечает',
+      'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    );
+  });
+
   it('lets the owner recover one confirmed wagon through a separate force confirmation', async () => {
     const user = userEvent.setup();
     const forceCompleteMission = vi.fn().mockResolvedValue({

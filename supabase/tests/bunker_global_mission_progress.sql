@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(31);
+select plan(41);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -17,6 +17,11 @@ select has_function(
   'public', 'owner_force_complete_bunker_global_mission',
   array['uuid', 'uuid', 'text'],
   'the owner has a scoped recovery command for one wagon and current mission'
+);
+select has_function(
+  'public', 'owner_force_open_bunker',
+  array['uuid', 'text', 'text'],
+  'the owner has a separately confirmed final recovery command'
 );
 select ok(
   not has_table_privilege('anon', 'public.bunker_global_mission_progress', 'SELECT'),
@@ -37,6 +42,14 @@ select ok(
     'EXECUTE'
   ),
   'anonymous devices cannot force mission completion'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.owner_force_open_bunker(uuid,text,text)',
+    'EXECUTE'
+  ),
+  'anonymous devices cannot force the Bunker open'
 );
 
 insert into auth.users(id)
@@ -326,6 +339,13 @@ select ok(
     between 1198 and 1200,
   'FINAL_30 remaining time is derived from final_started_at, not the old emergency timer'
 );
+select is(
+  public.owner_get_bunker_control(
+    '00000000-0000-4000-8000-000000000902'
+  )->>'unlocked',
+  'false',
+  'owner control reports that the final code has not unlocked the Bunker'
+);
 
 select is(
   public.submit_guest_bunker_final_code(
@@ -341,11 +361,31 @@ select is(
   'unlocked',
   'the final code RPC accepts authoritative FINAL_30 and M06 fragments'
 );
+select is(
+  public.owner_get_bunker_control(
+    '00000000-0000-4000-8000-000000000902'
+  )->>'unlocked',
+  'true',
+  'owner control reports the authoritative final-code unlock'
+);
 
 update public.bunker_state set unlocked_at = null
 where event_id = '00000000-0000-4000-8000-000000000902';
-select public.owner_advance_bunker_game_state(
-  '00000000-0000-4000-8000-000000000902', 'BUNKER_OPEN'
+select throws_ok(
+  $$ select public.owner_advance_bunker_game_state(
+    '00000000-0000-4000-8000-000000000902', 'BUNKER_OPEN'
+  ) $$,
+  '55000',
+  'Bunker final code must unlock before opening',
+  'normal owner opening is rejected until the final code unlocks the state'
+);
+update public.bunker_state set unlocked_at = clock_timestamp()
+where event_id = '00000000-0000-4000-8000-000000000902';
+select lives_ok(
+  $$ select public.owner_advance_bunker_game_state(
+    '00000000-0000-4000-8000-000000000902', 'BUNKER_OPEN'
+  ) $$,
+  'normal owner opening succeeds after the final code unlocks the state'
 );
 select is(
   public.get_bunker_screen_state('global-mission-runtime')->>'unlocked',
@@ -358,6 +398,53 @@ select is(
   )->>'status',
   'unlocked',
   'the final code RPC treats authoritative BUNKER_OPEN as already unlocked'
+);
+
+update public.bunker_state
+set global_game_state = 'FINAL_30', unlocked_at = null, bunker_revealed = false
+where event_id = '00000000-0000-4000-8000-000000000902';
+
+select throws_ok(
+  $$ select public.owner_force_open_bunker(
+    '00000000-0000-4000-8000-000000000902',
+    'Сбой',
+    'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО'
+  ) $$,
+  '22023',
+  'recovery reason must contain at least 12 characters',
+  'forced opening rejects a missing or short operational reason'
+);
+select throws_ok(
+  $$ select public.owner_force_open_bunker(
+    '00000000-0000-4000-8000-000000000902',
+    'Финальный телефон не отвечает',
+    'ОТКРЫТЬ БУНКЕР'
+  ) $$,
+  '22023',
+  'invalid forced Bunker confirmation',
+  'forced opening requires the exact destructive confirmation phrase'
+);
+select is(
+  public.owner_force_open_bunker(
+    '00000000-0000-4000-8000-000000000902',
+    'Финальный телефон не отвечает',
+    'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО'
+  )->>'globalGameState',
+  'BUNKER_OPEN',
+  'the confirmed owner recovery opens the Bunker'
+);
+select ok(
+  exists (
+    select 1
+    from public.owner_action_log log
+    where log.event_id = '00000000-0000-4000-8000-000000000902'
+      and log.owner_user_id = '00000000-0000-4000-8000-000000000901'
+      and log.action = 'bunker_force_open_recovery'
+      and log.payload->>'reason' = 'Финальный телефон не отвечает'
+      and log.payload->>'previousState' = 'FINAL_30'
+      and log.payload->>'globalGameState' = 'BUNKER_OPEN'
+  ),
+  'forced opening records owner, reason and state transition in the audit log'
 );
 
 select * from finish();

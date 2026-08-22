@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  forceOpenBunker,
   getBunkerScreenState,
   getOwnerBunkerControl,
   startBunker,
@@ -92,6 +93,22 @@ describe('bunker service', () => {
       p_duration_seconds: 1800,
     });
     expect(client.rpc).toHaveBeenNthCalledWith(2, 'owner_stop_bunker', { p_event_id: 'event-1' });
+  });
+
+  it('sends the operational reason and exact confirmation to the forced-open RPC', async () => {
+    const client = clientWith({ status: 'transitioned' });
+    await forceOpenBunker(
+      client,
+      'event-1',
+      'Финальный телефон не отвечает',
+      'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    );
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_force_open_bunker', {
+      p_event_id: 'event-1',
+      p_reason: 'Финальный телефон не отвечает',
+      p_confirmation: 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    });
   });
 
   it('loads owner state without exposing anything beyond timer/sound metadata', async () => {

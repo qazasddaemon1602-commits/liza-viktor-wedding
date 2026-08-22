@@ -54,6 +54,7 @@ export type OwnerBunkerControl =
       status: 'idle';
       durationSeconds: number;
       soundEnabled: boolean;
+      unlocked?: boolean;
       runNonce?: string;
       globalGameState?: BunkerGlobalGameState;
       currentMission?: BunkerCurrentMission | null;
@@ -66,6 +67,7 @@ export type OwnerBunkerControl =
       durationSeconds: number;
       remainingSeconds: number;
       soundEnabled: boolean;
+      unlocked?: boolean;
       runNonce?: string;
       globalGameState?: BunkerGlobalGameState;
       currentMission?: BunkerCurrentMission | null;
@@ -305,5 +307,18 @@ export async function stopBunker(client: BunkerRpcClient, eventId: string) {
 
 export async function setBunkerSound(client: BunkerRpcClient, eventId: string, enabled: boolean) {
   return command(client, 'owner_set_bunker_sound', { p_event_id: eventId, p_enabled: enabled });
+}
+
+export async function forceOpenBunker(
+  client: BunkerRpcClient,
+  eventId: string,
+  reason: string,
+  confirmation: string,
+) {
+  return command(client, 'owner_force_open_bunker', {
+    p_event_id: eventId,
+    p_reason: reason,
+    p_confirmation: confirmation,
+  });
 }
 

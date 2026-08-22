@@ -12,6 +12,7 @@ import {
   type BunkerRealtimeClient,
 } from '../../bunker/bunker.realtime';
 import {
+  forceOpenBunker,
   getOwnerBunkerControl,
   setBunkerSound,
   startBunker,
@@ -73,6 +74,11 @@ export type AdminBunkerControlDependencies = {
     carriageId: string,
     missionState: BunkerGlobalMissionState,
   ) => Promise<GuestBunkerGlobalMissionSubmission>;
+  forceOpen?: (
+    eventId: string,
+    reason: string,
+    confirmation: string,
+  ) => Promise<unknown>;
   loadCharacters?: (eventId: string) => Promise<OwnerBunkerCharacters>;
   setCharacterStatus?: (
     eventId: string,
@@ -113,6 +119,12 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
         eventId,
         carriageId,
         missionState,
+      ),
+      forceOpen: (eventId, reason, confirmation) => forceOpenBunker(
+        rpcClient,
+        eventId,
+        reason,
+        confirmation,
       ),
       loadCharacters: (eventId) => getOwnerBunkerCharacters(rpcClient, eventId),
       setCharacterStatus: (eventId, guestId, status) => (
@@ -178,6 +190,8 @@ const GLOBAL_STATE_NEXT: Partial<Record<BunkerGlobalGameState, {
   BUNKER_OPEN: { state: 'FINISHED', label: 'ЗАВЕРШИТЬ ИГРУ' },
 };
 
+const FORCE_OPEN_CONFIRMATION = 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО';
+
 export function AdminBunkerControl({
   eventId,
   dependencies,
@@ -191,6 +205,8 @@ export function AdminBunkerControl({
   const [dangerCommand, setDangerCommand] = useState<'restart' | 'stop' | null>(null);
   const [pendingGlobalState, setPendingGlobalState] = useState<BunkerGlobalGameState | null>(null);
   const [pendingForceWagon, setPendingForceWagon] = useState<{ id: string; label: string } | null>(null);
+  const [forceOpenReason, setForceOpenReason] = useState('');
+  const [forceOpenConfirmation, setForceOpenConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [distributionBusy, setDistributionBusy] = useState(false);
   const recommendedWagonCount = recommendCarriageCount(dashboard?.guests.length ?? 0);
@@ -335,8 +351,8 @@ export function AdminBunkerControl({
       )
     : 0;
 
-  const run = async (command: () => Promise<unknown>) => {
-    if (busy) return;
+  const run = async (command: () => Promise<unknown>): Promise<boolean> => {
+    if (busy) return false;
     setBusy(true);
     setError('');
 
@@ -345,7 +361,7 @@ export function AdminBunkerControl({
         await command();
       } catch {
         setError('Команда Бункера не выполнена. Проверьте связь и owner-доступ.');
-        return;
+        return false;
       }
 
       let warning = '';
@@ -362,6 +378,7 @@ export function AdminBunkerControl({
       }
 
       setError(warning);
+      return true;
     } finally {
       setBusy(false);
     }
@@ -417,6 +434,7 @@ export function AdminBunkerControl({
   const advanceGlobalState = deps.advance;
   const missionProgress = state?.status === 'active' ? state.missionProgress : null;
   const missionTransitionBlocked = missionProgress?.complete === false;
+  const finalOpeningLocked = globalState === 'FINAL_30' && state?.unlocked !== true;
 
   const confirmDangerCommand = async () => {
     if (dangerCommand === 'restart') {
@@ -439,6 +457,22 @@ export function AdminBunkerControl({
       || !isBunkerGlobalMissionState(globalState)) return;
     await run(() => deps.forceCompleteMission!(eventId, pendingForceWagon.id, globalState));
     setPendingForceWagon(null);
+  };
+
+  const forceOpenReady = forceOpenReason.trim().length >= 12
+    && forceOpenConfirmation === FORCE_OPEN_CONFIRMATION;
+
+  const confirmForceOpen = async () => {
+    if (!deps.forceOpen || !forceOpenReady) return;
+    const succeeded = await run(() => deps.forceOpen!(
+      eventId,
+      forceOpenReason.trim(),
+      forceOpenConfirmation,
+    ));
+    if (succeeded) {
+      setForceOpenReason('');
+      setForceOpenConfirmation('');
+    }
   };
 
   const updateCharacterStatus = async (
@@ -689,14 +723,21 @@ export function AdminBunkerControl({
             </div>
           )}
           {nextGlobalState && advanceGlobalState && (
-            <button
-              type="button"
-              className="admin-bunker-stage-primary"
-              disabled={busy || missionTransitionBlocked}
-              onClick={() => setPendingGlobalState(nextGlobalState.state)}
-            >
-              {nextGlobalState.label}
-            </button>
+            <>
+              <button
+                type="button"
+                className="admin-bunker-stage-primary"
+                disabled={busy || missionTransitionBlocked || finalOpeningLocked}
+                onClick={() => setPendingGlobalState(nextGlobalState.state)}
+              >
+                {nextGlobalState.label}
+              </button>
+              {finalOpeningLocked && (
+                <p className="admin-bunker-stage__unlock-note" role="status">
+                  Штатное открытие станет доступно после правильного финального кода.
+                </p>
+              )}
+            </>
           )}
           {nextGlobalState && pendingGlobalState === nextGlobalState.state && (
             <div className="admin-bunker-confirm" role="alert">
@@ -805,6 +846,57 @@ export function AdminBunkerControl({
             <h3 id="admin-bunker-danger-title">ОПАСНЫЕ КОМАНДЫ</h3>
           </div>
           <p>Эти действия немедленно меняют состояние всех экранов. Каждое требует отдельного подтверждения.</p>
+          {globalState === 'FINAL_30' && finalOpeningLocked && deps.forceOpen && (
+            <section
+              className="admin-bunker-final-recovery"
+              aria-labelledby="admin-bunker-final-recovery-title"
+            >
+              <div>
+                <p className="eyebrow">ТОЛЬКО ПРИ ТЕХНИЧЕСКОМ СБОЕ</p>
+                <h4 id="admin-bunker-final-recovery-title">Аварийное открытие Бункера</h4>
+              </div>
+              <p id="admin-bunker-final-recovery-help">
+                Обходит только финальный код. Причина и owner сохраняются в журнале действий.
+              </p>
+              <label htmlFor="admin-bunker-final-recovery-reason">
+                <span>Причина аварийного открытия</span>
+                <textarea
+                  id="admin-bunker-final-recovery-reason"
+                  value={forceOpenReason}
+                  minLength={12}
+                  rows={2}
+                  aria-describedby="admin-bunker-final-recovery-help admin-bunker-final-recovery-count"
+                  onChange={(event) => setForceOpenReason(event.target.value)}
+                />
+              </label>
+              <small id="admin-bunker-final-recovery-count">
+                {forceOpenReason.trim().length} / минимум 12 символов
+              </small>
+              <label htmlFor="admin-bunker-final-recovery-confirmation">
+                <span>Контрольная фраза</span>
+                <input
+                  id="admin-bunker-final-recovery-confirmation"
+                  value={forceOpenConfirmation}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={FORCE_OPEN_CONFIRMATION}
+                  aria-describedby="admin-bunker-final-recovery-phrase"
+                  onChange={(event) => setForceOpenConfirmation(event.target.value)}
+                />
+              </label>
+              <small id="admin-bunker-final-recovery-phrase">
+                Введите без кавычек: <code>{FORCE_OPEN_CONFIRMATION}</code>
+              </small>
+              <button
+                type="button"
+                className="admin-bunker-stop"
+                disabled={busy || !forceOpenReady}
+                onClick={() => void confirmForceOpen()}
+              >
+                ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО
+              </button>
+            </section>
+          )}
           <div className="admin-bunker-control__actions">
             <button
               type="button"

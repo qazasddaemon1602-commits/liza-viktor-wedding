@@ -123,6 +123,65 @@
   background: var(--bunker-admin-panel);
 }
 
+.admin-bunker-final-recovery {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid rgba(139, 61, 54, 0.72);
+  background: #291e1c;
+}
+
+.admin-bunker-final-recovery h4 {
+  margin: 0.2rem 0 0;
+  color: var(--bunker-admin-paper);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 400;
+}
+
+.admin-bunker-final-recovery > label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--bunker-admin-paper);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-bunker-final-recovery textarea,
+.admin-bunker-final-recovery input {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid rgba(236, 230, 216, 0.28);
+  padding: 0.7rem 0.8rem;
+  color: var(--bunker-admin-paper);
+  background: #111312;
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-bunker-final-recovery small {
+  color: var(--bunker-admin-muted);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-bunker-final-recovery code {
+  color: var(--bunker-admin-paper);
+  overflow-wrap: anywhere;
+}
+
+.admin-bunker-final-recovery textarea:focus,
+.admin-bunker-final-recovery input:focus {
+  border-color: rgba(236, 230, 216, 0.72);
+  outline: 2px solid rgba(139, 61, 54, 0.5);
+  outline-offset: 2px;
+}
+
 .admin-bunker-wagons > header,
 .admin-bunker-tv > header,
 .admin-bunker-danger > div:first-child {
