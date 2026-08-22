@@ -25,7 +25,6 @@ export type BunkerV2DashboardArchiveEntry = {
   contentType: 'text' | 'image' | 'map' | 'audio' | 'document' | 'code';
   decryptionStatus: 'locked' | 'partial' | 'decoded';
   scope: 'wagon' | 'global';
-  content: Record<string, unknown>;
 };
 
 export type BunkerV2DashboardWagonState = {
@@ -134,18 +133,12 @@ function parseInventory(value: unknown): BunkerV2DashboardInventoryItem {
 }
 
 function parseArchive(value: unknown): BunkerV2DashboardArchiveEntry {
-  const entry = exact(value, ['artifactKey','contentType','decryptionStatus','scope','content'], 'archive');
-  const decryptionStatus = oneOf(entry.decryptionStatus, ['locked','partial','decoded'] as const, 'archive status');
-  const content = record(entry.content, 'archive content');
-  if (decryptionStatus === 'locked' && Object.keys(content).length > 0) {
-    throw new Error('Unexpected Bunker dashboard locked archive content');
-  }
+  const entry = exact(value, ['artifactKey','contentType','decryptionStatus','scope'], 'archive');
   return {
     artifactKey: text(entry.artifactKey, 'archive key'),
     contentType: oneOf(entry.contentType, ['text','image','map','audio','document','code'] as const, 'archive content type'),
-    decryptionStatus,
+    decryptionStatus: oneOf(entry.decryptionStatus, ['locked','partial','decoded'] as const, 'archive status'),
     scope: oneOf(entry.scope, ['wagon','global'] as const, 'archive scope'),
-    content,
   };
 }
 
