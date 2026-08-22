@@ -9,13 +9,8 @@ async function ownerClient(): Promise<SupabaseClient> {
   const url = process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
   if (!url || !anonKey) throw new Error('E2E Supabase environment is missing');
-  const client = createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { error } = await client.auth.signInWithPassword({
-    email: OWNER_EMAIL,
-    password: OWNER_PASSWORD,
-  });
+  const client = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await client.auth.signInWithPassword({ email: OWNER_EMAIL, password: OWNER_PASSWORD });
   if (error) throw error;
   return client;
 }
@@ -27,17 +22,13 @@ async function rpc<T>(client: SupabaseClient, name: string, args: Record<string,
 }
 
 async function eventId(client: SupabaseClient): Promise<string> {
-  const dashboard = await rpc<Record<string, any>>(client, 'owner_get_dashboard', {
-    p_event_slug: EVENT_SLUG,
-  });
+  const dashboard = await rpc<Record<string, any>>(client, 'owner_get_dashboard', { p_event_slug: EVENT_SLUG });
   const id = String(dashboard?.event?.id ?? '');
   if (!id) throw new Error('E2E event id is missing');
   return id;
 }
 
-function commandId(): string {
-  return crypto.randomUUID();
-}
+function commandId(): string { return crypto.randomUUID(); }
 
 async function resetGameAndRegistrations(client: SupabaseClient, id: string) {
   await rpc(client, 'owner_bunker_v2_reset_game_and_registrations', {
@@ -55,9 +46,7 @@ async function transition(client: SupabaseClient, id: string, state: string) {
 }
 
 async function simulate(client: SupabaseClient, id: string) {
-  return rpc<Record<string, any>>(client, 'owner_bunker_v2_test_simulate_current', {
-    p_event_id: id,
-  });
+  return rpc<Record<string, any>>(client, 'owner_bunker_v2_test_simulate_current', { p_event_id: id });
 }
 
 for (const [guestCount, expectedWagons] of [[15, 2], [20, 3], [30, 4], [40, 5]] as const) {
@@ -65,20 +54,16 @@ for (const [guestCount, expectedWagons] of [[15, 2], [20, 3], [30, 4], [40, 5]] 
     const client = await ownerClient();
     const id = await eventId(client);
 
-    await resetGameAndRegistrations(client, id).catch(() => undefined);
+    await resetGameAndRegistrations(client, id);
     const seeded = await rpc<Record<string, any>>(client, 'owner_bunker_v2_seed_test_guests', {
       p_event_id: id,
       p_count: guestCount,
     });
     expect(seeded).toMatchObject({ status: 'seeded', guestCount, wagonCount: expectedWagons });
 
-    const dashboard = await rpc<Record<string, any>>(client, 'owner_get_dashboard', {
-      p_event_slug: EVENT_SLUG,
-    });
+    const dashboard = await rpc<Record<string, any>>(client, 'owner_get_dashboard', { p_event_slug: EVENT_SLUG });
     const enabled = (dashboard.carriages ?? []).filter((wagon: any) => wagon.enabled);
-    const sizes = enabled.map((wagon: any) =>
-      (dashboard.guests ?? []).filter((guest: any) => guest.carriage?.id === wagon.id).length,
-    );
+    const sizes = enabled.map((wagon: any) => (dashboard.guests ?? []).filter((guest: any) => guest.carriage?.id === wagon.id).length);
     expect(enabled).toHaveLength(expectedWagons);
     expect(sizes.reduce((sum: number, value: number) => sum + value, 0)).toBe(guestCount);
     expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
@@ -88,12 +73,8 @@ for (const [guestCount, expectedWagons] of [[15, 2], [20, 3], [30, 4], [40, 5]] 
       p_command_id: commandId(),
     });
     expect(prepared).toMatchObject({
-      status: 'prepared',
-      contractVersion: 2,
-      globalGameState: 'LOBBY',
-      guestCount,
-      wagonCount: expectedWagons,
-      gameMode: 'test',
+      status: 'prepared', contractVersion: 2, globalGameState: 'LOBBY',
+      guestCount, wagonCount: expectedWagons, gameMode: 'test',
     });
 
     await resetGameAndRegistrations(client, id);
@@ -104,13 +85,10 @@ for (const [guestCount, expectedWagons] of [[15, 2], [20, 3], [30, 4], [40, 5]] 
 test('Bunker V2 rehearsal can traverse the entire story without a dead end', async () => {
   const client = await ownerClient();
   const id = await eventId(client);
-  await resetGameAndRegistrations(client, id).catch(() => undefined);
+  await resetGameAndRegistrations(client, id);
 
   await rpc(client, 'owner_bunker_v2_seed_test_guests', { p_event_id: id, p_count: 20 });
-  await rpc(client, 'owner_prepare_bunker_v2_test', {
-    p_event_id: id,
-    p_command_id: commandId(),
-  });
+  await rpc(client, 'owner_prepare_bunker_v2_test', { p_event_id: id, p_command_id: commandId() });
 
   await transition(client, id, 'CHARACTERS_READY');
   await transition(client, id, 'MISSION_01');
@@ -124,33 +102,37 @@ test('Bunker V2 rehearsal can traverse the entire story without a dead end', asy
 
   const story = await transition(client, id, 'UNKNOWN_PASSENGER');
   expect(story.globalGameState).toBe('UNKNOWN_PASSENGER');
-
-  const ownerStory = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_unknown_passenger', {
-    p_event_id: id,
-  });
+  const ownerStory = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_unknown_passenger', { p_event_id: id });
   expect(ownerStory).toMatchObject({ status: 'active', dossierId: 'BK-17', sector: '04' });
 
   await transition(client, id, 'BREAK_BEFORE_FINAL');
   const finalTransition = await transition(client, id, 'FINAL_30');
   expect(finalTransition.globalGameState).toBe('FINAL_30');
 
-  const finalBefore = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_final', {
-    p_event_id: id,
-  });
+  const finalBefore = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_final', { p_event_id: id });
   expect(finalBefore).toMatchObject({ contractVersion: 2, status: 'active', total: 5 });
 
   const simulatedFinal = await simulate(client, id);
   expect(simulatedFinal).toMatchObject({ status: 'simulated', state: 'FINAL_30', opened: true });
 
-  const finalAfter = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_final', {
-    p_event_id: id,
-  });
+  const finalAfter = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_final', { p_event_id: id });
   expect(finalAfter.unlocked).toBe(true);
 
-  const testState = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_test_state', {
-    p_event_id: id,
+  const testState = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_test_state', { p_event_id: id });
+  expect(testState.globalState).toBe('BUNKER_OPEN');
+
+  const results = await rpc<Record<string, any>>(client, 'get_bunker_v2_results', { p_event_slug: EVENT_SLUG });
+  expect(results).toMatchObject({
+    contractVersion: 2,
+    status: 'completed',
+    emergencyOpen: true,
+    missionsCompleted: expect.any(Number),
+    missionsTotal: expect.any(Number),
+    coordinationScore: expect.any(Number),
   });
-  expect(['BUNKER_OPEN', 'FINAL_30']).toContain(testState.globalState);
+  expect(results.missionsCompleted).toBe(results.missionsTotal);
+  expect(results.coordinationScore).toBeGreaterThanOrEqual(0);
+  expect(results.coordinationScore).toBeLessThanOrEqual(100);
 
   await resetGameAndRegistrations(client, id);
   await client.auth.signOut();
