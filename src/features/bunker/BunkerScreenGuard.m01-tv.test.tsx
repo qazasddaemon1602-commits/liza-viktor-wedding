@@ -77,4 +77,25 @@ describe('BunkerScreenGuard · M01 on common TV', () => {
 
     expect(screen.getByText('Вагоны принимают решение по открытым частям досье.')).toBeInTheDocument();
   });
+
+  it('keeps the legacy V1 scene when the optional V2 projection reports legacy', async () => {
+    const legacyProjection = {
+      contractVersion: 2 as const,
+      status: 'legacy' as const,
+      serverNow: activeRun.serverNow,
+    };
+
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue(activeRun),
+        loadMissionOne: vi.fn().mockResolvedValue(legacyProjection),
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flush();
+
+    expect(screen.getByRole('region', { name: 'Бункер · общий экран' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Задание 1 · общий экран' })).not.toBeInTheDocument();
+  });
 });
