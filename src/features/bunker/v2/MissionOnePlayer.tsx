@@ -119,6 +119,8 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
 
   const selectionComplete = selectedGuestIds.length === model.quota;
   const unavailable = model.connection === 'reconnecting' || !onConfirm;
+  const missionContent = bunkerMissionContent('M01');
+
 
   const toggle = (guestId: string) => {
     setError('');
