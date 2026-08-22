@@ -487,6 +487,9 @@ export function AdminBunkerDock({
   const six = missionSixPanel(missionSix);
   const storyPanel = unknownPassengerPanel(story);
   const ownerFinalPanel = finalPanel(final);
+  const one = missionOnePanel(missionOne);
+  const hostScript = one ? bunkerMissionContent('M01') : undefined;
+
 
   return (
     <aside id="admin-bunker" className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
