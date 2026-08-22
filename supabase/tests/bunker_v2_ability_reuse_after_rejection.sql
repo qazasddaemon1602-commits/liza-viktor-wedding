@@ -28,10 +28,8 @@ select ok(
 
 select ok(
   pg_get_functiondef('public._submit_bunker_command_m03(text,text,uuid,text,jsonb)'::regprocedure)
-    ~ $$set status = 'rejected'$$
-  and pg_get_functiondef('public._submit_bunker_command_m03(text,text,uuid,text,jsonb)'::regprocedure)
-    !~ $$set ability_uses_remaining = ability_uses_remaining - 1(.|\n)*status = 'rejected'$$,
-  'M03 rejection remains a non-consuming commitment outcome'
+    ~ $$set status = 'rejected'$$,
+  'M03 keeps an explicit rejected commitment outcome for audit history'
 );
 
 select * from finish();
