@@ -142,6 +142,23 @@ function parseArchive(value: unknown): BunkerV2DashboardArchiveEntry {
   };
 }
 
+function parseRouteBonus(value: unknown, routeChoice: 'A' | 'B' | null): number {
+  const bonus = integer(value, 'wagon state route bonus', false);
+  if (![-5, 0, 4, 7].includes(bonus)) {
+    throw new Error('Unexpected Bunker dashboard wagon state route bonus');
+  }
+  if (routeChoice === null && bonus !== 0) {
+    throw new Error('Unexpected Bunker dashboard wagon state route bonus');
+  }
+  if (routeChoice === 'B' && bonus !== -5) {
+    throw new Error('Unexpected Bunker dashboard wagon state route bonus');
+  }
+  if (routeChoice === 'A' && ![0, 4, 7].includes(bonus)) {
+    throw new Error('Unexpected Bunker dashboard wagon state route bonus');
+  }
+  return bonus;
+}
+
 function parseWagonState(value: unknown): BunkerV2DashboardWagonState {
   const state = exact(value, [
     'powerStatus','communicationStatus','navigationStatus','technicalDoorStatus','trackDamage',
@@ -150,6 +167,7 @@ function parseWagonState(value: unknown): BunkerV2DashboardWagonState {
   if (state.routeChoice !== null && state.routeChoice !== 'A' && state.routeChoice !== 'B') {
     throw new Error('Unexpected Bunker dashboard wagon state route choice');
   }
+  const routeChoice = state.routeChoice as 'A' | 'B' | null;
   return {
     powerStatus: oneOf(state.powerStatus, ['stable','unstable','offline'] as const, 'wagon state power'),
     communicationStatus: oneOf(state.communicationStatus, ['working','degraded','offline'] as const, 'wagon state communication'),
@@ -157,8 +175,8 @@ function parseWagonState(value: unknown): BunkerV2DashboardWagonState {
     technicalDoorStatus: oneOf(state.technicalDoorStatus, ['locked','unlocked','damaged'] as const, 'wagon state technical door'),
     trackDamage: integer(state.trackDamage, 'wagon state track damage'),
     waterStatus: oneOf(state.waterStatus, ['stable','limited','contaminated','empty'] as const, 'wagon state water'),
-    routeChoice: state.routeChoice as 'A' | 'B' | null,
-    routeBonus: integer(state.routeBonus, 'wagon state route bonus', false),
+    routeChoice,
+    routeBonus: parseRouteBonus(state.routeBonus, routeChoice),
     powerInstability: integer(state.powerInstability, 'wagon state power instability'),
     sector04Found: boolean(state.sector04Found, 'wagon state sector discovery'),
     coordinationBonus: boolean(state.coordinationBonus, 'wagon state coordination bonus'),
