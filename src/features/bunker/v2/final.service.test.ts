@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getGuestFinalReadModel, requestFinalAccess, type FinalRpcClient } from './final.service';
+import { getGuestFinalReadModel, parseFinalGuestReadModel, requestFinalAccess, type FinalRpcClient } from './final.service';
 
 const active = {
   contractVersion: 2,
@@ -15,6 +15,7 @@ const active = {
   ],
   terminal: { solved: 2, total: 5, wrongAttempts: 1, unlocked: false },
   hint: { level: 0, text: '' },
+  timeAdjustmentSeconds: 240,
 } as const;
 
 describe('final guest contract', () => {
@@ -23,8 +24,27 @@ describe('final guest contract', () => {
     expect(model.status).toBe('active');
     if (model.status !== 'active') throw new Error('active expected');
     expect(model.fragments).toEqual(active.fragments);
+    expect(model.timeAdjustmentSeconds).toBe(240);
     expect(JSON.stringify(model)).not.toContain('LV0830');
     expect(JSON.stringify(model)).not.toContain('57°09 / 65°32');
+  });
+
+  it('rejects truthy strings instead of silently coercing terminal booleans', () => {
+    expect(() => parseFinalGuestReadModel({
+      ...active,
+      terminal: { ...active.terminal, unlocked: 'false' },
+    })).toThrow(/unlocked/i);
+  });
+
+  it('rejects malformed hint and terminal counters', () => {
+    expect(() => parseFinalGuestReadModel({
+      ...active,
+      terminal: { ...active.terminal, solved: -1 },
+    })).toThrow(/solved/i);
+    expect(() => parseFinalGuestReadModel({
+      ...active,
+      hint: { level: 4, text: 'x' },
+    })).toThrow(/hint/i);
   });
 
   it('submits the five terminal fields only through request_access', async () => {
