@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(21);
 select has_function('public','get_guest_bunker_v2_m05',array['text','text'],'M05 guest read model');
 select has_function('public','get_bunker_v2_m05_screen',array['text'],'M05 TV read model');
 select has_function('public','get_owner_bunker_v2_m05',array['uuid'],'M05 owner read model');
@@ -54,6 +54,10 @@ select ok(
   pg_get_functiondef('public._bunker_v2_enrich_m05_instance()'::regprocedure)~'scenarioKey'
   and pg_get_functiondef('public._bunker_v2_enrich_m05_instance()'::regprocedure)~'_bunker_v2_m05_scenario_key',
   'new M05 instances freeze their scenario key in the mission definition'
+);
+select ok(
+  pg_get_functiondef('public.get_owner_bunker_v2_m05(uuid)'::regprocedure) ~ 'get_bunker_v2_m05_screen',
+  'M05 owner read delegates to the contract-guarded public projection'
 );
 select * from finish();
 rollback;
