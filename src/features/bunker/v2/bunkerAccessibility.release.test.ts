@@ -1,15 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import bunkerPlayerCss from '../../../styles/bunker-player.css?raw';
+import bunkerAccessibilityCss from '../../../styles/bunker-accessibility.css?raw';
 
 function cssText(): string {
-  return [
-    '../../../styles/bunker-player.css',
-    '../../../styles/bunker-accessibility.css',
-  ].map((relativePath) => {
-    const path = fileURLToPath(new URL(relativePath, import.meta.url));
-    return readFileSync(path, 'utf8');
-  }).join('\n');
+  return [bunkerPlayerCss, bunkerAccessibilityCss].join('\n');
 }
 
 describe('Bunker mobile accessibility release guard', () => {
