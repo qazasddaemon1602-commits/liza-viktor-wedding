@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { MissionBriefing } from './MissionBriefing';
+import { bunkerMissionContent } from './missionContent';
+
 
 export type MissionOnePlayerMember = {
   guestId: string;
@@ -116,6 +119,8 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
 
   const selectionComplete = selectedGuestIds.length === model.quota;
   const unavailable = model.connection === 'reconnecting' || !onConfirm;
+  const missionContent = bunkerMissionContent('M01');
+
 
   const toggle = (guestId: string) => {
     setError('');
@@ -197,7 +202,10 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
         Вы выбираете судьбу персонажей. Все реальные гости остаются в игре и продолжают пользоваться сайтом.
       </p>
 
+      {missionContent && <MissionBriefing content={missionContent} />}
+
       {model.status === 'completed' ? (
+
         <div
           ref={outcomeStatusRef}
           className="bunker-mission-one-player__outcome"

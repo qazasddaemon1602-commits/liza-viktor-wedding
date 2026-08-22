@@ -26,7 +26,10 @@ import { MissionFiveOwnerPanel } from './MissionFiveOwnerPanel';
 import { MissionSixOwnerPanel } from './MissionSixOwnerPanel';
 import { UnknownPassengerOwnerPanel } from './UnknownPassengerOwnerPanel';
 import { FinalOwnerPanel } from './FinalOwnerPanel';
+import { MissionHostScript } from './MissionHostScript';
+import { bunkerMissionContent } from '../../bunker/v2/missionContent';
 import { resolveBunkerContractVersion } from './bunkerContractVersion';
+
 import {
   getOwnerMissionOneReadModel,
   overrideMissionOneSelection,
@@ -484,6 +487,9 @@ export function AdminBunkerDock({
   const six = missionSixPanel(missionSix);
   const storyPanel = unknownPassengerPanel(story);
   const ownerFinalPanel = finalPanel(final);
+  const one = missionOnePanel(missionOne);
+  const hostScript = one ? bunkerMissionContent('M01') : undefined;
+
 
   return (
     <aside id="admin-bunker" className="admin-bunker-dock" aria-label="Экстренный сюжетный поворот">
@@ -512,7 +518,7 @@ export function AdminBunkerDock({
           dashboard={dashboard}
           onAcceptDistribution={acceptDistribution}
           bunkerContractVersion={effectiveContractVersion}
-          missionOne={missionOnePanel(missionOne)}
+          missionOne={one}
           onMissionOneOverride={deps.overrideMissionOne ? applyMissionOneOverride : undefined}
         />
       ) : (
@@ -521,7 +527,17 @@ export function AdminBunkerDock({
         </div>
       )}
 
+      {hostScript && one && (
+        <MissionHostScript
+          content={hostScript}
+          statusLine={one.status === 'completed'
+            ? 'Все вагоны завершили задание'
+            : 'Задание идёт сейчас'}
+        />
+      )}
+
       {two && <MissionTwoOwnerPanel model={two} />}
+
       {three && <MissionThreeOwnerPanel model={three} />}
       {four && <MissionFourOwnerPanel model={four} />}
       {five && <MissionFiveOwnerPanel model={five} />}
