@@ -14,84 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      bunker_archive_entries: {
-        Row: {
-          acquired_at: string
-          artifact_key: string
-          carriage_id: string | null
-          content: Json
-          content_type: string
-          decoded_at: string | null
-          decryption_status: string
-          event_id: string
-          id: string
-          run_nonce: string
-        }
-        Insert: {
-          acquired_at?: string
-          artifact_key: string
-          carriage_id?: string | null
-          content: Json
-          content_type: string
-          decoded_at?: string | null
-          decryption_status?: string
-          event_id: string
-          id?: string
-          run_nonce: string
-        }
-        Update: {
-          acquired_at?: string
-          artifact_key?: string
-          carriage_id?: string | null
-          content?: Json
-          content_type?: string
-          decoded_at?: string | null
-          decryption_status?: string
-          event_id?: string
-          id?: string
-          run_nonce?: string
-        }
-        Relationships: []
-      }
-      bunker_character_profiles: {
-        Row: {
-          ability_description: string
-          enabled: boolean
-          health: string
-          hidden_trait: string
-          key: string
-          max_uses: number
-          profession: string
-          special_ability: string
-          tags: string[]
-          visible_skill: string
-        }
-        Insert: {
-          ability_description: string
-          enabled?: boolean
-          health: string
-          hidden_trait: string
-          key: string
-          max_uses?: number
-          profession: string
-          special_ability: string
-          tags: string[]
-          visible_skill: string
-        }
-        Update: {
-          ability_description?: string
-          enabled?: boolean
-          health?: string
-          hidden_trait?: string
-          key?: string
-          max_uses?: number
-          profession?: string
-          special_ability?: string
-          tags?: string[]
-          visible_skill?: string
-        }
-        Relationships: []
-      }
       bunker_final_attempts: {
         Row: {
           correct: boolean
@@ -137,158 +59,47 @@ export type Database = {
           },
         ]
       }
-      bunker_game_runs: {
-        Row: {
-          created_at: string
-          event_id: string
-          guest_count: number
-          plan: Json
-          run_nonce: string
-          wagon_count: number
-        }
-        Insert: {
-          created_at?: string
-          event_id: string
-          guest_count: number
-          plan: Json
-          run_nonce: string
-          wagon_count: number
-        }
-        Update: {
-          created_at?: string
-          event_id?: string
-          guest_count?: number
-          plan?: Json
-          run_nonce?: string
-          wagon_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bunker_game_runs_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      bunker_game_events: {
-        Row: {
-          actor_type: string
-          carriage_id: string | null
-          created_at: string
-          event_id: string
-          event_type: string
-          guest_id: string | null
-          id: number
-          payload: Json
-          run_nonce: string
-        }
-        Insert: {
-          actor_type?: string
-          carriage_id?: string | null
-          created_at?: string
-          event_id: string
-          event_type: string
-          guest_id?: string | null
-          id?: number
-          payload?: Json
-          run_nonce: string
-        }
-        Update: {
-          actor_type?: string
-          carriage_id?: string | null
-          created_at?: string
-          event_id?: string
-          event_type?: string
-          guest_id?: string | null
-          id?: number
-          payload?: Json
-          run_nonce?: string
-        }
-        Relationships: []
-      }
       bunker_guest_profiles: {
         Row: {
-          ability_description: string | null
-          ability_tags: string[]
-          ability_used_at: string | null
-          ability_uses_remaining: number
-          assigned_at: string
           baggage: string
-          character_profile_key: string | null
-          character_status: string
           created_at: string
           event_id: string
           guest_id: string
           health: string
           hidden_fact: string
-          hidden_trait_revealed: boolean
           hobby: string
           id: string
-          joined_late: boolean
           profession: string
           profile: string
           run_nonce: string
-          special_ability: string | null
-          visible_skill: string | null
         }
         Insert: {
-          ability_description?: string | null
-          ability_tags?: string[]
-          ability_used_at?: string | null
-          ability_uses_remaining?: number
-          assigned_at?: string
           baggage: string
-          character_profile_key?: string | null
-          character_status?: string
           created_at?: string
           event_id: string
           guest_id: string
           health: string
           hidden_fact: string
-          hidden_trait_revealed?: boolean
           hobby: string
           id?: string
-          joined_late?: boolean
           profession: string
           profile: string
           run_nonce: string
-          special_ability?: string | null
-          visible_skill?: string | null
         }
         Update: {
-          ability_description?: string | null
-          ability_tags?: string[]
-          ability_used_at?: string | null
-          ability_uses_remaining?: number
-          assigned_at?: string
           baggage?: string
-          character_profile_key?: string | null
-          character_status?: string
           created_at?: string
           event_id?: string
           guest_id?: string
           health?: string
           hidden_fact?: string
-          hidden_trait_revealed?: boolean
           hobby?: string
           id?: string
-          joined_late?: boolean
           profession?: string
           profile?: string
           run_nonce?: string
-          special_ability?: string | null
-          visible_skill?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "bunker_guest_profiles_character_profile_key_fkey"
-            columns: ["character_profile_key"]
-            isOneToOne: false
-            referencedRelation: "bunker_character_profiles"
-            referencedColumns: ["key"]
-          },
           {
             foreignKeyName: "bunker_guest_profiles_event_id_fkey"
             columns: ["event_id"]
@@ -305,53 +116,9 @@ export type Database = {
           },
         ]
       }
-      bunker_inventory_lots: {
-        Row: {
-          acquired_at: string
-          carriage_id: string
-          event_id: string
-          id: string
-          item_key: string
-          metadata: Json
-          quantity: number
-          run_nonce: string
-          source_lot_id: string | null
-          status: string
-          transferred_to: string | null
-          used_at: string | null
-        }
-        Insert: {
-          acquired_at?: string
-          carriage_id: string
-          event_id: string
-          id?: string
-          item_key: string
-          metadata?: Json
-          quantity: number
-          run_nonce: string
-          source_lot_id?: string | null
-          status?: string
-          transferred_to?: string | null
-          used_at?: string | null
-        }
-        Update: {
-          acquired_at?: string
-          carriage_id?: string
-          event_id?: string
-          id?: string
-          item_key?: string
-          metadata?: Json
-          quantity?: number
-          run_nonce?: string
-          source_lot_id?: string | null
-          status?: string
-          transferred_to?: string | null
-          used_at?: string | null
-        }
-        Relationships: []
-      }
       bunker_mission_templates: {
         Row: {
+          carriage_number: number
           correct_answer: string
           hint_copy: string
           id: string
@@ -360,9 +127,9 @@ export type Database = {
           stage: string
           success_copy: string
           title: string
-          variant_index: number
         }
         Insert: {
+          carriage_number: number
           correct_answer: string
           hint_copy: string
           id?: string
@@ -371,9 +138,9 @@ export type Database = {
           stage: string
           success_copy: string
           title: string
-          variant_index: number
         }
         Update: {
+          carriage_number?: number
           correct_answer?: string
           hint_copy?: string
           id?: string
@@ -382,19 +149,13 @@ export type Database = {
           stage?: string
           success_copy?: string
           title?: string
-          variant_index?: number
         }
         Relationships: []
       }
       bunker_state: {
         Row: {
-          bunker_revealed: boolean
           duration_seconds: number
           event_id: string
-          final_duration: number
-          final_started_at: string | null
-          game_mode: string
-          global_game_state: string
           phase: string
           phase_started_at: string | null
           run_nonce: string | null
@@ -405,13 +166,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          bunker_revealed?: boolean
           duration_seconds?: number
           event_id: string
-          final_duration?: number
-          final_started_at?: string | null
-          game_mode?: string
-          global_game_state?: string
           phase?: string
           phase_started_at?: string | null
           run_nonce?: string | null
@@ -422,13 +178,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          bunker_revealed?: boolean
           duration_seconds?: number
           event_id?: string
-          final_duration?: number
-          final_started_at?: string | null
-          game_mode?: string
-          global_game_state?: string
           phase?: string
           phase_started_at?: string | null
           run_nonce?: string | null
@@ -518,60 +269,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      bunker_wagon_state: {
-        Row: {
-          carriage_id: string
-          communication_status: string
-          coordination_bonus: boolean
-          event_id: string
-          navigation_status: string
-          power_instability: number
-          power_status: string
-          route_bonus: number
-          route_choice: string | null
-          run_nonce: string
-          sector04_found: boolean
-          technical_door_status: string
-          track_damage: number
-          updated_at: string
-          water_status: string
-        }
-        Insert: {
-          carriage_id: string
-          communication_status?: string
-          coordination_bonus?: boolean
-          event_id: string
-          navigation_status?: string
-          power_instability?: number
-          power_status?: string
-          route_bonus?: number
-          route_choice?: string | null
-          run_nonce: string
-          sector04_found?: boolean
-          technical_door_status?: string
-          track_damage?: number
-          updated_at?: string
-          water_status?: string
-        }
-        Update: {
-          carriage_id?: string
-          communication_status?: string
-          coordination_bonus?: boolean
-          event_id?: string
-          navigation_status?: string
-          power_instability?: number
-          power_status?: string
-          route_bonus?: number
-          route_choice?: string | null
-          run_nonce?: string
-          sector04_found?: boolean
-          technical_door_status?: string
-          track_damage?: number
-          updated_at?: string
-          water_status?: string
-        }
-        Relationships: []
       }
       carriage_call_targets: {
         Row: {
@@ -1551,10 +1248,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      _bunker_current_mission: {
-        Args: { p_run_nonce: string; p_state: string }
-        Returns: Json
-      }
       _bunker_guest_id: {
         Args: { p_device_key: string; p_event_slug: string }
         Returns: string
@@ -1571,10 +1264,6 @@ export type Database = {
       _ensure_bunker_team_progress: {
         Args: { p_event_id: string; p_run_nonce: string }
         Returns: undefined
-      }
-      _ensure_late_bunker_guest: {
-        Args: { p_event_id: string; p_guest_id: string; p_run_nonce: string }
-        Returns: boolean
       }
       _final_five_token_hash: { Args: { p_token: string }; Returns: string }
       _guest_profile_json: { Args: { guest_id: string }; Returns: Json }
@@ -1597,10 +1286,6 @@ export type Database = {
       }
       _require_bunker_owner: {
         Args: { p_event_id: string }
-        Returns: undefined
-      }
-      _refresh_bunker_run_guest_plan: {
-        Args: { p_event_id: string; p_run_nonce: string }
         Returns: undefined
       }
       _require_mk_owner: { Args: { p_event_id: string }; Returns: undefined }
@@ -1626,10 +1311,6 @@ export type Database = {
         Returns: Json
       }
       get_guest_bunker_state: {
-        Args: { p_device_key: string; p_event_slug: string }
-        Returns: Json
-      }
-      get_guest_bunker_runtime: {
         Args: { p_device_key: string; p_event_slug: string }
         Returns: Json
       }
@@ -1663,10 +1344,6 @@ export type Database = {
         Args: { p_event_id: string; p_phase: string }
         Returns: Json
       }
-      owner_advance_bunker_game_state: {
-        Args: { p_event_id: string; p_next_state: string }
-        Returns: Json
-      }
       owner_begin_bunker_quest: { Args: { p_event_id: string }; Returns: Json }
       owner_cancel_premiere: { Args: { p_event_id: string }; Returns: Json }
       owner_clear_carriage_call: { Args: { p_call_id: string }; Returns: Json }
@@ -1679,10 +1356,6 @@ export type Database = {
         Args: { p_name: string; p_slug: string }
         Returns: Json
       }
-      owner_distribute_bunker_characters: {
-        Args: { p_event_id: string }
-        Returns: Json
-      }
       owner_delete_guest: { Args: { p_guest_id: string }; Returns: Json }
       owner_finalize_mk_draw: { Args: { p_event_id: string }; Returns: Json }
       owner_force_complete_bunker_team_stage: {
@@ -1690,10 +1363,6 @@ export type Database = {
         Returns: Json
       }
       owner_get_bunker_control: { Args: { p_event_id: string }; Returns: Json }
-      owner_get_bunker_characters: {
-        Args: { p_event_id: string }
-        Returns: Json
-      }
       owner_get_bunker_quest: { Args: { p_event_id: string }; Returns: Json }
       owner_get_couple_preanswer_status: {
         Args: { p_event_id: string }
@@ -1732,10 +1401,6 @@ export type Database = {
         Returns: Json
       }
       owner_pause_premiere: { Args: { p_event_id: string }; Returns: Json }
-      owner_prepare_bunker_game: {
-        Args: { p_event_id: string; p_game_mode?: string }
-        Returns: Json
-      }
       owner_promote_mk_waitlist: {
         Args: { p_registration_id: string }
         Returns: Json
@@ -1815,10 +1480,6 @@ export type Database = {
       }
       owner_set_bunker_sound: {
         Args: { p_enabled: boolean; p_event_id: string }
-        Returns: Json
-      }
-      owner_set_bunker_character_status: {
-        Args: { p_event_id: string; p_guest_id: string; p_status: string }
         Returns: Json
       }
       owner_set_current_mk_match: {
