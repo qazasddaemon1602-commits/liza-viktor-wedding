@@ -51,6 +51,14 @@ describe('Bunker V2 owner controls', () => {
     });
   });
 
+  it('rejects generic FINAL_30 to BUNKER_OPEN so finale uses success or emergency open', async () => {
+    const rpc = vi.fn();
+    await expect(transitionOwnerBunkerV2(
+      { rpc }, prepared.eventId, 'BUNKER_OPEN',
+    )).rejects.toThrow(/final|emergency/i);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('rejects a receipt with an extra client-unowned field', async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: { ...prepared, clientProgress: 100 }, error: null,
