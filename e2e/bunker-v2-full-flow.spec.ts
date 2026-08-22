@@ -147,7 +147,7 @@ test('Bunker V2 rehearsal can traverse the entire story without a dead end', asy
   });
   expect(finalAfter.unlocked).toBe(true);
 
-  const testState = await rpc<Record<string, any>>(client, 'owner_get_bunker_v2_test_state', {
+  const testState = await rpc<Record<string, any>>(client, 'get_owner_bunker_v2_test_state', {
     p_event_id: id,
   });
   expect(['BUNKER_OPEN', 'FINAL_30']).toContain(testState.globalState);
