@@ -30,8 +30,8 @@ select ok(
 
 select ok(
   pg_get_functiondef('public.owner_reset_event_test_data(uuid,text)'::regprocedure)
-    ~ $$p_confirmation <> 'СБРОСИТЬ'$$,
-  'full reset validates the destructive confirmation before V2 teardown'
+    ~ $$coalesce\(p_confirmation, ''\) <> 'СБРОСИТЬ'$$,
+  'full reset validates null and incorrect destructive confirmations before V2 teardown'
 );
 
 select ok(
