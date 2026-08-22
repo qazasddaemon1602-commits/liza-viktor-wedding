@@ -1,5 +1,18 @@
 /* Technical mobile hardening only. Keep visual redesign work in the dedicated visual pass. */
 
+/* This file is loaded last, so keep quest touch targets from regressing in the
+   final cascade even when a feature stylesheet uses a smaller legacy size. */
+.guest-bunker-options button,
+.guest-bunker-answer button,
+.guest-bunker-terminal button,
+.admin-bunker-quest button {
+  min-height: 3rem;
+}
+
+.admin-bunker-quest .admin-bunker-stage-primary {
+  min-height: 3rem;
+}
+
 /* Fixed projector controls must remain tappable and clear of device cutouts. */
 .screen-audio-control {
   top: max(clamp(0.7rem, 1.5vw, 1.25rem), env(safe-area-inset-top));
@@ -55,7 +68,7 @@
   .guest-bunker-options button,
   .guest-bunker-answer button,
   .guest-bunker-terminal button {
-    min-height: 2.75rem;
+    min-height: 3rem;
   }
 }
 

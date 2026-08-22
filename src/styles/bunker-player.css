@@ -4,6 +4,7 @@
   --bunker-player-ivory: #eee9dd;
   --bunker-player-muted: #9f9b91;
   --bunker-player-rule: rgba(238, 233, 221, 0.18);
+  --bunker-player-mobile-nav-height: 7rem;
   min-height: 100vh;
   min-height: 100dvh;
   padding: clamp(0.75rem, 3vw, 2.5rem);
@@ -12,6 +13,7 @@
 }
 
 .bunker-player-dashboard {
+  --bunker-player-body-size: 1rem;
   width: min(100%, 72rem);
   min-width: 0;
   display: grid;
@@ -58,7 +60,7 @@
 .bunker-player-character__ability > span,
 .bunker-player-dashboard__primary-action {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.75rem;
+  font-size: 1rem;
   letter-spacing: 0.13em;
   text-transform: uppercase;
 }
@@ -124,7 +126,7 @@
 
 .bunker-player-dashboard__nav button {
   min-width: 0;
-  min-height: 46px;
+  min-height: 48px;
   padding: 0.55rem 0.4rem;
   border: 0;
   border-right: 1px solid var(--bunker-player-rule);
@@ -168,7 +170,7 @@
 .bunker-player-dashboard__content p,
 .bunker-player-dashboard__content dd {
   color: #cbc6ba;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   line-height: 1.6;
 }
 
@@ -230,6 +232,188 @@
   margin: 0;
 }
 
+.bunker-inventory-cards article {
+  display: grid;
+  grid-template-columns: clamp(4rem, 18vw, 6rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.bunker-inventory-card__icon {
+  width: clamp(4rem, 18vw, 6rem);
+  height: clamp(4rem, 18vw, 6rem);
+  border: 1px solid var(--bunker-player-rule);
+  object-fit: cover;
+  filter: grayscale(0.15) contrast(1.04);
+}
+
+.bunker-inventory-cards article h3 {
+  margin-bottom: 0.55rem;
+}
+
+.bunker-inventory-cards article p {
+  margin: 0.65rem 0;
+}
+
+.bunker-mission-actions {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: clamp(1rem, 3.5vw, 1.5rem);
+  border: 1px solid var(--bunker-player-rule);
+  background: var(--bunker-player-black);
+}
+
+.bunker-mission-actions__confirmation {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-left: 2px solid var(--bunker-player-ivory);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-mission-actions__form,
+.bunker-mission-actions__result,
+.bunker-mission-actions__answer,
+.bunker-mission-actions__options,
+.bunker-mission-actions label {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.bunker-player-dashboard__content .bunker-mission-actions h3 {
+  margin: 0;
+  font-size: clamp(1.65rem, 5vw, 2.75rem);
+  line-height: 1.05;
+}
+
+.bunker-mission-actions label > span {
+  color: var(--bunker-player-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+}
+
+.bunker-mission-actions button,
+.bunker-mission-actions input,
+.bunker-mission-actions select,
+.bunker-mission-actions textarea {
+  min-height: 48px;
+  border: 1px solid var(--bunker-player-rule);
+  border-radius: 0;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.bunker-mission-actions button {
+  padding: 0.8rem 1rem;
+  color: var(--bunker-player-black);
+  background: var(--bunker-player-ivory);
+  cursor: pointer;
+}
+
+.bunker-mission-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.bunker-mission-actions input:not([type="checkbox"]):not([type="radio"]),
+.bunker-mission-actions select,
+.bunker-mission-actions textarea {
+  width: 100%;
+  padding: 0.75rem;
+  color: var(--bunker-player-ivory);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-mission-actions textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.bunker-mission-actions select {
+  min-height: 48px;
+}
+
+.bunker-mission-actions input[type="checkbox"],
+.bunker-mission-actions input[type="radio"] {
+  width: 1.4rem;
+  height: 1.4rem;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--bunker-player-ivory);
+}
+
+.bunker-global-action,
+.bunker-global-action__choices,
+.bunker-global-action__routes {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.bunker-global-action__choices label,
+.bunker-global-action__routes label,
+.bunker-global-action > label:has(input[type="checkbox"]) {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 48px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--bunker-player-rule);
+  font-size: 1rem;
+}
+
+.bunker-global-action__routes {
+  padding: 0;
+  border: 0;
+}
+
+.bunker-global-action__routes legend {
+  margin-bottom: 0.75rem;
+  color: var(--bunker-player-muted);
+  font-size: 1rem;
+}
+
+.bunker-global-action__fragment,
+.bunker-mission-actions__safety {
+  padding: 0.8rem 1rem;
+  border-left: 2px solid var(--bunker-player-muted);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-global-action__clues {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bunker-global-action__clues p {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--bunker-player-rule);
+  background: var(--bunker-player-graphite);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.bunker-global-action__clues strong {
+  color: var(--bunker-player-muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+}
+
+.bunker-mission-actions__options {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+.bunker-mission-actions__feedback {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-left: 2px solid var(--bunker-player-muted);
+  background: var(--bunker-player-graphite);
+}
+
 .bunker-player-mission-meta {
   display: grid;
   gap: 1px;
@@ -248,7 +432,7 @@
 .bunker-player-mission-meta dt {
   color: var(--bunker-player-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.75rem;
+  font-size: 1rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -262,9 +446,90 @@
   font-size: clamp(1.4rem, 4vw, 2.5rem);
 }
 
+.bunker-mission-briefing {
+  display: grid;
+  gap: 1rem;
+}
+
+.bunker-mission-briefing__header {
+  padding: clamp(1rem, 4vw, 2rem);
+  border: 1px solid var(--bunker-player-rule);
+  background: var(--bunker-player-black);
+}
+
+.bunker-mission-briefing__header p,
+.bunker-mission-briefing article h3 {
+  margin: 0;
+  color: var(--bunker-player-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.bunker-mission-briefing__header h2 {
+  margin: 0.55rem 0;
+  color: var(--bunker-player-ivory);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.15rem, 8vw, 5rem);
+  font-weight: 400;
+  line-height: 0.94;
+  overflow-wrap: anywhere;
+}
+
+.bunker-mission-briefing__header strong {
+  display: block;
+  max-width: 42rem;
+  color: var(--bunker-player-ivory);
+  font-size: clamp(1rem, 3.3vw, 1.3rem);
+  line-height: 1.45;
+}
+
+.bunker-mission-briefing article {
+  padding: clamp(1rem, 3.5vw, 1.5rem);
+  border-left: 2px solid var(--bunker-player-muted);
+  background: var(--bunker-player-black);
+}
+
+.bunker-mission-briefing article p,
+.bunker-mission-briefing article ol,
+.bunker-mission-briefing article ul {
+  margin: 0.8rem 0 0;
+  padding-left: 1.25rem;
+  color: var(--bunker-player-ivory);
+  font-size: var(--bunker-player-body-size);
+  line-height: 1.55;
+}
+
+.bunker-mission-briefing article p {
+  padding-left: 0;
+}
+
+.bunker-mission-briefing article li + li {
+  margin-top: 0.55rem;
+}
+
+.bunker-mission-briefing li[data-item-key] {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 4rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--bunker-player-rule);
+}
+
+.bunker-mission-briefing li[data-item-key] strong {
+  color: var(--bunker-player-ivory);
+  font-size: 1rem;
+}
+
+.bunker-mission-briefing li[data-item-key] span {
+  color: var(--bunker-player-muted);
+  line-height: 1.45;
+}
+
 @media (max-width: 760px) {
   .bunker-player-shell {
-    padding: 0.65rem 0.65rem calc(5.25rem + env(safe-area-inset-bottom));
+    padding: 0.65rem 0.65rem calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom));
   }
 
   .bunker-player-dashboard__header {
@@ -292,7 +557,8 @@
     left: 0;
     z-index: 50;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    max-height: calc(96px + env(safe-area-inset-bottom));
+    min-height: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom));
+    max-height: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     border-color: rgba(238, 233, 221, 0.28);
     background: #10100f;
@@ -301,10 +567,11 @@
   }
 
   .bunker-player-dashboard__nav button {
-    min-height: 46px;
+    min-height: 3rem;
     padding: 0.35rem 0.2rem;
     border-bottom: 1px solid var(--bunker-player-rule);
-    font-size: 0.62rem;
+    font-size: 1rem;
+    line-height: 1.05;
     letter-spacing: 0.04em;
   }
 
@@ -315,6 +582,6 @@
 
 @media (max-width: 360px) {
   .bunker-player-dashboard__nav button {
-    font-size: 0.58rem;
+    font-size: 1rem;
   }
 }

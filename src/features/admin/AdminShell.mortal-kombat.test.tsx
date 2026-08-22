@@ -36,7 +36,7 @@ describe('AdminShell Mortal Kombat integration', () => {
       mortalKombat: {
         load: vi.fn(), open: vi.fn(), close: vi.fn(), randomize: vi.fn(), swap: vi.fn(),
         remove: vi.fn(), promote: vi.fn(), finalize: vi.fn(), setCurrent: vi.fn(),
-        recordWinner: vi.fn(), undo: vi.fn(), broadcastRefresh: vi.fn(),
+        reset: vi.fn(), recordWinner: vi.fn(), undo: vi.fn(), broadcastRefresh: vi.fn(),
       },
     };
 

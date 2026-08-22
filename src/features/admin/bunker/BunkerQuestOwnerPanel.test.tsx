@@ -108,6 +108,7 @@ describe('BunkerQuestOwnerPanel', () => {
     stylesheet.textContent = [
       readFileSync(`${testRuntime.process.cwd()}/src/styles/bunker-quest.css`, 'utf8'),
       readFileSync(`${testRuntime.process.cwd()}/src/styles/admin-bunker.css`, 'utf8'),
+      readFileSync(`${testRuntime.process.cwd()}/src/styles/mobile-hardening.css`, 'utf8'),
     ].join('\n');
     document.head.append(stylesheet);
 
@@ -126,10 +127,10 @@ describe('BunkerQuestOwnerPanel', () => {
     const fallback = screen.getByRole('button', { name: 'СБРОСИТЬ · ВАГОН №1' });
     const operationalCopy = screen.getByText(/Переход остаётся под контролем ведущего/);
 
-    expect(getComputedStyle(primary).minHeight).toBe('44px');
+    expect(getComputedStyle(primary).minHeight).toBe('48px');
     expect(getComputedStyle(primary).fontSize).toBe('12px');
     expect(getComputedStyle(primary).backgroundColor).toBe('rgb(236, 232, 222)');
-    expect(getComputedStyle(fallback).minHeight).toBe('44px');
+    expect(getComputedStyle(fallback).minHeight).toBe('48px');
     expect(getComputedStyle(fallback).fontSize).toBe('12px');
     expect(getComputedStyle(operationalCopy).fontSize).toBe('16px');
   });

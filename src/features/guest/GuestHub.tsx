@@ -1,4 +1,8 @@
 import type { BunkerMissionStage, GuestBunkerQuestState } from '../bunker/bunkerQuest.types';
+import type {
+  BunkerGlobalMissionPayload,
+  BunkerGlobalMissionState,
+} from '../bunker/bunkerGlobalMission.service';
 import { BunkerPlayerDashboard } from '../bunker/BunkerPlayerDashboard';
 import type { GuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
 import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
@@ -19,6 +23,10 @@ type GuestHubProps = {
   bunkerSubmitting?: boolean;
   onBunkerMission?: (stage: BunkerMissionStage, answer: string) => void;
   onBunkerFinalCode?: (code: string) => void;
+  onBunkerGlobalMission?: (
+    missionState: BunkerGlobalMissionState,
+    payload: BunkerGlobalMissionPayload,
+  ) => Promise<void> | void;
   quizState: GuestQuizState | null;
   quizError?: string;
   quizSubmitting?: QuizChoice | null;
@@ -60,6 +68,7 @@ export function GuestHub({
   bunkerSubmitting = false,
   onBunkerMission = () => undefined,
   onBunkerFinalCode = () => undefined,
+  onBunkerGlobalMission = () => undefined,
   quizState,
   quizError = '',
   quizSubmitting = null,
@@ -69,7 +78,16 @@ export function GuestHub({
   if (bunkerRuntime?.status === 'active') {
     return (
       <main className="bunker-player-shell theme-bunker">
-        <BunkerPlayerDashboard runtime={bunkerRuntime} connectionError={bunkerRuntimeError} />
+        <BunkerPlayerDashboard
+          runtime={bunkerRuntime}
+          connectionError={bunkerRuntimeError}
+          questState={bunkerState}
+          missionFeedback={bunkerFeedback || bunkerError}
+          missionSubmitting={bunkerSubmitting}
+          onMission={onBunkerMission}
+          onFinalCode={onBunkerFinalCode}
+          onGlobalMission={onBunkerGlobalMission}
+        />
       </main>
     );
   }

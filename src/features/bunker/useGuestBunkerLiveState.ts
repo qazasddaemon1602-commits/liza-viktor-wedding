@@ -4,6 +4,12 @@ import { getSupabaseClient } from '../../lib/supabase';
 import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
 import type { BunkerRpcClient } from './bunker.service';
 import {
+  submitGuestBunkerGlobalMission,
+  type BunkerGlobalMissionPayload,
+  type BunkerGlobalMissionState,
+  type GuestBunkerGlobalMissionSubmission,
+} from './bunkerGlobalMission.service';
+import {
   getGuestBunkerQuest,
   submitBunkerFinalCode,
   submitBunkerMission,
@@ -26,6 +32,11 @@ export type GuestBunkerLiveDependencies = {
     answer: string,
   ) => Promise<SubmitBunkerMissionResult>;
   submitFinalCode: (deviceKey: string, code: string) => Promise<SubmitBunkerFinalResult>;
+  submitGlobalMission?: (
+    deviceKey: string,
+    missionState: BunkerGlobalMissionState,
+    payload: BunkerGlobalMissionPayload,
+  ) => Promise<GuestBunkerGlobalMissionSubmission>;
   subscribeToRefresh?: (callback: () => void) => () => void;
 };
 
@@ -50,6 +61,13 @@ function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
     loadRuntime: (key) => getGuestBunkerRuntime(rpcClient, eventSlug, key),
     submitMission: (key, stage, answer) => submitBunkerMission(rpcClient, eventSlug, key, stage, answer),
     submitFinalCode: (key, code) => submitBunkerFinalCode(rpcClient, eventSlug, key, code),
+    submitGlobalMission: (key, missionState, payload) => submitGuestBunkerGlobalMission(
+      rpcClient,
+      eventSlug,
+      key,
+      missionState,
+      payload,
+    ),
     subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
   };
 }
@@ -183,6 +201,30 @@ export function useGuestBunkerLiveState({
     }
   }, [deps, reload, submitting]);
 
+  const submitGlobalMission = useCallback(async (
+    missionState: BunkerGlobalMissionState,
+    payload: BunkerGlobalMissionPayload,
+  ) => {
+    if (!deps || submitting) return;
+    if (!deps.submitGlobalMission) {
+      setFeedback('Действие миссии ещё не подключено. Обновите страницу или обратитесь к ведущему.');
+      return;
+    }
+    setSubmitting(true);
+    setFeedback('');
+    try {
+      const result = await deps.submitGlobalMission(deps.getDeviceKey(), missionState, payload);
+      setFeedback(result.changed
+        ? 'Решение вагона принято. Дождитесь остальных команд.'
+        : 'Это решение вагона уже принято и сохранено.');
+      await reload();
+    } catch {
+      setFeedback('Решение не отправилось. Проверьте данные и попробуйте ещё раз.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [deps, reload, submitting]);
+
   return {
     state,
     runtime,
@@ -194,5 +236,6 @@ export function useGuestBunkerLiveState({
     reload,
     submitMission,
     submitFinalCode,
+    submitGlobalMission,
   };
 }

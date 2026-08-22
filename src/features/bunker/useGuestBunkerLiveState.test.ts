@@ -169,6 +169,33 @@ describe('useGuestBunkerLiveState', () => {
     expect(load.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('submits an authoritative global mission and reloads the wagon runtime', async () => {
+    const load = vi.fn().mockResolvedValue(emergency);
+    const submitGlobalMission = vi.fn().mockResolvedValue({
+      status: 'completed',
+      missionState: 'MISSION_03',
+      carriageId: 'wagon-2',
+      completedAt: '2026-08-30T18:05:00.000Z',
+      changed: true,
+      submittedPayload: { itemKeys: ['water'] },
+    });
+    const dependencies = deps({ load, submitGlobalMission });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
+    await waitFor(() => expect(result.current.state).not.toBeNull());
+
+    await act(async () => {
+      await result.current.submitGlobalMission('MISSION_03', { itemKeys: ['water'] });
+    });
+
+    expect(submitGlobalMission).toHaveBeenCalledWith(
+      'device-key-123',
+      'MISSION_03',
+      { itemKeys: ['water'] },
+    );
+    expect(result.current.feedback).toMatch(/решение вагона принято/i);
+    expect(load.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('reloads after final unlock and uses a neutral wrong-code message', async () => {
     const submitFinalCode = vi.fn().mockResolvedValue({ status: 'incorrect', unlocked: false });
     const dependencies = deps({ submitFinalCode });

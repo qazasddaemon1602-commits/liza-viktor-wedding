@@ -163,6 +163,7 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
         bunkerSubmitting={bunker.submitting}
         onBunkerMission={(stage, answer) => void bunker.submitMission(stage, answer)}
         onBunkerFinalCode={(code) => void bunker.submitFinalCode(code)}
+        onBunkerGlobalMission={(missionState, payload) => bunker.submitGlobalMission(missionState, payload)}
         quizState={quiz.state}
         quizError={quiz.error}
         quizSubmitting={quiz.submitting}

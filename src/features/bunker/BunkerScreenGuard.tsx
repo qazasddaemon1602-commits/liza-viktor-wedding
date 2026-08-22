@@ -46,10 +46,11 @@ function remainingFromState(
   nowMs: number,
   serverOffsetMs: number,
 ): number {
-  const startedMs = Date.parse(state.startedAt);
-  if (!Number.isFinite(startedMs)) return state.remainingSeconds;
+  const snapshotMs = Date.parse(state.serverNow);
+  if (!Number.isFinite(snapshotMs)) return state.remainingSeconds;
   const effectiveNow = nowMs + serverOffsetMs;
-  return Math.max(0, Math.ceil(state.durationSeconds - (effectiveNow - startedMs) / 1000));
+  const elapsedSinceSnapshot = Math.max(0, (effectiveNow - snapshotMs) / 1000);
+  return Math.max(0, Math.ceil(state.remainingSeconds - elapsedSinceSnapshot));
 }
 
 export function BunkerScreenGuard({

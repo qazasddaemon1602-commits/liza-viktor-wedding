@@ -34,6 +34,17 @@ const activeRuntime = {
     state: 'MISSION_03',
     plan: null,
   },
+  missionAction: {
+    missionState: 'MISSION_03',
+    completed: false,
+    completedAt: null,
+    submittedPayload: null,
+    requirements: {
+      availableItemKeys: ['medkit', 'radio', 'water'],
+      minItems: 1,
+      maxItems: 3,
+    },
+  },
 };
 
 describe('Bunker runtime response', () => {
@@ -44,6 +55,10 @@ describe('Bunker runtime response', () => {
       game: { state: 'MISSION_03', finalDuration: 1800 },
       character: { profession: 'МЕХАНИК', hiddenTrait: null },
       currentMission: { id: 'mission-03', state: 'MISSION_03', plan: null },
+      missionAction: {
+        missionState: 'MISSION_03', completed: false, completedAt: null,
+        requirements: { availableItemKeys: ['medkit', 'radio', 'water'] },
+      },
     });
   });
 
@@ -63,6 +78,11 @@ describe('Bunker runtime response', () => {
         state: 'MISSION_01',
         plan: [{ wagonId: 'f8b201f3-23ae-4e32-b990-d3bed73d90d6', exclusionCount: 2 }],
       },
+      missionAction: {
+        missionState: 'MISSION_01', completed: false, completedAt: null,
+        submittedPayload: null,
+        requirements: { exclusionCount: 2, selectableProfiles: [] },
+      },
     })).toMatchObject({
       currentMission: {
         id: 'mission_01',
@@ -76,6 +96,22 @@ describe('Bunker runtime response', () => {
     expect(parseGuestBunkerRuntime({
       status: 'idle', serverNow: '2026-08-20T18:00:00.000Z',
     })).toEqual({ status: 'idle', serverNow: '2026-08-20T18:00:00.000Z' });
+  });
+
+  it('rejects mission action progress for a different authoritative mission', () => {
+    expect(() => parseGuestBunkerRuntime({
+      ...activeRuntime,
+      missionAction: { ...activeRuntime.missionAction, missionState: 'MISSION_04' },
+    })).toThrow(/mission action/i);
+  });
+
+  it('accepts no action outside the six actionable missions', () => {
+    expect(parseGuestBunkerRuntime({
+      ...activeRuntime,
+      game: { ...activeRuntime.game, state: 'BREAK' },
+      currentMission: null,
+      missionAction: null,
+    })).toMatchObject({ status: 'active', missionAction: null });
   });
 
   it('rejects a leaked hidden trait before reveal', () => {

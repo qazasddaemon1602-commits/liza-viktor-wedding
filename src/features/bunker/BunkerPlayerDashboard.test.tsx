@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { BunkerPlayerDashboard } from './BunkerPlayerDashboard';
 import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
 
@@ -19,6 +19,7 @@ const runtime: ActiveGuestBunkerRuntime = {
   archive: [],
   wagonState: { powerStatus: 'unstable', communicationStatus: 'working', navigationStatus: 'working', technicalDoorStatus: 'locked', trackDamage: 0, waterStatus: 'stable', routeChoice: null, routeBonus: 0, powerInstability: 0, sector04Found: false, coordinationBonus: false },
   currentMission: null,
+  missionAction: null,
 };
 
 describe('BunkerPlayerDashboard', () => {
@@ -65,8 +66,30 @@ describe('BunkerPlayerDashboard', () => {
     const user = userEvent.setup();
     render(<BunkerPlayerDashboard runtime={runtime} />);
     await user.click(screen.getByRole('button', { name: 'ИНВЕНТАРЬ' }));
-    expect(screen.getByText('RADIO')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Рация' })).toBeInTheDocument();
+    expect(screen.getByTestId('bunker-inventory-icon')).toHaveAttribute('src', '/images/bunker/items/radio.webp');
+    expect(screen.getByTestId('bunker-inventory-icon')).toHaveAttribute('alt', 'Рация');
+    expect(screen.getByText(/быстро сверить сообщение/i)).toBeInTheDocument();
     expect(screen.getByText('ДОСТУПНО')).toBeInTheDocument();
+    expect(screen.queryByText('RADIO')).not.toBeInTheDocument();
+  });
+
+  it('never marks a used mission item as currently useful', async () => {
+    const user = userEvent.setup();
+    render(
+      <BunkerPlayerDashboard
+        runtime={{
+          ...runtime,
+          game: { ...runtime.game, state: 'MISSION_03' },
+          currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+          inventory: [{ id: 'item-2', itemKey: 'medkit', quantity: 1, status: 'used' }],
+        }}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'ИНВЕНТАРЬ' }));
+    expect(screen.getByText('ИСПОЛЬЗОВАНО')).toBeInTheDocument();
+    expect(screen.getByText('НЕДОСТУПНО ДЛЯ ПРИМЕНЕНИЯ')).toBeInTheDocument();
+    expect(screen.queryByText('ПРИГОДИТСЯ В ТЕКУЩЕЙ МИССИИ')).not.toBeInTheDocument();
   });
 
   it('keeps an excluded character participant in the game', () => {
@@ -111,7 +134,121 @@ describe('BunkerPlayerDashboard', () => {
     expect(screen.getAllByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' })).toHaveLength(1);
 
     await user.click(action);
-    expect(screen.getByRole('heading', { name: 'ТЕКУЩЕЕ ЗАДАНИЕ' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Аварийный запас' })).toBeInTheDocument();
+  });
+
+  it('explains the active mission instead of exposing internal runtime identifiers', async () => {
+    const user = userEvent.setup();
+    render(
+      <BunkerPlayerDashboard
+        runtime={{
+          ...runtime,
+          currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+          game: { ...runtime.game, state: 'MISSION_03' },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
+    const mission = screen.getByLabelText('Текущее задание');
+    expect(within(mission).getByRole('heading', { name: 'Аварийный запас' })).toBeInTheDocument();
+    expect(within(mission).getByText(/пять проблем/i)).toBeInTheDocument();
+    expect(within(mission).getByText(/нажмите на предмет/i)).toBeInTheDocument();
+    expect(within(mission).queryByText('mission_03')).not.toBeInTheDocument();
+    expect(within(mission).queryByText('MISSION_03')).not.toBeInTheDocument();
+    expect(screen.queryByText('MISSION_03')).not.toBeInTheDocument();
+  });
+
+  it('lists only currently available matching items in the mission briefing', async () => {
+    const user = userEvent.setup();
+    render(
+      <BunkerPlayerDashboard
+        runtime={{
+          ...runtime,
+          inventory: [
+            ...runtime.inventory,
+            { id: 'item-2', itemKey: 'medkit', quantity: 1, status: 'used' },
+          ],
+          currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+          game: { ...runtime.game, state: 'MISSION_03' },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
+    const briefing = within(screen.getByLabelText('Описание текущего задания'));
+    expect(briefing.getByText('Рация')).toBeInTheDocument();
+    expect(briefing.queryByText('Аптечка')).not.toBeInTheDocument();
+    expect(briefing.getByText(/доступно в вашем вагоне/i)).toBeInTheDocument();
+    expect(briefing.queryByText(/капитан/i)).not.toBeInTheDocument();
+    expect(briefing.getByText(/один участник вагона отправляет решение/i)).toBeInTheDocument();
+  });
+
+  it('shows the exact M01 wagon quota in briefing and hides consequences before completion', async () => {
+    const user = userEvent.setup();
+    render(
+      <BunkerPlayerDashboard
+        runtime={{
+          ...runtime,
+          game: { ...runtime.game, state: 'MISSION_01' },
+          currentMission: {
+            id: 'mission_01',
+            state: 'MISSION_01',
+            plan: [{ wagonId: runtime.wagon.id, wagonSize: 8, exclusionCount: 2 }],
+          },
+          missionAction: {
+            missionState: 'MISSION_01', completed: false, completedAt: null, submittedPayload: null,
+            requirements: {
+              exclusionCount: 2,
+              selectableProfiles: [{
+                profileId: 'profile-1', guestId: 'guest-1', realName: 'Сергей П.',
+                profession: 'МЕХАНИК', status: 'active',
+              }],
+            },
+          },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
+    const briefing = within(screen.getByLabelText('Описание текущего задания'));
+    expect(briefing.getByText(/квота вашего вагона: исключить 2 сюжетных персонажей/i)).toBeInTheDocument();
+    expect(briefing.queryByRole('heading', { name: 'ЧТО ИЗМЕНИТСЯ' })).not.toBeInTheDocument();
+  });
+
+  it('uses the global M03 action instead of a simultaneous legacy mission', async () => {
+    const user = userEvent.setup();
+    const onGlobalMission = vi.fn();
+    render(
+      <BunkerPlayerDashboard
+        runtime={{
+          ...runtime,
+          game: { ...runtime.game, state: 'MISSION_03' },
+          currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+          missionAction: {
+            missionState: 'MISSION_03', completed: false, completedAt: null, submittedPayload: null,
+            requirements: { availableItemKeys: ['radio'], minItems: 1, maxItems: 3 },
+          },
+        }}
+        questState={{
+          status: 'active', phase: 'mission_a', phaseStartedAt: null,
+          startedAt: runtime.serverNow, durationSeconds: 1800, remainingSeconds: 900,
+          serverNow: runtime.serverNow, dossier: null,
+          team: {
+            carriageNumber: 2, stage: 'mission_a', completed: false, fragment: null,
+            mission: { title: 'СТАРАЯ МИССИЯ', prompt: 'Не показывать', options: ['СТАРЫЙ ОТВЕТ'] },
+          },
+          final: { unlocked: false },
+        }}
+        onGlobalMission={onGlobalMission}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
+    expect(screen.queryByText('СТАРАЯ МИССИЯ')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: /Рация/i }));
+    await user.click(screen.getByRole('button', { name: 'ПРИМЕНИТЬ ЗАПАС' }));
+    expect(onGlobalMission).toHaveBeenCalledWith('MISSION_03', { itemKeys: ['radio'] });
   });
 
   it('keeps a stale active snapshot visible with an explicit offline notice', () => {
@@ -120,7 +257,7 @@ describe('BunkerPlayerDashboard', () => {
     expect(screen.getByRole('heading', { name: 'СЕРГЕЙ П.' })).toBeInTheDocument();
   });
 
-  it('renders authoritative archive metadata and current mission identity', async () => {
+  it('renders authoritative archive metadata and a human mission briefing', async () => {
     const user = userEvent.setup();
     render(
       <BunkerPlayerDashboard
@@ -166,8 +303,9 @@ describe('BunkerPlayerDashboard', () => {
 
     await user.click(screen.getByRole('button', { name: 'ТЕКУЩЕЕ ЗАДАНИЕ' }));
     const mission = within(screen.getByLabelText('Текущее задание'));
-    expect(mission.getByText('mission-03')).toBeInTheDocument();
-    expect(mission.getByText('MISSION_03')).toBeInTheDocument();
+    expect(mission.getByRole('heading', { name: 'Аварийный запас' })).toBeInTheDocument();
+    expect(mission.queryByText('mission-03')).not.toBeInTheDocument();
+    expect(mission.queryByText('MISSION_03')).not.toBeInTheDocument();
   });
 
   it('uses honest archive and mission empty states', async () => {
@@ -180,6 +318,6 @@ describe('BunkerPlayerDashboard', () => {
     await user.click(screen.getByRole('button', { name: 'ТЕКУЩЕЕ ЗАДАНИЕ' }));
     const mission = within(screen.getByLabelText('Текущее задание'));
     expect(mission.getByText(/активное задание не назначено/i)).toBeInTheDocument();
-    expect(mission.getByText('CHARACTERS_READY')).toBeInTheDocument();
+    expect(mission.queryByText('CHARACTERS_READY')).not.toBeInTheDocument();
   });
 });

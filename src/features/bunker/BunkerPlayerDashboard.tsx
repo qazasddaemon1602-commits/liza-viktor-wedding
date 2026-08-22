@@ -1,16 +1,25 @@
 import { useState } from 'react';
 import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
+import { BunkerMissionBriefing } from './BunkerMissionBriefing';
+import {
+  availableInventoryKeys,
+  BunkerInventoryCards,
+  BunkerMissionActions,
+} from './BunkerMissionActions';
+import type { BunkerMissionStage, GuestBunkerQuestState } from './bunkerQuest.types';
+import {
+  isBunkerGlobalMissionState,
+  type BunkerGlobalMissionPayload,
+  type BunkerGlobalMissionState,
+} from './bunkerGlobalMission.service';
+import { getBunkerMissionContent } from './v2/content/missionContent';
 
 const SECTIONS = [
   'МОЙ ВАГОН', 'ПЕРСОНАЖ', 'ПАССАЖИРЫ', 'ИНВЕНТАРЬ',
   'АРХИВ', 'СОСТОЯНИЕ', 'ТЕКУЩЕЕ ЗАДАНИЕ',
 ] as const;
 type Section = typeof SECTIONS[number];
-
-const ITEM_STATUS: Record<string, string> = {
-  available: 'ДОСТУПНО', used: 'ИСПОЛЬЗОВАНО', transferred: 'ПЕРЕДАНО', lost: 'ПОТЕРЯНО',
-};
 
 function rows(value: unknown[]): Record<string, unknown>[] {
   return value.filter((entry): entry is Record<string, unknown> => (
@@ -61,14 +70,37 @@ function archiveArtwork(entry: ArchiveEntry): BunkerAsset | null {
 type BunkerPlayerDashboardProps = {
   runtime: ActiveGuestBunkerRuntime;
   connectionError?: string;
+  questState?: GuestBunkerQuestState | null;
+  missionFeedback?: string;
+  missionSubmitting?: boolean;
+  onMission?: (stage: BunkerMissionStage, answer: string) => Promise<void> | void;
+  onFinalCode?: (code: string) => Promise<void> | void;
+  onGlobalMission?: (
+    missionState: BunkerGlobalMissionState,
+    payload: BunkerGlobalMissionPayload,
+  ) => Promise<void> | void;
 };
 
-export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerPlayerDashboardProps) {
+export function BunkerPlayerDashboard({
+  runtime,
+  connectionError = '',
+  questState = null,
+  missionFeedback = '',
+  missionSubmitting = false,
+  onMission = () => undefined,
+  onFinalCode = () => undefined,
+  onGlobalMission = () => undefined,
+}: BunkerPlayerDashboardProps) {
   const [section, setSection] = useState<Section>('МОЙ ВАГОН');
   const inventory = rows(runtime.inventory);
   const passengers = rows(runtime.passengers);
   const archive = archiveEntries(runtime.archive);
   const mission = currentMission(runtime.currentMission);
+  const missionContent = getBunkerMissionContent(mission?.id ?? runtime.game.state);
+  const availableItems = availableInventoryKeys(inventory);
+  const isGlobalMission = isBunkerGlobalMissionState(runtime.game.state);
+  const gameStateLabel = missionContent?.title.toLocaleUpperCase('ru-RU')
+    ?? (runtime.game.bunkerRevealed ? 'БУНКЕР ОТКРЫТ' : 'ПРОТОКОЛ АКТИВЕН');
 
   return (
     <section className="bunker-player-dashboard" aria-label="Игровой модуль Бункер">
@@ -79,7 +111,7 @@ export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerP
             {runtime.guest.realName.toLocaleUpperCase('ru-RU')}
           </h2>
         </div>
-        <span className="bunker-player-dashboard__state">{runtime.game.state}</span>
+        <span className="bunker-player-dashboard__state">{gameStateLabel}</span>
       </header>
 
       <BunkerResponsivePicture
@@ -113,7 +145,7 @@ export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerP
         </p>
       )}
 
-      {mission && (
+      {(missionContent || questState?.status === 'active') && (
         <button
           className="bunker-player-dashboard__primary-action"
           type="button"
@@ -176,15 +208,7 @@ export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerP
         )}
 
         {section === 'ИНВЕНТАРЬ' && (
-          <div className="bunker-player-list">
-            {inventory.map((item) => (
-              <article key={String(item.id)}>
-                <h3>{String(item.itemKey).toLocaleUpperCase('ru-RU')}</h3>
-                <strong>{ITEM_STATUS[String(item.status)] ?? String(item.status).toLocaleUpperCase('ru-RU')}</strong>
-                <p>Количество: {String(item.quantity)}</p>
-              </article>
-            ))}
-          </div>
+          <BunkerInventoryCards inventory={inventory} missionContent={missionContent} />
         )}
 
         {section === 'АРХИВ' && (
@@ -224,12 +248,32 @@ export function BunkerPlayerDashboard({ runtime, connectionError = '' }: BunkerP
 
         {section === 'ТЕКУЩЕЕ ЗАДАНИЕ' && (
           <article aria-label="Текущее задание">
-            <h3>ТЕКУЩЕЕ ЗАДАНИЕ</h3>
-            <dl className="bunker-player-mission-meta">
-              <div><dt>Текущий этап</dt><dd>{runtime.game.state}</dd></div>
-              {mission && <div><dt>Идентификатор задания</dt><dd>{mission.id}</dd></div>}
-            </dl>
-            {!mission && <p>Для текущего этапа активное задание не назначено.</p>}
+            {missionContent ? (
+              <BunkerMissionBriefing
+                content={missionContent}
+                availableItemKeys={availableItems}
+                missionAction={runtime.missionAction}
+                missionPlan={runtime.currentMission?.plan}
+                wagonId={runtime.wagon.id}
+                showConsequences={!isGlobalMission || runtime.missionAction?.completed === true}
+              />
+            ) : (
+              <>
+                <h3>ТЕКУЩЕЕ ЗАДАНИЕ</h3>
+                <p>Для текущего этапа активное задание не назначено.</p>
+              </>
+            )}
+            <BunkerMissionActions
+              state={questState}
+              globalMissionState={runtime.game.state}
+              globalAction={runtime.missionAction}
+              inventory={inventory}
+              submitting={missionSubmitting}
+              feedback={missionFeedback}
+              onGlobalMission={onGlobalMission}
+              onMission={onMission}
+              onFinalCode={onFinalCode}
+            />
           </article>
         )}
       </div>

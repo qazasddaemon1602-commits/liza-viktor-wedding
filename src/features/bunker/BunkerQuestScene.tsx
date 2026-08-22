@@ -3,6 +3,10 @@ import type { BunkerPhase } from './bunkerQuest.types';
 import type { BunkerScreenState, BunkerScreenTeamState } from './bunker.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
 import type { BunkerGlobalGameState } from './bunkerSession.service';
+import {
+  getBunkerMissionContent,
+  type BunkerMissionKey,
+} from './v2/content/missionContent';
 
 type ActiveBunkerScreen = Extract<BunkerScreenState, { status: 'active' }>;
 
@@ -63,14 +67,36 @@ function missionHeadline(state: ActiveBunkerScreen, phase: BunkerPhase): string 
   return objective ? `МИССИЯ ${number} · ${objective}` : `МИССИЯ ${number}`;
 }
 
-function teamComplete(team: BunkerScreenTeamState, phase: BunkerPhase): boolean {
+function headlineDensity(headline: string): 'short' | 'medium' | 'long' {
+  if (headline.length > 84) return 'long';
+  if (headline.length > 52) return 'medium';
+  return 'short';
+}
+
+function isGlobalMissionState(value: string | null | undefined): boolean {
+  return /^MISSION_0[1-6]$/.test(value ?? '');
+}
+
+function teamComplete(
+  team: BunkerScreenTeamState,
+  phase: BunkerPhase,
+  useCurrentMissionProgress: boolean,
+): boolean {
+  if (useCurrentMissionProgress) return team.currentMissionComplete === true;
   if (phase === 'mission_a') return team.missionAComplete;
   if (phase === 'mission_b' || phase === 'final' || phase === 'completed') return team.missionBComplete;
   return false;
 }
 
-function progressLabel(state: ActiveBunkerScreen, phase: BunkerPhase): string | null {
+function progressLabel(
+  state: ActiveBunkerScreen,
+  phase: BunkerPhase,
+  useCurrentMissionProgress: boolean,
+): string | null {
   if (state.teams.length === 0) return null;
+  if (useCurrentMissionProgress) {
+    return `${state.teams.filter((team) => team.currentMissionComplete === true).length} / ${state.teams.length} ГОТОВО`;
+  }
   if (phase === 'mission_a') {
     return `${state.teams.filter((team) => team.missionAComplete).length} / ${state.teams.length} ГОТОВО`;
   }
@@ -91,13 +117,28 @@ function sceneBackdrop(state: ActiveBunkerScreen, phase: BunkerPhase): BunkerAss
   return 'bunker-exterior';
 }
 
+function missionArtwork(key: BunkerMissionKey, unlocked: boolean): BunkerAsset {
+  switch (key) {
+    case 'M01': return 'evidence-01';
+    case 'M02': return 'evidence-02';
+    case 'M03': return 'evidence-03';
+    case 'M04': return 'evidence-04';
+    case 'M05': return 'evidence-05';
+    case 'M06': return 'evidence-06';
+    case 'FINAL': return unlocked ? 'bunker-door-open' : 'bunker-door-closed';
+  }
+}
+
 export function BunkerQuestScene({
   state,
   remainingSeconds,
   motionPreference = 'full',
 }: BunkerQuestSceneProps) {
   const phase = phaseForGlobalGameState(state.globalGameState, state.phase);
-  const progress = progressLabel(state, phase);
+  const useCurrentMissionProgress = isGlobalMissionState(
+    state.globalGameState ?? state.currentMission?.state,
+  );
+  const progress = progressLabel(state, phase, useCurrentMissionProgress);
   const arrived = remainingSeconds <= 0;
   const finalPhase = phase === 'final' || phase === 'completed';
   const hasAuthoritativeWagons = state.teams.length > 0;
@@ -108,6 +149,10 @@ export function BunkerQuestScene({
       ? 'ПРИБЫТИЕ · ДОСТУП РАЗРЕШЁН'
       : 'ПРИБЫТИЕ · ШЛЮЗ ЗАБЛОКИРОВАН'
     : missionHeadline(state, phase);
+  const density = headlineDensity(headline);
+  const missionContent = getBunkerMissionContent(
+    state.currentMission?.id ?? state.globalGameState,
+  );
 
   return (
     <section
@@ -115,6 +160,8 @@ export function BunkerQuestScene({
       aria-label="Бункер · экран квеста"
       data-motion={motionPreference}
       data-phase={phase}
+      data-headline-density={density}
+      data-mission-key={missionContent?.key}
     >
       <BunkerResponsivePicture
         asset={sceneBackdrop(state, phase)}
@@ -148,15 +195,34 @@ export function BunkerQuestScene({
         <strong>{formatTimer(remainingSeconds)}</strong>
       </header>
 
-      {(phase === 'dossier_1' || phase === 'dossier_2') && (
+      <div className="bunker-quest-scene__body">
+        {missionContent && (
+        <section className="bunker-quest-scene__story" aria-label="Вступление к миссии">
+          <BunkerResponsivePicture
+            asset={missionArtwork(missionContent.key, state.unlocked)}
+            className="bunker-quest-scene__story-artwork"
+            testId="bunker-mission-artwork"
+            sizes="(max-width: 960px) 36vw, 30vw"
+            loading="eager"
+          />
+          <div>
+            <span>{missionContent.intro.eyebrow}</span>
+            <h2>{missionContent.title}</h2>
+            <strong>{missionContent.intro.headline}</strong>
+            <p>{missionContent.tv.instruction}</p>
+          </div>
+        </section>
+        )}
+
+        {(phase === 'dossier_1' || phase === 'dossier_2') && !useCurrentMissionProgress && (
         <div className="bunker-quest-scene__briefing">
           <span>ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ</span>
           <strong>{phase === 'dossier_1' ? 'СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА' : 'ДОСЬЕ РАСКРЫТО · ГОТОВЬТЕСЬ К КОМАНДНОЙ ЗАДАЧЕ'}</strong>
           <p>Телефоны гостей синхронизированы с текущим этапом.</p>
         </div>
-      )}
+        )}
 
-      {(phase === 'mission_a' || phase === 'mission_b') && (
+        {(useCurrentMissionProgress || phase === 'mission_a' || phase === 'mission_b') && (
         <div className="bunker-quest-scene__mission">
           <div className="bunker-quest-scene__progress-heading">
             <span>СОСТОЯНИЕ ВАГОНОВ</span>
@@ -172,7 +238,7 @@ export function BunkerQuestScene({
               aria-label="Активные вагоны"
             >
               {state.teams.map((team) => {
-                const complete = teamComplete(team, phase);
+                const complete = teamComplete(team, phase, useCurrentMissionProgress);
                 return (
                   <article key={team.carriageNumber} className={complete ? 'is-complete' : ''}>
                     <span>{String(team.carriageNumber).padStart(2, '0')}</span>
@@ -186,9 +252,9 @@ export function BunkerQuestScene({
             <p className="bunker-quest-scene__empty">ДАННЫЕ ОБ АКТИВНЫХ ВАГОНАХ НЕ ПОЛУЧЕНЫ</p>
           )}
         </div>
-      )}
+        )}
 
-      {finalPhase && (
+        {finalPhase && (
         <div className="bunker-quest-scene__final">
           <div className="bunker-quest-scene__progress-heading">
             <span>КОНТУР ФИНАЛЬНОГО ДОСТУПА</span>
@@ -229,7 +295,8 @@ export function BunkerQuestScene({
             </div>
           )}
         </div>
-      )}
+        )}
+      </div>
 
       <footer>
         <span>LV · BUNKER ARCHIVE</span>

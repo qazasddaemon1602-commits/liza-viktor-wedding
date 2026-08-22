@@ -6,8 +6,20 @@ import {
   type BunkerGameMode,
   type BunkerGlobalGameState,
 } from './bunkerSession.service';
+import {
+  isBunkerGlobalMissionState,
+  type BunkerGlobalMissionState,
+} from './bunkerGlobalMission.service';
 
 export type { BunkerCurrentMission } from './bunkerSession.service';
+
+export type GuestBunkerGlobalMissionAction = {
+  missionState: BunkerGlobalMissionState;
+  completed: boolean;
+  completedAt: string | null;
+  submittedPayload: Record<string, unknown> | null;
+  requirements: Record<string, unknown>;
+};
 
 type IdleRuntime = { status: 'idle' | 'not_found' | 'guest_not_found'; serverNow: string };
 
@@ -30,6 +42,7 @@ export type ActiveGuestBunkerRuntime = {
   archive: unknown[];
   wagonState: Record<string, unknown>;
   currentMission: BunkerCurrentMission | null;
+  missionAction?: GuestBunkerGlobalMissionAction | null;
 };
 
 export type GuestBunkerRuntime = IdleRuntime | ActiveGuestBunkerRuntime;
@@ -66,6 +79,31 @@ function timestamp(value: unknown, nullable = false): string | null {
     throw new Error('Unexpected Bunker timestamp');
   }
   return value;
+}
+
+function missionAction(
+  value: unknown,
+  authoritativeState: BunkerGlobalGameState,
+): GuestBunkerGlobalMissionAction | null {
+  if (value === null || value === undefined) return null;
+  const action = object(value, 'mission action');
+  if (!isBunkerGlobalMissionState(action.missionState)
+    || action.missionState !== authoritativeState
+    || typeof action.completed !== 'boolean'
+    || (action.completedAt !== null
+      && (typeof action.completedAt !== 'string'
+        || !Number.isFinite(Date.parse(action.completedAt))))
+    || (action.completed && action.completedAt === null)
+    || (!action.completed && action.completedAt !== null)
+    || (action.submittedPayload !== null
+      && (typeof action.submittedPayload !== 'object'
+        || Array.isArray(action.submittedPayload)))
+    || typeof action.requirements !== 'object'
+    || action.requirements === null
+    || Array.isArray(action.requirements)) {
+    throw new Error('Unexpected Bunker mission action');
+  }
+  return action as GuestBunkerGlobalMissionAction;
 }
 
 export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
@@ -133,6 +171,7 @@ export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
       root.currentMission,
       game.state as BunkerGlobalGameState,
     ),
+    missionAction: missionAction(root.missionAction, game.state as BunkerGlobalGameState),
   };
 }
 

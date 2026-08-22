@@ -219,6 +219,34 @@ describe('BunkerScreenGuard', () => {
     expect(screen.getAllByText(/ВАГОН №/)).toHaveLength(2);
   });
 
+  it('anchors the final countdown to the authoritative server snapshot, not the earlier game start', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-30T20:00:00.000Z'));
+
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue({
+          status: 'active',
+          startedAt: '2026-08-30T18:00:00.000Z',
+          durationSeconds: 1800,
+          remainingSeconds: 1800,
+          soundEnabled: false,
+          phase: 'final',
+          globalGameState: 'FINAL_30',
+          unlocked: false,
+          teams: [],
+          characterCounts: { active: 0, saved: 0, excluded: 0 },
+          serverNow: '2026-08-30T20:00:00.000Z',
+        }),
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(screen.getByText('30:00')).toBeInTheDocument();
+  });
+
   it('overlays the projector with the synchronized emergency message and 30 minute timer', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-30T18:00:00.000Z'));

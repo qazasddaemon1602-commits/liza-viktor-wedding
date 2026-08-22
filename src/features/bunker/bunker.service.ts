@@ -5,12 +5,24 @@ import {
   type BunkerCurrentMission,
   type BunkerGlobalGameState,
 } from './bunkerSession.service';
+import {
+  isBunkerGlobalMissionState,
+  type BunkerGlobalMissionState,
+} from './bunkerGlobalMission.service';
 
 export type BunkerScreenTeamState = {
   carriageNumber: number;
   label: string;
   missionAComplete: boolean;
   missionBComplete: boolean;
+  currentMissionComplete?: boolean;
+};
+
+export type BunkerCurrentMissionProgress = {
+  missionState: BunkerGlobalMissionState;
+  completedWagons: number;
+  totalWagons: number;
+  complete: boolean;
 };
 
 export type BunkerScreenCharacterCounts = {
@@ -33,6 +45,7 @@ export type BunkerScreenState =
       characterCounts: BunkerScreenCharacterCounts;
       globalGameState?: BunkerGlobalGameState;
       currentMission?: BunkerCurrentMission | null;
+      missionProgress?: BunkerCurrentMissionProgress | null;
       serverNow: string;
     };
 
@@ -44,6 +57,7 @@ export type OwnerBunkerControl =
       runNonce?: string;
       globalGameState?: BunkerGlobalGameState;
       currentMission?: BunkerCurrentMission | null;
+      missionProgress?: BunkerCurrentMissionProgress | null;
       serverNow: string;
     }
   | {
@@ -55,6 +69,7 @@ export type OwnerBunkerControl =
       runNonce?: string;
       globalGameState?: BunkerGlobalGameState;
       currentMission?: BunkerCurrentMission | null;
+      missionProgress?: BunkerCurrentMissionProgress | null;
       serverNow: string;
     };
 
@@ -123,6 +138,8 @@ function parseTeams(value: unknown): BunkerScreenTeamState[] {
       || !entry.label.trim()
       || typeof entry.missionAComplete !== 'boolean'
       || typeof entry.missionBComplete !== 'boolean'
+      || (entry.currentMissionComplete !== undefined
+        && typeof entry.currentMissionComplete !== 'boolean')
     ) {
       throw new Error('Unexpected bunker team progress');
     }
@@ -131,8 +148,31 @@ function parseTeams(value: unknown): BunkerScreenTeamState[] {
       label: entry.label,
       missionAComplete: entry.missionAComplete,
       missionBComplete: entry.missionBComplete,
+      currentMissionComplete: entry.currentMissionComplete === true,
     };
   });
+}
+
+function parseMissionProgress(value: unknown): BunkerCurrentMissionProgress | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (!record(value)
+    || !isBunkerGlobalMissionState(value.missionState)
+    || typeof value.complete !== 'boolean') {
+    throw new Error('Unexpected bunker current mission progress');
+  }
+  const completedWagons = positiveInteger(value.completedWagons);
+  const totalWagons = positiveInteger(value.totalWagons);
+  if (completedWagons > totalWagons
+    || value.complete !== (totalWagons > 0 && completedWagons === totalWagons)) {
+    throw new Error('Unexpected bunker current mission progress');
+  }
+  return {
+    missionState: value.missionState,
+    completedWagons,
+    totalWagons,
+    complete: value.complete,
+  };
 }
 
 function parseCharacterCounts(value: unknown): BunkerScreenCharacterCounts {
@@ -188,6 +228,9 @@ function parseScreen(data: unknown): BunkerScreenState {
     teams: parseTeams(data.teams),
     characterCounts: parseCharacterCounts(data.characterCounts),
     ...authoritativeState(data),
+    ...(data.missionProgress === undefined
+      ? {}
+      : { missionProgress: parseMissionProgress(data.missionProgress) }),
     serverNow,
   };
 }
@@ -214,6 +257,9 @@ function parseOwner(data: unknown): OwnerBunkerControl {
     durationSeconds: positiveInteger(data.durationSeconds),
     soundEnabled: data.soundEnabled,
     ...authoritativeState(data),
+    ...(data.missionProgress === undefined
+      ? {}
+      : { missionProgress: parseMissionProgress(data.missionProgress) }),
     ...(typeof data.runNonce === 'string' ? { runNonce: data.runNonce } : {}),
     serverNow: parsed.serverNow,
   };
