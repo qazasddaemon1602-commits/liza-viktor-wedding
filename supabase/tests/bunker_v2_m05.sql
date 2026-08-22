@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(20);
 select has_function('public','get_guest_bunker_v2_m05',array['text','text'],'M05 guest read model');
 select has_function('public','get_bunker_v2_m05_screen',array['text'],'M05 TV read model');
 select has_function('public','get_owner_bunker_v2_m05',array['uuid'],'M05 owner read model');
