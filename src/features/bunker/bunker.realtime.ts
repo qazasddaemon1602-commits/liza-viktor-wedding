@@ -17,15 +17,54 @@ export type BunkerRealtimeClient = {
   channel: (name: string) => BunkerRealtimeChannel;
 };
 
+type SharedRefreshChannel = {
+  channel: BunkerRealtimeChannel;
+  listeners: Set<() => void>;
+};
+
+const sharedRefreshChannels = new WeakMap<
+  BunkerRealtimeClient,
+  Map<string, SharedRefreshChannel>
+>();
+
 export function subscribeToBunkerRefresh(
   client: BunkerRealtimeClient,
   eventSlug: string,
   onRefresh: () => void,
 ): () => void {
-  const channel = client.channel(`bunker:${eventSlug}`);
-  channel.on('broadcast', { event: 'refresh' }, () => onRefresh()).subscribe();
+  let clientChannels = sharedRefreshChannels.get(client);
+  if (!clientChannels) {
+    clientChannels = new Map();
+    sharedRefreshChannels.set(client, clientChannels);
+  }
+
+  let shared = clientChannels.get(eventSlug);
+  if (!shared) {
+    const listeners = new Set<() => void>();
+    const channel = client.channel(`bunker:${eventSlug}`);
+    shared = { channel, listeners };
+    clientChannels.set(eventSlug, shared);
+    channel
+      .on('broadcast', { event: 'refresh' }, () => {
+        for (const listener of [...listeners]) listener();
+      })
+      .subscribe();
+  }
+
+  const subscription = shared;
+  const registry = clientChannels;
+  subscription.listeners.add(onRefresh);
+  let subscribed = true;
+
   return () => {
-    void channel.unsubscribe();
+    if (!subscribed) return;
+    subscribed = false;
+    subscription.listeners.delete(onRefresh);
+    if (subscription.listeners.size > 0) return;
+
+    registry.delete(eventSlug);
+    if (registry.size === 0) sharedRefreshChannels.delete(client);
+    void subscription.channel.unsubscribe();
   };
 }
 

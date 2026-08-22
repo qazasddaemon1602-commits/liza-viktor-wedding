@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
 import type { AdminDashboard } from '../admin.service';
 import {
@@ -8,6 +8,7 @@ import {
 } from '../../carriages/carriageAllocator';
 import {
   broadcastBunkerRefresh,
+  subscribeToBunkerRefresh,
   type BunkerRealtimeClient,
 } from '../../bunker/bunker.realtime';
 import {
@@ -82,6 +83,7 @@ export type AdminBunkerControlDependencies = {
   stop: (eventId: string) => Promise<unknown>;
   setSound: (eventId: string, enabled: boolean) => Promise<unknown>;
   broadcastRefresh: () => Promise<void>;
+  subscribeRefresh?: (eventId: string, callback: () => void) => () => void;
   subscribeScreenPresence?: (callback: (presence: PremiereScreenPresence) => void) => () => void;
 };
 
@@ -120,6 +122,11 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
       stop: (eventId) => stopBunker(rpcClient, eventId),
       setSound: (eventId, enabled) => setBunkerSound(rpcClient, eventId, enabled),
       broadcastRefresh: () => broadcastBunkerRefresh(realtimeClient, 'liza-viktor'),
+      subscribeRefresh: (_eventId, callback) => subscribeToBunkerRefresh(
+        realtimeClient,
+        'liza-viktor',
+        callback,
+      ),
       subscribeScreenPresence: (callback) => subscribeToPremiereScreenPresence(
         presenceClient,
         'liza-viktor',
@@ -190,12 +197,18 @@ export function AdminBunkerControl({
   const [selectedWagonCount, setSelectedWagonCount] = useState<SupportedCarriageCount>(recommendedWagonCount);
   const [manuallySelected, setManuallySelected] = useState(false);
   const [error, setError] = useState('');
+  const [refreshError, setRefreshError] = useState('');
   const [characters, setCharacters] = useState<OwnerBunkerCharacter[]>([]);
   const [characterBusy, setCharacterBusy] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [presenceNowMs, setPresenceNowMs] = useState(() => Date.now());
   const [screenPresence, setScreenPresence] = useState<PremiereScreenPresenceRecord[]>([]);
   const serverOffsetRef = useRef(0);
+  const reloadGenerationRef = useRef(0);
+  const reloadInFlightRef = useRef<{
+    generation: number;
+    promise: Promise<OwnerBunkerControl | null>;
+  } | null>(null);
   const quest = useOwnerBunkerQuestState(eventId, {
     dependencies: questDependencies,
     enabled: state?.status === 'active'
@@ -224,33 +237,63 @@ export function AdminBunkerControl({
     return () => window.clearInterval(interval);
   }, [deps]);
 
-  const storeState = (next: OwnerBunkerControl) => {
+  const storeState = useCallback((next: OwnerBunkerControl) => {
     const receivedAt = Date.now();
     const serverMs = Date.parse(next.serverNow);
     serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
     setNowMs(receivedAt);
     setState(next);
-  };
+    setRefreshError('');
+  }, []);
 
-  const reload = async () => {
-    if (!deps) return;
-    storeState(await deps.load(eventId));
-  };
+  const reload = useCallback((generation = reloadGenerationRef.current) => {
+    if (!deps) return Promise.resolve(null);
+    const current = reloadInFlightRef.current;
+    if (current?.generation === generation) return current.promise;
+
+    let request: Promise<OwnerBunkerControl | null>;
+    request = deps.load(eventId)
+      .then((next) => {
+        if (reloadGenerationRef.current === generation) storeState(next);
+        return next;
+      })
+      .catch((loadError: unknown) => {
+        if (reloadGenerationRef.current === generation) {
+          setRefreshError('Не удалось обновить статус Бункера. Показываем последние полученные данные.');
+        }
+        throw loadError;
+      })
+      .finally(() => {
+        if (reloadInFlightRef.current?.promise === request) reloadInFlightRef.current = null;
+      });
+    reloadInFlightRef.current = { generation, promise: request };
+    return request;
+  }, [deps, eventId, storeState]);
 
   useEffect(() => {
     if (!deps) return;
-    let active = true;
-    void deps.load(eventId)
-      .then((next) => {
-        if (active) storeState(next);
-      })
-      .catch(() => {
-        if (active) setError('Не удалось проверить статус Бункера.');
-      });
+    const generation = ++reloadGenerationRef.current;
+    void reload(generation).catch(() => undefined);
     return () => {
-      active = false;
+      reloadGenerationRef.current += 1;
+      reloadInFlightRef.current = null;
     };
-  }, [deps, eventId]);
+  }, [deps, reload]);
+
+  useEffect(() => {
+    if (!deps?.subscribeRefresh) return undefined;
+    return deps.subscribeRefresh(eventId, () => {
+      void reload().catch(() => undefined);
+    });
+  }, [deps, eventId, reload]);
+
+  useEffect(() => {
+    if (state?.status !== 'active') return undefined;
+    const interval = window.setInterval(() => {
+      void reload().catch(() => undefined);
+    }, 2_000);
+    return () => window.clearInterval(interval);
+  }, [reload, state?.status]);
 
   useEffect(() => {
     if (state?.status !== 'active') return;
@@ -805,6 +848,7 @@ export function AdminBunkerControl({
 
       {quest.error && <p className="admin-bunker-error" role="alert">{quest.error}</p>}
       {quest.warning && <p className="admin-bunker-error" role="status">{quest.warning}</p>}
+      {refreshError && <p className="admin-bunker-error" role="alert">{refreshError}</p>}
       {error && <p className="admin-bunker-error" role="alert">{error}</p>}
     </section>
   );

@@ -371,6 +371,185 @@ describe('AdminBunkerControl', () => {
     expect(advance).not.toHaveBeenCalled();
   });
 
+  it('refreshes authoritative wagon readiness when a guest realtime signal arrives', async () => {
+    let emitRefresh: (() => void) | undefined;
+    const active = {
+      status: 'active' as const,
+      startedAt: '2026-08-30T12:00:00.000Z',
+      durationSeconds: 1800,
+      remainingSeconds: 1500,
+      soundEnabled: true,
+      globalGameState: 'MISSION_03' as const,
+      currentMission: { id: 'mission_03', state: 'MISSION_03' as const, plan: null },
+      serverNow: '2026-08-30T12:05:00.000Z',
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        ...active,
+        missionProgress: {
+          missionState: 'MISSION_03' as const,
+          completedWagons: 0,
+          totalWagons: 2,
+          complete: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        ...active,
+        missionProgress: {
+          missionState: 'MISSION_03' as const,
+          completedWagons: 1,
+          totalWagons: 2,
+          complete: false,
+        },
+      });
+    const advance = vi.fn();
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          advance,
+          load,
+          subscribeRefresh: (_eventId, callback) => {
+            emitRefresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    expect(await screen.findByText('0 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+    act(() => emitRefresh?.());
+
+    expect(await screen.findByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(advance).not.toHaveBeenCalled();
+  });
+
+  it('polls active owner state every two seconds and stops polling once the run is idle', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+        remainingSeconds: 1500, soundEnabled: true, serverNow: '2026-08-30T12:05:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        status: 'idle', durationSeconds: 1800, soundEnabled: true,
+        serverNow: '2026-08-30T12:05:02.000Z',
+      });
+
+    render(<AdminBunkerControl eventId="event-1" dependencies={dependencies({ load })} />);
+    await act(async () => { await Promise.resolve(); });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1_999);
+      await Promise.resolve();
+    });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      vi.advanceTimersByTime(4_000);
+      await Promise.resolve();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the last valid owner state when a background refresh fails', async () => {
+    let emitRefresh: (() => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+        remainingSeconds: 1500, soundEnabled: true,
+        globalGameState: 'MISSION_03',
+        currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+        missionProgress: {
+          missionState: 'MISSION_03', completedWagons: 1, totalWagons: 2, complete: false,
+        },
+        serverNow: '2026-08-30T12:05:00.000Z',
+      })
+      .mockRejectedValueOnce(new Error('offline'));
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          load,
+          subscribeRefresh: (_eventId, callback) => {
+            emitRefresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+    expect(await screen.findByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+
+    await act(async () => {
+      emitRefresh?.();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/не удалось обновить статус бункера/i);
+  });
+
+  it('deduplicates overlapping realtime owner reloads', async () => {
+    let emitRefresh: (() => void) | undefined;
+    let resolveRefresh: ((value: Awaited<ReturnType<AdminBunkerControlDependencies['load']>>) => void) | undefined;
+    const pendingRefresh = new Promise<Awaited<ReturnType<AdminBunkerControlDependencies['load']>>>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const active = {
+      status: 'active' as const,
+      startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+      remainingSeconds: 1500, soundEnabled: true,
+      globalGameState: 'MISSION_03' as const,
+      currentMission: { id: 'mission_03', state: 'MISSION_03' as const, plan: null },
+      missionProgress: {
+        missionState: 'MISSION_03' as const, completedWagons: 0, totalWagons: 2, complete: false,
+      },
+      serverNow: '2026-08-30T12:05:00.000Z',
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce(active)
+      .mockReturnValueOnce(pendingRefresh);
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          load,
+          subscribeRefresh: (_eventId, callback) => {
+            emitRefresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+    expect(await screen.findByText('0 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+
+    act(() => {
+      emitRefresh?.();
+      emitRefresh?.();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveRefresh?.({
+        ...active,
+        missionProgress: { ...active.missionProgress, completedWagons: 1 },
+      });
+      await pendingRefresh;
+    });
+    expect(screen.getByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+  });
+
   it('shows the authoritative final countdown even when the whole game started earlier', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-30T20:00:00.000Z'));

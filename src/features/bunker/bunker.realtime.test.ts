@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { broadcastBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
+import {
+  broadcastBunkerRefresh,
+  subscribeToBunkerRefresh,
+  type BunkerRealtimeClient,
+} from './bunker.realtime';
 
 function fixture() {
   const send = vi.fn().mockResolvedValue(undefined);
@@ -37,6 +41,37 @@ describe('broadcastBunkerRefresh', () => {
     const { client, send } = fixture();
     send.mockRejectedValueOnce(new Error('offline'));
     await expect(broadcastBunkerRefresh(client, 'liza-viktor')).resolves.toBeUndefined();
+  });
+});
+
+describe('subscribeToBunkerRefresh', () => {
+  it('shares one channel between subscribers and tears it down after the last unsubscribe', () => {
+    const { client, channel, unsubscribe } = fixture();
+    let receiveRefresh: (() => void) | undefined;
+    channel.on.mockImplementation((_type, _filter, callback) => {
+      receiveRefresh = callback as () => void;
+      return channel;
+    });
+    const first = vi.fn();
+    const second = vi.fn();
+
+    const unsubscribeFirst = subscribeToBunkerRefresh(client, 'liza-viktor', first);
+    const unsubscribeSecond = subscribeToBunkerRefresh(client, 'liza-viktor', second);
+
+    expect(client.channel).toHaveBeenCalledTimes(1);
+    expect(channel.on).toHaveBeenCalledTimes(1);
+    receiveRefresh?.();
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(1);
+
+    unsubscribeFirst();
+    expect(unsubscribe).not.toHaveBeenCalled();
+    receiveRefresh?.();
+    expect(first).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledTimes(2);
+
+    unsubscribeSecond();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
 
