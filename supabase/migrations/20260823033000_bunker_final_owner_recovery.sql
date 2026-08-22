@@ -1,5 +1,15 @@
-alter function public.owner_get_bunker_control(uuid)
-  rename to _owner_get_bunker_control_before_final_gate;
+do $migration$
+begin
+  if to_regprocedure(
+    'public._owner_get_bunker_control_before_final_gate(uuid)'
+  ) is null then
+    if to_regprocedure('public.owner_get_bunker_control(uuid)') is null then
+      raise exception 'owner_get_bunker_control(uuid) must exist before installing the final gate';
+    end if;
+    execute 'alter function public.owner_get_bunker_control(uuid) rename to _owner_get_bunker_control_before_final_gate';
+  end if;
+end;
+$migration$;
 revoke all on function public._owner_get_bunker_control_before_final_gate(uuid)
   from public, anon, authenticated;
 
@@ -30,8 +40,20 @@ begin
 end;
 $$;
 
-alter function public.owner_advance_bunker_game_state(uuid, text)
-  rename to _owner_advance_bunker_game_state_before_final_gate;
+do $migration$
+begin
+  if to_regprocedure(
+    'public._owner_advance_bunker_game_state_before_final_gate(uuid,text)'
+  ) is null then
+    if to_regprocedure(
+      'public.owner_advance_bunker_game_state(uuid,text)'
+    ) is null then
+      raise exception 'owner_advance_bunker_game_state(uuid,text) must exist before installing the final gate';
+    end if;
+    execute 'alter function public.owner_advance_bunker_game_state(uuid,text) rename to _owner_advance_bunker_game_state_before_final_gate';
+  end if;
+end;
+$migration$;
 revoke all on function public._owner_advance_bunker_game_state_before_final_gate(uuid, text)
   from public, anon, authenticated;
 

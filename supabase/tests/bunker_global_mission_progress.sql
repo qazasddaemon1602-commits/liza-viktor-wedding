@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(41);
+select plan(44);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -53,7 +53,9 @@ select ok(
 );
 
 insert into auth.users(id)
-values ('00000000-0000-4000-8000-000000000901');
+values
+  ('00000000-0000-4000-8000-000000000901'),
+  ('00000000-0000-4000-8000-000000000905');
 
 insert into public.events(id, slug, name, owner_user_id)
 values (
@@ -404,6 +406,49 @@ update public.bunker_state
 set global_game_state = 'FINAL_30', unlocked_at = null, bunker_revealed = false
 where event_id = '00000000-0000-4000-8000-000000000902';
 
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-4000-8000-000000000905',
+  true
+);
+select throws_ok(
+  $$ select public.owner_force_open_bunker(
+    '00000000-0000-4000-8000-000000000902',
+    'Финальный телефон не отвечает',
+    'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО'
+  ) $$,
+  '42501',
+  'owner access required',
+  'an authenticated non-owner cannot force the Bunker open'
+);
+select is(
+  (
+    select jsonb_build_object(
+      'globalGameState', state.global_game_state,
+      'unlocked', state.unlocked_at is not null
+    )
+    from public.bunker_state state
+    where state.event_id = '00000000-0000-4000-8000-000000000902'
+  ),
+  '{"globalGameState":"FINAL_30","unlocked":false}'::jsonb,
+  'the rejected non-owner recovery leaves the authoritative final state unchanged'
+);
+select is(
+  (
+    select count(*)
+    from public.owner_action_log log
+    where log.event_id = '00000000-0000-4000-8000-000000000902'
+      and log.action = 'bunker_force_open_recovery'
+  ),
+  0::bigint,
+  'the rejected non-owner recovery writes no audit entry'
+);
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-4000-8000-000000000901',
+  true
+);
+
 select throws_ok(
   $$ select public.owner_force_open_bunker(
     '00000000-0000-4000-8000-000000000902',
@@ -443,6 +488,11 @@ select ok(
       and log.payload->>'reason' = 'Финальный телефон не отвечает'
       and log.payload->>'previousState' = 'FINAL_30'
       and log.payload->>'globalGameState' = 'BUNKER_OPEN'
+      and log.payload->>'runNonce' = (
+        select state.run_nonce::text
+        from public.bunker_state state
+        where state.event_id = '00000000-0000-4000-8000-000000000902'
+      )
   ),
   'forced opening records owner, reason and state transition in the audit log'
 );

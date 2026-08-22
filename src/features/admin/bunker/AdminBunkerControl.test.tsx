@@ -600,6 +600,28 @@ describe('AdminBunkerControl', () => {
     expect(screen.getByText(/штатное открытие станет доступно после правильного финального кода/i)).toBeInTheDocument();
   });
 
+  it('enables normal opening and hides recovery after the final code unlocks the server state', async () => {
+    const taskDependencies = Object.assign(dependencies({
+      advance: vi.fn(),
+      load: vi.fn().mockResolvedValue({
+        status: 'active',
+        startedAt: '2026-08-30T19:30:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 1200,
+        soundEnabled: true,
+        globalGameState: 'FINAL_30',
+        currentMission: null,
+        unlocked: true,
+        serverNow: '2026-08-30T19:40:00.000Z',
+      }),
+    }), { forceOpen: vi.fn() });
+
+    render(<AdminBunkerControl eventId="event-1" dependencies={taskDependencies} />);
+
+    expect(await screen.findByRole('button', { name: 'ОТКРЫТЬ БУНКЕР' })).toBeEnabled();
+    expect(screen.queryByRole('region', { name: 'Аварийное открытие Бункера' })).not.toBeInTheDocument();
+  });
+
   it('requires a recovery reason and exact phrase before the owner can force the Bunker open', async () => {
     const user = userEvent.setup();
     const forceOpen = vi.fn().mockResolvedValue({
