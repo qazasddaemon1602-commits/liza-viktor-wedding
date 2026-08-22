@@ -35,6 +35,34 @@ describe('BunkerTestPanel', () => {
     expect(screen.getByText(/работают только в режиме репетиции/i)).toBeInTheDocument();
   });
 
+  it('disables rehearsal sizes below the number of real registrations', () => {
+    render(
+      <BunkerTestPanel
+        state={{ gameMode: 'idle', globalState: null, realGuestCount: 25 }}
+        {...callbacks()}
+      />,
+    );
+
+    expect(screen.getByText(/сейчас реальных гостей: 25/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ДО 15 ГОСТЕЙ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'ДО 20 ГОСТЕЙ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'ДО 30 ГОСТЕЙ' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'ДО 40 ГОСТЕЙ' })).toBeEnabled();
+  });
+
+  it('locks roster-changing actions while a rehearsal run is active', () => {
+    render(
+      <BunkerTestPanel
+        state={{ gameMode: 'test', globalState: 'MISSION_03', realGuestCount: 12 }}
+        {...callbacks()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'ДО 20 ГОСТЕЙ' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'ПОДГОТОВИТЬ ТЕСТОВУЮ ИГРУ' })).toBeDisabled();
+    expect(screen.getByText(/сначала сбросьте только игровой прогресс/i)).toBeInTheDocument();
+  });
+
   it('keeps destructive reset commands disabled during a production game even after exact confirmations are typed', async () => {
     const user = userEvent.setup();
     const handlers = callbacks();

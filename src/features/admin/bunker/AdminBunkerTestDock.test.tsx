@@ -10,6 +10,7 @@ function dependencies(overrides: Record<string, unknown> = {}) {
       globalState: 'MISSION_03',
       runActive: true,
       guestCount: 20,
+      realGuestCount: 12,
       wagonCount: 3,
     }),
     seed: vi.fn(),
@@ -27,6 +28,14 @@ function dependencies(overrides: Record<string, unknown> = {}) {
 }
 
 describe('AdminBunkerTestDock', () => {
+  it('shows real and synthetic rehearsal counts separately', async () => {
+    const deps = dependencies();
+    render(<AdminBunkerTestDock eventId="event-1" dependencies={deps} />);
+
+    expect(await screen.findByText(/всего в репетиции: 20/i)).toHaveTextContent(/реальных: 12/i);
+    expect(screen.getByText(/всего в репетиции: 20/i)).toHaveTextContent(/тестовых: 8/i);
+  });
+
   it('reloads persisted rehearsal state after a safe action', async () => {
     const user = userEvent.setup();
     const deps = dependencies();

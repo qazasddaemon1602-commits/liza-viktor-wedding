@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   accelerateTestTimer,
   fullEventReset,
+  getOwnerTestModeState,
   prepareTestGame,
   resetGameAndRegistrations,
   seedTestGuests,
@@ -26,6 +27,39 @@ describe('Bunker V2 test mode service', () => {
       p_count: 20,
     });
     await expect(seedTestGuests({ rpc }, 'event', 14)).rejects.toThrow(/15/);
+  });
+
+  it('parses real registrations separately even when an active rehearsal temporarily exceeds forty total rows', async () => {
+    const rpc = rpcMock({
+      gameMode: 'test',
+      globalState: 'MISSION_03',
+      runActive: true,
+      guestCount: 41,
+      realGuestCount: 21,
+      wagonCount: 3,
+    });
+
+    await expect(getOwnerTestModeState({ rpc }, 'event')).resolves.toEqual({
+      gameMode: 'test',
+      globalState: 'MISSION_03',
+      runActive: true,
+      guestCount: 41,
+      realGuestCount: 21,
+      wagonCount: 3,
+    });
+  });
+
+  it('keeps the rehearsal state reader compatible while the database migration is rolling out', async () => {
+    const rpc = rpcMock({
+      gameMode: 'idle',
+      globalState: null,
+      runActive: false,
+      guestCount: 20,
+      wagonCount: 3,
+    });
+
+    const state = await getOwnerTestModeState({ rpc }, 'event');
+    expect(state.realGuestCount).toBe(20);
   });
 
   it('prepares a dedicated test run and never calls production prepare directly', async () => {

@@ -154,10 +154,16 @@ export function AdminBunkerTestDock({
     );
   }
 
+  const syntheticGuestCount = Math.max(0, state.guestCount - state.realGuestCount);
+
   return (
     <>
       <BunkerTestPanel
-        state={{ gameMode: state.gameMode, globalState: state.globalState }}
+        state={{
+          gameMode: state.gameMode,
+          globalState: state.globalState,
+          realGuestCount: state.realGuestCount,
+        }}
         onSeed={(count) => run(() => deps.seed(eventId, count))}
         onPrepare={() => run(() => deps.prepare(eventId))}
         onAccelerate={() => run(() => deps.accelerate(eventId))}
@@ -170,7 +176,8 @@ export function AdminBunkerTestDock({
       />
       {error && <p className="admin-bunker-test-panel__error" role="alert">{error}</p>}
       <p className="admin-bunker-test-panel__summary">
-        Тестовых/зарегистрированных гостей: {state.guestCount} · активных вагонов: {state.wagonCount}
+        Всего в репетиции: {state.guestCount} · реальных: {state.realGuestCount}
+        {' '}· тестовых: {syntheticGuestCount} · активных вагонов: {state.wagonCount}
       </p>
     </>
   );

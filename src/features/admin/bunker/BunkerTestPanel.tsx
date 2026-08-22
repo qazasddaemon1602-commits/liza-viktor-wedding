@@ -13,6 +13,7 @@ const ITEMS = [
 export type BunkerTestPanelState = {
   gameMode: 'production' | 'test' | 'idle';
   globalState: string | null;
+  realGuestCount?: number;
 };
 
 type Props = {
@@ -67,6 +68,8 @@ export function BunkerTestPanel({
 
   const test = state.gameMode === 'test';
   const production = state.gameMode === 'production';
+  const realGuestCount = Math.max(0, Math.min(40, state.realGuestCount ?? 0));
+  const rosterLocked = production || test;
 
   return (
     <section className="admin-bunker-test-panel" aria-label="Репетиция игры">
@@ -85,11 +88,17 @@ export function BunkerTestPanel({
 
       <div className="admin-bunker-test-panel__seed">
         <span>Общий состав — реальные + тестовые. Дополнить до:</span>
+        {state.realGuestCount !== undefined && (
+          <small>Сейчас реальных гостей: {realGuestCount}. Меньший общий состав выбрать нельзя.</small>
+        )}
+        {test && (
+          <small>Чтобы изменить состав репетиции, сначала сбросьте только игровой прогресс.</small>
+        )}
         {[15, 20, 30, 40].map((count) => (
           <button
             key={count}
             type="button"
-            disabled={busy || production}
+            disabled={busy || rosterLocked || count < realGuestCount}
             onClick={() => run(() => onSeed?.(count))}
           >
             ДО {count} ГОСТЕЙ
@@ -97,7 +106,7 @@ export function BunkerTestPanel({
         ))}
         <button
           type="button"
-          disabled={busy || production}
+          disabled={busy || rosterLocked}
           onClick={() => run(() => onPrepare?.())}
         >
           ПОДГОТОВИТЬ ТЕСТОВУЮ ИГРУ
