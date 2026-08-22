@@ -81,9 +81,10 @@ export function BunkerTestPanel({
         </strong>
       </header>
       <p>Эти инструменты работают только в режиме репетиции и не могут изменить активную боевую игру.</p>
+      <p>Реальные регистрации сохраняются. Тестовые пассажиры только дополняют состав для безопасной проверки.</p>
 
       <div className="admin-bunker-test-panel__seed">
-        <span>Создать тестовый состав:</span>
+        <span>Общий состав — реальные + тестовые. Дополнить до:</span>
         {[15, 20, 30, 40].map((count) => (
           <button
             key={count}
@@ -91,7 +92,7 @@ export function BunkerTestPanel({
             disabled={busy || production}
             onClick={() => run(() => onSeed?.(count))}
           >
-            {count} ГОСТЕЙ
+            ДО {count} ГОСТЕЙ
           </button>
         ))}
         <button
