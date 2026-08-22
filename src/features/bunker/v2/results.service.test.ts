@@ -36,5 +36,7 @@ describe('Bunker V2 results', () => {
   it('rejects malformed statistics instead of guessing', () => {
     expect(() => parseBunkerV2Results({ ...completed, coordinationScore: 130 })).toThrow(/results/i);
     expect(() => parseBunkerV2Results({ ...completed, characters: { saved: -1 } })).toThrow(/results/i);
+    expect(() => parseBunkerV2Results({ ...completed, emergencyOpen: 'false' })).toThrow(/results/i);
+    expect(() => parseBunkerV2Results({ ...completed, missionsTotal: 18 })).toThrow(/results/i);
   });
 });
