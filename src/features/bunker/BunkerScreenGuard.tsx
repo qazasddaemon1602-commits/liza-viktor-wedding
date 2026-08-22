@@ -154,8 +154,17 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
 
   const applyProjection = (next: any, set: (value: any) => void) => {
     if (!next) return;
-    setContractVersion(next.contractVersion);
-    set(next.status === 'active' || next.status === 'completed' ? { model: next, receivedAt: Date.now() } : null);
+    if (next.status === 'legacy') {
+      setContractVersion(1);
+      set(null);
+      return;
+    }
+    if (next.status === 'active' || next.status === 'completed') {
+      setContractVersion(2);
+      set({ model: next, receivedAt: Date.now() });
+      return;
+    }
+    set(null);
   };
 
   const refresh = () => {
@@ -171,8 +180,12 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     void Promise.resolve(deps.loadFinal?.() ?? null).then((value) => applyProjection(value, setFinal)).catch(() => {});
     if (deps.loadResults) {
       void deps.loadResults().then((value) => {
-        setContractVersion(value.contractVersion);
-        setResults(value.status === 'completed' ? { model: value, receivedAt: Date.now() } : null);
+        if (value.status === 'completed') {
+          setContractVersion(2);
+          setResults({ model: value, receivedAt: Date.now() });
+        } else {
+          setResults(null);
+        }
       }).catch(() => {});
     }
   };
