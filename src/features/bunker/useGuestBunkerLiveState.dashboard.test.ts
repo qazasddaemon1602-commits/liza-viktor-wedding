@@ -89,13 +89,13 @@ const missionThree = {
   instanceVersion: 1,
   title: 'Аварийный запас',
   intro: 'Выберите проблемы.',
+  wagon: { number: 1, label: 'ВАГОН №1' },
   memberRole: 'captain' as const,
   problems: [],
   inventory: [],
   selectedProblems: [],
   ability: null,
   pendingCommitments: [],
-  outcome: null,
 };
 
 describe('persistent dashboard live state', () => {
