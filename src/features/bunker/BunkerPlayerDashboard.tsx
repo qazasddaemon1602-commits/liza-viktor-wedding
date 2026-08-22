@@ -325,8 +325,8 @@ export function BunkerPlayerDashboard({
             {passengers.length ? passengers.map((passenger) => (
               <article key={String(passenger.guestId)}>
                 <h3>{String(passenger.realName)}</h3>
-                {passenger.profession && <strong>{String(passenger.profession)}</strong>}
-                {passenger.visibleSkill && <p>{String(passenger.visibleSkill)}</p>}
+                {nonEmptyText(passenger.profession) && <strong>{String(passenger.profession)}</strong>}
+                {nonEmptyText(passenger.visibleSkill) && <p>{String(passenger.visibleSkill)}</p>}
                 {passenger.hiddenTraitRevealed && passenger.hiddenTrait
                   ? <small>{String(passenger.hiddenTrait)}</small>
                   : <small>Скрытая характеристика пока неизвестна</small>}
@@ -361,7 +361,7 @@ export function BunkerPlayerDashboard({
               fallbackInventory.length ? fallbackInventory.map((item, index) => (
                 <article key={`${String(item.itemKey)}:${index}`}>
                   <h3>{bunkerItemLabel(String(item.itemKey))}</h3>
-                  {item.status && <strong>{bunkerStatusLabel(String(item.status))}</strong>}
+                  {nonEmptyText(item.status) && <strong>{bunkerStatusLabel(String(item.status))}</strong>}
                   <p>Количество: {String(item.quantity)}</p>
                 </article>
               )) : (
