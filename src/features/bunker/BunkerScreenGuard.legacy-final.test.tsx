@@ -52,7 +52,7 @@ describe('BunkerScreenGuard legacy final compatibility', () => {
     );
     await flush();
 
-    expect(screen.getByRole('region', { name: 'Бункер · общий экран' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Бункер · экран квеста' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Финал · общий экран' })).not.toBeInTheDocument();
   });
 
@@ -67,7 +67,35 @@ describe('BunkerScreenGuard legacy final compatibility', () => {
     );
     await flush();
 
-    expect(screen.getByRole('region', { name: 'Бункер · общий экран' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Бункер · экран квеста' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Бункер открыт · итоги игры' })).not.toBeInTheDocument();
+  });
+
+  it('does not assume V2 while the final contract read is still pending', async () => {
+    let resolveFinal: ((value: typeof legacyProjection) => void) | undefined;
+    const pendingFinal = new Promise<typeof legacyProjection>((resolve) => {
+      resolveFinal = resolve;
+    });
+
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue(legacyState('FINAL_30')),
+        loadFinal: vi.fn().mockReturnValue(pendingFinal),
+      }}>
+        <div>base</div>
+      </BunkerScreenGuard>,
+    );
+    await flush();
+
+    expect(screen.getByRole('region', { name: 'Бункер · экран квеста' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Финал · общий экран' })).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveFinal?.(legacyProjection);
+      await pendingFinal;
+    });
+
+    expect(screen.getByRole('region', { name: 'Бункер · экран квеста' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Финал · общий экран' })).not.toBeInTheDocument();
   });
 });
