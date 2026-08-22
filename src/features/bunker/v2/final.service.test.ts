@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getGuestFinalReadModel, parseFinalGuestReadModel, requestFinalAccess, type FinalRpcClient } from './final.service';
+import {
+  getFinalScreenReadModel,
+  getGuestFinalReadModel,
+  parseFinalGuestReadModel,
+  requestFinalAccess,
+  type FinalRpcClient,
+} from './final.service';
 
 const active = {
   contractVersion: 2,
@@ -18,9 +24,26 @@ const active = {
   timeAdjustmentSeconds: 240,
 } as const;
 
+const screenModel = {
+  contractVersion: 2,
+  status: 'active',
+  serverNow: active.serverNow,
+  deadlineAt: active.deadlineAt,
+  solved: 2,
+  total: 5,
+  wrongAttempts: 1,
+  unlocked: false,
+  hintLevel: 1,
+  timeAdjustmentSeconds: 240,
+} as const;
+
 describe('final guest contract', () => {
   it('parses only the caller wagon fragments and the shared terminal status', async () => {
-    const model = await getGuestFinalReadModel({ rpc: vi.fn().mockResolvedValue({ data: active, error: null }) }, 'liza-viktor', 'device');
+    const model = await getGuestFinalReadModel(
+      { rpc: vi.fn().mockResolvedValue({ data: active, error: null }) },
+      'liza-viktor',
+      'device',
+    );
     expect(model.status).toBe('active');
     if (model.status !== 'active') throw new Error('active expected');
     expect(model.fragments).toEqual(active.fragments);
@@ -47,10 +70,48 @@ describe('final guest contract', () => {
     })).toThrow(/hint/i);
   });
 
+  it('validates the public TV and owner final projection at runtime', async () => {
+    const model = await getFinalScreenReadModel(
+      { rpc: vi.fn().mockResolvedValue({ data: screenModel, error: null }) },
+      'liza-viktor',
+    );
+    expect(model).toEqual(screenModel);
+
+    await expect(getFinalScreenReadModel(
+      {
+        rpc: vi.fn().mockResolvedValue({
+          data: { ...screenModel, unlocked: 'false' },
+          error: null,
+        }),
+      },
+      'liza-viktor',
+    )).rejects.toThrow(/unlocked/i);
+  });
+
   it('submits the five terminal fields only through request_access', async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'request_access' }, error: null });
+    const rpc = vi.fn().mockResolvedValue({
+      data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'request_access' },
+      error: null,
+    });
     const client: FinalRpcClient = { rpc };
-    await requestFinalAccess(client, { eventSlug: 'liza-viktor', deviceKey: 'device', commandId: 'cmd', values: { coordinates: '57°09 / 65°32', sector: '04', accessCode: '4719', gateTime: '23:40', password: 'LV0830' } });
-    expect(rpc).toHaveBeenCalledWith('submit_bunker_command', expect.objectContaining({ p_command_type: 'request_access', p_payload: { coordinates: '57°09 / 65°32', sector: '04', accessCode: '4719', gateTime: '23:40', password: 'LV0830' } }));
+    await requestFinalAccess(client, {
+      eventSlug: 'liza-viktor',
+      deviceKey: 'device',
+      commandId: 'cmd',
+      values: {
+        coordinates: '57°09 / 65°32',
+        sector: '04',
+        accessCode: '4719',
+        gateTime: '23:40',
+        password: 'LV0830',
+      },
+    });
+    expect(rpc).toHaveBeenCalledWith('submit_bunker_command', expect.objectContaining({
+      p_command_type: 'request_access',
+      p_payload: {
+        coordinates: '57°09 / 65°32', sector: '04', accessCode: '4719',
+        gateTime: '23:40', password: 'LV0830',
+      },
+    }));
   });
 });
