@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(9);
 
 select has_function('public', 'get_guest_bunker_v2_m02', array['text','text'], 'M02 exposes a guest read model');
 select has_function('public', 'get_bunker_v2_m02_screen', array['text'], 'M02 exposes a public TV read model');
@@ -26,6 +26,11 @@ select ok(
   (select prosecdef from pg_proc where oid='public.get_guest_bunker_v2_m02(text,text)'::regprocedure)
   and coalesce('search_path=""'=any((select proconfig from pg_proc where oid='public.get_guest_bunker_v2_m02(text,text)'::regprocedure)), false),
   'M02 guest read model is hardened SECURITY DEFINER'
+);
+select ok(
+  pg_get_functiondef('public.get_owner_bunker_v2_m02(uuid)'::regprocedure) ~ 'contract_version'
+  and pg_get_functiondef('public.get_owner_bunker_v2_m02(uuid)'::regprocedure) ~ '''legacy''',
+  'M02 owner read preserves owner hint counts while enforcing the V2 contract boundary'
 );
 
 select * from finish();
