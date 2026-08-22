@@ -168,6 +168,7 @@ const GLOBAL_STATE_LABELS: Record<BunkerGlobalGameState, string> = {
   MISSION_05: 'ЗАДАНИЕ 5 · ОДИН ШАНС',
   MISSION_06: 'ЗАДАНИЕ 6 · ОБЩИЙ ПРОТОКОЛ',
   STORY_BUNKER: 'ИСТОРИЯ БУНКЕРА',
+  UNKNOWN_PASSENGER: 'НЕИЗВЕСТНЫЙ ПАССАЖИР',
   BREAK_BEFORE_FINAL: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ',
   FINAL_30: 'ФИНАЛ · 30 МИНУТ',
   BUNKER_OPEN: 'БУНКЕР ОТКРЫТ',
@@ -207,7 +208,6 @@ const V2_GLOBAL_STATE_NEXT: Partial<Record<BunkerV2GlobalState, {
   MISSION_06: { state: 'UNKNOWN_PASSENGER', label: 'ПОКАЗАТЬ · НЕИЗВЕСТНЫЙ ПАССАЖИР' },
   UNKNOWN_PASSENGER: { state: 'BREAK_BEFORE_FINAL', label: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ' },
   BREAK_BEFORE_FINAL: { state: 'FINAL_30', label: 'НАЧАТЬ ФИНАЛ · 30:00' },
-  FINAL_30: { state: 'BUNKER_OPEN', label: 'ОТКРЫТЬ БУНКЕР' },
   BUNKER_OPEN: { state: 'FINISHED', label: 'ЗАВЕРШИТЬ ИГРУ' },
 };
 
