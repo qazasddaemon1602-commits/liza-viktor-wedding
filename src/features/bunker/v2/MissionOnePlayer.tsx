@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { MissionBriefing } from './MissionBriefing';
+import { bunkerMissionContent } from './missionContent';
+
 
 export type MissionOnePlayerMember = {
   guestId: string;
