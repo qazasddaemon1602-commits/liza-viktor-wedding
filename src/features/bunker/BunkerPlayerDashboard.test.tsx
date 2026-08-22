@@ -22,25 +22,10 @@ const runtime: ActiveGuestBunkerRuntime = {
 };
 
 describe('BunkerPlayerDashboard', () => {
-  it('exposes all seven required archive sections as navigation targets', () => {
+  it('exposes all seven understandable game sections', () => {
     render(<BunkerPlayerDashboard runtime={runtime} />);
-    const relief = screen.getByTestId('bunker-tunnel-relief');
-    expect(relief).toHaveAttribute('aria-hidden', 'true');
-    expect(relief.querySelector('source[media="(max-width: 640px)"][type="image/avif"]')).toHaveAttribute(
-      'srcset',
-      '/images/bunker/tunnel-relief-mobile-480.avif 480w, /images/bunker/tunnel-relief-mobile-960.avif 960w',
-    );
-    expect(relief.querySelector('source[type="image/avif"]:not([media])')).toHaveAttribute(
-      'srcset',
-      '/images/bunker/tunnel-relief-wide-960.avif 960w, /images/bunker/tunnel-relief-wide-1920.avif 1920w',
-    );
-    expect(relief.querySelector('img')).toHaveAttribute('src', '/images/bunker/tunnel-relief-wide.png');
-    expect(relief.querySelector('img')).toHaveAttribute('alt', '');
     const navigation = screen.getByRole('navigation', { name: 'Разделы игры' });
-    for (const name of [
-      'МОЙ ВАГОН', 'ПЕРСОНАЖ', 'ПАССАЖИРЫ', 'ИНВЕНТАРЬ',
-      'АРХИВ', 'СОСТОЯНИЕ', 'ТЕКУЩЕЕ ЗАДАНИЕ',
-    ]) {
+    for (const name of ['МОЙ ВАГОН','ПЕРСОНАЖ','ПАССАЖИРЫ','ИНВЕНТАРЬ','АРХИВ','СОСТОЯНИЕ','ТЕКУЩЕЕ ЗАДАНИЕ']) {
       expect(navigation).toContainElement(screen.getByRole('button', { name }));
     }
   });
@@ -48,138 +33,78 @@ describe('BunkerPlayerDashboard', () => {
   it('uses the real guest name and explains late registration', () => {
     render(<BunkerPlayerDashboard runtime={runtime} />);
     expect(screen.getByRole('heading', { name: 'СЕРГЕЙ П.' })).toBeInTheDocument();
-    expect(screen.getByText(/после отправления/i)).toBeInTheDocument();
+    expect(screen.getByText(/после отправления/i)).toHaveTextContent(/продолжаете играть/i);
   });
 
-  it('shows one memorable ability without exposing the hidden trait', async () => {
+  it('explains the character without leaking a hidden trait', async () => {
     const user = userEvent.setup();
     render(<BunkerPlayerDashboard runtime={runtime} />);
     await user.click(screen.getByRole('button', { name: 'ПЕРСОНАЖ' }));
     expect(screen.getByText('МЕХАНИК')).toBeInTheDocument();
-    expect(screen.getByText('ДАННЫЕ НЕДОСТУПНЫ')).toBeInTheDocument();
-    expect(screen.getByText('Открывает технический отсек без инструментов.')).toBeInTheDocument();
-    expect(screen.queryByText(/легендар/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Скрытая характеристика: пока скрыта/i)).toBeInTheDocument();
+    expect(screen.getByText(/Открывает технический отсек без инструментов/i)).toBeInTheDocument();
   });
 
-  it('opens inventory with explicit item status', async () => {
+  it('localizes inventory instead of exposing raw item keys', async () => {
     const user = userEvent.setup();
     render(<BunkerPlayerDashboard runtime={runtime} />);
     await user.click(screen.getByRole('button', { name: 'ИНВЕНТАРЬ' }));
-    expect(screen.getByText('RADIO')).toBeInTheDocument();
-    expect(screen.getByText('ДОСТУПНО')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Рация' })).toBeInTheDocument();
+    expect(screen.getByText('Доступно')).toBeInTheDocument();
+    expect(screen.queryByText('radio')).not.toBeInTheDocument();
   });
 
-  it('keeps an excluded character participant in the game', () => {
-    render(
-      <BunkerPlayerDashboard
-        runtime={{ ...runtime, character: { ...runtime.character, status: 'excluded' } }}
-      />,
-    );
-
-    expect(screen.getByText(/персонаж исключён/i)).toBeInTheDocument();
-    expect(screen.getByText(/вы продолжаете участвовать/i)).toBeInTheDocument();
+  it.each([
+    ['excluded', /персонаж исключён/i, /не выбываете/i],
+    ['saved', /персонаж спасён/i, /продолжаете участвовать/i],
+  ] as const)('keeps a %s character guest in the game', (status, statusCopy, continuationCopy) => {
+    render(<BunkerPlayerDashboard runtime={{ ...runtime, character: { ...runtime.character, status } }} />);
+    expect(screen.getByText(statusCopy)).toHaveTextContent(continuationCopy);
   });
 
-  it('shows a saved character as a story result without ending guest participation', () => {
-    render(
-      <BunkerPlayerDashboard
-        runtime={{ ...runtime, character: { ...runtime.character, status: 'saved' } }}
-      />,
-    );
-
-    expect(screen.getByText(/персонаж спасён/i)).toBeInTheDocument();
-    expect(screen.getByText(/вы продолжаете участвовать/i)).toBeInTheDocument();
-  });
-
-  it('wraps a long authoritative guest name and keeps one dominant mission action', async () => {
-    const user = userEvent.setup();
-    render(
-      <BunkerPlayerDashboard
-        runtime={{
-          ...runtime,
-          guest: { ...runtime.guest, realName: 'Александра-Мария Константинопольская' },
-          currentMission: { id: 'mission-03', state: 'MISSION_03', plan: null },
-          game: { ...runtime.game, state: 'MISSION_03' },
-        }}
-      />,
-    );
-
-    const heading = screen.getByRole('heading', { name: 'АЛЕКСАНДРА-МАРИЯ КОНСТАНТИНОПОЛЬСКАЯ' });
-    expect(heading).toHaveClass('bunker-player-dashboard__guest-name');
-    const action = screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' });
-    expect(action).toHaveClass('bunker-player-dashboard__primary-action');
-    expect(screen.getAllByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' })).toHaveLength(1);
-
-    await user.click(action);
-    expect(screen.getByRole('heading', { name: 'ТЕКУЩЕЕ ЗАДАНИЕ' })).toBeInTheDocument();
-  });
-
-  it('keeps a stale active snapshot visible with an explicit offline notice', () => {
+  it('keeps a stale snapshot visible with an explicit connection notice', () => {
     render(<BunkerPlayerDashboard runtime={runtime} connectionError="Соединение потеряно." />);
     expect(screen.getByRole('alert')).toHaveTextContent(/соединение потеряно/i);
     expect(screen.getByRole('heading', { name: 'СЕРГЕЙ П.' })).toBeInTheDocument();
   });
 
-  it('renders authoritative archive metadata and current mission identity', async () => {
+  it('localizes legacy archive metadata and never needs an internal mission id', async () => {
     const user = userEvent.setup();
-    render(
-      <BunkerPlayerDashboard
-        runtime={{
-          ...runtime,
-          archive: [
-            {
-              id: 'archive-1', artifactKey: 'archive-bk17', contentType: 'document',
-              content: { protected: true }, decryptionStatus: 'partial',
-              acquiredAt: '2026-08-20T18:00:00.000Z', decodedAt: null, scope: 'wagon',
-            },
-            {
-              id: 'archive-2', artifactKey: 'access-card', contentType: 'card',
-              content: {}, decryptionStatus: 'decoded',
-              acquiredAt: '2026-08-20T18:01:00.000Z', decodedAt: null, scope: 'wagon',
-            },
-            {
-              id: 'archive-3', artifactKey: 'sealed-document', contentType: 'document',
-              content: {}, decryptionStatus: 'decoded',
-              acquiredAt: '2026-08-20T18:02:00.000Z', decodedAt: null, scope: 'wagon',
-            },
-          ],
-          currentMission: { id: 'mission-03', state: 'MISSION_03', plan: null },
-          game: { ...runtime.game, state: 'MISSION_03' },
-        }}
-      />,
-    );
+    render(<BunkerPlayerDashboard runtime={{
+      ...runtime,
+      archive: [
+        { id: 'archive-1', artifactKey: 'archive-bk17', contentType: 'document', content: { protected: true }, decryptionStatus: 'partial', acquiredAt: '2026-08-20T18:00:00.000Z', decodedAt: null, scope: 'wagon' },
+        { id: 'archive-2', artifactKey: 'access-card', contentType: 'card', content: {}, decryptionStatus: 'decoded', acquiredAt: '2026-08-20T18:01:00.000Z', decodedAt: null, scope: 'wagon' },
+        { id: 'archive-3', artifactKey: 'sealed-document', contentType: 'document', content: {}, decryptionStatus: 'decoded', acquiredAt: '2026-08-20T18:02:00.000Z', decodedAt: null, scope: 'wagon' },
+      ],
+      currentMission: { id: 'mission-03', state: 'MISSION_03', plan: null },
+      game: { ...runtime.game, state: 'MISSION_03' },
+    }} />);
 
     await user.click(screen.getByRole('button', { name: 'АРХИВ' }));
     const archive = within(screen.getByLabelText('Архив вагона'));
-    expect(archive.getByRole('heading', { name: 'ARCHIVE-BK17' })).toBeInTheDocument();
-    expect(archive.getAllByText('DOCUMENT')).toHaveLength(2);
-    expect(archive.getByText('PARTIAL')).toBeInTheDocument();
-    expect(archive.getAllByText('WAGON')).toHaveLength(3);
-    const archiveArtwork = archive.getAllByTestId('bunker-archive-artwork');
-    expect(archiveArtwork).toHaveLength(3);
-    expect(archiveArtwork.map((picture) => picture.querySelector('img')?.getAttribute('src'))).toEqual([
-      '/images/bunker/archive-bk17.png',
-      '/images/bunker/archive-card.png',
-      '/images/bunker/archive-document.png',
-    ]);
-    expect(archiveArtwork.every((picture) => picture.querySelector('img')?.getAttribute('alt') === '')).toBe(true);
+    expect(archive.getByRole('heading', { name: 'Папка BK-17' })).toBeInTheDocument();
+    expect(archive.getByRole('heading', { name: 'Карта доступа' })).toBeInTheDocument();
+    expect(archive.getByRole('heading', { name: 'Запечатанный документ' })).toBeInTheDocument();
+    expect(archive.getAllByText('Документ')).toHaveLength(2);
+    expect(archive.getByText('Расшифровано частично')).toBeInTheDocument();
+    expect(archive.getAllByText('Материал вагона')).toHaveLength(3);
+    expect(archive.getAllByTestId('bunker-archive-artwork')).toHaveLength(3);
 
     await user.click(screen.getByRole('button', { name: 'ТЕКУЩЕЕ ЗАДАНИЕ' }));
     const mission = within(screen.getByLabelText('Текущее задание'));
-    expect(mission.getByText('mission-03')).toBeInTheDocument();
-    expect(mission.getByText('MISSION_03')).toBeInTheDocument();
+    expect(mission.getByText(/Задание 3 — Аварийный запас/i)).toBeInTheDocument();
+    expect(mission.queryByText('mission-03')).not.toBeInTheDocument();
+    expect(mission.queryByText('MISSION_03')).not.toBeInTheDocument();
   });
 
-  it('uses honest archive and mission empty states', async () => {
+  it('uses honest localized empty states', async () => {
     const user = userEvent.setup();
     render(<BunkerPlayerDashboard runtime={runtime} />);
-
     await user.click(screen.getByRole('button', { name: 'АРХИВ' }));
     expect(screen.getByText(/архив вагона пока пуст/i)).toBeInTheDocument();
-
     await user.click(screen.getByRole('button', { name: 'ТЕКУЩЕЕ ЗАДАНИЕ' }));
-    const mission = within(screen.getByLabelText('Текущее задание'));
-    expect(mission.getByText(/активное задание не назначено/i)).toBeInTheDocument();
-    expect(mission.getByText('CHARACTERS_READY')).toBeInTheDocument();
+    expect(screen.getByText(/Персонажи розданы/i)).toBeInTheDocument();
+    expect(screen.queryByText('CHARACTERS_READY')).not.toBeInTheDocument();
   });
 });

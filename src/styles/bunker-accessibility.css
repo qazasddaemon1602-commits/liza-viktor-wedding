@@ -1,0 +1,282 @@
+/*
+ * Accessibility hardening for the live Bunker game.
+ * Loaded after the visual Bunker styles so usability wins over decoration.
+ */
+
+.bunker-v2-mission button,
+.bunker-v2-mission select,
+.bunker-v2-mission textarea {
+  min-height: 52px;
+  font-size: 1rem;
+}
+
+.bunker-v2-mission input:not([type="radio"]):not([type="checkbox"]) {
+  min-height: 52px;
+  padding: 0.75rem 0.85rem;
+  font-size: 1rem;
+}
+
+.bunker-v2-final-terminal input {
+  min-height: 56px;
+  width: 100%;
+  padding: 0.85rem 0.9rem;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.bunker-player-dashboard__nav button {
+  min-height: 52px;
+}
+
+.bunker-v2-mission p,
+.bunker-v2-mission li,
+.bunker-v2-mission label,
+.bunker-v2-mission small,
+.bunker-v2-final-terminal p {
+  line-height: 1.55;
+}
+
+.bunker-v2-mission p,
+.bunker-v2-mission li,
+.bunker-v2-final-terminal label {
+  font-size: max(1rem, 16px);
+}
+
+.bunker-v2-final-terminal label {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+  font-weight: 700;
+}
+
+.bunker-v2-mission button:focus-visible,
+.bunker-v2-mission input:focus-visible,
+.bunker-v2-mission select:focus-visible,
+.bunker-v2-mission textarea:focus-visible,
+.bunker-player-dashboard__nav button:focus-visible {
+  outline: 3px solid #f7f3e9;
+  outline-offset: 3px;
+}
+
+.bunker-v2-mission button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.bunker-player-dashboard--results {
+  min-height: calc(100dvh - 2rem);
+  align-content: center;
+}
+
+.bunker-v2-results-player {
+  width: min(100%, 42rem);
+  margin-inline: auto;
+  padding: clamp(1.15rem, 4vw, 2rem);
+  border: 1px solid rgba(238, 233, 221, 0.24);
+  background: #181817;
+}
+
+.bunker-v2-results-player__hero {
+  display: grid;
+  gap: 0.65rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(238, 233, 221, 0.2);
+}
+
+.bunker-v2-results-player__hero span,
+.bunker-v2-results-player__score span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+}
+
+.bunker-v2-results-player__hero h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.6rem, 13vw, 5.2rem);
+  font-weight: 400;
+  line-height: 0.94;
+}
+
+.bunker-v2-results-player__hero p,
+.bunker-v2-results-player__ending {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.55;
+}
+
+.bunker-v2-results-player__score {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.25rem 0;
+}
+
+.bunker-v2-results-player__score strong {
+  font-size: clamp(2.2rem, 10vw, 4.5rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.bunker-v2-results-player__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 1.25rem;
+  background: rgba(238, 233, 221, 0.18);
+}
+
+.bunker-v2-results-player__facts p {
+  margin: 0;
+  padding: 1rem;
+  background: #0d0d0c;
+}
+
+.bunker-v2-results-player__facts strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 1.55rem;
+}
+
+.bunker-v2-results {
+  min-height: 100dvh;
+  box-sizing: border-box;
+  display: grid;
+  align-content: center;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  padding: clamp(1.5rem, 5vw, 5rem);
+  color: #eee9dd;
+  background: #0d0d0c;
+}
+
+.bunker-v2-results__hero {
+  max-width: 80rem;
+}
+
+.bunker-v2-results__hero p,
+.bunker-v2-results__hero strong,
+.bunker-v2-results__score span,
+.bunker-v2-results__grid span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.11em;
+}
+
+.bunker-v2-results__hero h1 {
+  margin: 0.35rem 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(4rem, 11vw, 10rem);
+  font-weight: 400;
+  line-height: 0.84;
+}
+
+.bunker-v2-results__score {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.bunker-v2-results__score strong {
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.bunker-v2-results__score p {
+  margin: 0;
+  font-size: clamp(1rem, 2vw, 1.5rem);
+}
+
+.bunker-v2-results__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(238, 233, 221, 0.22);
+}
+
+.bunker-v2-results__grid article {
+  min-width: 0;
+  display: grid;
+  gap: 0.45rem;
+  padding: clamp(1rem, 2vw, 1.8rem);
+  background: #181817;
+}
+
+.bunker-v2-results__grid strong {
+  font-size: clamp(1.25rem, 2.2vw, 2.2rem);
+  overflow-wrap: anywhere;
+}
+
+.bunker-v2-results__grid small,
+.bunker-v2-results footer {
+  font-size: clamp(0.9rem, 1.3vw, 1.1rem);
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .bunker-player-shell {
+    padding-bottom: calc(7.25rem + env(safe-area-inset-bottom));
+  }
+
+  .bunker-player-dashboard--results {
+    min-height: calc(100dvh - 1.3rem);
+  }
+
+  .bunker-player-dashboard__nav {
+    max-height: calc(116px + env(safe-area-inset-bottom));
+  }
+
+  .bunker-player-dashboard__nav button {
+    min-height: 54px;
+    padding: 0.45rem 0.3rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    letter-spacing: 0.025em;
+  }
+
+  .bunker-v2-mission {
+    gap: 1rem;
+  }
+
+  .bunker-v2-mission__header {
+    align-items: start;
+    gap: 0.8rem;
+  }
+
+  .bunker-v2-mission__primary,
+  .bunker-v2-final-terminal button {
+    width: 100%;
+    min-height: 56px;
+    font-size: 1rem;
+  }
+
+  .bunker-v2-final-terminal input {
+    min-height: 58px;
+    font-size: 1.2rem;
+  }
+
+  .bunker-v2-results-player__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bunker-v2-results {
+    align-content: start;
+    padding: 1.25rem;
+  }
+
+  .bunker-v2-results__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 360px) {
+  .bunker-player-dashboard__nav button {
+    font-size: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bunker-v2-mission *,
+  .bunker-v2-screen * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

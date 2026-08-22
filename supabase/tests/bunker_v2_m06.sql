@@ -1,0 +1,20 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(12);
+select has_function('public','get_guest_bunker_v2_m06',array['text','text'],'M06 guest read model');
+select has_function('public','get_bunker_v2_m06_screen',array['text'],'M06 TV read model');
+select has_function('public','get_owner_bunker_v2_m06',array['uuid'],'M06 owner read model');
+select has_function('public','_bunker_v2_m06_fragment',array['integer','integer'],'M06 creates deterministic private fragments');
+select ok(not has_function_privilege('anon','public._bunker_v2_m06_correct_protocol()','EXECUTE'),'correct protocol is server-only');
+select ok(pg_get_functiondef('public.submit_bunker_command(text,text,uuid,text,jsonb)'::regprocedure)~'_submit_bunker_command_m06','command router includes M06');
+select ok(pg_get_functiondef('public._submit_bunker_command_m06(text,text,uuid,text,jsonb)'::regprocedure)~'reveal_fragment' and pg_get_functiondef('public._submit_bunker_command_m06(text,text,uuid,text,jsonb)'::regprocedure)~'cast_vote','M06 accepts fragment reveal and votes');
+select ok(pg_get_functiondef('public.get_bunker_v2_m06_screen(text)'::regprocedure)!~'4719','TV source does not embed final access code');
+select ok(pg_get_functiondef('public._submit_bunker_command_m06(text,text,uuid,text,jsonb)'::regprocedure)~'floor\(.*2.0','M06 uses per-wagon majority thresholds');
+select ok(pg_get_functiondef('public._submit_bunker_command_m06(text,text,uuid,text,jsonb)'::regprocedure)~'ACCESS-4719' and pg_get_functiondef('public._submit_bunker_command_m06(text,text,uuid,text,jsonb)'::regprocedure)~'SECTOR-04','successful consensus writes both archive artifacts');
+select ok(pg_get_functiondef('public._submit_bunker_command_m06(text,text,uuid,text,jsonb)'::regprocedure)~'bunker_final_parameters','successful consensus resolves final parameters server-side');
+select ok(
+  pg_get_functiondef('public.get_owner_bunker_v2_m06(uuid)'::regprocedure) ~ 'get_bunker_v2_m06_screen',
+  'M06 owner read delegates to the contract-guarded public projection'
+);
+select * from finish();
+rollback;

@@ -4,19 +4,39 @@ import {
   isLegacyActiveGuestBunkerRuntime,
   type GuestBunkerReadRuntime,
 } from '../bunker/bunkerRuntime.service';
-import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
+import type { BunkerV2DashboardReadModel } from '../bunker/v2/dashboard.service';
+import type { FinalValues } from '../bunker/v2/final.service';
+import type { FinalPlayerModel } from '../bunker/v2/FinalPlayer';
+import type { MissionFivePlayerReadModel } from '../bunker/v2/MissionFivePlayer';
+import type { MissionFourPlayerReadModel } from '../bunker/v2/MissionFourPlayer';
 import type { MissionOnePlayerReadModel } from '../bunker/v2/MissionOnePlayer';
+import type { MissionSixPlayerReadModel } from '../bunker/v2/MissionSixPlayer';
+import type { MissionThreePlayerReadModel } from '../bunker/v2/MissionThreePlayer';
+import type { MissionTwoPlayerReadModel } from '../bunker/v2/MissionTwoPlayer';
+import type { UnknownPassengerPlayerModel } from '../bunker/v2/UnknownPassengerPlayer';
+import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
+import type { QuizChoice, GuestQuizState, QuizHistoryEntry } from '../quiz/quiz.service';
 import type { RegisteredGuest } from '../registration/registration.types';
 import { VirtualTicket } from '../registration/VirtualTicket';
-import type { GuestQuizState, QuizChoice, QuizHistoryEntry } from '../quiz/quiz.service';
 import { GuestLiveActivity } from './GuestLiveActivity';
 
-type GuestHubProps = {
+type ActiveDashboard = Extract<BunkerV2DashboardReadModel, { status: 'active' }>;
+
+type Props = {
   guest: RegisteredGuest;
   activeCall: GuestCarriageCall | null;
   bunkerState?: GuestBunkerQuestState | null;
   bunkerRuntime?: GuestBunkerReadRuntime | null;
+  bunkerDashboard?: ActiveDashboard;
+  bunkerDashboardError?: string;
   bunkerMissionOne?: MissionOnePlayerReadModel;
+  bunkerMissionTwo?: MissionTwoPlayerReadModel;
+  bunkerMissionThree?: MissionThreePlayerReadModel;
+  bunkerMissionFour?: MissionFourPlayerReadModel;
+  bunkerMissionFive?: MissionFivePlayerReadModel;
+  bunkerMissionSix?: MissionSixPlayerReadModel;
+  bunkerUnknownPassenger?: UnknownPassengerPlayerModel;
+  bunkerFinal?: FinalPlayerModel;
   bunkerRuntimeLoading?: boolean;
   bunkerRuntimeError?: string;
   bunkerFeedback?: string;
@@ -24,7 +44,25 @@ type GuestHubProps = {
   bunkerSubmitting?: boolean;
   onBunkerMission?: (stage: BunkerMissionStage, answer: string) => void;
   onBunkerFinalCode?: (code: string) => void;
-  onConfirmBunkerMissionOne?: (selectedGuestIds: string[]) => Promise<void> | void;
+  onConfirmBunkerMissionOne?: (ids: string[]) => Promise<void> | void;
+  onSubmitBunkerMissionTwo?: (answers: string[]) => Promise<void> | void;
+  onUseBunkerMissionTwoAbility?: (ability: 'system_access' | 'terminal_hack') => Promise<void> | void;
+  onConfirmBunkerMissionThree?: (problems: string[]) => Promise<void> | void;
+  onUseBunkerMissionThreeAbility?: (problem: string) => Promise<void> | void;
+  onSendBunkerMissionFourMessage?: (message: string) => Promise<void> | void;
+  onProposeBunkerMissionFourTrade?: (input: {
+    targetWagonNumber: number;
+    itemKey: string;
+    quantity: number;
+  }) => Promise<void> | void;
+  onRespondBunkerMissionFourTrade?: (id: string, response: 'accept' | 'reject') => Promise<void> | void;
+  onSubmitBunkerMissionFourAnswer?: (answer: string) => Promise<void> | void;
+  onCastBunkerMissionFiveVote?: (vote: 'A' | 'B') => Promise<void> | void;
+  onUseBunkerMissionFiveAbility?: () => Promise<void> | void;
+  onRevealBunkerMissionSixFragment?: () => Promise<void> | void;
+  onCastBunkerMissionSixVote?: (vote: 'A' | 'B' | 'C') => Promise<void> | void;
+  onUseBunkerMissionSixAbility?: () => Promise<void> | void;
+  onRequestBunkerFinalAccess?: (values: FinalValues) => Promise<void> | void;
   quizState: GuestQuizState | null;
   quizError?: string;
   quizSubmitting?: QuizChoice | null;
@@ -37,8 +75,7 @@ function percentage(value: number, total: number): number {
 }
 
 function historyFrom(state: GuestQuizState | null): QuizHistoryEntry[] {
-  if (!state || !('history' in state) || !state.history) return [];
-  return state.history;
+  return state && 'history' in state && state.history ? state.history : [];
 }
 
 function bunkerStatus(state: GuestBunkerQuestState | null): string {
@@ -47,9 +84,9 @@ function bunkerStatus(state: GuestBunkerQuestState | null): string {
     case 'emergency': return 'ЭКСТРЕННОЕ СООБЩЕНИЕ';
     case 'dossier_1': return 'ДОСЬЕ · ЭТАП I';
     case 'dossier_2': return 'ДОСЬЕ · ЭТАП II';
-    case 'mission_a': return 'ЗАДАНИЕ A';
-    case 'mission_b': return 'ЗАДАНИЕ B';
-    case 'final': return state.final.unlocked ? 'ДОСТУП ПОЛУЧЕН' : 'ФИНАЛЬНЫЙ КОД';
+    case 'mission_a': return 'КОМАНДНОЕ ЗАДАНИЕ';
+    case 'mission_b': return 'ОБЩЕЕ ЗАДАНИЕ';
+    case 'final': return state.final.unlocked ? 'ДОСТУП ПОЛУЧЕН' : 'ФИНАЛЬНЫЙ ДОСТУП';
     case 'completed': return 'БУНКЕР ОТКРЫТ';
   }
 }
@@ -59,7 +96,16 @@ export function GuestHub({
   activeCall,
   bunkerState = null,
   bunkerRuntime = null,
+  bunkerDashboard,
+  bunkerDashboardError = '',
   bunkerMissionOne,
+  bunkerMissionTwo,
+  bunkerMissionThree,
+  bunkerMissionFour,
+  bunkerMissionFive,
+  bunkerMissionSix,
+  bunkerUnknownPassenger,
+  bunkerFinal,
   bunkerRuntimeLoading = false,
   bunkerRuntimeError = '',
   bunkerFeedback = '',
@@ -68,28 +114,63 @@ export function GuestHub({
   onBunkerMission = () => undefined,
   onBunkerFinalCode = () => undefined,
   onConfirmBunkerMissionOne,
+  onSubmitBunkerMissionTwo,
+  onUseBunkerMissionTwoAbility,
+  onConfirmBunkerMissionThree,
+  onUseBunkerMissionThreeAbility,
+  onSendBunkerMissionFourMessage,
+  onProposeBunkerMissionFourTrade,
+  onRespondBunkerMissionFourTrade,
+  onSubmitBunkerMissionFourAnswer,
+  onCastBunkerMissionFiveVote,
+  onUseBunkerMissionFiveAbility,
+  onRevealBunkerMissionSixFragment,
+  onCastBunkerMissionSixVote,
+  onUseBunkerMissionSixAbility,
+  onRequestBunkerFinalAccess,
   quizState,
   quizError = '',
   quizSubmitting = null,
   onQuizVote,
   onQuizDeadline,
-}: GuestHubProps) {
-  const activeV2MissionOne = Boolean(
+}: Props) {
+  const activeV2 = Boolean(
     bunkerRuntime
     && bunkerRuntime.status === 'active'
     && 'contractVersion' in bunkerRuntime
-    && bunkerRuntime.contractVersion === 2
-    && bunkerRuntime.state === 'MISSION_01'
-    && bunkerMissionOne,
+    && bunkerRuntime.contractVersion === 2,
   );
-  if (bunkerRuntime && (isLegacyActiveGuestBunkerRuntime(bunkerRuntime) || activeV2MissionOne)) {
+
+  if (bunkerRuntime && (isLegacyActiveGuestBunkerRuntime(bunkerRuntime) || activeV2)) {
     return (
       <main className="bunker-player-shell theme-bunker">
         <BunkerPlayerDashboard
           runtime={bunkerRuntime as Parameters<typeof BunkerPlayerDashboard>[0]['runtime']}
-          connectionError={bunkerRuntimeError}
+          dashboard={bunkerDashboard}
+          connectionError={bunkerRuntimeError || bunkerDashboardError}
           missionOne={bunkerMissionOne}
+          missionTwo={bunkerMissionTwo}
+          missionThree={bunkerMissionThree}
+          missionFour={bunkerMissionFour}
+          missionFive={bunkerMissionFive}
+          missionSix={bunkerMissionSix}
+          unknownPassenger={bunkerUnknownPassenger}
+          final={bunkerFinal}
           onConfirmMissionOne={onConfirmBunkerMissionOne}
+          onSubmitMissionTwo={onSubmitBunkerMissionTwo}
+          onUseMissionTwoAbility={onUseBunkerMissionTwoAbility}
+          onConfirmMissionThree={onConfirmBunkerMissionThree}
+          onUseMissionThreeAbility={onUseBunkerMissionThreeAbility}
+          onSendMissionFourMessage={onSendBunkerMissionFourMessage}
+          onProposeMissionFourTrade={onProposeBunkerMissionFourTrade}
+          onRespondMissionFourTrade={onRespondBunkerMissionFourTrade}
+          onSubmitMissionFourAnswer={onSubmitBunkerMissionFourAnswer}
+          onCastMissionFiveVote={onCastBunkerMissionFiveVote}
+          onUseMissionFiveAbility={onUseBunkerMissionFiveAbility}
+          onRevealMissionSixFragment={onRevealBunkerMissionSixFragment}
+          onCastMissionSixVote={onCastBunkerMissionSixVote}
+          onUseMissionSixAbility={onUseBunkerMissionSixAbility}
+          onRequestFinalAccess={onRequestBunkerFinalAccess}
         />
       </main>
     );

@@ -7,7 +7,6 @@ async function flush() {
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    await Promise.resolve();
   });
 }
 
@@ -33,13 +32,11 @@ const missionOneProjection = {
   deadlineAt: '2026-08-21T18:09:00.000Z',
   title: 'Лишний пассажир',
   publicSummary: 'Вагоны принимают решение по открытым частям досье.',
-  wagons: [
-    { wagonId: 'carriage-1', label: 'ВАГОН №1', status: 'active' as const },
-  ],
+  wagons: [{ wagonId: 'carriage-1', label: 'ВАГОН №1', status: 'active' as const }],
 };
 
-describe('BunkerScreenGuard · задание 1 на общем экране', () => {
-  it('показывает сцену задания, даже когда проекция задания ещё не пришла', async () => {
+describe('BunkerScreenGuard · M01 on common TV', () => {
+  it('shows a protected mission scene even before the optional M01 projection arrives', async () => {
     render(
       <BunkerScreenGuard dependencies={{ load: vi.fn().mockResolvedValue(activeRun) }}>
         <div>ОБЫЧНЫЙ ЭКРАН</div>
@@ -48,10 +45,11 @@ describe('BunkerScreenGuard · задание 1 на общем экране', (
     await flush();
 
     expect(screen.getByRole('region', { name: 'Задание 1 · общий экран' })).toBeInTheDocument();
+    expect(screen.getByText(/ЛИШНИЙ ПАССАЖИР/)).toBeInTheDocument();
     expect(screen.queryByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).not.toBeInTheDocument();
   });
 
-  it('не оставляет ТВ пустым, когда чтение проекции задания падает, и восстанавливается при следующем опросе', async () => {
+  it('keeps base TV state when the mission projection request fails and recovers later', async () => {
     let refresh: (() => void) | undefined;
     const loadMissionOne = vi.fn()
       .mockRejectedValueOnce(new Error('projection unavailable'))
@@ -68,7 +66,6 @@ describe('BunkerScreenGuard · задание 1 на общем экране', (
     );
     await flush();
 
-    // Базовое состояние применено несмотря на сбой проекции задания.
     expect(screen.getByRole('region', { name: 'Задание 1 · общий экран' })).toBeInTheDocument();
 
     await act(async () => {
@@ -79,5 +76,26 @@ describe('BunkerScreenGuard · задание 1 на общем экране', (
     });
 
     expect(screen.getByText('Вагоны принимают решение по открытым частям досье.')).toBeInTheDocument();
+  });
+
+  it('keeps the legacy V1 scene when the optional V2 projection reports legacy', async () => {
+    const legacyProjection = {
+      contractVersion: 2 as const,
+      status: 'legacy' as const,
+      serverNow: activeRun.serverNow,
+    };
+
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue(activeRun),
+        loadMissionOne: vi.fn().mockResolvedValue(legacyProjection),
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flush();
+
+    expect(screen.getByRole('region', { name: 'Бункер · общий экран' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Задание 1 · общий экран' })).not.toBeInTheDocument();
   });
 });

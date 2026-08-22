@@ -1,0 +1,4 @@
+export type MissionTwoOwnerPanelModel = { status: 'active' | 'completed'; title: string; remainingSeconds: number; wagons: Array<{ wagonId: string; label: string; status: 'active' | 'completed'; attemptCount: number; hintsUsed: number }> };
+export function MissionTwoOwnerPanel({ model }: { model: MissionTwoOwnerPanelModel }) {
+  return <section className="admin-bunker-mission" aria-label="Задание 2 · контроль ведущего"><header><p>ЗАДАНИЕ 2</p><h3>{model.title}</h3><strong>{Math.floor(model.remainingSeconds/60)}:{String(model.remainingSeconds%60).padStart(2,'0')}</strong></header><p>Ответы игроков здесь намеренно не показываются. Ведущий видит только ход задания.</p><ul>{model.wagons.map((wagon)=><li key={wagon.wagonId}><strong>{wagon.label}</strong><span>{wagon.status==='completed'?'ЗАВЕРШЕНО':'В РАБОТЕ'}</span><small>Попыток использовано: {wagon.attemptCount}</small><small>Подсказок использовано: {wagon.hintsUsed}</small></li>)}</ul></section>;
+}

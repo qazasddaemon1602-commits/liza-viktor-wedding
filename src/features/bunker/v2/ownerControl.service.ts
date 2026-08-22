@@ -158,6 +158,11 @@ export async function transitionOwnerBunkerV2(
   eventId: string,
   nextState: BunkerV2GlobalState,
 ): Promise<TransitionedOwnerBunkerV2> {
+  if (nextState === 'BUNKER_OPEN') {
+    return Promise.reject(new Error(
+      'V2 final must be solved in the terminal or opened with the emergency control.',
+    ));
+  }
   const receipt = await ownerRpc(client, 'owner_transition_bunker_v2', {
     p_event_id: eventId,
     p_next_state: nextState,

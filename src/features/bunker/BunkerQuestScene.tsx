@@ -3,10 +3,12 @@ import type { BunkerPhase } from './bunkerQuest.types';
 import type { BunkerScreenState, BunkerScreenTeamState } from './bunker.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
 import type { BunkerGlobalGameState } from './bunkerSession.service';
-import {
-  MissionOneScreen,
-  type MissionOneScreenReadModel,
-} from './v2/MissionOneScreen';
+import { MissionOneScreen, type MissionOneScreenReadModel } from './v2/MissionOneScreen';
+import { MissionTwoScreen, type MissionTwoScreenModel } from './v2/MissionTwoScreen';
+import { MissionThreeScreen, type MissionThreeScreenModel } from './v2/MissionThreeScreen';
+import { MissionFourScreen, type MissionFourScreenModel } from './v2/MissionFourScreen';
+import { MissionFiveScreen, type MissionFiveScreenModel } from './v2/MissionFiveScreen';
+import { MissionSixScreen, type MissionSixScreenModel } from './v2/MissionSixScreen';
 
 type ActiveBunkerScreen = Extract<BunkerScreenState, { status: 'active' }>;
 
@@ -15,6 +17,11 @@ type BunkerQuestSceneProps = {
   remainingSeconds: number;
   motionPreference?: 'full' | 'reduced';
   missionOne?: MissionOneScreenReadModel;
+  missionTwo?: MissionTwoScreenModel;
+  missionThree?: MissionThreeScreenModel;
+  missionFour?: MissionFourScreenModel;
+  missionFive?: MissionFiveScreenModel;
+  missionSix?: MissionSixScreenModel;
   bunkerContractVersion?: 1 | 2;
 };
 
@@ -71,7 +78,9 @@ function missionHeadline(state: ActiveBunkerScreen, phase: BunkerPhase): string 
 
 function teamComplete(team: BunkerScreenTeamState, phase: BunkerPhase): boolean {
   if (phase === 'mission_a') return team.missionAComplete;
-  if (phase === 'mission_b' || phase === 'final' || phase === 'completed') return team.missionBComplete;
+  if (phase === 'mission_b' || phase === 'final' || phase === 'completed') {
+    return team.missionBComplete;
+  }
   return false;
 }
 
@@ -102,27 +111,69 @@ export function BunkerQuestScene({
   remainingSeconds,
   motionPreference = 'full',
   missionOne,
+  missionTwo,
+  missionThree,
+  missionFour,
+  missionFive,
+  missionSix,
   bunkerContractVersion,
 }: BunkerQuestSceneProps) {
-  // Экран должен показывать «Задание 1» и тогда, когда версия контракта ещё не
-  // получена: иначе при задержке проекции ТВ оставался пустым.
+  // Preserve the latest M01 fallback from main: while the V2 contract projection
+  // is still loading, do not flash the unrelated legacy dossier screen.
   if (state.globalGameState === 'MISSION_01' && bunkerContractVersion !== 1) {
-    if (!missionOne) {
-      return (
-        <section className="bunker-mission-one-screen" aria-label="Задание 1 · общий экран">
-          <p className="bunker-quest-scene__empty" role="status">
-            ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР — ЗАГРУЖАЕМ ДАННЫЕ ВАГОНОВ…
-          </p>
-        </section>
-      );
-    }
-    return (
-      <MissionOneScreen
-        model={missionOne}
-      />
+    return missionOne ? (
+      <MissionOneScreen model={missionOne} />
+    ) : (
+      <section className="bunker-mission-one-screen" aria-label="Задание 1 · общий экран">
+        <p className="bunker-quest-scene__empty" role="status">
+          ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР — ЗАГРУЖАЕМ ДАННЫЕ ВАГОНОВ…
+        </p>
+      </section>
     );
   }
 
+  // Later V2 stages switch only on an explicit V2 contract. If the contract
+  // read is temporarily unavailable, a legacy run must keep its legacy screen.
+  if (state.globalGameState === 'MISSION_02' && bunkerContractVersion === 2) {
+    return missionTwo ? <MissionTwoScreen model={missionTwo} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 2 · общий экран">
+        <h1>ЧЁРНЫЙ ЯЩИК</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_03' && bunkerContractVersion === 2) {
+    return missionThree ? <MissionThreeScreen model={missionThree} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 3 · общий экран">
+        <h1>АВАРИЙНЫЙ ЗАПАС</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_04' && bunkerContractVersion === 2) {
+    return missionFour ? <MissionFourScreen model={missionFour} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 4 · общий экран">
+        <h1>МЕЖВАГОННАЯ СВЯЗЬ</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_05' && bunkerContractVersion === 2) {
+    return missionFive ? <MissionFiveScreen model={missionFive} /> : (
+      <section className="bunker-v2-screen" aria-label="Задание 5 · общий экран">
+        <h1>ОДИН ШАНС</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
+  if (state.globalGameState === 'MISSION_06' && bunkerContractVersion === 2) {
+    return missionSix ? <MissionSixScreen model={missionSix} /> : (
+      <section className="bunker-v2-screen bunker-v2-screen--m06" aria-label="Задание 6 · общий экран">
+        <h1>ОБЩИЙ ПРОТОКОЛ</h1>
+        <p role="status">ЗАГРУЖАЕМ ПРОГРЕСС ВАГОНОВ…</p>
+      </section>
+    );
+  }
 
   const phase = phaseForGlobalGameState(state.globalGameState, state.phase);
   const progress = progressLabel(state, phase);
@@ -179,7 +230,11 @@ export function BunkerQuestScene({
       {(phase === 'dossier_1' || phase === 'dossier_2') && (
         <div className="bunker-quest-scene__briefing">
           <span>ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ</span>
-          <strong>{phase === 'dossier_1' ? 'СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА' : 'ДОСЬЕ РАСКРЫТО · ГОТОВЬТЕСЬ К КОМАНДНОЙ ЗАДАЧЕ'}</strong>
+          <strong>
+            {phase === 'dossier_1'
+              ? 'СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА'
+              : 'ДОСЬЕ РАСКРЫТО · ГОТОВЬТЕСЬ К КОМАНДНОЙ ЗАДАЧЕ'}
+          </strong>
           <p>Телефоны гостей синхронизированы с текущим этапом.</p>
         </div>
       )}
@@ -260,8 +315,8 @@ export function BunkerQuestScene({
       )}
 
       <footer>
-        <span>LV · BUNKER ARCHIVE</span>
-        <span>СИСТЕМА · ONLINE</span>
+        <span>АРХИВ БУНКЕРА</span>
+        <span>СИСТЕМА · В СЕТИ</span>
       </footer>
     </section>
   );

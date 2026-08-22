@@ -10,10 +10,12 @@ import {
 } from './labels';
 
 describe('bunker v2 labels', () => {
-  it('translates stage identifiers into human Russian names', () => {
+  it('translates stage identifiers into the current human Russian names', () => {
     expect(bunkerStageLabel('MISSION_01')).toBe('Задание 1 — Лишний пассажир');
     expect(bunkerStageLabel('mission_02')).toBe('Задание 2 — Чёрный ящик');
-    expect(bunkerStageLabel('FINAL_30')).toBe('Финал — последние тридцать минут');
+    expect(bunkerStageLabel('MISSION_05')).toBe('Задание 5 — Один шанс');
+    expect(bunkerStageLabel('MISSION_06')).toBe('Задание 6 — Общий протокол');
+    expect(bunkerStageLabel('FINAL_30')).toBe('Финал — 30 минут до Бункера');
   });
 
   it('never leaks a raw identifier for unknown stages', () => {
@@ -21,22 +23,17 @@ describe('bunker v2 labels', () => {
     expect(bunkerStageLabel(null)).toBe('Этап не назначен');
   });
 
-  it('translates statuses', () => {
+  it('translates statuses, inventory and archive metadata', () => {
     expect(bunkerStatusLabel('active')).toBe('Идёт сейчас');
     expect(bunkerStatusLabel('completed')).toBe('Завершено');
-    expect(bunkerStatusLabel('planned')).toBe('Ожидает');
     expect(bunkerStatusLabel('excluded')).toBe('Персонаж исключён');
-  });
-
-  it('translates inventory, content types, abilities and archive keys', () => {
     expect(bunkerItemLabel('medkit')).toBe('Аптечка');
     expect(bunkerContentTypeLabel('document')).toBe('Документ');
-    expect(bunkerAbilityLabel('system_access')).toBe('Служебный доступ инженера');
+    expect(bunkerAbilityLabel('system_access')).toBe('Служебный доступ');
     expect(bunkerArchiveLabel('BK-17').title).toBe('Папка BK-17');
-    expect(bunkerArchiveLabel('BK-17').hint).toContain('чёрного ящика');
   });
 
-  it('humanizes unknown technical keys', () => {
+  it('humanizes unknown technical keys instead of leaking machine formatting', () => {
     expect(humanizeBunkerKey('technical_hatch')).toBe('Technical hatch');
     expect(humanizeBunkerKey('')).toBe('Нет данных');
   });

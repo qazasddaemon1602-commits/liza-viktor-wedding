@@ -4,44 +4,62 @@ import { BunkerEmergencyScene } from './BunkerEmergencyScene';
 import { BunkerQuestScene, phaseForGlobalGameState } from './BunkerQuestScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
 import { setBunkerPresentationProtected } from './bunkerProtection';
-import {
-  subscribeToBunkerRefresh,
-  type BunkerRealtimeClient,
-} from './bunker.realtime';
-import {
-  getBunkerScreenState,
-  type BunkerRpcClient,
-  type BunkerScreenState,
-} from './bunker.service';
-import {
-  getMissionOneScreenReadModel,
-  type MissionOneRpcClient,
-  type MissionOneScreenReadModel as MissionOneServiceScreenReadModel,
-} from './v2/m01.service';
+import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
+import { getBunkerScreenState, type BunkerRpcClient, type BunkerScreenState } from './bunker.service';
+import { getMissionOneScreenReadModel, type MissionOneRpcClient, type MissionOneScreenReadModel as M01 } from './v2/m01.service';
 import type { MissionOneScreenReadModel } from './v2/MissionOneScreen';
+import { getMissionTwoScreenReadModel, type MissionTwoScreenReadModel as M02 } from './v2/m02.service';
+import type { MissionTwoScreenModel } from './v2/MissionTwoScreen';
+import { getMissionThreeScreenReadModel, type MissionThreeScreenReadModel as M03 } from './v2/m03.service';
+import type { MissionThreeScreenModel } from './v2/MissionThreeScreen';
+import { getMissionFourScreenReadModel, type MissionFourScreenReadModel as M04 } from './v2/m04.service';
+import type { MissionFourScreenModel } from './v2/MissionFourScreen';
+import { getMissionFiveScreenReadModel, type MissionFiveScreenReadModel as M05 } from './v2/m05.service';
+import type { MissionFiveScreenModel } from './v2/MissionFiveScreen';
+import { getMissionSixScreenReadModel, type MissionSixScreenReadModel as M06 } from './v2/m06.service';
+import type { MissionSixScreenModel } from './v2/MissionSixScreen';
+import { getUnknownPassengerScreenReadModel, type UnknownPassengerScreenReadModel } from './v2/unknownPassenger.service';
+import { UnknownPassengerScreen, type UnknownPassengerScreenModel } from './v2/UnknownPassengerScreen';
+import { getFinalScreenReadModel, type FinalScreenReadModel } from './v2/final.service';
+import { FinalScreen, type FinalScreenModel } from './v2/FinalScreen';
+import { getBunkerV2Results, type BunkerV2ResultSummary, type BunkerV2ResultsReadModel } from './v2/results.service';
+import { BunkerResultsScreen, type BunkerResultsScreenModel } from './v2/BunkerResultsScreen';
 
 export type BunkerScreenGuardDependencies = {
   load: () => Promise<BunkerScreenState>;
-  loadMissionOne?: () => Promise<MissionOneServiceScreenReadModel>;
+  loadMissionOne?: () => Promise<M01>;
+  loadMissionTwo?: () => Promise<M02>;
+  loadMissionThree?: () => Promise<M03>;
+  loadMissionFour?: () => Promise<M04>;
+  loadMissionFive?: () => Promise<M05>;
+  loadMissionSix?: () => Promise<M06>;
+  loadUnknownPassenger?: () => Promise<UnknownPassengerScreenReadModel>;
+  loadFinal?: () => Promise<FinalScreenReadModel>;
+  loadResults?: () => Promise<BunkerV2ResultsReadModel>;
   subscribe?: (callback: () => void) => () => void;
   audio?: BunkerAudioController;
 };
 
-type BunkerScreenGuardProps = {
-  eventSlug?: string;
-  dependencies?: BunkerScreenGuardDependencies;
-  children: ReactNode;
-};
+type Props = { eventSlug?: string; dependencies?: BunkerScreenGuardDependencies; children: ReactNode };
+type Timed<T> = { model: T; receivedAt: number };
 
 function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies | null {
   try {
     const client = getSupabaseClient();
-    const rpcClient = client as unknown as BunkerRpcClient & MissionOneRpcClient;
-    const realtimeClient = client as unknown as BunkerRealtimeClient;
+    const rpc = client as unknown as BunkerRpcClient & MissionOneRpcClient;
+    const realtime = client as unknown as BunkerRealtimeClient;
     return {
-      load: () => getBunkerScreenState(rpcClient, eventSlug),
-      loadMissionOne: () => getMissionOneScreenReadModel(rpcClient, eventSlug),
-      subscribe: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
+      load: () => getBunkerScreenState(rpc, eventSlug),
+      loadMissionOne: () => getMissionOneScreenReadModel(rpc, eventSlug),
+      loadMissionTwo: () => getMissionTwoScreenReadModel(rpc, eventSlug),
+      loadMissionThree: () => getMissionThreeScreenReadModel(rpc, eventSlug),
+      loadMissionFour: () => getMissionFourScreenReadModel(rpc, eventSlug),
+      loadMissionFive: () => getMissionFiveScreenReadModel(rpc, eventSlug),
+      loadMissionSix: () => getMissionSixScreenReadModel(rpc, eventSlug),
+      loadUnknownPassenger: () => getUnknownPassengerScreenReadModel(rpc, eventSlug),
+      loadFinal: () => getFinalScreenReadModel(rpc, eventSlug),
+      loadResults: () => getBunkerV2Results(rpc, eventSlug),
+      subscribe: (callback) => subscribeToBunkerRefresh(realtime, eventSlug, callback),
       audio: createBunkerAudioController(),
     };
   } catch {
@@ -49,66 +67,161 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
   }
 }
 
-type TimedMissionOne = {
-  model: Extract<MissionOneServiceScreenReadModel, { status: 'active' }>;
-  receivedAt: number;
-};
+function remaining(deadline: string, serverNow: string, receivedAt: number, now: number) {
+  return Math.max(
+    0,
+    Math.ceil((Date.parse(deadline) - Date.parse(serverNow)) / 1000 - (now - receivedAt) / 1000),
+  );
+}
 
-function missionOneScreenModel(
-  value: TimedMissionOne | null,
-  nowMs: number,
+function missionOneModel(
+  value: Timed<Extract<M01, { status: 'active' }>> | null,
+  now: number,
 ): MissionOneScreenReadModel | undefined {
-  if (!value) return undefined;
-  const initialSeconds = (Date.parse(value.model.deadlineAt) - Date.parse(value.model.serverNow)) / 1000;
-  return {
+  return value ? {
     title: value.model.title,
     publicSummary: value.model.publicSummary,
-    remainingSeconds: Math.max(0, Math.ceil(initialSeconds - (nowMs - value.receivedAt) / 1000)),
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
     wagons: value.model.wagons,
-  };
+  } : undefined;
 }
 
-function remainingFromState(
+function missionTwoModel(
+  value: Timed<Extract<M02, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionTwoScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    subtitle: value.model.subtitle,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    wagons: value.model.wagons,
+  } : undefined;
+}
+
+function missionThreeModel(
+  value: Timed<Extract<M03, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionThreeScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    wagons: value.model.wagons,
+  } : undefined;
+}
+
+function missionFourModel(
+  value: Timed<Extract<M04, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionFourScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    groups: value.model.groups,
+  } : undefined;
+}
+
+function missionFiveModel(
+  value: Timed<Extract<M05, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionFiveScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    wagons: value.model.wagons,
+  } : undefined;
+}
+
+function missionSixModel(
+  value: Timed<Extract<M06, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionSixScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    fragmentsRevealed: value.model.fragmentsRevealed,
+    fragmentsTotal: value.model.fragmentsTotal,
+    wagons: value.model.wagons,
+  } : undefined;
+}
+
+function storyModel(
+  value: Timed<Extract<UnknownPassengerScreenReadModel, { status: 'active' }>> | null,
+  now: number,
+): UnknownPassengerScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    dossierId: value.model.dossierId,
+    sector: value.model.sector,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+  } : undefined;
+}
+
+function finalModel(
+  value: Timed<Extract<FinalScreenReadModel, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): FinalScreenModel | undefined {
+  return value ? {
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    solved: value.model.solved,
+    total: value.model.total,
+    wrongAttempts: value.model.wrongAttempts,
+    unlocked: value.model.unlocked,
+    hintLevel: value.model.hintLevel,
+    timeAdjustmentSeconds: value.model.timeAdjustmentSeconds,
+  } : undefined;
+}
+
+function resultModel(value: Timed<BunkerV2ResultSummary> | null): BunkerResultsScreenModel | undefined {
+  if (!value) return undefined;
+  const { contractVersion: _contractVersion, status: _status, serverNow: _serverNow, ...result } = value.model;
+  return result;
+}
+
+function stateRemaining(
   state: Extract<BunkerScreenState, { status: 'active' }>,
-  nowMs: number,
-  serverOffsetMs: number,
-): number {
-  const startedMs = Date.parse(state.startedAt);
-  if (!Number.isFinite(startedMs)) return state.remainingSeconds;
-  const effectiveNow = nowMs + serverOffsetMs;
-  return Math.max(0, Math.ceil(state.durationSeconds - (effectiveNow - startedMs) / 1000));
+  now: number,
+  serverOffset: number,
+) {
+  const started = Date.parse(state.startedAt);
+  return Number.isFinite(started)
+    ? Math.max(0, Math.ceil(state.durationSeconds - (now + serverOffset - started) / 1000))
+    : state.remainingSeconds;
 }
 
-export function BunkerScreenGuard({
-  eventSlug = 'liza-viktor',
-  dependencies,
-  children,
-}: BunkerScreenGuardProps) {
+export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, children }: Props) {
   const [browserDeps, setBrowserDeps] = useState<BunkerScreenGuardDependencies | null>(null);
   const deps = dependencies ?? browserDeps;
   const [state, setState] = useState<BunkerScreenState | null>(null);
-  const [missionOne, setMissionOne] = useState<TimedMissionOne | null>(null);
-  const [missionOneContractVersion, setMissionOneContractVersion] = useState<1 | 2 | null>(null);
+  const [one, setOne] = useState<any>(null);
+  const [two, setTwo] = useState<any>(null);
+  const [three, setThree] = useState<any>(null);
+  const [four, setFour] = useState<any>(null);
+  const [five, setFive] = useState<any>(null);
+  const [six, setSix] = useState<any>(null);
+  const [unknown, setUnknown] = useState<any>(null);
+  const [final, setFinal] = useState<any>(null);
+  const [results, setResults] = useState<Timed<BunkerV2ResultSummary> | null>(null);
+  const [contractVersion, setContractVersion] = useState<1 | 2 | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [motionPreference, setMotionPreference] = useState<'full' | 'reduced'>(() => (
+  const [motion, setMotion] = useState<'full' | 'reduced'>(() => (
     typeof window !== 'undefined'
       && typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ? 'reduced'
       : 'full'
   ));
-  const serverOffsetRef = useRef(0);
-  const latestServerMsRef = useRef(Number.NEGATIVE_INFINITY);
-  const previousUnlockRef = useRef<boolean | null>(null);
+  const offset = useRef(0);
+  const latest = useRef(Number.NEGATIVE_INFINITY);
+  const unlock = useRef<boolean | null>(null);
 
-  const applyServerState = (next: BunkerScreenState): boolean => {
-    const receivedAt = Date.now();
-    const serverMs = Date.parse(next.serverNow);
-    if (Number.isFinite(serverMs) && serverMs < latestServerMsRef.current) return false;
-    if (Number.isFinite(serverMs)) latestServerMsRef.current = serverMs;
-    serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
+  const applyState = (next: BunkerScreenState) => {
+    const received = Date.now();
+    const server = Date.parse(next.serverNow);
+    if (Number.isFinite(server) && server < latest.current) return false;
+    if (Number.isFinite(server)) latest.current = server;
+    offset.current = Number.isFinite(server) ? server - received : 0;
     setState(next);
-    setNowMs(receivedAt);
+    setNowMs(received);
     return true;
   };
 
@@ -125,36 +238,56 @@ export function BunkerScreenGuard({
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updateMotionPreference = () => setMotionPreference(query.matches ? 'reduced' : 'full');
-    updateMotionPreference();
-    query.addEventListener?.('change', updateMotionPreference);
-    return () => query.removeEventListener?.('change', updateMotionPreference);
+    const update = () => setMotion(query.matches ? 'reduced' : 'full');
+    update();
+    query.addEventListener?.('change', update);
+    return () => query.removeEventListener?.('change', update);
   }, []);
 
-  const applyMissionOne = (next: MissionOneServiceScreenReadModel | null) => {
+  const applyProjection = (next: any, set: (value: any) => void) => {
     if (!next) return;
-    setMissionOneContractVersion(next.contractVersion ?? null);
-    setMissionOne(
-      next.status === 'active'
-        ? { model: next, receivedAt: Date.now() }
-        : null,
-    );
+    if (next.status === 'legacy') {
+      setContractVersion(1);
+      set(null);
+      return;
+    }
+    if (next.status === 'active' || next.status === 'completed') {
+      setContractVersion(2);
+      set({ model: next, receivedAt: Date.now() });
+      return;
+    }
+    set(null);
   };
 
-  // Базовое состояние Бункера и проекция «Задания 1» запрашиваются независимо:
-  // сбой или задержка одного запроса не должны оставлять общий экран пустым.
   const refresh = () => {
     if (!deps) return;
-    void deps.load()
-      .then((next) => { applyServerState(next); })
-      .catch(() => {
-        // Сохраняем последнее авторитетное состояние на время обрыва сети.
-      });
+    void deps.load().then(applyState).catch(() => {});
     void Promise.resolve(deps.loadMissionOne?.() ?? null)
-      .then(applyMissionOne)
-      .catch(() => {
-        // Проекция задания догрузится следующим опросом.
-      });
+      .then((value) => applyProjection(value, setOne)).catch(() => {});
+    void Promise.resolve(deps.loadMissionTwo?.() ?? null)
+      .then((value) => applyProjection(value, setTwo)).catch(() => {});
+    void Promise.resolve(deps.loadMissionThree?.() ?? null)
+      .then((value) => applyProjection(value, setThree)).catch(() => {});
+    void Promise.resolve(deps.loadMissionFour?.() ?? null)
+      .then((value) => applyProjection(value, setFour)).catch(() => {});
+    void Promise.resolve(deps.loadMissionFive?.() ?? null)
+      .then((value) => applyProjection(value, setFive)).catch(() => {});
+    void Promise.resolve(deps.loadMissionSix?.() ?? null)
+      .then((value) => applyProjection(value, setSix)).catch(() => {});
+    void Promise.resolve(deps.loadUnknownPassenger?.() ?? null)
+      .then((value) => applyProjection(value, setUnknown)).catch(() => {});
+    void Promise.resolve(deps.loadFinal?.() ?? null)
+      .then((value) => applyProjection(value, setFinal)).catch(() => {});
+    if (deps.loadResults) {
+      void deps.loadResults().then((value) => {
+        if (value.status === 'completed') {
+          setContractVersion(2);
+          setResults({ model: value, receivedAt: Date.now() });
+        } else {
+          setResults(null);
+        }
+      }).catch(() => {});
+    }
   };
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
@@ -173,21 +306,34 @@ export function BunkerScreenGuard({
     };
   }, [deps]);
 
-
   const remainingSeconds = state?.status === 'active'
-    ? remainingFromState(state, nowMs, serverOffsetRef.current)
+    ? stateRemaining(state, nowMs, offset.current)
     : 0;
   const bunkerActive = state?.status === 'active';
-  const activePhase = state?.status === 'active'
+  const phase = state?.status === 'active'
     ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency')
     : null;
-  const emergencyPhase = bunkerActive && activePhase === 'emergency';
+  const emergency = bunkerActive && phase === 'emergency';
+  const explicitV2 = contractVersion === 2;
+  const storyActive = bunkerActive
+    && explicitV2
+    && state?.status === 'active'
+    && state.globalGameState === 'UNKNOWN_PASSENGER';
+  const finalActive = bunkerActive
+    && explicitV2
+    && state?.status === 'active'
+    && state.globalGameState === 'FINAL_30';
+  const resultsActive = bunkerActive
+    && explicitV2
+    && state?.status === 'active'
+    && (state.globalGameState === 'BUNKER_OPEN' || state.globalGameState === 'FINISHED');
+  const storyView = storyModel(unknown, nowMs);
+  const finalView = finalModel(final, nowMs);
+  const resultsView = resultModel(results);
 
   useEffect(() => {
     setBunkerPresentationProtected(bunkerActive);
-    return () => {
-      setBunkerPresentationProtected(false);
-    };
+    return () => setBunkerPresentationProtected(false);
   }, [bunkerActive]);
 
   useEffect(() => {
@@ -202,27 +348,17 @@ export function BunkerScreenGuard({
     return () => window.clearInterval(interval);
   }, [deps, bunkerActive]);
 
-
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
-    if (
-      !emergencyPhase
-      || remainingSeconds <= 0
-      || state?.status !== 'active'
-      || !state.soundEnabled
-    ) {
+    if (!emergency || remainingSeconds <= 0 || state?.status !== 'active' || !state.soundEnabled) {
       audio.stopAlarm();
       return;
     }
-
-    // Schedule the alarm even if autoplay initially blocks AudioContext.resume().
-    // The shared projector icon/slider can re-arm the context later without losing the scene.
     audio.startAlarm();
     void audio.arm();
-
     return () => audio.stopAlarm();
-  }, [deps, emergencyPhase, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [deps, emergency, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => {
     const audio = deps?.audio;
@@ -231,7 +367,6 @@ export function BunkerScreenGuard({
       audio.stopAmbience();
       return;
     }
-
     audio.startAmbience();
     void audio.arm();
     return () => audio.stopAmbience();
@@ -240,43 +375,72 @@ export function BunkerScreenGuard({
   useEffect(() => {
     const audio = deps?.audio;
     if (!bunkerActive || state?.status !== 'active') {
-      previousUnlockRef.current = null;
+      unlock.current = null;
       return;
     }
-
-    const finalPhase = activePhase === 'final' || activePhase === 'completed';
-    const wasUnlocked = previousUnlockRef.current;
-    if (
-      finalPhase
-      && state.soundEnabled
-      && wasUnlocked === false
-      && state.unlocked
-    ) {
+    const finalPhase = phase === 'final' || phase === 'completed';
+    const wasUnlocked = unlock.current;
+    if (finalPhase && state.soundEnabled && wasUnlocked === false && state.unlocked) {
       audio?.playDoorUnlock();
       void audio?.arm();
     }
-    previousUnlockRef.current = state.unlocked;
-  }, [deps, bunkerActive, activePhase, state?.status === 'active' ? state.unlocked : false, state?.status === 'active' ? state.soundEnabled : false]);
+    unlock.current = state.unlocked;
+  }, [
+    deps,
+    bunkerActive,
+    phase,
+    state?.status === 'active' ? state.unlocked : false,
+    state?.status === 'active' ? state.soundEnabled : false,
+  ]);
 
   return (
     <>
       {children}
-      {bunkerActive && state?.status === 'active' && activePhase === 'emergency' && (
-        <BunkerEmergencyScene
-          remainingSeconds={remainingSeconds}
-          motionPreference={motionPreference}
-        />
+      {bunkerActive && state?.status === 'active' && phase === 'emergency' && (
+        <BunkerEmergencyScene remainingSeconds={remainingSeconds} motionPreference={motion} />
       )}
-      {bunkerActive && state?.status === 'active' && activePhase !== 'emergency' && (
-        <BunkerQuestScene
-          key={activePhase}
-          state={state}
-          remainingSeconds={remainingSeconds}
-          motionPreference={motionPreference}
-          missionOne={missionOneScreenModel(missionOne, nowMs)}
-          bunkerContractVersion={missionOneContractVersion ?? undefined}
-        />
+      {storyActive && (
+        storyView ? <UnknownPassengerScreen model={storyView} /> : (
+          <section className="bunker-v2-screen bunker-v2-unknown-passenger-screen" aria-label="Неизвестный пассажир · общий экран">
+            <p role="status">НЕИЗВЕСТНЫЙ ПАССАЖИР · ЗАГРУЖАЕМ ДОСЬЕ BK-17…</p>
+          </section>
+        )
       )}
+      {finalActive && (
+        finalView ? <FinalScreen model={finalView} /> : (
+          <section className="bunker-v2-screen bunker-v2-final-screen" aria-label="Финал · общий экран">
+            <p role="status">ФИНАЛ · СИНХРОНИЗИРУЕМ ТЕРМИНАЛ…</p>
+          </section>
+        )
+      )}
+      {resultsActive && (
+        resultsView ? <BunkerResultsScreen model={resultsView} /> : (
+          <section className="bunker-v2-screen bunker-v2-results" aria-label="Бункер открыт · итоги игры">
+            <h1>БУНКЕР ОТКРЫТ</h1>
+            <p role="status">СОБИРАЕМ ИТОГИ ВАШЕГО СОСТАВА…</p>
+          </section>
+        )
+      )}
+      {bunkerActive
+        && state?.status === 'active'
+        && phase !== 'emergency'
+        && !storyActive
+        && !finalActive
+        && !resultsActive && (
+          <BunkerQuestScene
+            key={state.globalGameState ?? phase}
+            state={state}
+            remainingSeconds={remainingSeconds}
+            motionPreference={motion}
+            missionOne={missionOneModel(one, nowMs)}
+            missionTwo={missionTwoModel(two, nowMs)}
+            missionThree={missionThreeModel(three, nowMs)}
+            missionFour={missionFourModel(four, nowMs)}
+            missionFive={missionFiveModel(five, nowMs)}
+            missionSix={missionSixModel(six, nowMs)}
+            bunkerContractVersion={contractVersion ?? undefined}
+          />
+        )}
     </>
   );
 }

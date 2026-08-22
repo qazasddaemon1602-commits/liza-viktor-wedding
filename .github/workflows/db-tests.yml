@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - feat/admin-rehearsal-links
+      - feat/bunker-v2-completion-20260822
     paths:
       - 'supabase/**'
       - '.github/workflows/db-tests.yml'
@@ -34,4 +35,3 @@ jobs:
       - name: Stop local Supabase database
         if: always()
         run: supabase stop --no-backup
-

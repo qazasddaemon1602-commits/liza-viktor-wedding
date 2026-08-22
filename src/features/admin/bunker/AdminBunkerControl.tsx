@@ -159,15 +159,16 @@ function formatTimer(seconds: number): string {
 
 const GLOBAL_STATE_LABELS: Record<BunkerGlobalGameState, string> = {
   LOBBY: 'ПОДГОТОВКА ИГРЫ',
-  CHARACTERS_READY: 'ГОТОВНОСТЬ ПЕРСОНАЖЕЙ',
-  MISSION_01: 'МИССИЯ 01',
+  CHARACTERS_READY: 'ПЕРСОНАЖИ ГОТОВЫ',
+  MISSION_01: 'ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР',
   BREAK: 'ПЕРЕРЫВ',
-  MISSION_02: 'МИССИЯ 02',
-  MISSION_03: 'МИССИЯ 03',
-  MISSION_04: 'МИССИЯ 04',
-  MISSION_05: 'МИССИЯ 05',
-  MISSION_06: 'МИССИЯ 06',
+  MISSION_02: 'ЗАДАНИЕ 2 · ЧЁРНЫЙ ЯЩИК',
+  MISSION_03: 'ЗАДАНИЕ 3 · АВАРИЙНЫЙ ЗАПАС',
+  MISSION_04: 'ЗАДАНИЕ 4 · МЕЖВАГОННАЯ СВЯЗЬ',
+  MISSION_05: 'ЗАДАНИЕ 5 · ОДИН ШАНС',
+  MISSION_06: 'ЗАДАНИЕ 6 · ОБЩИЙ ПРОТОКОЛ',
   STORY_BUNKER: 'ИСТОРИЯ БУНКЕРА',
+  UNKNOWN_PASSENGER: 'НЕИЗВЕСТНЫЙ ПАССАЖИР',
   BREAK_BEFORE_FINAL: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ',
   FINAL_30: 'ФИНАЛ · 30 МИНУТ',
   BUNKER_OPEN: 'БУНКЕР ОТКРЫТ',
@@ -178,13 +179,13 @@ const GLOBAL_STATE_NEXT: Partial<Record<BunkerGlobalGameState, {
   state: BunkerGlobalGameState;
   label: string;
 }>> = {
-  CHARACTERS_READY: { state: 'MISSION_01', label: 'НАЧАТЬ МИССИЮ 01' },
+  CHARACTERS_READY: { state: 'MISSION_01', label: 'НАЧАТЬ ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР' },
   MISSION_01: { state: 'BREAK', label: 'ПЕРЕЙТИ К ПЕРЕРЫВУ' },
-  BREAK: { state: 'MISSION_02', label: 'НАЧАТЬ МИССИЮ 02' },
-  MISSION_02: { state: 'MISSION_03', label: 'НАЧАТЬ МИССИЮ 03' },
-  MISSION_03: { state: 'MISSION_04', label: 'НАЧАТЬ МИССИЮ 04' },
-  MISSION_04: { state: 'MISSION_05', label: 'НАЧАТЬ МИССИЮ 05' },
-  MISSION_05: { state: 'MISSION_06', label: 'НАЧАТЬ МИССИЮ 06' },
+  BREAK: { state: 'MISSION_02', label: 'НАЧАТЬ ЗАДАНИЕ 2 · ЧЁРНЫЙ ЯЩИК' },
+  MISSION_02: { state: 'MISSION_03', label: 'НАЧАТЬ ЗАДАНИЕ 3 · АВАРИЙНЫЙ ЗАПАС' },
+  MISSION_03: { state: 'MISSION_04', label: 'НАЧАТЬ ЗАДАНИЕ 4 · МЕЖВАГОННАЯ СВЯЗЬ' },
+  MISSION_04: { state: 'MISSION_05', label: 'НАЧАТЬ ЗАДАНИЕ 5 · ОДИН ШАНС' },
+  MISSION_05: { state: 'MISSION_06', label: 'НАЧАТЬ ЗАДАНИЕ 6 · ОБЩИЙ ПРОТОКОЛ' },
   MISSION_06: { state: 'STORY_BUNKER', label: 'ОТКРЫТЬ ИСТОРИЮ БУНКЕРА' },
   STORY_BUNKER: { state: 'BREAK_BEFORE_FINAL', label: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ' },
   BREAK_BEFORE_FINAL: { state: 'FINAL_30', label: 'НАЧАТЬ ФИНАЛ · 30:00' },
@@ -197,17 +198,16 @@ const V2_GLOBAL_STATE_NEXT: Partial<Record<BunkerV2GlobalState, {
   label: string;
 }>> = {
   LOBBY: { state: 'CHARACTERS_READY', label: 'ПОДГОТОВИТЬ ПЕРСОНАЖЕЙ' },
-  CHARACTERS_READY: { state: 'MISSION_01', label: 'НАЧАТЬ МИССИЮ 01' },
+  CHARACTERS_READY: { state: 'MISSION_01', label: 'НАЧАТЬ ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР' },
   MISSION_01: { state: 'BREAK', label: 'ПЕРЕЙТИ К ПЕРЕРЫВУ' },
-  BREAK: { state: 'MISSION_02', label: 'НАЧАТЬ МИССИЮ 02' },
-  MISSION_02: { state: 'MISSION_03', label: 'НАЧАТЬ МИССИЮ 03' },
-  MISSION_03: { state: 'MISSION_04', label: 'НАЧАТЬ МИССИЮ 04' },
-  MISSION_04: { state: 'MISSION_05', label: 'НАЧАТЬ МИССИЮ 05' },
-  MISSION_05: { state: 'MISSION_06', label: 'НАЧАТЬ МИССИЮ 06' },
-  MISSION_06: { state: 'UNKNOWN_PASSENGER', label: 'НЕИЗВЕСТНЫЙ ПАССАЖИР' },
+  BREAK: { state: 'MISSION_02', label: 'НАЧАТЬ ЗАДАНИЕ 2 · ЧЁРНЫЙ ЯЩИК' },
+  MISSION_02: { state: 'MISSION_03', label: 'НАЧАТЬ ЗАДАНИЕ 3 · АВАРИЙНЫЙ ЗАПАС' },
+  MISSION_03: { state: 'MISSION_04', label: 'НАЧАТЬ ЗАДАНИЕ 4 · МЕЖВАГОННАЯ СВЯЗЬ' },
+  MISSION_04: { state: 'MISSION_05', label: 'НАЧАТЬ ЗАДАНИЕ 5 · ОДИН ШАНС' },
+  MISSION_05: { state: 'MISSION_06', label: 'НАЧАТЬ ЗАДАНИЕ 6 · ОБЩИЙ ПРОТОКОЛ' },
+  MISSION_06: { state: 'UNKNOWN_PASSENGER', label: 'ПОКАЗАТЬ · НЕИЗВЕСТНЫЙ ПАССАЖИР' },
   UNKNOWN_PASSENGER: { state: 'BREAK_BEFORE_FINAL', label: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ' },
   BREAK_BEFORE_FINAL: { state: 'FINAL_30', label: 'НАЧАТЬ ФИНАЛ · 30:00' },
-  FINAL_30: { state: 'BUNKER_OPEN', label: 'ОТКРЫТЬ БУНКЕР' },
   BUNKER_OPEN: { state: 'FINISHED', label: 'ЗАВЕРШИТЬ ИГРУ' },
 };
 
@@ -385,7 +385,7 @@ export function AdminBunkerControl({
         }
         const detail = commandError instanceof BunkerCommandFailure
           ? commandError.message
-          : 'КОМАНДА БУНКЕРА: проверьте связь и owner-сессию';
+          : 'КОМАНДА БУНКЕРА: проверьте связь и вход организатора';
         setError(`Не выполнено · ${detail}. Повторный запуск не отправлен.`);
         return false;
       }
@@ -394,7 +394,7 @@ export function AdminBunkerControl({
       try {
         await deps.broadcastRefresh();
       } catch {
-        warning = 'Команда выполнена. Realtime-сигнал не отправлен — ТВ подхватят состояние автоматически.';
+        warning = 'Команда выполнена. Сигнал обновления не отправлен — ТВ подхватят состояние автоматически.';
       }
 
       try {
@@ -414,7 +414,7 @@ export function AdminBunkerControl({
     const launched = await run(async () => {
       if (bunkerContractVersion === 2) {
         if (!deps.prepareV2 || !deps.transitionV2) {
-          throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ V2', new Error('V2 owner control unavailable'));
+          throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ ИГРЫ', new Error('управление игрой недоступно'));
         }
         let currentState = v2PreparedStateRef.current
           ?? state?.globalGameState as BunkerV2GlobalState | undefined;
@@ -423,7 +423,7 @@ export function AdminBunkerControl({
             currentState = (await deps.prepareV2(eventId)).globalGameState;
             v2PreparedStateRef.current = currentState;
           } catch (cause) {
-            throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ V2', cause);
+            throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ ИГРЫ', cause);
           }
         }
         if (currentState === 'LOBBY') {
@@ -431,7 +431,7 @@ export function AdminBunkerControl({
             currentState = (await deps.transitionV2(eventId, 'CHARACTERS_READY')).globalGameState;
             v2PreparedStateRef.current = currentState;
           } catch (cause) {
-            throw new BunkerCommandFailure('ЭТАП ГОТОВНОСТИ ПЕРСОНАЖЕЙ V2', cause);
+            throw new BunkerCommandFailure('ЭТАП ПОДГОТОВКИ ПЕРСОНАЖЕЙ', cause);
           }
         }
       } else {
@@ -469,7 +469,7 @@ export function AdminBunkerControl({
     try {
       await onAcceptDistribution(selectedWagonCount);
     } catch {
-      setError('Не удалось применить распределение. Проверьте связь и owner-доступ.');
+      setError('Не удалось применить распределение. Проверьте связь и вход организатора.');
     } finally {
       setDistributionBusy(false);
     }
@@ -548,7 +548,7 @@ export function AdminBunkerControl({
       try {
         await deps.broadcastRefresh();
       } catch {
-        setError('Статус сохранён. Realtime-сигнал не отправлен — клиенты обновятся автоматически.');
+        setError('Статус сохранён. Сигнал обновления не отправлен — клиенты обновятся автоматически.');
       }
     } catch {
       setError('Не удалось сохранить сюжетный статус персонажа.');
@@ -561,7 +561,7 @@ export function AdminBunkerControl({
     <section className={`admin-bunker-control${emergencyStarted ? ' admin-bunker-control--active' : ''}`}>
       <div className="admin-bunker-control__heading">
         <div>
-          <p className="eyebrow">ДИСПЕТЧЕРСКАЯ · OWNER ONLY</p>
+          <p className="eyebrow">ДИСПЕТЧЕРСКАЯ · ТОЛЬКО ДЛЯ ВЕДУЩЕГО</p>
           <h2 aria-label="БУНКЕР">БУНКЕР · ПУЛЬТ</h2>
         </div>
         <strong>{emergencyStarted ? formatTimer(remaining) : 'ГОТОВ К ЗАПУСКУ'}</strong>
@@ -586,7 +586,7 @@ export function AdminBunkerControl({
         <article>
           <span>ТЕКУЩИЙ ЭТАП</span>
           <strong>{currentStage}</strong>
-          <small>{quest.state?.status === 'active' ? 'СЕРВЕРНОЕ СОСТОЯНИЕ' : state?.status === 'active' ? 'ОЖИДАЕМ ОТВЕТ СЕРВЕРА' : 'БУНКЕР НЕ ЗАПУЩЕН'}</small>
+          <small>{quest.state?.status === 'active' ? 'СИНХРОНИЗИРОВАНО' : state?.status === 'active' ? 'ОЖИДАЕМ ОТВЕТ' : 'БУНКЕР НЕ ЗАПУЩЕН'}</small>
         </article>
       </div>
 
@@ -651,7 +651,7 @@ export function AdminBunkerControl({
             <p className="eyebrow">ЭКРАНЫ</p>
             <h3 id="admin-bunker-tv-title">ТВ · {deps.subscribeScreenPresence ? presenceSummary.connectedCount : 'Н/Д'} ОНЛАЙН</h3>
           </div>
-          <span>{deps.subscribeScreenPresence ? 'LIVE HEARTBEAT' : 'ТЕЛЕМЕТРИЯ НЕ ПОДКЛЮЧЕНА'}</span>
+          <span>{deps.subscribeScreenPresence ? 'СИГНАЛ ПРИСУТСТВИЯ' : 'ТЕЛЕМЕТРИЯ НЕ ПОДКЛЮЧЕНА'}</span>
         </header>
         {screenPresence.length > 0 ? (
           <ul aria-label="Подключенные ТВ">
@@ -677,7 +677,7 @@ export function AdminBunkerControl({
           </ul>
         ) : (
           <p className="admin-bunker-tv__empty">
-            {deps.subscribeScreenPresence ? 'ТВ НЕ В СЕТИ · СИГНАЛОВ HEARTBEAT ПОКА НЕТ' : 'СПИСОК ТВ НЕДОСТУПЕН В ЭТОЙ КОНФИГУРАЦИИ'}
+            {deps.subscribeScreenPresence ? 'ТВ НЕ В СЕТИ · СИГНАЛОВ ПРИСУТСТВИЯ ПОКА НЕТ' : 'СПИСОК ТВ НЕДОСТУПЕН В ЭТОЙ КОНФИГУРАЦИИ'}
           </p>
         )}
       </section>
@@ -720,12 +720,12 @@ export function AdminBunkerControl({
 
       {emergencyStarted && globalState && (
         <section className="admin-bunker-stage" aria-label="Авторитетный сюжет Бункера">
-          <span>СЕРВЕРНЫЙ СЮЖЕТ</span>
+          <span>СЮЖЕТ ИГРЫ</span>
           <h3>{GLOBAL_STATE_LABELS[globalState]}</h3>
           <p>
             {state.currentMission
-              ? `Текущая миссия синхронизирована: ${state.currentMission.id}.`
-              : 'Межмиссионный этап синхронизирован со всеми телефонами и ТВ.'}
+              ? 'Текущее задание синхронизировано со всеми телефонами и ТВ.'
+              : 'Между заданиями все телефоны и ТВ остаются синхронизированы.'}
           </p>
           {nextGlobalState && advanceGlobalState && (
             <button
@@ -777,7 +777,7 @@ export function AdminBunkerControl({
         <section className="admin-bunker-characters" aria-labelledby="admin-bunker-characters-title">
           <header>
             <p className="eyebrow">СЮЖЕТНЫЕ СТАТУСЫ</p>
-            <h3 id="admin-bunker-characters-title">ПЕРСОНАЖИ ТЕКУЩЕГО RUN</h3>
+            <h3 id="admin-bunker-characters-title">ПЕРСОНАЖИ ТЕКУЩЕЙ ИГРЫ</h3>
           </header>
           <ul aria-label="Статусы персонажей">
             {characters.map((character) => (
