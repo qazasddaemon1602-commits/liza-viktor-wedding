@@ -23,7 +23,7 @@ test('an open projector appears as advisory telemetry and exposes compact audio 
   await expect(projector.getByRole('button', { name: 'Выключить звук' })).toBeVisible();
   await expect(projector.getByRole('slider', { name: 'Громкость' })).toHaveValue('75');
 
-  await expect(owner.getByText('ТВ · 1')).toBeVisible({ timeout: 12_000 });
+  await expect(owner.getByText('ТВ · 1', { exact: true })).toBeVisible({ timeout: 12_000 });
   await expect(owner.getByText('ИНДИКАЦИЯ · НЕ БЛОКИРУЕТ')).toBeVisible();
 
   await ownerContext.close();

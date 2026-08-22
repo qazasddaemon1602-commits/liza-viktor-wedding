@@ -267,6 +267,7 @@ test('bunker takes over two projectors, stays synchronized, and drops ordinary e
   await expect(screenB.getByTestId('train-arrival-scene')).toHaveCount(0);
 
   await owner.getByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' }).click();
+  await owner.getByRole('button', { name: 'ПОДТВЕРДИТЬ ОСТАНОВКУ' }).click();
   await expect(screenA.getByTestId('bunker-emergency-scene')).toHaveCount(0);
   await expect(screenB.getByTestId('bunker-emergency-scene')).toHaveCount(0);
   await expect(screenA.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
@@ -314,6 +315,7 @@ test('bunker unmounts an active premiere and restores authoritative premiere sta
   await expect(projector.locator('video.premiere-player')).toHaveCount(0);
 
   await owner.getByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' }).click();
+  await owner.getByRole('button', { name: 'ПОДТВЕРДИТЬ ОСТАНОВКУ' }).click();
   await expect(projector.getByTestId('bunker-emergency-scene')).toHaveCount(0);
   await expect(projector.locator('video.premiere-player')).toHaveCount(1, { timeout: 10_000 });
 
