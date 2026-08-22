@@ -174,7 +174,7 @@ describe('AdminBunkerControl', () => {
       />,
     );
 
-    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · МИССИЯ 01')).toBeInTheDocument();
+    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'ОТКРЫТЬ ЗАДАНИЕ B' })).toHaveClass('admin-bunker-stage-primary');
 
     act(() => {
@@ -367,11 +367,11 @@ describe('AdminBunkerControl', () => {
 
     render(<AdminBunkerControl eventId="event-1" dependencies={deps} />);
 
-    expect((await screen.findAllByText('ГОТОВНОСТЬ ПЕРСОНАЖЕЙ')).length).toBeGreaterThan(0);
-    await user.click(screen.getByRole('button', { name: 'НАЧАТЬ МИССИЮ 01' }));
+    expect((await screen.findAllByText('ПЕРСОНАЖИ ГОТОВЫ')).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: 'НАЧАТЬ ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР' }));
 
     expect(advance).toHaveBeenCalledWith('event-1', 'MISSION_01');
-    expect((await screen.findAllByText('МИССИЯ 01')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР')).length).toBeGreaterThan(0);
   });
 
   it('uses only V2 prepare and transition commands through MISSION_01 for an authoritative V2 run', async () => {
@@ -429,7 +429,7 @@ describe('AdminBunkerControl', () => {
 
     await user.click(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
     await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
-    await user.click(await screen.findByRole('button', { name: 'НАЧАТЬ МИССИЮ 01' }));
+    await user.click(await screen.findByRole('button', { name: 'НАЧАТЬ ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР' }));
 
     expect(prepareV2).toHaveBeenCalledWith('event-1');
     expect(transitionV2).toHaveBeenNthCalledWith(1, 'event-1', 'CHARACTERS_READY');
