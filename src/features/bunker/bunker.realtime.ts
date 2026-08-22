@@ -46,20 +46,27 @@ export function subscribeToBunkerRefresh(
     clientChannels.set(eventSlug, shared);
     channel
       .on('broadcast', { event: 'refresh' }, () => {
-        for (const listener of [...listeners]) listener();
+        for (const listener of [...listeners]) {
+          try {
+            listener();
+          } catch {
+            // One consumer must not prevent the remaining screens from refreshing.
+          }
+        }
       })
       .subscribe();
   }
 
   const subscription = shared;
   const registry = clientChannels;
-  subscription.listeners.add(onRefresh);
+  const listener = () => onRefresh();
+  subscription.listeners.add(listener);
   let subscribed = true;
 
   return () => {
     if (!subscribed) return;
     subscribed = false;
-    subscription.listeners.delete(onRefresh);
+    subscription.listeners.delete(listener);
     if (subscription.listeners.size > 0) return;
 
     registry.delete(eventSlug);

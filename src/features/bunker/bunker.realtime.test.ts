@@ -73,5 +73,50 @@ describe('subscribeToBunkerRefresh', () => {
     unsubscribeSecond();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps two subscriptions with the same callback independent', () => {
+    const { client, channel, unsubscribe } = fixture();
+    let receiveRefresh: (() => void) | undefined;
+    channel.on.mockImplementation((_type, _filter, callback) => {
+      receiveRefresh = callback as () => void;
+      return channel;
+    });
+    const listener = vi.fn();
+
+    const unsubscribeFirst = subscribeToBunkerRefresh(client, 'liza-viktor', listener);
+    const unsubscribeSecond = subscribeToBunkerRefresh(client, 'liza-viktor', listener);
+
+    receiveRefresh?.();
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    unsubscribeFirst();
+    expect(unsubscribe).not.toHaveBeenCalled();
+    receiveRefresh?.();
+    expect(listener).toHaveBeenCalledTimes(3);
+
+    unsubscribeSecond();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues fan-out when one listener throws', () => {
+    const { client, channel } = fixture();
+    let receiveRefresh: (() => void) | undefined;
+    channel.on.mockImplementation((_type, _filter, callback) => {
+      receiveRefresh = callback as () => void;
+      return channel;
+    });
+    const throwing = vi.fn(() => { throw new Error('listener failed'); });
+    const healthy = vi.fn();
+
+    const unsubscribeThrowing = subscribeToBunkerRefresh(client, 'liza-viktor', throwing);
+    const unsubscribeHealthy = subscribeToBunkerRefresh(client, 'liza-viktor', healthy);
+
+    expect(() => receiveRefresh?.()).not.toThrow();
+    expect(throwing).toHaveBeenCalledTimes(1);
+    expect(healthy).toHaveBeenCalledTimes(1);
+
+    unsubscribeThrowing();
+    unsubscribeHealthy();
+  });
 });
 
