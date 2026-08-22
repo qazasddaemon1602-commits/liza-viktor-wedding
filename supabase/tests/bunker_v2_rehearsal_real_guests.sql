@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(9);
 
 select has_function(
   'public',
@@ -32,6 +32,12 @@ select ok(
 select ok(
   position('current_carriage.number > v_wagons' in pg_get_functiondef('public.owner_bunker_v2_seed_test_guests(uuid,integer)'::regprocedure)) > 0,
   'real guests move only when their current wagon would be disabled'
+);
+
+select ok(
+  position('left join public.carriages current_carriage' in pg_get_functiondef('public.owner_bunker_v2_seed_test_guests(uuid,integer)'::regprocedure)) > 0
+  and position('current_carriage.id is null' in pg_get_functiondef('public.owner_bunker_v2_seed_test_guests(uuid,integer)'::regprocedure)) > 0,
+  'unassigned real guests are placed into an active rehearsal wagon'
 );
 
 select ok(

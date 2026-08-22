@@ -1,0 +1,185 @@
+-- Rehearsal repair: keep valid real wagon assignments intact, but never leave
+-- an unassigned or foreign-wagon real guest outside the active rehearsal set.
+
+create or replace function public.owner_bunker_v2_seed_test_guests(
+  p_event_id uuid,
+  p_count integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_state public.bunker_state%rowtype;
+  v_real integer := 0;
+  v_test_count integer := 0;
+  v_wagons integer;
+  v_i integer;
+  v_carriage uuid;
+  v_seq bigint;
+begin
+  perform public._require_bunker_owner(p_event_id);
+
+  if p_count < 15 or p_count > 40 then
+    raise exception 'test guest count must be 15..40' using errcode = '22023';
+  end if;
+
+  perform 1 from public.events e where e.id = p_event_id for update;
+  if not found then
+    raise exception 'event not found' using errcode = 'P0002';
+  end if;
+
+  insert into public.bunker_state(event_id)
+  values (p_event_id)
+  on conflict (event_id) do nothing;
+
+  select s.* into v_state
+  from public.bunker_state s
+  where s.event_id = p_event_id
+  for update;
+
+  if v_state.run_nonce is not null then
+    raise exception 'reset Bunker progress before reseeding rehearsal guests'
+      using errcode = '55000';
+  end if;
+
+  -- Old synthetic rows are replaceable; real wedding registrations are not.
+  delete from public.guests g
+  where g.event_id = p_event_id
+    and coalesce(g.affiliation_detail, '') = '__BUNKER_TEST__';
+
+  select count(*)::integer into v_real
+  from public.guests g
+  where g.event_id = p_event_id
+    and coalesce(g.affiliation_detail, '') <> '__BUNKER_TEST__';
+
+  if v_real > p_count then
+    raise exception 'registered guests already exceed requested rehearsal size (%)', p_count
+      using errcode = '55000';
+  end if;
+
+  v_test_count := p_count - v_real;
+  v_wagons := case
+    when p_count <= 18 then 2
+    when p_count <= 26 then 3
+    when p_count <= 36 then 4
+    else 5
+  end;
+
+  update public.carriages
+  set enabled = number <= v_wagons
+  where event_id = p_event_id;
+
+  -- Preserve every valid real carriage assignment. Repair only guests whose
+  -- carriage is missing, belongs to another event, or would be disabled by the
+  -- requested rehearsal size.
+  with misplaced as (
+    select
+      g.id,
+      row_number() over (
+        order by coalesce(g.ticket_sequence, 2147483647), g.registered_at, g.id
+      ) as rn
+    from public.guests g
+    left join public.carriages current_carriage
+      on current_carriage.id = g.carriage_id
+    where g.event_id = p_event_id
+      and coalesce(g.affiliation_detail, '') <> '__BUNKER_TEST__'
+      and (
+        current_carriage.id is null
+        or current_carriage.event_id <> p_event_id
+        or current_carriage.number > v_wagons
+      )
+  ), assigned as (
+    select
+      misplaced.id,
+      target.id as carriage_id
+    from misplaced
+    join public.carriages target
+      on target.event_id = p_event_id
+     and target.number = 1 + mod((misplaced.rn - 1)::integer, v_wagons)
+  )
+  update public.guests g
+  set carriage_id = assigned.carriage_id
+  from assigned
+  where g.id = assigned.id;
+
+  select coalesce(max(g.ticket_sequence), 0) + 1
+  into v_seq
+  from public.guests g
+  where g.event_id = p_event_id;
+
+  for v_i in 1..v_test_count loop
+    -- Fill the least populated active wagon so real assignments stay intact
+    -- while the synthetic rehearsal group remains balanced.
+    select target.id
+    into v_carriage
+    from public.carriages target
+    left join public.guests existing_guest
+      on existing_guest.event_id = p_event_id
+     and existing_guest.carriage_id = target.id
+    where target.event_id = p_event_id
+      and target.enabled
+    group by target.id, target.number
+    order by count(existing_guest.id), target.number
+    limit 1;
+
+    if v_carriage is null then
+      raise exception 'active rehearsal wagon not found' using errcode = '55000';
+    end if;
+
+    insert into public.guests(
+      event_id,
+      first_name,
+      last_name,
+      affiliation_type,
+      affiliation_detail,
+      carriage_id,
+      ticket_sequence,
+      ticket_number
+    ) values (
+      p_event_id,
+      'Тест ' || lpad(v_i::text, 2, '0'),
+      'Пассажир',
+      'common',
+      '__BUNKER_TEST__',
+      v_carriage,
+      v_seq,
+      'TST-' || lpad(v_i::text, 3, '0')
+    );
+    v_seq := v_seq + 1;
+  end loop;
+
+  update public.events
+  set composition_locked = true,
+      registration_open = true,
+      next_ticket_sequence = v_seq
+  where id = p_event_id;
+
+  insert into public.owner_action_log(event_id, owner_user_id, action, payload)
+  values (
+    p_event_id,
+    auth.uid(),
+    'bunker_test_guests_seeded',
+    jsonb_build_object(
+      'guestCount', p_count,
+      'realGuestCount', v_real,
+      'testGuestCount', v_test_count,
+      'wagonCount', v_wagons
+    )
+  );
+
+  return jsonb_build_object(
+    'status', 'seeded',
+    'guestCount', p_count,
+    'realGuestCount', v_real,
+    'testGuestCount', v_test_count,
+    'wagonCount', v_wagons
+  );
+end;
+$$;
+
+revoke all on function public.owner_bunker_v2_seed_test_guests(uuid,integer)
+  from public, anon, authenticated;
+grant execute on function public.owner_bunker_v2_seed_test_guests(uuid,integer)
+  to authenticated;
