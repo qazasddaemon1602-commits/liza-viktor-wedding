@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(16);
 
 select has_function(
   'public',
@@ -91,6 +91,12 @@ select ok(
   and coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
     ~ 'carriage_id',
   'dashboard archive is limited to global or viewer-wagon entitlement scope'
+);
+
+select ok(
+  coalesce(pg_get_functiondef(to_regprocedure('public.get_guest_bunker_v2_dashboard(text,text)')),'')
+    ~ 'owner_scope_key = v_guest\.carriage_id::text',
+  'wagon archive entitlements must match both carriage id and owner scope key'
 );
 
 select ok(
