@@ -6,14 +6,14 @@ import { useGuestBunkerLiveState, type GuestBunkerLiveDependencies } from './use
 
 const serverNow = '2026-08-30T18:50:00Z';
 
-function runtime(state: 'MISSION_03' | 'MISSION_05'): BunkerV2ActiveGuestRuntime {
+function runtime(state: 'MISSION_03' | 'MISSION_05', runNonce = 'run-1'): BunkerV2ActiveGuestRuntime {
   return {
     contractVersion: 2,
     status: 'active',
     serverNow,
     state,
     planVersion: 1,
-    runNonce: 'run-1',
+    runNonce,
     viewer: {
       kind: 'guest',
       guest: { id: 'guest-1', realName: 'Анна' },
@@ -98,7 +98,7 @@ const missionThree = {
 };
 
 describe('persistent dashboard live state', () => {
-  it('keeps the last dashboard across M03 → M05 and a temporary dashboard failure', async () => {
+  it('keeps the last dashboard across M03 → M05 and a temporary dashboard failure in the same run', async () => {
     let currentRuntime = runtime('MISSION_03');
     let currentDashboard = dashboard(1);
     let dashboardOffline = false;
@@ -137,5 +137,34 @@ describe('persistent dashboard live state', () => {
     await waitFor(() => expect(result.current.dashboard?.status).toBe('active'));
     await waitFor(() => expect(result.current.dashboardError).toBe(''));
     expect(result.current.dashboard).toEqual(dashboard(2));
+  });
+
+  it('never carries a stale dashboard snapshot into a different run nonce', async () => {
+    let currentRuntime = runtime('MISSION_03', 'run-1');
+    let dashboardOffline = false;
+
+    const deps: GuestBunkerLiveDependencies = {
+      getDeviceKey: () => 'device-1',
+      load: vi.fn().mockResolvedValue({ status: 'idle', serverNow }),
+      loadRuntime: vi.fn(async () => currentRuntime),
+      loadDashboard: vi.fn(async () => {
+        if (dashboardOffline) throw new Error('offline');
+        return dashboard(1);
+      }),
+      loadMissionThree: vi.fn().mockResolvedValue(missionThree),
+      submitMission: vi.fn(),
+      submitFinalCode: vi.fn(),
+    };
+
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies: deps }));
+    await waitFor(() => expect(result.current.dashboard).toEqual(dashboard(1)));
+
+    currentRuntime = runtime('MISSION_05', 'run-2');
+    dashboardOffline = true;
+    await act(async () => { await result.current.reload(); });
+
+    await waitFor(() => expect(result.current.runtime).toMatchObject({ runNonce: 'run-2' }));
+    await waitFor(() => expect(result.current.dashboard).toBeUndefined());
+    expect(result.current.dashboardError).not.toMatch(/последние полученные данные/i);
   });
 });
