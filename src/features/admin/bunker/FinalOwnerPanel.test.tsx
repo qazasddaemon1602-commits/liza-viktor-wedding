@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { FinalOwnerPanel } from './FinalOwnerPanel';
 
@@ -37,5 +38,25 @@ describe('FinalOwnerPanel', () => {
     expect(screen.getByRole('button', { name: '+2 МИНУТЫ' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'ДАТЬ ПОДСКАЗКУ' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'АВАРИЙНО ОТКРЫТЬ' })).toBeDisabled();
+  });
+
+  it('keeps emergency confirmation open and shows an actionable error when the server rejects opening', async () => {
+    const user = userEvent.setup();
+    const onEmergencyOpen = vi.fn().mockRejectedValue(new Error('network'));
+    render(
+      <FinalOwnerPanel
+        model={baseModel}
+        onAddTime={vi.fn()}
+        onHint={vi.fn()}
+        onEmergencyOpen={onEmergencyOpen}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'АВАРИЙНО ОТКРЫТЬ' }));
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ АВАРИЙНОЕ ОТКРЫТИЕ' }));
+
+    expect(onEmergencyOpen).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Бункер остаётся закрыт/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ АВАРИЙНОЕ ОТКРЫТИЕ' })).toBeInTheDocument();
   });
 });
