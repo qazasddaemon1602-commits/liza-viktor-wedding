@@ -9,7 +9,9 @@ export function resolveBunkerContractVersion(
   if (projections.some((projection) => projection?.status === 'legacy')) return 1;
   if (projections.some((projection) => projection?.contractVersion === 1)) return 1;
   if (projections.some((projection) => (
-    projection?.contractVersion === 2
+    projection !== null
+    && projection !== undefined
+    && projection.contractVersion === 2
     && projection.status !== 'legacy'
     && projection.status !== undefined
   ))) return 2;
