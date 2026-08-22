@@ -15,7 +15,12 @@ export type BunkerGlobalMissionPayload =
   | { selectedProfileIds: string[] }
   | { chronology: string }
   | { itemKeys: string[] }
-  | { message: string; partnerWagonIds?: string[] }
+  | {
+    message: string;
+    partnerWagonIds?: string[];
+    transferItemKey?: string;
+    transferToWagonId?: string;
+  }
   | { routeChoice: 'safe' | 'short'; itemKey?: string | null }
   | { protocolConfirmed: true; protocolCode: string };
 

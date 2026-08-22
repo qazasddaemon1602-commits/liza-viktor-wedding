@@ -114,6 +114,17 @@ describe('Bunker runtime response', () => {
     })).toMatchObject({ status: 'active', missionAction: null });
   });
 
+  it('rejects malformed inventory lots before they can be offered for a real transfer', () => {
+    expect(() => parseGuestBunkerRuntime({
+      ...activeRuntime,
+      inventory: [{
+        id: 'lot-1', itemKey: 'radio', quantity: 0, status: 'available',
+        acquiredAt: '2026-08-20T18:00:00.000Z', usedAt: null,
+        transferredTo: null, sourceLotId: null,
+      }],
+    })).toThrow(/inventory item/i);
+  });
+
   it('rejects a leaked hidden trait before reveal', () => {
     expect(() => parseGuestBunkerRuntime({
       ...activeRuntime,

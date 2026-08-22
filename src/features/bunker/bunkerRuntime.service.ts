@@ -21,6 +21,17 @@ export type GuestBunkerGlobalMissionAction = {
   requirements: Record<string, unknown>;
 };
 
+export type GuestBunkerInventoryItem = {
+  id: string;
+  itemKey: string;
+  quantity: number;
+  status: 'available' | 'used' | 'transferred' | 'lost';
+  acquiredAt?: string;
+  usedAt?: string | null;
+  transferredTo?: string | null;
+  sourceLotId?: string | null;
+};
+
 type IdleRuntime = { status: 'idle' | 'not_found' | 'guest_not_found'; serverNow: string };
 
 export type ActiveGuestBunkerRuntime = {
@@ -38,7 +49,7 @@ export type ActiveGuestBunkerRuntime = {
     abilityUsesRemaining: number; status: 'active' | 'saved' | 'excluded';
   };
   passengers: unknown[];
-  inventory: unknown[];
+  inventory: GuestBunkerInventoryItem[];
   archive: unknown[];
   wagonState: Record<string, unknown>;
   currentMission: BunkerCurrentMission | null;
@@ -106,6 +117,40 @@ function missionAction(
   return action as GuestBunkerGlobalMissionAction;
 }
 
+function positiveInteger(value: unknown, label: string): number {
+  const parsed = integer(value, label);
+  if (parsed < 1) throw new Error(`Unexpected Bunker ${label}`);
+  return parsed;
+}
+
+function inventoryItem(value: unknown): GuestBunkerInventoryItem {
+  const item = object(value, 'inventory item');
+  const status = item.status;
+  const usedAt = timestamp(item.usedAt, true);
+  const transferredTo = item.transferredTo;
+  const sourceLotId = item.sourceLotId;
+  if (status !== 'available' && status !== 'used' && status !== 'transferred' && status !== 'lost') {
+    throw new Error('Unexpected Bunker inventory item status');
+  }
+  if ((status === 'used') !== (usedAt !== null)
+    || (status === 'transferred') !== (typeof transferredTo === 'string' && Boolean(transferredTo.trim()))
+    || (status !== 'transferred' && transferredTo !== null)
+    || (sourceLotId !== undefined && sourceLotId !== null
+      && (typeof sourceLotId !== 'string' || !sourceLotId.trim()))) {
+    throw new Error('Unexpected Bunker inventory item state');
+  }
+  return {
+    id: text(item.id, 'inventory item id'),
+    itemKey: text(item.itemKey, 'inventory item key'),
+    quantity: positiveInteger(item.quantity, 'inventory item quantity'),
+    status,
+    acquiredAt: timestamp(item.acquiredAt) as string,
+    usedAt,
+    transferredTo: transferredTo as string | null,
+    ...(sourceLotId === undefined ? {} : { sourceLotId: sourceLotId as string | null }),
+  };
+}
+
 export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
   const root = object(data, 'runtime');
   const status = root.status;
@@ -164,7 +209,7 @@ export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
       status: characterStatus,
     },
     passengers: root.passengers,
-    inventory: root.inventory,
+    inventory: root.inventory.map(inventoryItem),
     archive: root.archive,
     wagonState: object(root.wagonState, 'wagon state'),
     currentMission: parseBunkerCurrentMission(

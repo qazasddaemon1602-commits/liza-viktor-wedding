@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(44);
+select plan(55);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -73,7 +73,8 @@ insert into public.carriages(
 )
 values
   ('00000000-0000-4000-8000-000000000911', '00000000-0000-4000-8000-000000000902', 1, 'ВАГОН №1', '#111111', 'I', 1, true),
-  ('00000000-0000-4000-8000-000000000912', '00000000-0000-4000-8000-000000000902', 2, 'ВАГОН №2', '#222222', 'II', 2, true);
+  ('00000000-0000-4000-8000-000000000912', '00000000-0000-4000-8000-000000000902', 2, 'ВАГОН №2', '#222222', 'II', 2, true),
+  ('00000000-0000-4000-8000-000000000913', '00000000-0000-4000-8000-000000000902', 3, 'ВАГОН №3', '#333333', 'III', 3, false);
 
 insert into public.guests(
   id, event_id, first_name, last_name, affiliation_type, carriage_id,
@@ -249,17 +250,120 @@ select public.owner_force_complete_bunker_global_mission(
 select public.owner_advance_bunker_game_state(
   '00000000-0000-4000-8000-000000000902', 'MISSION_04'
 );
+select ok(
+  public.get_guest_bunker_runtime(
+    'global-mission-runtime', 'global-device-1'
+  )#>'{missionAction,requirements,transferableItems}' @> '[{"itemKey":"tools","quantity":1}]'::jsonb,
+  'Mission 04 requirements expose transferable available inventory with quantity'
+);
+select throws_ok(
+  $$ select public.submit_guest_bunker_global_mission(
+    'global-mission-runtime', 'global-device-1', 'MISSION_04',
+    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"radio","transferToWagonId":"00000000-0000-4000-8000-000000000912"}'::jsonb
+  ) $$,
+  '22023',
+  'invalid Mission 04 inventory item',
+  'Mission 04 rejects an item that is no longer available in the source wagon'
+);
+select throws_ok(
+  $$ select public.submit_guest_bunker_global_mission(
+    'global-mission-runtime', 'global-device-1', 'MISSION_04',
+    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools"}'::jsonb
+  ) $$,
+  '22023',
+  'invalid Mission 04 transfer destination',
+  'Mission 04 requires a partner destination whenever an item is selected'
+);
+select throws_ok(
+  $$ select public.submit_guest_bunker_global_mission(
+    'global-mission-runtime', 'global-device-1', 'MISSION_04',
+    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools","transferToWagonId":"00000000-0000-4000-8000-000000000913"}'::jsonb
+  ) $$,
+  '22023',
+  'invalid Mission 04 transfer destination',
+  'Mission 04 rejects a transfer to a wagon outside the planned partner group'
+);
 select is(
   public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_04',
-    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"]}'::jsonb
+    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools","transferToWagonId":"00000000-0000-4000-8000-000000000912"}'::jsonb
   )->>'status',
   'completed',
-  'Mission 04 validates the planned partner wagon and exchange message'
+  'Mission 04 validates the planned partner, exchange message and real transfer'
 );
-select public.owner_force_complete_bunker_global_mission(
-  '00000000-0000-4000-8000-000000000902',
-  '00000000-0000-4000-8000-000000000912', 'MISSION_04'
+select is(
+  (select progress.submitted_payload
+   from public.bunker_global_mission_progress progress
+   where progress.event_id = '00000000-0000-4000-8000-000000000902'
+     and progress.carriage_id = '00000000-0000-4000-8000-000000000911'
+     and progress.mission_state = 'MISSION_04')
+    ->> 'transferItemKey',
+  'tools',
+  'Mission 04 stores the transferred item in the human-readable submitted payload'
+);
+select is(
+  (select item.status || ':' || item.transferred_to::text
+   from public.bunker_inventory_lots item
+   where item.event_id = '00000000-0000-4000-8000-000000000902'
+     and item.carriage_id = '00000000-0000-4000-8000-000000000911'
+     and item.item_key = 'tools'),
+  'transferred:00000000-0000-4000-8000-000000000912',
+  'Mission 04 marks the source lot transferred to the selected partner wagon'
+);
+select ok(
+  exists (
+    select 1
+    from public.bunker_inventory_lots received
+    join public.bunker_inventory_lots source on source.id = received.source_lot_id
+    where received.event_id = '00000000-0000-4000-8000-000000000902'
+      and received.carriage_id = '00000000-0000-4000-8000-000000000912'
+      and received.item_key = 'tools'
+      and received.quantity = 1
+      and received.status = 'available'
+      and source.carriage_id = '00000000-0000-4000-8000-000000000911'
+  ),
+  'Mission 04 creates an available destination lot linked to its source'
+);
+select ok(
+  exists (
+    select 1 from public.bunker_game_events game_event
+    where game_event.event_id = '00000000-0000-4000-8000-000000000902'
+      and game_event.event_type = 'inventory_transferred'
+      and game_event.carriage_id = '00000000-0000-4000-8000-000000000911'
+      and game_event.payload->>'itemKey' = 'tools'
+      and game_event.payload->>'toWagonId' = '00000000-0000-4000-8000-000000000912'
+  ),
+  'Mission 04 records a dedicated inventory_transferred event'
+);
+select is(
+  public.submit_guest_bunker_global_mission(
+    'global-mission-runtime', 'global-device-1', 'MISSION_04',
+    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools","transferToWagonId":"00000000-0000-4000-8000-000000000912"}'::jsonb
+  )->>'changed',
+  'false',
+  'repeating a completed Mission 04 transfer is idempotent'
+);
+select is(
+  (select jsonb_build_object(
+    'events', count(*) filter (where game_event.event_type = 'inventory_transferred'),
+    'receivedLots', count(*) filter (where received.id is not null)
+  )
+   from public.bunker_game_events game_event
+   left join public.bunker_inventory_lots received
+     on received.run_nonce = game_event.run_nonce
+    and received.source_lot_id = (game_event.payload->>'sourceLotId')::uuid
+   where game_event.event_id = '00000000-0000-4000-8000-000000000902'
+     and game_event.event_type = 'inventory_transferred'),
+  '{"events":1,"receivedLots":1}'::jsonb,
+  'idempotent Mission 04 resubmission creates neither another event nor another destination lot'
+);
+select is(
+  public.submit_guest_bunker_global_mission(
+    'global-mission-runtime', 'global-device-2', 'MISSION_04',
+    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000911"]}'::jsonb
+  )->>'status',
+  'completed',
+  'Mission 04 keeps the item transfer optional for a valid exchange message'
 );
 select public.owner_advance_bunker_game_state(
   '00000000-0000-4000-8000-000000000902', 'MISSION_05'

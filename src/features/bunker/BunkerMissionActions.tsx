@@ -98,6 +98,19 @@ function humanWagons(value: unknown): { ids: string[]; labels: string[] } {
   };
 }
 
+function transferableItems(value: unknown): Array<{ itemKey: string; quantity: number }> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!record(entry)
+      || typeof entry.itemKey !== 'string'
+      || !entry.itemKey.trim()
+      || typeof entry.quantity !== 'number'
+      || !Number.isInteger(entry.quantity)
+      || entry.quantity < 1) return [];
+    return [{ itemKey: entry.itemKey, quantity: entry.quantity }];
+  });
+}
+
 function selectableProfiles(value: unknown): Array<{
   profileId: string; realName: string; profession: string;
 }> {
@@ -195,6 +208,8 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
   const [chronology, setChronology] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [message, setMessage] = useState('');
+  const [transferItem, setTransferItem] = useState('');
+  const [transferToWagonId, setTransferToWagonId] = useState('');
   const [routeChoice, setRouteChoice] = useState<'safe' | 'short' | ''>('');
   const [routeItem, setRouteItem] = useState('');
   const [protocolConfirmed, setProtocolConfirmed] = useState(false);
@@ -371,31 +386,115 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
     const minLength = positiveInteger(requirements.minLength, 1);
     const requiredIncludes = stringList(requirements.requiredIncludes);
     const requiredTerms = stringList(requirements.requiredTerms);
+    const transferOptions = transferableItems(requirements.transferableItems)
+      .filter((item) => availableInWagon.has(item.itemKey));
+    const selectedTransfer = transferOptions.find((item) => item.itemKey === transferItem) ?? null;
+    const transferDestination = partners.ids.includes(transferToWagonId)
+      ? partners.labels[partners.ids.indexOf(transferToWagonId)]
+      : '';
     const messageValid = message.trim().length >= minLength
       && normalizedIncludes(message, requiredIncludes)
       && normalizedIncludesAny(message, requiredTerms);
+    const transferValid = !transferItem || Boolean(selectedTransfer && transferDestination);
     return (
-      <div className="bunker-global-action">
+      <div className="bunker-global-action bunker-m04-exchange">
         <h3>МЕЖВАГОННАЯ СВЯЗЬ</h3>
         <p>{group.labels.length > 0 ? `Ваша группа: ${group.labels.join(' · ')}` : `В вашей группе ${fallbackSize || 'несколько'} вагонов.`}</p>
-        <p>{partners.labels.length > 0 ? `Связаться: ${partners.labels.join(' · ')}` : 'Состав партнёров синхронизируется.'}</p>
-        {messageFragment && (
-          <p className="bunker-global-action__fragment">Ваша часть сообщения: <strong>{messageFragment}</strong></p>
-        )}
-        <p>Передайте свою часть партнёрам, получите их части и запишите восстановленное сообщение целиком.</p>
-        <label>
-          <span>Сообщение партнёрам</span>
-          <textarea value={message} disabled={submitting} onChange={(event) => setMessage(event.target.value)} />
-        </label>
-        <p className="bunker-mission-actions__safety">
-          Запишите не короче {minLength} символов: в сообщении должны быть «04» и одна опорная деталь — тоннель, маршрут, канал или сектор.
-        </p>
+        <ol className="bunker-m04-stepper" aria-label="Порядок межвагонного обмена">
+          <li>
+            <strong>ШАГ 1</strong>
+            <div>
+              <h4>НАЙДИТЕ ПАРТНЁРСКИЙ ВАГОН</h4>
+              <p>{partners.labels.length > 0 ? `Связаться: ${partners.labels.join(' · ')}` : 'Состав партнёров синхронизируется.'}</p>
+            </div>
+          </li>
+          <li>
+            <strong>ШАГ 2</strong>
+            <div>
+              <h4>ПРОЧИТАЙТЕ СВОЙ ФРАГМЕНТ</h4>
+              {messageFragment
+                ? <p className="bunker-global-action__fragment">Ваша часть сообщения: <strong>{messageFragment}</strong></p>
+                : <p>Фрагмент появится после синхронизации.</p>}
+            </div>
+          </li>
+          <li>
+            <strong>ШАГ 3</strong>
+            <div>
+              <h4>ОБМЕНЯЙТЕСЬ ДАННЫМИ И ПРЕДМЕТОМ</h4>
+              <p>Передайте фрагмент партнёрам. При необходимости выберите один реальный запас вагона — после отправки он появится у получателя.</p>
+              <label>
+                <span>Предмет для передачи</span>
+                <select
+                  value={transferItem}
+                  disabled={submitting}
+                  onChange={(event) => {
+                    setTransferItem(event.target.value);
+                    setTransferToWagonId('');
+                  }}
+                >
+                  <option value="">Без передачи предмета</option>
+                  {transferOptions.map((item) => (
+                    <option key={item.itemKey} value={item.itemKey}>
+                      {itemGuide({ itemKey: item.itemKey }).label} · {item.quantity} ШТ.
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {transferItem && (
+                <label>
+                  <span>Кому передать предмет</span>
+                  <select
+                    value={transferToWagonId}
+                    disabled={submitting}
+                    onChange={(event) => setTransferToWagonId(event.target.value)}
+                  >
+                    <option value="">Выберите партнёрский вагон</option>
+                    {partners.ids.map((id, index) => (
+                      <option key={id} value={id}>{partners.labels[index] ?? `ВАГОН ${index + 1}`}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          </li>
+          <li>
+            <strong>ШАГ 4</strong>
+            <div>
+              <h4>ПРОВЕРЬТЕ И ОТПРАВЬТЕ</h4>
+              <label>
+                <span>Сообщение партнёрам</span>
+                <textarea value={message} disabled={submitting} onChange={(event) => setMessage(event.target.value)} />
+              </label>
+              <p className="bunker-mission-actions__safety">
+                Запишите не короче {minLength} символов: в сообщении должны быть «04» и одна опорная деталь — тоннель, маршрут, канал или сектор.
+              </p>
+              <section
+                className="bunker-m04-preview"
+                role="status"
+                aria-label="Предварительная проверка обмена"
+                aria-live="polite"
+              >
+                <h5>ЧТО БУДЕТ ОТПРАВЛЕНО</h5>
+                <p>{messageValid ? `Сообщение готово: ${message.trim()}` : 'Сообщение пока не прошло проверку.'}</p>
+                <p>{selectedTransfer && transferDestination
+                  ? `${itemGuide({ itemKey: selectedTransfer.itemKey }).label} → ${transferDestination}`
+                  : transferItem
+                    ? 'Выберите получателя предмета.'
+                    : 'Предмет не передаётся.'}</p>
+              </section>
+            </div>
+          </li>
+        </ol>
         <button
           type="button"
-          disabled={submitting || !messageValid}
+          disabled={submitting || !messageValid || !transferValid}
           onClick={() => onSubmit(action.missionState, {
             message: message.trim(),
             ...(partners.ids.length > 0 ? { partnerWagonIds: partners.ids } : {}),
+            ...(selectedTransfer && transferDestination ? {
+              transferItemKey: selectedTransfer.itemKey,
+              transferToWagonId,
+            } : {}),
           })}
         >ОТПРАВИТЬ СООБЩЕНИЕ</button>
       </div>

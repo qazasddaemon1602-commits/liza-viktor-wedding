@@ -180,19 +180,29 @@ describe('global Bunker phone mission actions', () => {
     expect(region).toHaveTextContent(/противогаз пока не закрывает один из пяти рисков/i);
   });
 
-  it('shows M04 partner and group wagon labels and submits the message without raw IDs', async () => {
+  it('guides M04 through four steps and previews a real item transfer without raw IDs', async () => {
     const { user, onGlobalMission } = renderGlobal(action('MISSION_04', {
       groupWagons: [
         { id: 'wagon-id-2', number: 2, label: 'ВАГОН №2' },
         { id: 'wagon-id-5', number: 5, label: 'ВАГОН №5' },
       ],
       partnerWagons: [{ id: 'wagon-id-5', number: 5, label: 'ВАГОН №5' }],
+      transferableItems: [
+        { itemKey: 'water', quantity: 2 },
+        { itemKey: 'radio', quantity: 1 },
+      ],
       messageFragment: 'СЕКТОР 04 ПРИНИМАЕТ СОСТАВ',
       minLength: 15,
       requiredIncludes: ['04'],
       requiredTerms: ['тоннел', 'tunnel', 'маршрут', 'канал', 'сектор'],
     }));
     const region = screen.getByLabelText('Действие вагона');
+    const steps = within(region).getByRole('list', { name: 'Порядок межвагонного обмена' });
+    expect(within(steps).getAllByRole('listitem')).toHaveLength(4);
+    expect(steps).toHaveTextContent(/шаг 1.*найдите партнёрский вагон/i);
+    expect(steps).toHaveTextContent(/шаг 2.*прочитайте свой фрагмент/i);
+    expect(steps).toHaveTextContent(/шаг 3.*обменяйтесь данными и предметом/i);
+    expect(steps).toHaveTextContent(/шаг 4.*проверьте и отправьте/i);
     expect(within(region).getByText(/ваша группа: вагон №2 · вагон №5/i)).toBeInTheDocument();
     expect(within(region).getByText(/связаться: вагон №5/i)).toBeInTheDocument();
     expect(within(region).getByText(/ваша часть сообщения/i)).toHaveTextContent(/сектор 04/i);
@@ -203,10 +213,17 @@ describe('global Bunker phone mission actions', () => {
     expect(submit).toBeDisabled();
     await user.clear(input);
     await user.type(input, 'Сектор 04 найден');
+    await user.selectOptions(within(region).getByLabelText('Предмет для передачи'), 'radio');
+    expect(submit).toBeDisabled();
+    await user.selectOptions(within(region).getByLabelText('Кому передать предмет'), 'wagon-id-5');
+    expect(within(region).getByRole('status', { name: 'Предварительная проверка обмена' }))
+      .toHaveTextContent(/рация → вагон №5/i);
     await user.click(submit);
     expect(onGlobalMission).toHaveBeenCalledWith('MISSION_04', {
       message: 'Сектор 04 найден',
       partnerWagonIds: ['wagon-id-5'],
+      transferItemKey: 'radio',
+      transferToWagonId: 'wagon-id-5',
     });
   });
 
