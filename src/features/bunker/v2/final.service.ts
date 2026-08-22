@@ -1,4 +1,8 @@
-import { submitBunkerCommand, throwBunkerV2RpcError, type BunkerV2RpcClient } from './command.service';
+import {
+  submitBunkerCommand,
+  throwBunkerV2RpcError,
+  type BunkerV2RpcClient,
+} from './command.service';
 import type { BunkerCommandReceipt } from './contracts';
 
 export type FinalRpcClient = BunkerV2RpcClient;
@@ -92,12 +96,20 @@ function timestamp(value: unknown): string {
   return parsed;
 }
 
+function timeAdjustment(value: unknown): number {
+  const parsed = integer(value, 'time adjustment');
+  if (parsed < -300 || parsed > 600 || parsed % 60 !== 0) {
+    throw new Error('Unexpected final time adjustment');
+  }
+  return parsed;
+}
+
 const PARAMETERS = new Set<FinalParameter>([
   'coordinates', 'sector', 'access_code', 'gate_time', 'password',
 ]);
 
 function parseFragment(value: unknown): FinalFragment {
-  const fragment = exact(value, ['parameter','label','part','totalParts','value'], 'fragment');
+  const fragment = exact(value, ['parameter', 'label', 'part', 'totalParts', 'value'], 'fragment');
   const parameter = text(fragment.parameter, 'parameter') as FinalParameter;
   if (!PARAMETERS.has(parameter)) throw new Error('Unexpected final parameter');
   const part = nonNegativeInteger(fragment.part, 'part');
@@ -119,7 +131,7 @@ export function parseFinalGuestReadModel(value: unknown): FinalGuestReadModel {
   }
 
   if (input.status === 'idle' || input.status === 'legacy' || input.status === 'not_found') {
-    const inactive = exact(value, ['contractVersion','status','serverNow'], 'inactive read model');
+    const inactive = exact(value, ['contractVersion', 'status', 'serverNow'], 'inactive read model');
     return {
       contractVersion: 2,
       status: input.status,
@@ -132,29 +144,24 @@ export function parseFinalGuestReadModel(value: unknown): FinalGuestReadModel {
   }
 
   const active = exact(value, [
-    'contractVersion','status','serverNow','deadlineAt','title','instanceId',
-    'wagon','fragments','terminal','hint','timeAdjustmentSeconds',
+    'contractVersion', 'status', 'serverNow', 'deadlineAt', 'title', 'instanceId',
+    'wagon', 'fragments', 'terminal', 'hint', 'timeAdjustmentSeconds',
   ], 'read model');
   if (!Array.isArray(active.fragments)) throw new Error('Unexpected final fragments');
 
-  const wagon = exact(active.wagon, ['number','label'], 'wagon');
+  const wagon = exact(active.wagon, ['number', 'label'], 'wagon');
   const wagonNumber = nonNegativeInteger(wagon.number, 'wagon number');
   if (wagonNumber < 1 || wagonNumber > 5) throw new Error('Unexpected final wagon number');
 
-  const terminal = exact(active.terminal, ['solved','total','wrongAttempts','unlocked'], 'terminal');
+  const terminal = exact(active.terminal, ['solved', 'total', 'wrongAttempts', 'unlocked'], 'terminal');
   const solved = nonNegativeInteger(terminal.solved, 'solved');
   const total = nonNegativeInteger(terminal.total, 'total');
   const wrongAttempts = nonNegativeInteger(terminal.wrongAttempts, 'wrong attempts');
   if (total < 1 || solved > total) throw new Error('Unexpected final solved count');
 
-  const hint = exact(active.hint, ['level','text'], 'hint');
+  const hint = exact(active.hint, ['level', 'text'], 'hint');
   const hintLevel = nonNegativeInteger(hint.level, 'hint level');
   if (hintLevel > 3 || typeof hint.text !== 'string') throw new Error('Unexpected final hint');
-
-  const timeAdjustmentSeconds = integer(active.timeAdjustmentSeconds, 'time adjustment');
-  if (timeAdjustmentSeconds < -300 || timeAdjustmentSeconds > 600 || timeAdjustmentSeconds % 60 !== 0) {
-    throw new Error('Unexpected final time adjustment');
-  }
 
   return {
     contractVersion: 2,
@@ -178,7 +185,48 @@ export function parseFinalGuestReadModel(value: unknown): FinalGuestReadModel {
       level: hintLevel,
       text: hint.text,
     },
-    timeAdjustmentSeconds,
+    timeAdjustmentSeconds: timeAdjustment(active.timeAdjustmentSeconds),
+  };
+}
+
+export function parseFinalScreenReadModel(value: unknown): FinalScreenReadModel {
+  const input = object(value, 'screen read model');
+  if (input.contractVersion !== 2 || typeof input.status !== 'string') {
+    throw new Error('Unexpected final screen read model');
+  }
+  if (input.status === 'idle' || input.status === 'legacy' || input.status === 'not_found') {
+    const inactive = exact(value, ['contractVersion', 'status', 'serverNow'], 'inactive screen read model');
+    return {
+      contractVersion: 2,
+      status: input.status,
+      serverNow: timestamp(inactive.serverNow),
+    };
+  }
+  if (input.status !== 'active' && input.status !== 'completed') {
+    throw new Error('Unexpected final screen status');
+  }
+
+  const active = exact(value, [
+    'contractVersion', 'status', 'serverNow', 'deadlineAt', 'solved', 'total',
+    'wrongAttempts', 'unlocked', 'hintLevel', 'timeAdjustmentSeconds',
+  ], 'screen read model');
+  const solved = nonNegativeInteger(active.solved, 'solved');
+  const total = nonNegativeInteger(active.total, 'total');
+  const hintLevel = nonNegativeInteger(active.hintLevel, 'hint level');
+  if (total < 1 || solved > total) throw new Error('Unexpected final solved count');
+  if (hintLevel > 3) throw new Error('Unexpected final hint level');
+
+  return {
+    contractVersion: 2,
+    status: input.status,
+    serverNow: timestamp(active.serverNow),
+    deadlineAt: timestamp(active.deadlineAt),
+    solved,
+    total,
+    wrongAttempts: nonNegativeInteger(active.wrongAttempts, 'wrong attempts'),
+    unlocked: boolean(active.unlocked, 'unlocked'),
+    hintLevel,
+    timeAdjustmentSeconds: timeAdjustment(active.timeAdjustmentSeconds),
   };
 }
 
@@ -201,7 +249,7 @@ export async function getFinalScreenReadModel(
 ): Promise<FinalScreenReadModel> {
   const { data, error } = await client.rpc('get_bunker_v2_final_screen', { p_event_slug: eventSlug });
   if (error) throwBunkerV2RpcError(error, 'Final screen read failed');
-  return data as FinalScreenReadModel;
+  return parseFinalScreenReadModel(data);
 }
 
 export async function getOwnerFinalReadModel(
@@ -210,7 +258,7 @@ export async function getOwnerFinalReadModel(
 ): Promise<FinalOwnerReadModel> {
   const { data, error } = await client.rpc('get_owner_bunker_v2_final', { p_event_id: eventId });
   if (error) throwBunkerV2RpcError(error, 'Final owner read failed');
-  return data as FinalOwnerReadModel;
+  return parseFinalScreenReadModel(data);
 }
 
 export function requestFinalAccess(
