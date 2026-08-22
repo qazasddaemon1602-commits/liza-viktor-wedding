@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 select has_function('public','owner_bunker_v2_seed_test_guests',array['uuid','integer'],'test guest seeding exists');
 select has_function('public','owner_prepare_bunker_v2_test',array['uuid','uuid'],'test prepare exists');
 select has_function('public','owner_bunker_v2_test_accelerate',array['uuid','integer'],'test timer acceleration exists');
@@ -13,4 +13,9 @@ select ok(pg_get_functiondef('public.owner_bunker_v2_test_set_inventory(uuid,int
 select ok(not has_function_privilege('anon','public.owner_bunker_v2_test_simulate_current(uuid)','EXECUTE'),'anonymous users cannot simulate');
 select ok(not has_function_privilege('anon','public.owner_bunker_v2_reset_game_and_registrations(uuid,text)','EXECUTE'),'anonymous users cannot reset registrations');
 select ok(pg_get_functiondef('public.owner_bunker_v2_reset_game_and_registrations(uuid,text)'::regprocedure)~'couple_preanswers' = false,'game registration reset does not delete couple preanswers');
+select ok(
+  pg_get_functiondef('public.owner_bunker_v2_test_simulate_current(uuid)'::regprocedure)
+    ~ '_bunker_v2_apply_m05_outcome\([^;]+,false\)',
+  'M05 rehearsal simulation is a deliberate decision, not a timeout fallback'
+);
 select * from finish();rollback;
