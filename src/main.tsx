@@ -27,6 +27,7 @@ import './styles/mk-artbook.css';
 import './styles/bunker.css';
 import './styles/bunker-player.css';
 import './styles/bunker-quest.css';
+import './styles/bunker-accessibility.css';
 import './styles/mobile-hardening.css';
 
 const root = document.getElementById('root');
