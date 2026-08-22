@@ -38,7 +38,7 @@ describe('FinalPlayer', () => {
   });
 
   it('shows automatic time-based help in plain language', () => {
-    render(<FinalPlayer model={{...model,remainingSeconds:120,hint:{level:2,text:'Сверьте сектор и код доступа с досье BK-17.'}} onRequestAccess={vi.fn()} />);
+    render(<FinalPlayer model={{...model,remainingSeconds:120,hint:{level:2,text:'Сверьте сектор и код доступа с досье BK-17.'}}} onRequestAccess={vi.fn()} />);
     expect(screen.getByText(/сверьте сектор и код доступа/i)).toBeInTheDocument();
   });
 });
