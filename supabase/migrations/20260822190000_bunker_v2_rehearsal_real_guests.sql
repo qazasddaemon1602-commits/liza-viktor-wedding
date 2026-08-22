@@ -71,25 +71,31 @@ begin
   set enabled = number <= v_wagons
   where event_id = p_event_id;
 
-  -- Rebalance only carriage assignment for rehearsal. Guest identity, answers,
-  -- device bindings and all other registration data stay untouched.
-  with ranked as (
+  -- Preserve every valid real carriage assignment. Move a real guest only when
+  -- the requested rehearsal size would disable that guest's current wagon.
+  with misplaced as (
     select
       g.id,
       row_number() over (
         order by coalesce(g.ticket_sequence, 2147483647), g.registered_at, g.id
       ) as rn
     from public.guests g
+    join public.carriages current_carriage
+      on current_carriage.id = g.carriage_id
     where g.event_id = p_event_id
       and coalesce(g.affiliation_detail, '') <> '__BUNKER_TEST__'
+      and (
+        current_carriage.event_id <> p_event_id
+        or current_carriage.number > v_wagons
+      )
   ), assigned as (
     select
-      ranked.id,
-      c.id as carriage_id
-    from ranked
-    join public.carriages c
-      on c.event_id = p_event_id
-     and c.number = 1 + mod((ranked.rn - 1)::integer, v_wagons)
+      misplaced.id,
+      target.id as carriage_id
+    from misplaced
+    join public.carriages target
+      on target.event_id = p_event_id
+     and target.number = 1 + mod((misplaced.rn - 1)::integer, v_wagons)
   )
   update public.guests g
   set carriage_id = assigned.carriage_id
@@ -102,10 +108,23 @@ begin
   where g.event_id = p_event_id;
 
   for v_i in 1..v_test_count loop
-    select c.id into v_carriage
-    from public.carriages c
-    where c.event_id = p_event_id
-      and c.number = 1 + mod(v_real + v_i - 1, v_wagons);
+    -- Fill the least populated active wagon so real assignments stay intact
+    -- while the synthetic rehearsal group remains balanced.
+    select target.id
+    into v_carriage
+    from public.carriages target
+    left join public.guests existing_guest
+      on existing_guest.event_id = p_event_id
+     and existing_guest.carriage_id = target.id
+    where target.event_id = p_event_id
+      and target.enabled
+    group by target.id, target.number
+    order by count(existing_guest.id), target.number
+    limit 1;
+
+    if v_carriage is null then
+      raise exception 'active rehearsal wagon not found' using errcode = '55000';
+    end if;
 
     insert into public.guests(
       event_id,
@@ -164,7 +183,7 @@ grant execute on function public.owner_bunker_v2_seed_test_guests(uuid,integer)
   to authenticated;
 
 -- One-button safety net: if the organiser presses "prepare test game" while
--- fewer than 15 real guests are registered, top the rehearsal up to 15 first.
+-- fewer than 15 guests exist, top the rehearsal up to 15 first.
 create or replace function public.owner_prepare_bunker_v2_test(
   p_event_id uuid,
   p_command_id uuid
