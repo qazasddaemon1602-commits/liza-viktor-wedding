@@ -49,7 +49,7 @@ describe('BunkerScreenGuard', () => {
 
     expect(screen.getByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).toBeInTheDocument();
     expect(screen.getByText('СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА')).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Миссия 01 · экран' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Задание 1 · общий экран' })).not.toBeInTheDocument();
   });
 
   it('keeps the V2 M01 screen protected during an authoritative idle transition race', async () => {
@@ -81,8 +81,8 @@ describe('BunkerScreenGuard', () => {
     );
     await flushLoadedState();
 
-    expect(screen.getByRole('region', { name: 'Миссия 01 · экран' })).toHaveTextContent(
-      'ПОЛУЧАЕМ СЕРВЕРНЫЙ ПРОГРЕСС ВАГОНОВ…',
+    expect(screen.getByRole('region', { name: 'Задание 1 · общий экран' })).toHaveTextContent(
+      'ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР — ЗАГРУЖАЕМ ДАННЫЕ ВАГОНОВ…',
     );
     expect(screen.queryByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).not.toBeInTheDocument();
   });
@@ -126,7 +126,7 @@ describe('BunkerScreenGuard', () => {
     );
     await flushLoadedState();
 
-    expect(screen.getByRole('region', { name: 'Миссия 01 · экран' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Задание 1 · общий экран' })).toBeInTheDocument();
     expect(screen.getByText('Вагоны принимают решение по открытым частям досье.')).toBeInTheDocument();
     expect(screen.getByText('1 / 2 ГОТОВО')).toBeInTheDocument();
     expect(screen.queryByText('2 / 2 ГОТОВО')).not.toBeInTheDocument();
