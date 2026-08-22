@@ -62,7 +62,6 @@ function dashboard(available: number): Extract<BunkerV2DashboardReadModel, { sta
       contentType: 'document',
       decryptionStatus: 'decoded',
       scope: 'wagon',
-      content: { title: 'BK-17' },
     }],
     wagonState: {
       powerStatus: 'stable',
