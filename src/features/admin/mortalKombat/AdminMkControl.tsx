@@ -32,6 +32,17 @@ type AdminMkControlProps = {
   dependencies: AdminMkControlDependencies;
 };
 
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim().slice(0, 180);
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message?: unknown }).message ?? '').trim();
+    if (message) return message.slice(0, 180);
+  }
+  return 'сервер отклонил команду';
+}
+
 export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   const [state, setState] = useState<MkOwnerControl | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,8 +54,20 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   };
 
   const refreshAll = async () => {
-    await dependencies.broadcastRefresh();
-    await reload();
+    let warning = '';
+    try {
+      await dependencies.broadcastRefresh();
+    } catch {
+      warning = 'Команда выполнена. Сигнал обновления не отправлен — экраны перечитают состояние автоматически.';
+    }
+
+    try {
+      await reload();
+    } catch {
+      warning = warning || 'Команда выполнена, но не удалось перечитать состояние. Не нажимайте повторно — обновите страницу.';
+    }
+
+    if (warning) setError(warning);
   };
 
   const setSharedProjector = async (enabled: boolean) => {
@@ -68,7 +91,11 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
 
   const startTournament = async () => {
     await dependencies.finalize(eventId);
-    await setSharedProjector(true);
+    try {
+      await setSharedProjector(true);
+    } catch (projectorError) {
+      setError(`Турнир запущен, но общий ТВ не переключился: ${errorMessage(projectorError)}. Сетка сохранена — повторно стартовать турнир не нужно.`);
+    }
   };
 
   const setCurrentOnProjector = async (matchId: string) => {
@@ -96,12 +123,19 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     setError('');
     try {
       await command();
-      await refreshAll();
-    } catch {
-      setError('Команда турнира не выполнена. Проверьте состояние и попробуйте ещё раз.');
-    } finally {
+    } catch (commandError) {
+      try {
+        await reload();
+      } catch {
+        // The mutation error remains primary; a later poll or page refresh can still reconcile.
+      }
+      setError(`Команда турнира не выполнена: ${errorMessage(commandError)}. Состояние перечитано с сервера; не запускайте повторно, если турнир уже активен.`);
       setBusy(false);
+      return;
     }
+
+    await refreshAll();
+    setBusy(false);
   };
 
   if (!state) {
@@ -299,4 +333,3 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     </section>
   );
 }
-
