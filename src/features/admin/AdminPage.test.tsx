@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminPage, type AdminPageDependencies } from './AdminPage';
 import type { AdminDashboard } from './admin.service';
+import type { AdminBunkerControlDependencies } from './bunker/AdminBunkerControl';
 
 const dashboard: AdminDashboard = {
   status: 'owner',
@@ -57,6 +58,37 @@ function dependencies(overrides: Partial<AdminPageDependencies> = {}): AdminPage
   };
 }
 
+function bunkerControlDependencies(): AdminBunkerControlDependencies {
+  return {
+    load: vi.fn().mockResolvedValue({
+      status: 'idle',
+      durationSeconds: 1800,
+      soundEnabled: true,
+      serverNow: '2026-08-30T12:00:00.000Z',
+    }),
+    prepare: vi.fn().mockResolvedValue({
+      status: 'prepared',
+      eventId: 'event-1',
+      runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+      globalGameState: 'LOBBY',
+      gameMode: 'production',
+      wagonCount: 4,
+      guestCount: 32,
+    }),
+    distribute: vi.fn().mockResolvedValue({
+      status: 'characters_ready',
+      runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+      globalGameState: 'CHARACTERS_READY',
+      assignedCount: 32,
+      wagonCount: 4,
+    }),
+    start: vi.fn().mockResolvedValue({ status: 'active' }),
+    stop: vi.fn().mockResolvedValue({ status: 'idle' }),
+    setSound: vi.fn().mockResolvedValue({ status: 'updated' }),
+    broadcastRefresh: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe('AdminPage', () => {
   it('shows owner login when there is no authenticated session', async () => {
     render(<AdminPage dependencies={dependencies()} />);
@@ -74,9 +106,24 @@ describe('AdminPage', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ userId: 'owner-1' });
     const loadDashboard = vi.fn().mockResolvedValue(dashboard);
-    render(<AdminPage dependencies={dependencies({ getSession, signIn, loadDashboard })} />);
+    const bunkerLoadDashboard = vi.fn().mockResolvedValue(dashboard);
+    render(
+      <AdminPage
+        dependencies={dependencies({
+          getSession,
+          signIn,
+          loadDashboard,
+          bunkerDock: {
+            loadDashboard: bunkerLoadDashboard,
+            applyDistribution: vi.fn().mockResolvedValue(undefined),
+            bunkerControl: bunkerControlDependencies(),
+          },
+        })}
+      />,
+    );
 
     await screen.findByRole('button', { name: 'ВОЙТИ В АДМИНКУ' });
+    expect(bunkerLoadDashboard).not.toHaveBeenCalled();
     await user.type(screen.getByLabelText('Email владельца'), 'ilya@example.test');
     await user.type(screen.getByLabelText('Пароль'), 'secret-password');
     await user.click(screen.getByRole('button', { name: 'ВОЙТИ В АДМИНКУ' }));
@@ -85,6 +132,7 @@ describe('AdminPage', () => {
     expect(getSession).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('Лиза × Виктор')).toBeInTheDocument();
     expect(loadDashboard).toHaveBeenCalled();
+    expect(bunkerLoadDashboard).toHaveBeenCalled();
   });
 
   it('keeps private dashboard data hidden when an authenticated user is not the event owner', async () => {

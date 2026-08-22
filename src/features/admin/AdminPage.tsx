@@ -106,6 +106,10 @@ import type { AdminPremiereControlDependencies } from './premiere/AdminPremiereC
 import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCouplePreanswersPanel';
 import type { AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import type { AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
+import {
+  AdminBunkerDock,
+  type AdminBunkerDockDependencies,
+} from './bunker/AdminBunkerDock';
 
 const EVENT_SLUG = 'liza-viktor';
 
@@ -137,6 +141,7 @@ export type AdminPageDependencies = {
   quiz?: AdminQuizPanelDependencies;
   finalFive?: AdminFinalFivePanelDependencies;
   mortalKombat?: AdminMkControlDependencies;
+  bunkerDock?: AdminBunkerDockDependencies;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -336,6 +341,14 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       undo: (matchId, clearDownstream) => undoMkResult(mkRpcClient, matchId, clearDownstream),
       broadcastRefresh: () => broadcastMkRefresh(mkRealtimeClient, EVENT_SLUG),
     },
+    bunkerDock: {
+      loadDashboard,
+      applyDistribution: (eventId, carriageCount) => applyCarriageDistributionRpc(
+        client,
+        eventId,
+        carriageCount,
+      ),
+    },
   };
 }
 
@@ -409,6 +422,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
             mortalKombat: deps.mortalKombat,
           }}
         />
+        {deps.bunkerDock && <AdminBunkerDock dependencies={deps.bunkerDock} />}
       </>
     );
   }
