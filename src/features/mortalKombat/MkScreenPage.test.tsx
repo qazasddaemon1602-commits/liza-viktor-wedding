@@ -41,6 +41,33 @@ function dependencies(state: MkTournamentProjection): MkScreenPageDependencies {
 }
 
 describe('MkScreenPage', () => {
+  it('turns the pre-draw state into a full projector waiting composition', async () => {
+    const registrationState: ActiveProjection = {
+      ...liveFight,
+      state: 'registration',
+      activeCount: 9,
+      matches: [],
+    };
+
+    render(<MkScreenPage dependencies={dependencies(registrationState)} />);
+
+    const board = await screen.findByTestId('mk-projector-bracket');
+    expect(board).toHaveClass('mk-public-bracket--projector', 'mk-public-bracket--waiting');
+    expect(screen.getByText('9 / 16 БОЙЦОВ')).toBeInTheDocument();
+    expect(screen.getByText('СЛЕДУЮЩЕЕ · ЖЕРЕБЬЁВКА')).toBeInTheDocument();
+  });
+
+  it('keeps a not-opened tournament visually filled instead of showing an empty black screen', async () => {
+    render(<MkScreenPage dependencies={dependencies({ status: 'idle' })} />);
+
+    expect(await screen.findByTestId('mk-projector-waiting')).toBeInTheDocument();
+    expect(screen.getByTestId('mk-projector-waiting-art')).toHaveAttribute(
+      'src',
+      '/images/tournament/arena-wide.png',
+    );
+    expect(screen.getByText('ЭКРАН ГОТОВ · ОЖИДАЕМ КОМАНДУ')).toBeInTheDocument();
+  });
+
   it('shows a cinematic VS scene for the authoritative current fight', async () => {
     render(<MkScreenPage dependencies={dependencies(liveFight)} />);
 

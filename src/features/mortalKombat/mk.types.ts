@@ -29,7 +29,7 @@ export type MkTournamentProjection =
       tournamentId: string;
       state: MkTournamentState;
       activeCount: number;
-      maxPlayers: 16;
+      maxPlayers: number;
       ownRegistrationStatus: MkRegistrationStatus | null;
       waitlistPosition: number | null;
       players: MkPlayer[];
@@ -51,7 +51,7 @@ export type MkOwnerControl =
       state: MkTournamentState;
       activeCount: number;
       waitlistCount: number;
-      maxPlayers: 16;
+      maxPlayers: number;
       registrations: MkOwnerRegistration[];
       matches: MkMatch[];
       championGuestId: string | null;
@@ -69,7 +69,7 @@ export type MkJoinResult = {
   status: 'joined' | 'already_joined';
   registrationStatus: 'active' | 'waitlist';
   activeCount: number;
-  maxPlayers: 16;
+  maxPlayers: number;
   waitlistPosition: number | null;
 };
 

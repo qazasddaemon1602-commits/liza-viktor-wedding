@@ -1,11 +1,14 @@
+import { useEffect } from 'react';
 import { QuizPhaseTimer } from '../quiz/QuizPhaseTimer';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
+import { SceneTransition } from './SceneTransition';
 
 type ActiveQuizScreenState = Extract<QuizScreenState, { status: 'active' }>;
 
 type QuizScreenSceneProps = {
   state: ActiveQuizScreenState;
   expectedGuestCount?: number;
+  onSignal?: (phase: ActiveQuizScreenState['phase']) => void;
 };
 
 function percentage(value: number, total: number): number {
@@ -16,7 +19,11 @@ function percentage(value: number, total: number): number {
 export function QuizScreenScene({
   state,
   expectedGuestCount = 40,
+  onSignal,
 }: QuizScreenSceneProps) {
+  useEffect(() => {
+    onSignal?.(state.phase);
+  }, [onSignal, state.phase, state.question.id]);
   const answeredLabel = `${state.answeredCount} / ${expectedGuestCount} ОТВЕТИЛИ`;
   const lizaPercent = state.phase === 'results'
     ? percentage(state.results.liza, state.results.total)
@@ -26,7 +33,12 @@ export function QuizScreenScene({
     : null;
 
   return (
-    <section className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`} aria-live="polite">
+    <SceneTransition
+      sceneKey={`${state.question.id}-${state.phase}`}
+      label={state.phase === 'voting' ? 'НОВЫЙ ВОПРОС' : 'РЕЗУЛЬТАТЫ'}
+      tone={state.phase === 'voting' ? 'sage' : 'wine'}
+    >
+      <section className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`} aria-live="polite">
       <div className="quiz-screen-frame" data-testid="quiz-editorial-spread">
         <div className="quiz-screen-editorial-meta" aria-hidden="true">
           <span>WEDDING EDITION · LV</span>
@@ -94,7 +106,8 @@ export function QuizScreenScene({
           <span>L × V</span>
         </div>
       </div>
-    </section>
+      </section>
+    </SceneTransition>
   );
 }
 

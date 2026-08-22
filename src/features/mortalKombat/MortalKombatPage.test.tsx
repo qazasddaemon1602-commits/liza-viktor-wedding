@@ -47,6 +47,20 @@ function dependencies(overrides: Partial<MortalKombatPageDependencies> = {}): Mo
 }
 
 describe('MortalKombatPage', () => {
+  it('uses the server limit everywhere instead of a stale event-wide guest count', async () => {
+    const limitedState: ActiveProjection = {
+      ...openState,
+      activeCount: 7,
+      maxPlayers: 12,
+    };
+
+    render(<MortalKombatPage dependencies={dependencies({ load: vi.fn().mockResolvedValue(limitedState) })} />);
+
+    expect(await screen.findAllByText(/7 \/ 12/)).not.toHaveLength(0);
+    expect(screen.getByText('ПОСЛЕДНИЙ КРУГ · 12 МЕСТ')).toBeInTheDocument();
+    expect(screen.queryByText(/\/ 40/)).not.toBeInTheDocument();
+  });
+
   it('lets an already registered wedding guest join without entering their name again', async () => {
     const user = userEvent.setup();
     const load = vi.fn()

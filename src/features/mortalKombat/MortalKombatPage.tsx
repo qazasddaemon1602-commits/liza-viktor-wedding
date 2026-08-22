@@ -164,13 +164,13 @@ export function MortalKombatPage({
             <span>СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</span>
           </div>
           <h1 aria-label="АРЕНА ПОСЛЕДНИЙ КРУГ"><span>АРЕНА</span><br />ПОСЛЕДНИЙ КРУГ</h1>
-          <p className="mk-hero-note">ДО 16 БОЙЦОВ · ОДНА СЕТКА · ЖИВОЙ ФИНАЛ</p>
+          <p className="mk-hero-note">ДО {state.maxPlayers} БОЙЦОВ · ОДНА СЕТКА · ЖИВОЙ ФИНАЛ</p>
         </div>
 
         <div className="mk-hero-counter">
           <small>УЧАСТНИКИ</small>
           <strong>{state.activeCount}</strong>
-          <span>/ 16 БОЙЦОВ</span>
+          <span>/ {state.maxPlayers} БОЙЦОВ</span>
         </div>
       </header>
 

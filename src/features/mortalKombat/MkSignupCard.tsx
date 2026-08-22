@@ -10,12 +10,13 @@ type MkSignupCardProps = {
 
 export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
   const ownStatus = state.ownRegistrationStatus;
+  const limit = state.maxPlayers;
 
   if (ownStatus === 'active') {
     return (
       <section className="mk-signup-card mk-signup-card--confirmed" role="status" aria-live="polite">
         <p className="eyebrow">БОЕЦ ПОДТВЕРЖДЁН</p>
-        <strong>ВЫ В ТУРНИРЕ · {state.activeCount} / 16</strong>
+        <strong>ВЫ В ТУРНИРЕ · {state.activeCount} / {limit}</strong>
         <p>Ждите жеребьёвку. Имя и вагон уже взяты из вашей регистрации на свадьбе.</p>
         <a className="mk-primary-button" href="/join">ВЕРНУТЬСЯ К БИЛЕТУ</a>
       </section>
@@ -25,7 +26,7 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
   if (ownStatus === 'waitlist') {
     return (
       <section className="mk-signup-card mk-signup-card--waitlist" role="status" aria-live="polite">
-        <p className="eyebrow">16 / 16</p>
+        <p className="eyebrow">{limit} / {limit}</p>
         <strong>ЛИСТ ОЖИДАНИЯ · №{state.waitlistPosition ?? '—'}</strong>
         <p>Если освободится место, админ сможет поднять вас в основную сетку.</p>
         <a className="mk-primary-button" href="/join">ВЕРНУТЬСЯ К БИЛЕТУ</a>
@@ -37,7 +38,7 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
     return (
       <section className="mk-signup-card">
         <p className="eyebrow">РЕГИСТРАЦИЯ ЗАКРЫТА</p>
-        <strong>{state.activeCount} / 16 ИГРОКОВ</strong>
+        <strong>{state.activeCount} / {limit} ИГРОКОВ</strong>
         <p>Сетка уже готовится или турнир начался. Смотреть турнир можно здесь же.</p>
       </section>
     );
@@ -45,10 +46,10 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
 
   return (
     <section className="mk-signup-card">
-      <p className="eyebrow">ПОСЛЕДНИЙ КРУГ · 16 МЕСТ</p>
-      <strong>{state.activeCount} / 16</strong>
+      <p className="eyebrow">ПОСЛЕДНИЙ КРУГ · {limit} МЕСТ</p>
+      <strong>{state.activeCount} / {limit}</strong>
       <p>
-        Первые 16 зарегистрированных гостей попадают в основную сетку. Дальше — лист ожидания.
+        Первые {limit} зарегистрированных гостей попадают в основную сетку. Дальше — лист ожидания.
       </p>
       <button
         type="button"

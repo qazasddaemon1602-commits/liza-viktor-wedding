@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { QuizScreenScene } from './QuizScreenScene';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 
@@ -16,6 +16,36 @@ const votingState: Extract<QuizScreenState, { status: 'active'; phase: 'voting' 
 };
 
 describe('QuizScreenScene', () => {
+  it('uses the shared transition language and signals only the presented phase', () => {
+    const onSignal = vi.fn();
+
+    const { rerender } = render(
+      <QuizScreenScene state={votingState} expectedGuestCount={40} onSignal={onSignal} />,
+    );
+
+    expect(screen.getByTestId('scene-transition')).toHaveAttribute(
+      'data-scene-key',
+      'question-1-voting',
+    );
+    expect(onSignal).toHaveBeenCalledWith('voting');
+
+    rerender(<QuizScreenScene state={votingState} expectedGuestCount={40} onSignal={onSignal} />);
+    expect(onSignal).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <QuizScreenScene
+        state={{
+          ...votingState,
+          phase: 'results',
+          results: { liza: 18, viktor: 12, total: 30 },
+        }}
+        expectedGuestCount={40}
+        onSignal={onSignal}
+      />,
+    );
+    expect(onSignal).toHaveBeenLastCalledWith('results');
+  });
+
   it('shows a live question and participation count without percentages before reveal', () => {
     render(<QuizScreenScene state={votingState} expectedGuestCount={40} />);
 

@@ -37,6 +37,8 @@ export type ScreenAudioController = {
   stopArrival: () => void;
   playCarriageCall: () => void;
   stopCarriageCall: () => void;
+  playQuizVoting: () => void;
+  playQuizReveal: () => void;
   dispose: () => void;
 };
 
@@ -86,7 +88,8 @@ export function createScreenAudioController(
     if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
     const needsArrivalFallback = !hasSample('arrival.chime');
     const needsSequenceFallback = !hasSample('arrival.sequence');
-    if (!needsArrivalFallback && !needsSequenceFallback) return samplePlayer.arm();
+    const needsQuizFallback = !hasSample('ui.confirm') || !hasSample('ui.reveal');
+    if (!needsArrivalFallback && !needsSequenceFallback && !needsQuizFallback) return samplePlayer.arm();
     try {
       context ??= factory();
       if (context.state !== 'running') await context.resume();
@@ -178,6 +181,28 @@ export function createScreenAudioController(
     playTone(73.42, start + 9.15, 1.55, 0.012, 'triangle');
   };
 
+  const playQuizVoting = () => {
+    if (hasSample('ui.confirm')) {
+      void samplePlayer.playCue('ui.confirm', { priority: 'scene' });
+      return;
+    }
+    if (!context || context.state !== 'running') return;
+    const now = context.currentTime + 0.015;
+    playTone(392, now, 0.09, 0.012, 'triangle');
+    playTone(523.25, now + 0.1, 0.12, 0.014, 'sine');
+  };
+
+  const playQuizReveal = () => {
+    if (hasSample('ui.reveal')) {
+      void samplePlayer.playCue('ui.reveal', { priority: 'scene' });
+      return;
+    }
+    if (!context || context.state !== 'running') return;
+    const now = context.currentTime + 0.015;
+    playTone(440, now, 0.16, 0.016, 'sine');
+    playTone(659.25, now + 0.12, 0.2, 0.018, 'triangle');
+  };
+
   const stopArrival = () => {
     if (hasSample('arrival.chime')) samplePlayer.stopCue('arrival.chime');
     stopOscillators();
@@ -207,6 +232,8 @@ export function createScreenAudioController(
     stopArrival,
     playCarriageCall,
     stopCarriageCall,
+    playQuizVoting,
+    playQuizReveal,
     dispose,
   };
 }
