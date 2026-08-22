@@ -1,0 +1,3 @@
+.admin-bunker-dock:has(.admin-bunker-final:not(.is-unlocked)) .admin-bunker-stage-primary {
+  display: none;
+}
