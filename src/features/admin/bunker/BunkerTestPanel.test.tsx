@@ -27,7 +27,9 @@ describe('BunkerTestPanel', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'РЕПЕТИЦИЯ ИГРЫ' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '20 ГОСТЕЙ' })).toBeInTheDocument();
+    expect(screen.getByText(/реальные регистрации сохраняются/i)).toBeInTheDocument();
+    expect(screen.getByText(/реальные \+ тестовые/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ДО 20 ГОСТЕЙ' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'УСКОРИТЬ НА 1 МИНУТУ' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'СИМУЛИРОВАТЬ ТЕКУЩИЙ ЭТАП' })).toBeInTheDocument();
     expect(screen.getByText(/работают только в режиме репетиции/i)).toBeInTheDocument();
