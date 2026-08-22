@@ -200,7 +200,10 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
         Вы выбираете судьбу персонажей. Все реальные гости остаются в игре и продолжают пользоваться сайтом.
       </p>
 
+      {missionContent && <MissionBriefing content={missionContent} />}
+
       {model.status === 'completed' ? (
+
         <div
           ref={outcomeStatusRef}
           className="bunker-mission-one-player__outcome"
