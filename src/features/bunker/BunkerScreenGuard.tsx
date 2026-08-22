@@ -68,41 +68,124 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
 }
 
 function remaining(deadline: string, serverNow: string, receivedAt: number, now: number) {
-  return Math.max(0, Math.ceil((Date.parse(deadline) - Date.parse(serverNow)) / 1000 - (now - receivedAt) / 1000));
+  return Math.max(
+    0,
+    Math.ceil((Date.parse(deadline) - Date.parse(serverNow)) / 1000 - (now - receivedAt) / 1000),
+  );
 }
 
-function missionOneModel(value: Timed<Extract<M01, { status: 'active' }>> | null, now: number): MissionOneScreenReadModel | undefined {
-  return value ? { title: value.model.title, publicSummary: value.model.publicSummary, remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now), wagons: value.model.wagons } : undefined;
+function missionOneModel(
+  value: Timed<Extract<M01, { status: 'active' }>> | null,
+  now: number,
+): MissionOneScreenReadModel | undefined {
+  return value ? {
+    title: value.model.title,
+    publicSummary: value.model.publicSummary,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    wagons: value.model.wagons,
+  } : undefined;
 }
-function missionTwoModel(value: Timed<Extract<M02, { status: 'active' | 'completed' }>> | null, now: number): MissionTwoScreenModel | undefined {
-  return value ? { title: value.model.title, subtitle: value.model.subtitle, remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now), wagons: value.model.wagons } : undefined;
+
+function missionTwoModel(
+  value: Timed<Extract<M02, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionTwoScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    subtitle: value.model.subtitle,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    wagons: value.model.wagons,
+  } : undefined;
 }
-function missionThreeModel(value: Timed<Extract<M03, { status: 'active' | 'completed' }>> | null, now: number): MissionThreeScreenModel | undefined {
-  return value ? { title: value.model.title, remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now), wagons: value.model.wagons } : undefined;
+
+function missionThreeModel(
+  value: Timed<Extract<M03, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionThreeScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    wagons: value.model.wagons,
+  } : undefined;
 }
-function missionFourModel(value: Timed<Extract<M04, { status: 'active' | 'completed' }>> | null, now: number): MissionFourScreenModel | undefined {
-  return value ? { title: value.model.title, remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now), groups: value.model.groups } : undefined;
+
+function missionFourModel(
+  value: Timed<Extract<M04, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionFourScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    groups: value.model.groups,
+  } : undefined;
 }
-function missionFiveModel(value: Timed<Extract<M05, { status: 'active' | 'completed' }>> | null, now: number): MissionFiveScreenModel | undefined {
-  return value ? { title: value.model.title, remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now), wagons: value.model.wagons } : undefined;
+
+function missionFiveModel(
+  value: Timed<Extract<M05, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionFiveScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    wagons: value.model.wagons,
+  } : undefined;
 }
-function missionSixModel(value: Timed<Extract<M06, { status: 'active' | 'completed' }>> | null, now: number): MissionSixScreenModel | undefined {
-  return value ? { title: value.model.title, remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now), fragmentsRevealed: value.model.fragmentsRevealed, fragmentsTotal: value.model.fragmentsTotal, wagons: value.model.wagons } : undefined;
+
+function missionSixModel(
+  value: Timed<Extract<M06, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): MissionSixScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    fragmentsRevealed: value.model.fragmentsRevealed,
+    fragmentsTotal: value.model.fragmentsTotal,
+    wagons: value.model.wagons,
+  } : undefined;
 }
-function storyModel(value: Timed<Extract<UnknownPassengerScreenReadModel, { status: 'active' }>> | null, now: number): UnknownPassengerScreenModel | undefined {
-  return value ? { title: value.model.title, dossierId: value.model.dossierId, sector: value.model.sector, remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now) } : undefined;
+
+function storyModel(
+  value: Timed<Extract<UnknownPassengerScreenReadModel, { status: 'active' }>> | null,
+  now: number,
+): UnknownPassengerScreenModel | undefined {
+  return value ? {
+    title: value.model.title,
+    dossierId: value.model.dossierId,
+    sector: value.model.sector,
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+  } : undefined;
 }
-function finalModel(value: Timed<Extract<FinalScreenReadModel, { status: 'active' | 'completed' }>> | null, now: number): FinalScreenModel | undefined {
-  return value ? { remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now), solved: value.model.solved, total: value.model.total, wrongAttempts: value.model.wrongAttempts, unlocked: value.model.unlocked, hintLevel: value.model.hintLevel, timeAdjustmentSeconds: value.model.timeAdjustmentSeconds } : undefined;
+
+function finalModel(
+  value: Timed<Extract<FinalScreenReadModel, { status: 'active' | 'completed' }>> | null,
+  now: number,
+): FinalScreenModel | undefined {
+  return value ? {
+    remainingSeconds: remaining(value.model.deadlineAt, value.model.serverNow, value.receivedAt, now),
+    solved: value.model.solved,
+    total: value.model.total,
+    wrongAttempts: value.model.wrongAttempts,
+    unlocked: value.model.unlocked,
+    hintLevel: value.model.hintLevel,
+    timeAdjustmentSeconds: value.model.timeAdjustmentSeconds,
+  } : undefined;
 }
+
 function resultModel(value: Timed<BunkerV2ResultSummary> | null): BunkerResultsScreenModel | undefined {
   if (!value) return undefined;
   const { contractVersion: _contractVersion, status: _status, serverNow: _serverNow, ...result } = value.model;
   return result;
 }
-function stateRemaining(state: Extract<BunkerScreenState, { status: 'active' }>, now: number, serverOffset: number) {
+
+function stateRemaining(
+  state: Extract<BunkerScreenState, { status: 'active' }>,
+  now: number,
+  serverOffset: number,
+) {
   const started = Date.parse(state.startedAt);
-  return Number.isFinite(started) ? Math.max(0, Math.ceil(state.durationSeconds - (now + serverOffset - started) / 1000)) : state.remainingSeconds;
+  return Number.isFinite(started)
+    ? Math.max(0, Math.ceil(state.durationSeconds - (now + serverOffset - started) / 1000))
+    : state.remainingSeconds;
 }
 
 export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, children }: Props) {
@@ -120,7 +203,13 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   const [results, setResults] = useState<Timed<BunkerV2ResultSummary> | null>(null);
   const [contractVersion, setContractVersion] = useState<1 | 2 | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [motion, setMotion] = useState<'full' | 'reduced'>(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full');
+  const [motion, setMotion] = useState<'full' | 'reduced'>(() => (
+    typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'reduced'
+      : 'full'
+  ));
   const offset = useRef(0);
   const latest = useRef(Number.NEGATIVE_INFINITY);
   const unlock = useRef<boolean | null>(null);
@@ -137,7 +226,10 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   };
 
   useEffect(() => {
-    if (dependencies) { setBrowserDeps(null); return; }
+    if (dependencies) {
+      setBrowserDeps(null);
+      return;
+    }
     const next = browserDependencies(eventSlug);
     setBrowserDeps(next);
     return () => next?.audio?.dispose();
@@ -170,14 +262,22 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   const refresh = () => {
     if (!deps) return;
     void deps.load().then(applyState).catch(() => {});
-    void Promise.resolve(deps.loadMissionOne?.() ?? null).then((value) => applyProjection(value, setOne)).catch(() => {});
-    void Promise.resolve(deps.loadMissionTwo?.() ?? null).then((value) => applyProjection(value, setTwo)).catch(() => {});
-    void Promise.resolve(deps.loadMissionThree?.() ?? null).then((value) => applyProjection(value, setThree)).catch(() => {});
-    void Promise.resolve(deps.loadMissionFour?.() ?? null).then((value) => applyProjection(value, setFour)).catch(() => {});
-    void Promise.resolve(deps.loadMissionFive?.() ?? null).then((value) => applyProjection(value, setFive)).catch(() => {});
-    void Promise.resolve(deps.loadMissionSix?.() ?? null).then((value) => applyProjection(value, setSix)).catch(() => {});
-    void Promise.resolve(deps.loadUnknownPassenger?.() ?? null).then((value) => applyProjection(value, setUnknown)).catch(() => {});
-    void Promise.resolve(deps.loadFinal?.() ?? null).then((value) => applyProjection(value, setFinal)).catch(() => {});
+    void Promise.resolve(deps.loadMissionOne?.() ?? null)
+      .then((value) => applyProjection(value, setOne)).catch(() => {});
+    void Promise.resolve(deps.loadMissionTwo?.() ?? null)
+      .then((value) => applyProjection(value, setTwo)).catch(() => {});
+    void Promise.resolve(deps.loadMissionThree?.() ?? null)
+      .then((value) => applyProjection(value, setThree)).catch(() => {});
+    void Promise.resolve(deps.loadMissionFour?.() ?? null)
+      .then((value) => applyProjection(value, setFour)).catch(() => {});
+    void Promise.resolve(deps.loadMissionFive?.() ?? null)
+      .then((value) => applyProjection(value, setFive)).catch(() => {});
+    void Promise.resolve(deps.loadMissionSix?.() ?? null)
+      .then((value) => applyProjection(value, setSix)).catch(() => {});
+    void Promise.resolve(deps.loadUnknownPassenger?.() ?? null)
+      .then((value) => applyProjection(value, setUnknown)).catch(() => {});
+    void Promise.resolve(deps.loadFinal?.() ?? null)
+      .then((value) => applyProjection(value, setFinal)).catch(() => {});
     if (deps.loadResults) {
       void deps.loadResults().then((value) => {
         if (value.status === 'completed') {
@@ -206,14 +306,27 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     };
   }, [deps]);
 
-  const remainingSeconds = state?.status === 'active' ? stateRemaining(state, nowMs, offset.current) : 0;
+  const remainingSeconds = state?.status === 'active'
+    ? stateRemaining(state, nowMs, offset.current)
+    : 0;
   const bunkerActive = state?.status === 'active';
-  const phase = state?.status === 'active' ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency') : null;
+  const phase = state?.status === 'active'
+    ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency')
+    : null;
   const emergency = bunkerActive && phase === 'emergency';
-  const notKnownLegacy = contractVersion !== 1;
-  const storyActive = bunkerActive && notKnownLegacy && state?.status === 'active' && state.globalGameState === 'UNKNOWN_PASSENGER';
-  const finalActive = bunkerActive && notKnownLegacy && state?.status === 'active' && state.globalGameState === 'FINAL_30';
-  const resultsActive = bunkerActive && notKnownLegacy && state?.status === 'active' && (state.globalGameState === 'BUNKER_OPEN' || state.globalGameState === 'FINISHED');
+  const explicitV2 = contractVersion === 2;
+  const storyActive = bunkerActive
+    && explicitV2
+    && state?.status === 'active'
+    && state.globalGameState === 'UNKNOWN_PASSENGER';
+  const finalActive = bunkerActive
+    && explicitV2
+    && state?.status === 'active'
+    && state.globalGameState === 'FINAL_30';
+  const resultsActive = bunkerActive
+    && explicitV2
+    && state?.status === 'active'
+    && (state.globalGameState === 'BUNKER_OPEN' || state.globalGameState === 'FINISHED');
   const storyView = storyModel(unknown, nowMs);
   const finalView = finalModel(final, nowMs);
   const resultsView = resultModel(results);
@@ -222,45 +335,112 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     setBunkerPresentationProtected(bunkerActive);
     return () => setBunkerPresentationProtected(false);
   }, [bunkerActive]);
+
   useEffect(() => {
     if (!bunkerActive || remainingSeconds <= 0) return;
     const interval = window.setInterval(() => setNowMs(Date.now()), 250);
     return () => window.clearInterval(interval);
   }, [bunkerActive, remainingSeconds <= 0]);
+
   useEffect(() => {
     if (!deps) return;
-    const interval = window.setInterval(() => refreshRef.current(), bunkerActive ? 2000 : 1500);
+    const interval = window.setInterval(() => refreshRef.current(), bunkerActive ? 2_000 : 1_500);
     return () => window.clearInterval(interval);
   }, [deps, bunkerActive]);
+
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
-    if (!emergency || remainingSeconds <= 0 || state?.status !== 'active' || !state.soundEnabled) { audio.stopAlarm(); return; }
-    audio.startAlarm(); void audio.arm();
+    if (!emergency || remainingSeconds <= 0 || state?.status !== 'active' || !state.soundEnabled) {
+      audio.stopAlarm();
+      return;
+    }
+    audio.startAlarm();
+    void audio.arm();
     return () => audio.stopAlarm();
   }, [deps, emergency, remainingSeconds <= 0, state?.status === 'active' ? state.soundEnabled : false]);
+
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
-    if (!bunkerActive || state?.status !== 'active' || !state.soundEnabled) { audio.stopAmbience(); return; }
-    audio.startAmbience(); void audio.arm();
+    if (!bunkerActive || state?.status !== 'active' || !state.soundEnabled) {
+      audio.stopAmbience();
+      return;
+    }
+    audio.startAmbience();
+    void audio.arm();
     return () => audio.stopAmbience();
   }, [deps, bunkerActive, state?.status === 'active' ? state.soundEnabled : false]);
+
   useEffect(() => {
     const audio = deps?.audio;
-    if (!bunkerActive || state?.status !== 'active') { unlock.current = null; return; }
+    if (!bunkerActive || state?.status !== 'active') {
+      unlock.current = null;
+      return;
+    }
     const finalPhase = phase === 'final' || phase === 'completed';
     const wasUnlocked = unlock.current;
-    if (finalPhase && state.soundEnabled && wasUnlocked === false && state.unlocked) { audio?.playDoorUnlock(); void audio?.arm(); }
+    if (finalPhase && state.soundEnabled && wasUnlocked === false && state.unlocked) {
+      audio?.playDoorUnlock();
+      void audio?.arm();
+    }
     unlock.current = state.unlocked;
-  }, [deps, bunkerActive, phase, state?.status === 'active' ? state.unlocked : false, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [
+    deps,
+    bunkerActive,
+    phase,
+    state?.status === 'active' ? state.unlocked : false,
+    state?.status === 'active' ? state.soundEnabled : false,
+  ]);
 
-  return <>
-    {children}
-    {bunkerActive && state?.status === 'active' && phase === 'emergency' && <BunkerEmergencyScene remainingSeconds={remainingSeconds} motionPreference={motion} />}
-    {storyActive && (storyView ? <UnknownPassengerScreen model={storyView} /> : <section className="bunker-v2-screen bunker-v2-unknown-passenger-screen" aria-label="Неизвестный пассажир · общий экран"><p role="status">НЕИЗВЕСТНЫЙ ПАССАЖИР · ЗАГРУЖАЕМ ДОСЬЕ BK-17…</p></section>)}
-    {finalActive && (finalView ? <FinalScreen model={finalView} /> : <section className="bunker-v2-screen bunker-v2-final-screen" aria-label="Финал · общий экран"><p role="status">ФИНАЛ · СИНХРОНИЗИРУЕМ ТЕРМИНАЛ…</p></section>)}
-    {resultsActive && (resultsView ? <BunkerResultsScreen model={resultsView} /> : <section className="bunker-v2-screen bunker-v2-results" aria-label="Бункер открыт · итоги игры"><h1>БУНКЕР ОТКРЫТ</h1><p role="status">СОБИРАЕМ ИТОГИ ВАШЕГО СОСТАВА…</p></section>)}
-    {bunkerActive && state?.status === 'active' && phase !== 'emergency' && !storyActive && !finalActive && !resultsActive && <BunkerQuestScene key={state.globalGameState ?? phase} state={state} remainingSeconds={remainingSeconds} motionPreference={motion} missionOne={missionOneModel(one, nowMs)} missionTwo={missionTwoModel(two, nowMs)} missionThree={missionThreeModel(three, nowMs)} missionFour={missionFourModel(four, nowMs)} missionFive={missionFiveModel(five, nowMs)} missionSix={missionSixModel(six, nowMs)} bunkerContractVersion={contractVersion ?? undefined} />}
-  </>;
+  return (
+    <>
+      {children}
+      {bunkerActive && state?.status === 'active' && phase === 'emergency' && (
+        <BunkerEmergencyScene remainingSeconds={remainingSeconds} motionPreference={motion} />
+      )}
+      {storyActive && (
+        storyView ? <UnknownPassengerScreen model={storyView} /> : (
+          <section className="bunker-v2-screen bunker-v2-unknown-passenger-screen" aria-label="Неизвестный пассажир · общий экран">
+            <p role="status">НЕИЗВЕСТНЫЙ ПАССАЖИР · ЗАГРУЖАЕМ ДОСЬЕ BK-17…</p>
+          </section>
+        )
+      )}
+      {finalActive && (
+        finalView ? <FinalScreen model={finalView} /> : (
+          <section className="bunker-v2-screen bunker-v2-final-screen" aria-label="Финал · общий экран">
+            <p role="status">ФИНАЛ · СИНХРОНИЗИРУЕМ ТЕРМИНАЛ…</p>
+          </section>
+        )
+      )}
+      {resultsActive && (
+        resultsView ? <BunkerResultsScreen model={resultsView} /> : (
+          <section className="bunker-v2-screen bunker-v2-results" aria-label="Бункер открыт · итоги игры">
+            <h1>БУНКЕР ОТКРЫТ</h1>
+            <p role="status">СОБИРАЕМ ИТОГИ ВАШЕГО СОСТАВА…</p>
+          </section>
+        )
+      )}
+      {bunkerActive
+        && state?.status === 'active'
+        && phase !== 'emergency'
+        && !storyActive
+        && !finalActive
+        && !resultsActive && (
+          <BunkerQuestScene
+            key={state.globalGameState ?? phase}
+            state={state}
+            remainingSeconds={remainingSeconds}
+            motionPreference={motion}
+            missionOne={missionOneModel(one, nowMs)}
+            missionTwo={missionTwoModel(two, nowMs)}
+            missionThree={missionThreeModel(three, nowMs)}
+            missionFour={missionFourModel(four, nowMs)}
+            missionFive={missionFiveModel(five, nowMs)}
+            missionSix={missionSixModel(six, nowMs)}
+            bunkerContractVersion={contractVersion ?? undefined}
+          />
+        )}
+    </>
+  );
 }
