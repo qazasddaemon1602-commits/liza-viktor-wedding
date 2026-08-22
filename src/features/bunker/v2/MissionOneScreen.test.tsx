@@ -92,7 +92,7 @@ describe('Mission one TV integration', () => {
       />,
     );
 
-    expect(screen.getByRole('region', { name: 'Миссия 01 · экран' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Задание 1 · общий экран' })).toBeInTheDocument();
     expect(screen.getByText('Команды принимают решение по досье.')).toBeInTheDocument();
     expect(screen.queryByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).not.toBeInTheDocument();
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
