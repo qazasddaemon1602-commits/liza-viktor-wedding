@@ -158,6 +158,7 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
   const [submitting, setSubmitting] = useState(false);
   const generation = useRef(0);
   const runtimeStage = useRef<string | null>(null);
+  const runtimeRunNonce = useRef<string | null>(null);
 
   const clearNonCurrent = useCallback((stage: string | null) => {
     if (stage !== 'MISSION_01') setMissionOne(undefined);
@@ -248,6 +249,21 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
       return null;
     }
   }, [clearNonCurrent, deps, enabled]);
+
+  useEffect(() => {
+    const activeV2 = runtime?.status === 'active' && 'contractVersion' in runtime && runtime.contractVersion === 2;
+    if (!activeV2) {
+      runtimeRunNonce.current = null;
+      setDashboard(undefined);
+      setDashboardError('');
+      return;
+    }
+    if (runtimeRunNonce.current && runtimeRunNonce.current !== runtime.runNonce) {
+      setDashboard(undefined);
+      setDashboardError('');
+    }
+    runtimeRunNonce.current = runtime.runNonce;
+  }, [runtime]);
 
   useEffect(() => {
     if (!enabled || !deps) return;
@@ -378,7 +394,7 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
     return authoritative(() => deps.revealMissionSixFragment!(deps.getDeviceKey(), { commandId: commandId('m06-fragment'), instanceId: missionSix.instanceId, fragmentKey: missionSix.privateFragment.key }));
   }, [authoritative, deps, missionSix]);
   const castMissionSixVote = useCallback((vote: 'A' | 'B' | 'C') => {
-    if (!deps?.castMissionSixVote || !missionSix) throw new Error('M06 vote unavailable');
+    if (!deps?.castMissionSixVote || !missionSix) throw new Error('M06 unavailable');
     return authoritative(() => deps.castMissionSixVote!(deps.getDeviceKey(), { commandId: commandId('m06-vote'), instanceId: missionSix.instanceId, vote }));
   }, [authoritative, deps, missionSix]);
   const useMissionSixAbility = useCallback(() => {
