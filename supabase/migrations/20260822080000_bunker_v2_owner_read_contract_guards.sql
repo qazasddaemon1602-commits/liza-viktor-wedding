@@ -82,12 +82,34 @@ begin
 end;
 $$;
 
+create or replace function public.get_owner_bunker_v2_unknown_passenger(p_event_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_slug text;
+begin
+  perform public._require_bunker_owner(p_event_id);
+  select event.slug into v_slug
+  from public.events event
+  where event.id = p_event_id;
+  if v_slug is null then
+    raise exception 'Bunker event not found' using errcode = 'P0002';
+  end if;
+  return public.get_bunker_v2_unknown_passenger_screen(v_slug);
+end;
+$$;
+
 revoke all on function public.get_owner_bunker_v2_m03(uuid) from public, anon, authenticated;
 revoke all on function public.get_owner_bunker_v2_m04(uuid) from public, anon, authenticated;
 revoke all on function public.get_owner_bunker_v2_m05(uuid) from public, anon, authenticated;
 revoke all on function public.get_owner_bunker_v2_m06(uuid) from public, anon, authenticated;
+revoke all on function public.get_owner_bunker_v2_unknown_passenger(uuid) from public, anon, authenticated;
 
 grant execute on function public.get_owner_bunker_v2_m03(uuid) to authenticated;
 grant execute on function public.get_owner_bunker_v2_m04(uuid) to authenticated;
 grant execute on function public.get_owner_bunker_v2_m05(uuid) to authenticated;
 grant execute on function public.get_owner_bunker_v2_m06(uuid) to authenticated;
+grant execute on function public.get_owner_bunker_v2_unknown_passenger(uuid) to authenticated;
