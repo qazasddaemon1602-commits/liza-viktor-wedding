@@ -72,7 +72,6 @@ const dashboard: Extract<BunkerV2DashboardReadModel, { status: 'active' }> = {
     contentType: 'document',
     decryptionStatus: 'decoded',
     scope: 'wagon',
-    content: { title: 'BK-17' },
   }],
   wagonState: {
     powerStatus: 'unstable',
