@@ -56,7 +56,7 @@ const activePayload = {
     trackDamage: 15,
     waterStatus: 'limited',
     routeChoice: 'A',
-    routeBonus: -30,
+    routeBonus: 7,
     powerInstability: 2,
     sector04Found: true,
     coordinationBonus: false,
@@ -109,6 +109,24 @@ describe('persistent Bunker V2 dashboard service', () => {
       ...activePayload,
       wagonState: { ...activePayload.wagonState, powerStatus: 'magic' },
     })).toThrow(/wagon state/i);
+  });
+
+  it('rejects old seconds-based or otherwise impossible M05 route bonuses', () => {
+    for (const routeBonus of [-300, -30, 60, 120, 420]) {
+      expect(() => parseBunkerV2DashboardReadModel({
+        ...activePayload,
+        wagonState: { ...activePayload.wagonState, routeBonus },
+      })).toThrow(/route bonus/i);
+    }
+  });
+
+  it('accepts every approved M05 route bonus in minutes', () => {
+    for (const routeBonus of [-5, 0, 4, 7]) {
+      expect(parseBunkerV2DashboardReadModel({
+        ...activePayload,
+        wagonState: { ...activePayload.wagonState, routeBonus },
+      })).toMatchObject({ wagonState: { routeBonus } });
+    }
   });
 
   it('rejects extra top-level fields so the projection cannot silently expand', () => {
