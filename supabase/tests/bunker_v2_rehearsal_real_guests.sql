@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(6);
+select plan(8);
 
 select has_function(
   'public',
@@ -27,6 +27,16 @@ select ok(
 select ok(
   position('max(g.ticket_sequence)' in pg_get_functiondef('public.owner_bunker_v2_seed_test_guests(uuid,integer)'::regprocedure)) > 0,
   'synthetic ticket sequence continues after real registrations'
+);
+
+select ok(
+  position('current_carriage.number > v_wagons' in pg_get_functiondef('public.owner_bunker_v2_seed_test_guests(uuid,integer)'::regprocedure)) > 0,
+  'real guests move only when their current wagon would be disabled'
+);
+
+select ok(
+  position('order by count(existing_guest.id), target.number' in pg_get_functiondef('public.owner_bunker_v2_seed_test_guests(uuid,integer)'::regprocedure)) > 0,
+  'synthetic guests fill the least populated active wagon first'
 );
 
 select ok(
