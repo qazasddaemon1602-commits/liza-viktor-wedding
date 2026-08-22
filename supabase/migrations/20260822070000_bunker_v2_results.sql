@@ -70,9 +70,9 @@ begin
   end if;
 
   select
-    count(*) filter(where p.status='active')::integer,
-    count(*) filter(where p.status='saved')::integer,
-    count(*) filter(where p.status='excluded')::integer
+    count(*) filter(where p.character_status='active')::integer,
+    count(*) filter(where p.character_status='saved')::integer,
+    count(*) filter(where p.character_status='excluded')::integer
   into v_active,v_saved,v_excluded
   from public.bunker_guest_profiles p
   where p.event_id=v_event_id and p.run_nonce=v_state.run_nonce;
