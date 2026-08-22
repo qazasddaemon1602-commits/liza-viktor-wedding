@@ -22,7 +22,7 @@ declare
 begin
   perform public._require_bunker_owner(p_event_id);
 
-  if p_confirmation <> 'СБРОСИТЬ' then
+  if coalesce(p_confirmation, '') <> 'СБРОСИТЬ' then
     raise exception 'explicit reset confirmation required' using errcode = '22023';
   end if;
 
