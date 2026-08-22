@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(9);
 
 select has_function('public','get_bunker_v2_results',array['text'],'public Bunker V2 result summary exists');
 select ok(has_function_privilege('anon','public.get_bunker_v2_results(text)','EXECUTE'),'result summary is readable by the public event screen');
@@ -12,6 +12,11 @@ select has_function('public','_bunker_v2_mission_stage_counts',array['uuid','uui
 select ok(
   pg_get_functiondef('public.get_bunker_v2_results(text)'::regprocedure)~'_bunker_v2_mission_stage_counts',
   'public results use six story stages instead of counting per-wagon mission instances'
+);
+select ok(
+  pg_get_functiondef('public.get_bunker_v2_results(text)'::regprocedure)~'statement_timestamp'
+  and pg_get_functiondef('public.get_bunker_v2_results(text)'::regprocedure)!~'clock_timestamp',
+  'STABLE results use one statement-stable server timestamp'
 );
 
 select * from finish();
