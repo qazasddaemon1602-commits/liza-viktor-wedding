@@ -601,3 +601,73 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Сюжетный брифинг задания — мобильный приоритет 390px. */
+.bunker-mission-briefing {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--bunker-player-rule, rgba(238, 233, 221, 0.18));
+  border-radius: 0.25rem;
+  background: rgba(24, 24, 23, 0.6);
+}
+
+.bunker-mission-briefing__block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  color: var(--bunker-player-muted, #9f9b91);
+}
+
+.bunker-mission-briefing__block p,
+.bunker-mission-briefing__block li {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.bunker-mission-briefing__block ol,
+.bunker-mission-briefing__block ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.bunker-mission-briefing__items {
+  list-style: none;
+  padding-left: 0;
+}
+
+.bunker-mission-briefing__items li {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--bunker-player-rule, rgba(238, 233, 221, 0.18));
+}
+
+.bunker-mission-briefing__items strong {
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+}
+
+.bunker-mission-briefing__items span {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--bunker-player-muted, #9f9b91);
+}
+
+@media (max-width: 430px) {
+  .bunker-mission-briefing {
+    padding: 0.9rem;
+    gap: 1.15rem;
+  }
+
+  .bunker-mission-briefing__block p,
+  .bunker-mission-briefing__block li,
+  .bunker-mission-briefing__items span {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+}
