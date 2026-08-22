@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 select has_function('public','get_guest_bunker_v2_m03',array['text','text'],'M03 guest read model');
 select has_function('public','get_bunker_v2_m03_screen',array['text'],'M03 TV read model');
 select has_function('public','get_owner_bunker_v2_m03',array['uuid'],'M03 owner read model');
@@ -13,5 +13,11 @@ select ok(not has_table_privilege('anon','public.bunker_intercarriage_messages',
 select ok(pg_get_functiondef('public.submit_bunker_command(text,text,uuid,text,jsonb)'::regprocedure)~'_submit_bunker_command_m03' and pg_get_functiondef('public.submit_bunker_command(text,text,uuid,text,jsonb)'::regprocedure)~'_submit_bunker_command_m04','command router covers M03/M04');
 select ok(pg_get_functiondef('public._submit_bunker_command_m04(text,text,uuid,text,jsonb)'::regprocedure)~'char_length' and pg_get_functiondef('public._submit_bunker_command_m04(text,text,uuid,text,jsonb)'::regprocedure)~'120','M04 enforces 120 chars server-side');
 select ok(pg_get_functiondef('public._submit_bunker_command_m04(text,text,uuid,text,jsonb)'::regprocedure)~'for update','M04 transfer settlement uses row locks');
+select ok(
+  pg_get_functiondef('public.get_guest_bunker_v2_m04(text,text)'::regprocedure) !~ '\.real_name'
+  and pg_get_functiondef('public.get_guest_bunker_v2_m04(text,text)'::regprocedure) ~ 'first_name'
+  and pg_get_functiondef('public.get_guest_bunker_v2_m04(text,text)'::regprocedure) ~ 'last_name',
+  'M04 message sender uses the real guests schema instead of a nonexistent real_name column'
+);
 select * from finish();
 rollback;
