@@ -138,15 +138,46 @@ describe('global Bunker phone mission actions', () => {
     expect(risks).toHaveTextContent(/связь с составом/i);
     expect(risks).toHaveTextContent(/механика и навигация/i);
     expect(within(risks).getAllByRole('img')).toHaveLength(5);
-    expect(region).toHaveTextContent(/выбрано решений: 0 из 3/i);
-    expect(region).toHaveTextContent(/осталось рисков: 5 из 5/i);
+    expect(region).toHaveTextContent(/выбрано предметов: 0 из 3/i);
+    expect(region).toHaveTextContent(/закрыто рисков: 0 из 5/i);
+    expect(within(risks).getByRole('checkbox', { name: /вода/i })).toBeInTheDocument();
 
     await user.click(within(region).getByRole('checkbox', { name: /вода/i }));
 
-    expect(region).toHaveTextContent(/выбрано решений: 1 из 3/i);
-    expect(region).toHaveTextContent(/осталось рисков: 4 из 5/i);
+    expect(region).toHaveTextContent(/выбрано предметов: 1 из 3/i);
+    expect(region).toHaveTextContent(/закрыто рисков: 1 из 5/i);
     expect(region).toHaveTextContent(/вода закрывает риск «вода и перегрев»/i);
     expect(risks).toHaveTextContent(/выбран предмет: вода\. этот риск закрыт/i);
+  });
+
+  it('keeps an unmapped available item separate from the closed-risk count', async () => {
+    const user = userEvent.setup();
+    render(
+      <BunkerMissionActions
+        globalMissionState="MISSION_03"
+        globalAction={action('MISSION_03', {
+          availableItemKeys: ['water', 'gas_mask'],
+          minItems: 1,
+          maxItems: 3,
+        })}
+        inventory={[
+          { id: 'water-1', itemKey: 'water', quantity: 1, status: 'available' },
+          { id: 'mask-1', itemKey: 'gas_mask', quantity: 1, status: 'available' },
+        ]}
+        onMission={noop}
+        onFinalCode={noop}
+      />,
+    );
+
+    const region = screen.getByLabelText('Действие вагона');
+    const risks = within(region).getByRole('list', { name: 'Риски вагона' });
+    const additionalItems = within(region).getByRole('group', { name: 'Дополнительные доступные предметы' });
+    expect(within(risks).queryByRole('checkbox', { name: /противогаз/i })).not.toBeInTheDocument();
+    await user.click(within(additionalItems).getByRole('checkbox', { name: /противогаз/i }));
+
+    expect(region).toHaveTextContent(/выбрано предметов: 1 из 3/i);
+    expect(region).toHaveTextContent(/закрыто рисков: 0 из 5/i);
+    expect(region).toHaveTextContent(/противогаз пока не закрывает один из пяти рисков/i);
   });
 
   it('shows M04 partner and group wagon labels and submits the message without raw IDs', async () => {

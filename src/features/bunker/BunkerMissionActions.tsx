@@ -274,6 +274,8 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
     const selectedProblems = M03_PROBLEMS.filter((problem) => selectedItems.includes(problem.resolvingItemKey));
     const unresolvedProblems = M03_PROBLEMS.filter((problem) => !selectedItems.includes(problem.resolvingItemKey));
     const unassignedItems = selectedItems.filter((key) => !M03_PROBLEMS.some((problem) => problem.resolvingItemKey === key));
+    const resolvingItemKeys = new Set<string>(M03_PROBLEMS.map((problem) => problem.resolvingItemKey));
+    const additionalItems = availableForMission.filter((key) => !resolvingItemKeys.has(key));
     return (
       <div className="bunker-global-action bunker-global-action--selection">
         <h3>РАСПРЕДЕЛИТЕ АВАРИЙНЫЙ ЗАПАС</h3>
@@ -293,8 +295,19 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
                   <strong>{resolved
                     ? `Выбран предмет: ${guide.label}. Этот риск закрыт.`
                     : available
-                      ? `${guide.label}: отметьте ниже, чтобы закрыть этот риск.`
+                      ? `Отметьте ${guide.label}, чтобы закрыть этот риск.`
                       : `Нужный предмет сейчас недоступен в инвентаре вагона.`}</strong>
+                  {available && (
+                    <label className="bunker-m03-problem-board__control">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(problem.resolvingItemKey)}
+                        disabled={submitting || (!selectedItems.includes(problem.resolvingItemKey) && selectedItems.length >= maxItems)}
+                        onChange={() => setSelectedItems(toggle(selectedItems, problem.resolvingItemKey, maxItems))}
+                      />
+                      <span>Применить: {guide.label}</span>
+                    </label>
+                  )}
                 </div>
               </li>
             );
@@ -302,7 +315,8 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
         </ol>
         <section className="bunker-m03-preview" aria-label="Предварительный итог" aria-live="polite">
           <h4>ПРОВЕРКА РЕШЕНИЯ</h4>
-          <p>Выбрано решений: {selectedItems.length} из {maxItems}</p>
+          <p>Выбрано предметов: {selectedItems.length} из {maxItems}</p>
+          <p>Закрыто рисков: {selectedProblems.length} из {M03_PROBLEMS.length}</p>
           <p>Осталось рисков: {unresolvedProblems.length} из {M03_PROBLEMS.length}</p>
           {selectedProblems.length > 0 ? (
             <ul>
@@ -315,23 +329,29 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
             <p>{unassignedItems.map((key) => itemGuide({ itemKey: key }).label).join(', ')} пока не закрывает один из пяти рисков на этой доске.</p>
           )}
         </section>
-        <div className="bunker-global-action__choices bunker-m03-item-choices" aria-label="Доступный аварийный запас">
-          {availableForMission.map((key) => {
-            const guide = itemGuide({ itemKey: key });
-            return (
-              <label key={key}>
-                <input
-                  type="checkbox"
-                  checked={selectedItems.includes(key)}
-                  disabled={submitting || (!selectedItems.includes(key) && selectedItems.length >= maxItems)}
-                  onChange={() => setSelectedItems(toggle(selectedItems, key, maxItems))}
-                />
-                <img src={guide.asset} alt="" width="64" height="64" loading="lazy" />
-                <span><strong>{guide.label}</strong><small>{guide.purpose}</small></span>
-              </label>
-            );
-          })}
-        </div>
+        {additionalItems.length > 0 && (
+          <fieldset className="bunker-m03-additional-items" aria-label="Дополнительные доступные предметы">
+            <legend>ДОПОЛНИТЕЛЬНЫЕ ДОСТУПНЫЕ ПРЕДМЕТЫ</legend>
+            <p>Эти предметы можно отправить в решении, но они не закрывают ни один из пяти рисков на этой доске.</p>
+            <div className="bunker-global-action__choices bunker-m03-additional-items__choices">
+              {additionalItems.map((key) => {
+                const guide = itemGuide({ itemKey: key });
+                return (
+                  <label key={key}>
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(key)}
+                      disabled={submitting || (!selectedItems.includes(key) && selectedItems.length >= maxItems)}
+                      onChange={() => setSelectedItems(toggle(selectedItems, key, maxItems))}
+                    />
+                    <img src={guide.asset} alt="" width="64" height="64" loading="lazy" />
+                    <span><strong>{guide.label}</strong><small>{guide.purpose}</small></span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
         <button
           type="button"
           disabled={submitting || selectedItems.length < minItems || selectedItems.length > maxItems}

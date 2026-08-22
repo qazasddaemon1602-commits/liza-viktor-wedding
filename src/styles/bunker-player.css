@@ -415,7 +415,7 @@
 
 .bunker-m03-problem-board p {
   color: var(--bunker-player-muted);
-  font-size: 0.78rem;
+  font-size: 1rem;
 }
 
 .bunker-m03-problem-board h4,
@@ -431,8 +431,25 @@
 
 .bunker-m03-problem-board strong {
   color: var(--bunker-player-muted);
-  font-size: 0.78rem;
+  font-size: 1rem;
   line-height: 1.4;
+}
+
+.bunker-m03-problem-board__control {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 48px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--bunker-player-rule);
+  color: var(--bunker-player-ivory);
+  font-size: 1rem;
+}
+
+.bunker-m03-problem-board__control > span {
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
 }
 
 .bunker-m03-preview {
@@ -455,29 +472,51 @@
   padding-left: 1.25rem;
 }
 
-.bunker-m03-item-choices label {
+.bunker-m03-additional-items {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--bunker-player-rule);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-m03-additional-items legend {
+  padding: 0 0.35rem;
+  color: var(--bunker-player-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.06em;
+}
+
+.bunker-m03-additional-items p {
+  margin: 0;
+}
+
+.bunker-m03-additional-items__choices label {
   grid-template-columns: auto 3.5rem minmax(0, 1fr);
   gap: 0.7rem;
 }
 
-.bunker-m03-item-choices img {
+.bunker-m03-additional-items__choices img {
   width: 3.5rem;
   height: 3.5rem;
   border: 1px solid var(--bunker-player-rule);
   object-fit: cover;
 }
 
-.bunker-m03-item-choices label > span {
+.bunker-m03-additional-items__choices label > span {
   display: grid;
   gap: 0.25rem;
 }
 
-.bunker-m03-item-choices label > span > strong {
+.bunker-m03-additional-items__choices label > span > strong {
   color: var(--bunker-player-ivory);
   font: inherit;
 }
 
-.bunker-m03-item-choices label > span > small {
+.bunker-m03-additional-items__choices label > span > small {
   color: var(--bunker-player-muted);
   font-family: inherit;
   font-size: 0.92rem;
