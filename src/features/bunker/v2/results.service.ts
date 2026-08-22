@@ -24,30 +24,42 @@ export type BunkerV2ResultsReadModel =
   | BunkerV2ResultSummary;
 
 function record(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Unexpected Bunker results');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Unexpected Bunker results');
+  }
   return value as Record<string, unknown>;
 }
 
 function nonNegative(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) throw new Error('Unexpected Bunker results');
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error('Unexpected Bunker results');
+  }
   return value;
 }
 
 function timestamp(value: unknown): string {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) throw new Error('Unexpected Bunker results');
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
+    throw new Error('Unexpected Bunker results');
+  }
   return value;
 }
 
 export function parseBunkerV2Results(value: unknown): BunkerV2ResultsReadModel {
   const row = record(value);
-  if (row.contractVersion !== 2 || typeof row.status !== 'string') throw new Error('Unexpected Bunker results');
+  if (row.contractVersion !== 2 || typeof row.status !== 'string') {
+    throw new Error('Unexpected Bunker results');
+  }
   if (row.status === 'idle' || row.status === 'not_found') {
     return { contractVersion: 2, status: row.status, serverNow: timestamp(row.serverNow) };
   }
   if (row.status !== 'completed') throw new Error('Unexpected Bunker results');
+
   const characters = record(row.characters);
   const coordinationScore = nonNegative(row.coordinationScore);
-  if (coordinationScore > 100 || typeof row.emergencyOpen !== 'boolean') throw new Error('Unexpected Bunker results');
+  if (coordinationScore > 100 || typeof row.emergencyOpen !== 'boolean') {
+    throw new Error('Unexpected Bunker results');
+  }
+
   const result: BunkerV2ResultSummary = {
     contractVersion: 2,
     status: 'completed',
@@ -70,7 +82,13 @@ export function parseBunkerV2Results(value: unknown): BunkerV2ResultsReadModel {
     missionsTotal: nonNegative(row.missionsTotal),
     coordinationScore,
   };
-  if (result.missionsCompleted > result.missionsTotal) throw new Error('Unexpected Bunker results');
+
+  if (
+    result.missionsTotal !== 6
+    || result.missionsCompleted > result.missionsTotal
+  ) {
+    throw new Error('Unexpected Bunker results');
+  }
   return result;
 }
 
