@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties } from 'react';
+import { SceneTransition } from './SceneTransition';
 
 export type GuestRegistrationScreenEvent = {
   id: string;
@@ -38,6 +39,7 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
       aria-live="assertive"
       aria-atomic="true"
     >
+      <SceneTransition sceneKey={event.id} label="ПАССАЖИР ПРИНЯТ" tone="sage" />
       <div className="train-arrival__wash" aria-hidden="true" />
       <picture className="generated-artwork-picture">
         <source

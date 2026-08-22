@@ -13,6 +13,7 @@ import './styles/admin-rehearsal.css';
 import './styles/admin-sync.css';
 import './styles/admin-bunker.css';
 import './styles/train-arrival.css';
+import './styles/scene-transition.css';
 import './styles/screen-announcements.css';
 import './styles/screen-controls.css';
 import './styles/quiz.css';

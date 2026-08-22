@@ -55,9 +55,13 @@ describe('ScreenPage live quiz base scene', () => {
       .mockResolvedValueOnce(voting)
       .mockResolvedValueOnce(results)
       .mockResolvedValueOnce({ status: 'idle' } satisfies QuizScreenState);
+    const playQuizVotingSignal = vi.fn();
+    const playQuizRevealSignal = vi.fn();
     const dependencies: ScreenPageDependencies = {
       subscribe: () => vi.fn(),
       loadQuiz,
+      playQuizVotingSignal,
+      playQuizRevealSignal,
       subscribeToQuizRefresh: (callback) => {
         refreshQuiz = callback;
         return vi.fn();
@@ -81,6 +85,7 @@ describe('ScreenPage live quiz base scene', () => {
     expect(screen.getByText('17 / 40 ОТВЕТИЛИ')).toBeInTheDocument();
     expect(screen.queryByTestId('registration-qr')).not.toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       refreshQuiz?.();
@@ -90,6 +95,7 @@ describe('ScreenPage live quiz base scene', () => {
 
     expect(screen.getByText('60%')).toBeInTheDocument();
     expect(screen.getByText('40%')).toBeInTheDocument();
+    expect(playQuizRevealSignal).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       refreshQuiz?.();

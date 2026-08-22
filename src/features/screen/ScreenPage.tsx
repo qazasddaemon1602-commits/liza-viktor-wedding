@@ -74,6 +74,8 @@ export type ScreenPageDependencies = {
   broadcastPremierePresence?: (presence: PremiereScreenPresence) => Promise<void>;
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
+  playQuizVotingSignal?: () => void;
+  playQuizRevealSignal?: () => void;
   stopArrivalAudio?: () => void;
   armPremiereAudio?: () => Promise<boolean>;
   playPremiereCountdownTick?: (second: number) => void;
@@ -134,6 +136,8 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
     ),
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
+    playQuizVotingSignal: audio.playQuizVoting,
+    playQuizRevealSignal: audio.playQuizReveal,
     stopArrivalAudio: audio.stopArrival,
     armPremiereAudio: premiereAudio.arm,
     playPremiereCountdownTick: premiereAudio.playCountdownTick,
@@ -511,6 +515,12 @@ export function ScreenPage({
     deps.playPremiereCountdownTick?.(second);
   }, [deps]);
 
+  const playQuizSignal = useCallback((phase: 'voting' | 'results') => {
+    if (presentationProtectedRef.current) return;
+    if (phase === 'voting') deps.playQuizVotingSignal?.();
+    else deps.playQuizRevealSignal?.();
+  }, [deps]);
+
   const activeQuiz = quizState?.status === 'active' ? quizState : null;
   const finalFiveForCurrentQuestion = activeQuiz?.phase === 'results'
     && finalFive.status === 'revealed'
@@ -542,7 +552,7 @@ export function ScreenPage({
         ) : currentMkMatch ? (
           <MkFightScene match={currentMkMatch} players={mkState.players} />
         ) : (
-          <PublicBracket state={mkState} />
+          <PublicBracket state={mkState} displayMode="projector" />
         )
       ) : activeQuiz ? (
         finalFiveForCurrentQuestion ? (
@@ -554,7 +564,11 @@ export function ScreenPage({
             results={activeQuiz.results}
           />
         ) : (
-          <QuizScreenScene state={activeQuiz} expectedGuestCount={expectedGuestCount} />
+          <QuizScreenScene
+            state={activeQuiz}
+            expectedGuestCount={expectedGuestCount}
+            onSignal={playQuizSignal}
+          />
         )
       ) : (
         <IdleRegistrationScreen joinUrl={joinUrl} />

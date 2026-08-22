@@ -23,9 +23,10 @@ export type JoinPageDependencies = {
 type JoinPageProps = {
   dependencies: JoinPageDependencies;
   revealDelayMs?: number;
+  ticketHoldMs?: number;
 };
 
-export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
+export function JoinPage({ dependencies, revealDelayMs, ticketHoldMs }: JoinPageProps) {
   const [guest, setGuest] = useState<RegisteredGuest | null>(null);
   const [activeCall, setActiveCall] = useState<GuestCarriageCall | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -92,7 +93,6 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
   const register = async (draft: RegistrationDraft, confirmDuplicate?: boolean) => {
     const result = await dependencies.register(draft, confirmDuplicate);
     if (result.status === 'duplicate_warning') return result;
-    setGuest(result.guest);
     return result.guest;
   };
 
@@ -212,6 +212,8 @@ export function JoinPage({ dependencies, revealDelayMs }: JoinPageProps) {
         onRegister={register}
         initialGuest={null}
         revealDelayMs={revealDelayMs}
+        ticketHoldMs={ticketHoldMs}
+        onTicketReady={setGuest}
       />
       <div className="registration-recovery-entry registration-ticket-surface">
         <button className="registration-secondary" type="button" onClick={() => setRecoveryOpen(true)}>

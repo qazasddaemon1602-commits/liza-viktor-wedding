@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { siteAudio } from '../../lib/siteAudio';
+import { SceneTransition } from '../screen/SceneTransition';
 import type { GuestQuizState, QuizChoice } from './quiz.service';
 import { QuizPhaseTimer } from './QuizPhaseTimer';
 
@@ -32,7 +33,7 @@ export function GuestLiveQuizCard({
   const viktorPercent = state.phase === 'results' ? percentage(state.results.viktor, state.results.total) : null;
 
   useEffect(() => {
-    if (state.phase === 'results') siteAudio.play('reveal');
+    siteAudio.play(state.phase === 'results' ? 'reveal' : 'confirm');
   }, [state.phase, state.question.id]);
 
   useEffect(() => {
@@ -40,7 +41,12 @@ export function GuestLiveQuizCard({
   }, [error]);
 
   return (
-    <section className={`quiz-live-card guest-live-quiz-card${compact ? ' guest-live-quiz-card--compact' : ''}`} aria-live="polite">
+    <SceneTransition
+      sceneKey={`${state.question.id}-${state.phase}`}
+      label={state.phase === 'voting' ? 'НОВЫЙ ВОПРОС' : 'РЕЗУЛЬТАТЫ'}
+      tone={state.phase === 'voting' ? 'sage' : 'wine'}
+    >
+      <section className={`quiz-live-card guest-live-quiz-card${compact ? ' guest-live-quiz-card--compact' : ''}`} aria-live="polite">
       <header className="quiz-heading">
         <div className="quiz-live-meta">
           <p className="eyebrow">LIVE QUIZ · ЛИЗА ИЛИ ВИКТОР?</p>
@@ -88,7 +94,8 @@ export function GuestLiveQuizCard({
         <p className="quiz-status quiz-status-results">РЕЗУЛЬТАТЫ · СЛЕДУЮЩИЙ ЭТАП СКОРО</p>
       )}
       {error && <p className="quiz-error" role="alert">{error}</p>}
-    </section>
+      </section>
+    </SceneTransition>
   );
 }
 

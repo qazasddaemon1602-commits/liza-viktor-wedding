@@ -21,6 +21,23 @@ type MkScreenPageProps = {
   dependencies?: MkScreenPageDependencies;
 };
 
+function MkProjectorWaiting({ title }: { title: string }) {
+  return (
+    <section className="mk-screen-scene mk-screen-waiting" data-testid="mk-projector-waiting">
+      <picture className="mk-projector-waiting-art" aria-hidden="true">
+        <source type="image/avif" srcSet="/images/tournament/arena-wide-960.avif 960w, /images/tournament/arena-wide-1672.avif 1672w" sizes="100vw" />
+        <source type="image/webp" srcSet="/images/tournament/arena-wide-960.webp 960w, /images/tournament/arena-wide-1672.webp 1672w" sizes="100vw" />
+        <img data-testid="mk-projector-waiting-art" src="/images/tournament/arena-wide.png" alt="" />
+      </picture>
+      <div className="mk-projector-waiting-copy">
+        <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
+        <h1>{title}</h1>
+        <p>ЭКРАН ГОТОВ · ОЖИДАЕМ КОМАНДУ</p>
+      </div>
+    </section>
+  );
+}
+
 function browserDependencies(eventSlug: string): MkScreenPageDependencies {
   const client = getSupabaseClient();
   const rpcClient = client as unknown as MkRpcClient;
@@ -73,10 +90,7 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
   if (!state) {
     return (
       <main className="mk-screen-page">
-        <section className="mk-screen-scene mk-screen-waiting">
-          <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
-          <h1>ГОТОВИМ АРЕНУ…</h1>
-        </section>
+        <MkProjectorWaiting title="ГОТОВИМ АРЕНУ…" />
       </main>
     );
   }
@@ -84,10 +98,7 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
   if (state.status !== 'active') {
     return (
       <main className="mk-screen-page">
-        <section className="mk-screen-scene mk-screen-waiting">
-          <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
-          <h1>ТУРНИР ЕЩЁ НЕ ОТКРЫТ</h1>
-        </section>
+        <MkProjectorWaiting title="ТУРНИР ЕЩЁ НЕ ОТКРЫТ" />
       </main>
     );
   }
@@ -103,7 +114,7 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
       ) : currentMatch ? (
         <MkFightScene match={currentMatch} players={state.players} />
       ) : (
-        <PublicBracket state={state} />
+        <PublicBracket state={state} displayMode="projector" />
       )}
       {degraded && (
         <div className="screen-connection-indicator" role="status" aria-live="polite">
