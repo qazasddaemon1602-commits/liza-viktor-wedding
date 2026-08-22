@@ -93,4 +93,20 @@ describe('deterministic M05 outcome engine', () => {
     expect(calculateMissionFiveOutcome(snapshot({ inventory: ['generator'] })).tier).toBe('medium');
     expect(calculateMissionFiveOutcome(snapshot({ inventory: ['medkit'] })).tier).toBe('poor');
   });
+
+  it('uses the frozen scenario key as deterministic difficulty without post-open randomness', () => {
+    const severeScenario = 'route_00000000000e';
+    expect(calculateMissionFiveOutcome(snapshot({
+      scenarioKey: severeScenario,
+      committedAbilityKeys: ['route_analysis'],
+    })).tier).toBe('poor');
+    expect(calculateMissionFiveOutcome(snapshot({
+      scenarioKey: severeScenario,
+      committedAbilityKeys: ['route_analysis','mechanical_fix'],
+    })).tier).toBe('medium');
+    expect(calculateMissionFiveOutcome(snapshot({
+      scenarioKey: severeScenario,
+      committedAbilityKeys: ['route_analysis','mechanical_fix','physical_task'],
+    })).tier).toBe('best');
+  });
 });
