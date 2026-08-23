@@ -287,6 +287,50 @@ export type Database = {
         }
         Relationships: []
       }
+      bunker_operator_messages: {
+        Row: {
+          body: string
+          created_at: string
+          event_id: string
+          id: string
+          option_key: string
+          published_at: string
+          run_nonce: string
+          source: string
+          stage: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          event_id: string
+          id?: string
+          option_key: string
+          published_at?: string
+          run_nonce: string
+          source: string
+          stage: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          option_key?: string
+          published_at?: string
+          run_nonce?: string
+          source?: string
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bunker_operator_messages_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bunker_state: {
         Row: {
           duration_seconds: number
@@ -1432,6 +1476,10 @@ export type Database = {
         Args: { p_event_slug: string; p_token: string }
         Returns: Json
       }
+      get_bunker_operator_feed: {
+        Args: { p_event_slug: string }
+        Returns: Json
+      }
       get_bunker_screen_state: { Args: { p_event_slug: string }; Returns: Json }
       get_couple_preanswer_form: {
         Args: { p_event_slug: string; p_token: string }
@@ -1447,6 +1495,10 @@ export type Database = {
       }
       get_guest_bunker_state: {
         Args: { p_device_key: string; p_event_slug: string }
+        Returns: Json
+      }
+      get_liza_bunker_operator_state: {
+        Args: { p_event_slug: string; p_token: string }
         Returns: Json
       }
       get_mk_tournament_state: {
@@ -1731,6 +1783,15 @@ export type Database = {
           p_device_key: string
           p_event_slug: string
           p_stage: string
+        }
+        Returns: Json
+      }
+      submit_liza_bunker_operator_phrase: {
+        Args: {
+          p_event_slug: string
+          p_option_key: string
+          p_stage: string
+          p_token: string
         }
         Returns: Json
       }
