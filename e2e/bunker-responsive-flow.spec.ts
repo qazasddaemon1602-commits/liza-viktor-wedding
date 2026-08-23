@@ -456,10 +456,29 @@ test.describe.serial('authoritative Bunker layouts', () => {
           expect(checkboxBox!.width).toBeGreaterThanOrEqual(22);
           expect(checkboxBox!.height).toBeGreaterThanOrEqual(22);
         }
-        const availableRisk = page.getByRole('checkbox', { name: 'Применить: Вода' });
+        const preview = page.getByLabel('Предварительный итог');
+        const closedSummary = preview.getByText(/Закрыто рисков: \d+ из \d+/i);
+        const initialSummary = await closedSummary.textContent();
+        const initialCounts = initialSummary?.match(/Закрыто рисков:\s*(\d+)\s*из\s*(\d+)/i);
+        expect(initialCounts).not.toBeNull();
+        const initiallyClosed = Number(initialCounts![1]);
+        const totalRisks = Number(initialCounts![2]);
+        expect(totalRisks).toBe(5);
+        expect(initiallyClosed).toBeLessThan(totalRisks);
+
+        const availableRisk = boardCards.locator('input[type="checkbox"]:enabled').first();
+        const availableRiskCard = availableRisk.locator('xpath=ancestor::li[1]');
         await expect(availableRisk).toBeVisible();
+        await expect(availableRisk).toBeEnabled();
+        await expect(availableRisk).toHaveAccessibleName(/^Применить:/i);
+        await expect(availableRiskCard).toHaveAttribute('data-status', 'open');
         await availableRisk.check();
-        await expect(page.getByLabel('Предварительный итог').getByText(/Закрыто рисков: 1 из 5/)).toBeVisible();
+        await expect(availableRisk).toBeChecked();
+        await expect(availableRiskCard).toHaveAttribute('data-status', 'resolved');
+        await expect(availableRiskCard.locator(':scope > div > p')).toHaveText('ЗАКРЫТО ВЫБРАННЫМ ЗАПАСОМ');
+        await expect(closedSummary).toHaveText(
+          new RegExp(`Закрыто рисков:\\s*${initiallyClosed + 1}\\s*из\\s*${totalRisks}`, 'i'),
+        );
         const submit = page.getByRole('button', { name: 'ПРИМЕНИТЬ ЗАПАС' });
         await expect(submit).toBeEnabled();
         await expectReadableInViewport(page, submit);
