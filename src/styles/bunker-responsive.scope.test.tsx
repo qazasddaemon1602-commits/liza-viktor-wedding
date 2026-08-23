@@ -87,7 +87,22 @@ describe('Bunker responsive layout contract', () => {
 
   it('extends shell clearance when the dashboard enables large text', () => {
     const largeShell = ruleBody(playerStyle, '.bunker-player-shell:has(.bunker-player-dashboard[data-large-text="true"])');
-    expect(largeShell).toContain('--bunker-player-mobile-nav-height: 5.25rem');
+    expect(largeShell).toContain('--bunker-player-mobile-nav-height: 5.625rem');
+  });
+
+  it('keeps the four-line large-text task tab inside the compact navigation row', () => {
+    const largeShell = ruleBody(playerStyle, '.bunker-player-shell:has(.bunker-player-dashboard[data-large-text="true"])');
+    const largeButton = ruleBody(
+      playerStyle,
+      '.bunker-player-dashboard[data-large-text="true"] .bunker-player-dashboard__nav button',
+    );
+
+    // At 320px, "ТЕКУЩЕЕ ЗАДАНИЕ" can wrap to four 18px lines. With the
+    // 1.05 line-height, 0.35rem block padding and borders it needs 88.8px.
+    expect(largeShell).toContain('--bunker-player-mobile-nav-height: 5.625rem');
+    expect(largeButton).toContain('height: 100%');
+    expect(largeButton).toContain('max-height: 100%');
+    expect(largeButton).toContain('box-sizing: border-box');
   });
 
   it('keeps guest quest controls at least 48px tall after the final mobile cascade', () => {

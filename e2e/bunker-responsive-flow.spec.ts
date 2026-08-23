@@ -370,7 +370,7 @@ test.describe.serial('authoritative Bunker layouts', () => {
       }
       await expect(submit).toBeEnabled();
       await submit.click();
-      await expect(guest.getByText(/решение вагона принято/i)).toBeVisible();
+      await expect(guest.getByRole('heading', { name: /решение вагона принято/i })).toBeVisible();
 
       await expect(progress).toHaveText('1 / 2 ГОТОВО', { timeout: 10_000 });
       await expect(scene).toHaveAttribute('data-mission-key', 'M01');

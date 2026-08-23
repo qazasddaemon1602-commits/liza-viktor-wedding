@@ -24,12 +24,12 @@
 
 .bunker-player-dashboard[data-large-text="true"] {
   --bunker-player-body-size: 1.125rem;
-  --bunker-player-mobile-nav-height: 5.25rem;
+  --bunker-player-mobile-nav-height: 5.625rem;
 }
 
 @media (max-width: 760px) {
   .bunker-player-shell:has(.bunker-player-dashboard[data-large-text="true"]) {
-    --bunker-player-mobile-nav-height: 5.25rem;
+    --bunker-player-mobile-nav-height: 5.625rem;
   }
 }
 
@@ -1010,7 +1010,10 @@
   }
 
   .bunker-player-dashboard[data-large-text="true"] .bunker-player-dashboard__nav button {
+    box-sizing: border-box;
+    height: 100%;
     min-height: 52px;
+    max-height: 100%;
   }
 
   .bunker-player-dashboard__content {
