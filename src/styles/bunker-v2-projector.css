@@ -3,6 +3,11 @@
  * later bunker-projector-contrast.css layer owns readability/contrast tweaks.
  */
 
+html:has(.bunker-v2-screen),
+body:has(.bunker-v2-screen) {
+  overflow: hidden;
+}
+
 .bunker-v2-screen {
   --bunker-v2-paper: #f3eee3;
   --bunker-v2-muted: #aaa59b;
