@@ -94,4 +94,18 @@ describe('BunkerHostRunbook', () => {
     expect(runbook).not.toHaveTextContent('4719');
     expect(runbook).toHaveTextContent(/система подтвердила/i);
   });
+
+  it('briefs the host on Viktor driving to BK-17 while the waiting source stays anonymous', () => {
+    render(<BunkerHostRunbook mission="LOBBY" plan={null} />);
+    const prologue = screen.getByRole('region', { name: 'Сценарий ведущего Бункера' });
+    expect(prologue).toHaveTextContent(/Виктор ведёт поезд.*BK-17/i);
+    expect(prologue).toHaveTextContent(/неизвестн.*источник.*ждёт.*BK-17/i);
+    expect(prologue).not.toHaveTextContent(/Лиза/i);
+
+    render(<BunkerHostRunbook mission="FINAL_30" plan={null} />);
+    const runbooks = screen.getAllByRole('region', { name: 'Сценарий ведущего Бункера' });
+    const finalRunbook = runbooks[1];
+    expect(finalRunbook).toHaveTextContent(/довести поезд Виктора до BK-17/i);
+    expect(finalRunbook).not.toHaveTextContent(/Лиза/i);
+  });
 });

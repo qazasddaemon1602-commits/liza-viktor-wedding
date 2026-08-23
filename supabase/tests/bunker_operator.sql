@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(49);
+select plan(53);
 
 select has_table(
   'public', 'bunker_operator_messages',
@@ -599,6 +599,93 @@ select is(
   1,
   'one-send idempotency creates exactly one row for the run stage'
 );
+
+update public.bunker_mission_instances
+set started_at = clock_timestamp() - interval '45 seconds'
+where event_id = '00000000-0000-4000-8000-000000000802'
+  and run_nonce = '00000000-0000-4000-8000-000000000803'
+  and mission_code = 'MISSION_02';
+
+select ok(
+  (
+    with retry_after_deadline as (
+      select public.submit_liza_bunker_operator_phrase(
+        'bunker-operator-contract', 'liza-operator-token-1234',
+        'MISSION_02', 'm02_fragments'
+      ) as body
+    )
+    select body->>'status' = 'locked'
+      and body#>>'{message,optionKey}' = 'm02_signal'
+      and body#>>'{message,source}' = 'selected'
+    from retry_after_deadline
+  ),
+  'a retry from another tab after the exact deadline returns the stored choice as locked'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.bunker_operator_messages message
+    where message.event_id = '00000000-0000-4000-8000-000000000802'
+      and message.run_nonce = '00000000-0000-4000-8000-000000000803'
+      and message.stage = 'MISSION_02'
+  ),
+  1,
+  'the post-deadline idempotent retry does not create a duplicate message'
+);
+
+update public.bunker_state
+set global_game_state = 'MISSION_04'
+where event_id = '00000000-0000-4000-8000-000000000802';
+
+insert into public.bunker_mission_instances(
+  event_id, run_nonce, mission_code, scope_kind, scope_key,
+  status, definition, started_at
+)
+values (
+  '00000000-0000-4000-8000-000000000802',
+  '00000000-0000-4000-8000-000000000803',
+  'MISSION_04', 'global', 'operator-expired-validation',
+  'active', '{}'::jsonb, clock_timestamp() - interval '46 seconds'
+)
+on conflict (run_nonce, mission_code, scope_key) do update
+set status = 'active', started_at = excluded.started_at;
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', 'liza-operator-token-1234',
+    'MISSION_04', 'not-in-the-server-catalog'
+  ) $$,
+  '22023',
+  'invalid operator phrase option',
+  'a new invalid option remains rejected after the deadline'
+);
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', 'liza-operator-token-1234',
+    'MISSION_06', 'm06_between'
+  ) $$,
+  '55000',
+  'operator stage is not active',
+  'a new wrong-stage submission remains rejected after the deadline'
+);
+
+delete from public.bunker_mission_instances instance
+where instance.event_id = '00000000-0000-4000-8000-000000000802'
+  and instance.run_nonce = '00000000-0000-4000-8000-000000000803'
+  and instance.mission_code = 'MISSION_04'
+  and instance.scope_key = 'operator-expired-validation';
+
+update public.bunker_state
+set global_game_state = 'MISSION_02'
+where event_id = '00000000-0000-4000-8000-000000000802';
+
+update public.bunker_mission_instances
+set started_at = clock_timestamp() - interval '10 seconds'
+where event_id = '00000000-0000-4000-8000-000000000802'
+  and run_nonce = '00000000-0000-4000-8000-000000000803'
+  and mission_code = 'MISSION_02';
 
 select throws_ok(
   $test$

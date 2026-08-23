@@ -23,6 +23,20 @@ describe('Bunker V2 mission content layer', () => {
     expect(host?.afterCompletion).toMatch(/задани/i);
   });
 
+  it('uses the same anonymous Viktor-to-BK-17 route in the shared M01 briefing', () => {
+    const content = bunkerMissionContent('M01');
+    const publicCopy = [
+      content?.story,
+      content?.goal,
+      ...(content?.host.say ?? []),
+    ].join(' ');
+
+    expect(publicCopy).toMatch(/Виктор ведёт поезд.*BK-17/i);
+    expect(content?.goal).toMatch(/довести поезд Виктора до BK-17/i);
+    expect(publicCopy).toMatch(/неизвестн.*источник/i);
+    expect(publicCopy).not.toMatch(/Лиза/i);
+  });
+
   it('returns undefined for missions that are not authored yet', () => {
     expect(bunkerMissionContentKeys()).toContain('M01');
     expect(bunkerMissionContent('M02')).toBeUndefined();

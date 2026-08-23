@@ -80,6 +80,40 @@ describe('mission content registry', () => {
     expect(allOperationalCopy).not.toMatch(/капитан/i);
   });
 
+  it('keeps M01-M06 on the public route of Viktor driving toward BK-17 without revealing Liza', () => {
+    const routeMissions = ALL_MISSIONS.filter((key) => key !== 'FINAL').map((key) => {
+      const content = getBunkerMissionContent(key);
+      expect(content?.goal).toMatch(/довести поезд Виктора до BK-17/i);
+      return content;
+    });
+
+    const routeStory = routeMissions.flatMap((content) => [
+      content?.story,
+      content?.intro.body,
+      content?.intro.narration,
+      ...(content?.host.say ?? []),
+    ]).join(' ');
+
+    expect(routeStory).toMatch(/Виктор ведёт поезд.*BK-17/i);
+    expect(routeStory).toMatch(/неизвестн.*источник.*ждёт.*BK-17/i);
+    expect(routeStory).not.toMatch(/Лиза/i);
+  });
+
+  it('keeps the final route anonymous until the separate BUNKER_OPEN reveal', () => {
+    const content = getBunkerMissionContent('FINAL');
+    const preRevealCopy = [
+      content?.story,
+      content?.goal,
+      content?.intro.body,
+      content?.intro.narration,
+      ...(content?.host.say ?? []),
+    ].join(' ');
+
+    expect(content?.goal).toMatch(/довести поезд Виктора до BK-17/i);
+    expect(preRevealCopy).toMatch(/неизвестн.*оператор|неизвестн.*источник/i);
+    expect(preRevealCopy).not.toMatch(/Лиза/i);
+  });
+
   it.each([
     ['M01', 'M01'],
     ['m01', 'M01'],
