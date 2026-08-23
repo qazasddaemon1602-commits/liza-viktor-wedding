@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BunkerOperatorStage } from './bunkerOperator.contract';
 import type {
   LizaBunkerOperatorState,
@@ -43,14 +43,19 @@ export function LizaBunkerOperatorPanel({
   const [error, setError] = useState('');
   const [clock, setClock] = useState(() => Date.now());
   const syncedAt = useRef(Date.now());
-  const mounted = useRef(true);
-  const inFlight = useRef<Promise<void> | null>(null);
+  const stateRef = useRef(initialState);
+  const sessionGeneration = useRef(0);
+  const requestEpoch = useRef(0);
+  const reloadRef = useRef<(() => void) | null>(null);
   const submitInFlight = useRef(false);
-  const queued = useRef(false);
+  const submitBarrier = useRef<{ stage: BunkerOperatorStage } | null>(null);
+
+  stateRef.current = state;
 
   const acceptState = useCallback((next: LizaBunkerOperatorState) => {
     syncedAt.current = Date.now();
     setClock(Date.now());
+    stateRef.current = next;
     setState(next);
     setError('');
     if (
@@ -58,6 +63,34 @@ export function LizaBunkerOperatorPanel({
       || (next.status === 'idle' && !next.bunkerActive)
     ) onLeaveOperatorMode?.(next);
   }, [onLeaveOperatorMode]);
+
+  useLayoutEffect(() => {
+    sessionGeneration.current += 1;
+    requestEpoch.current += 1;
+    submitInFlight.current = false;
+    submitBarrier.current = null;
+    syncedAt.current = Date.now();
+    stateRef.current = initialState;
+    setState(initialState);
+    setSelectedKey(null);
+    setConfirming(false);
+    setSubmitting(false);
+    setError('');
+    setClock(Date.now());
+  }, [dependencies, token]);
+
+  const acceptLoadedState = useCallback((next: LizaBunkerOperatorState) => {
+    const barrier = submitBarrier.current;
+    if (barrier) {
+      if (next.status === 'active' && next.stage === barrier.stage) {
+        if (!next.selectedMessage) return;
+        submitBarrier.current = null;
+      } else {
+        submitBarrier.current = null;
+      }
+    }
+    acceptState(next);
+  }, [acceptState]);
 
   const interactionIdentity = state.status === 'active'
     ? `${state.stage}:${state.selectedMessage?.id ?? 'open'}`
@@ -68,45 +101,70 @@ export function LizaBunkerOperatorPanel({
     setConfirming(false);
   }, [interactionIdentity]);
 
-  const reload = useCallback(() => {
-    if (inFlight.current) {
-      queued.current = true;
-      return inFlight.current;
-    }
-    const request = dependencies.load(token)
-      .then((next) => {
-        if (mounted.current) acceptState(next);
-      })
-      .catch(() => {
-        if (mounted.current) setError('Связь нестабильна. Последний принятый сигнал сохранён.');
-      })
-      .finally(() => {
-        inFlight.current = null;
-        if (mounted.current && queued.current) {
-          queued.current = false;
-          reload();
-        }
-      });
-    inFlight.current = request;
-    return request;
-  }, [acceptState, dependencies, token]);
-
   useEffect(() => {
-    mounted.current = true;
+    const generation = sessionGeneration.current;
+    let active = true;
+    let inFlight = false;
+    let queued = false;
+    const isCurrentSession = () => active && sessionGeneration.current === generation;
+
+    const reload = () => {
+      if (!isCurrentSession()) return;
+      if (inFlight) {
+        queued = true;
+        return;
+      }
+      inFlight = true;
+      const epoch = requestEpoch.current;
+      let request: Promise<LizaBunkerOperatorState>;
+      try {
+        request = dependencies.load(token);
+      } catch (loadError) {
+        request = Promise.reject(loadError);
+      }
+      void Promise.resolve(request)
+        .then((next) => {
+          if (isCurrentSession() && requestEpoch.current === epoch) acceptLoadedState(next);
+        })
+        .catch(() => {
+          if (isCurrentSession() && requestEpoch.current === epoch) {
+            setError('Связь нестабильна. Последний принятый сигнал сохранён.');
+          }
+        })
+        .finally(() => {
+          if (!isCurrentSession()) return;
+          inFlight = false;
+          if (queued) {
+            queued = false;
+            reload();
+          }
+        });
+    };
+
+    reloadRef.current = reload;
     const unsubscribe = dependencies.subscribe(reload);
     const poll = window.setInterval(reload, 2_000);
     return () => {
-      mounted.current = false;
-      queued.current = false;
+      active = false;
+      queued = false;
+      if (reloadRef.current === reload) reloadRef.current = null;
       window.clearInterval(poll);
       unsubscribe();
     };
-  }, [dependencies, reload]);
+  }, [acceptLoadedState, dependencies, token]);
 
   useEffect(() => {
     if (state.status !== 'active' || state.selectedMessage) return;
     const timer = window.setInterval(() => setClock(Date.now()), 250);
-    return () => window.clearInterval(timer);
+    const millisecondsLeft = Math.max(0,
+      Date.parse(state.sendUntil)
+      - Date.parse(state.serverNow)
+      - (Date.now() - syncedAt.current));
+    const deadline = window.setTimeout(() => setClock(Date.now()), Math.ceil(millisecondsLeft));
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(deadline);
+    };
   }, [state]);
 
   const secondsLeft = state.status === 'active'
@@ -127,21 +185,37 @@ export function LizaBunkerOperatorPanel({
 
   const transmit = async () => {
     if (!canSend || state.status !== 'active' || !selectedOption || submitInFlight.current) return;
+    const generation = sessionGeneration.current;
+    const submittedStage = state.stage;
     submitInFlight.current = true;
     setSubmitting(true);
     setError('');
     try {
       const result = await dependencies.submit(token, state.stage, selectedOption.key);
-      if (!mounted.current) return;
-      syncedAt.current = Date.now();
-      setState({ ...state, serverNow: result.serverNow, windowOpen: false, selectedMessage: result.message });
+      if (sessionGeneration.current !== generation) return;
+      requestEpoch.current += 1;
+      submitBarrier.current = { stage: submittedStage };
+      const current = stateRef.current;
+      if (current.status === 'active' && current.stage === submittedStage) {
+        acceptState({
+          ...current,
+          serverNow: result.serverNow,
+          windowOpen: false,
+          selectedMessage: result.message,
+        });
+      }
       setConfirming(false);
       void Promise.resolve(dependencies.broadcast()).catch(() => undefined);
+      reloadRef.current?.();
     } catch {
-      if (mounted.current) setError('Сигнал не передан. Проверьте связь и попробуйте ещё раз.');
+      if (sessionGeneration.current === generation) {
+        setError('Сигнал не передан. Проверьте связь и попробуйте ещё раз.');
+      }
     } finally {
-      submitInFlight.current = false;
-      if (mounted.current) setSubmitting(false);
+      if (sessionGeneration.current === generation) {
+        submitInFlight.current = false;
+        setSubmitting(false);
+      }
     }
   };
 

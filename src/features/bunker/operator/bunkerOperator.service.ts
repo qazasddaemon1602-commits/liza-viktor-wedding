@@ -1,5 +1,6 @@
 import {
   BUNKER_OPERATOR_PHRASES,
+  getDeterministicFallback,
   type BunkerOperatorPhrase,
   type BunkerOperatorStage,
 } from './bunkerOperator.contract';
@@ -165,7 +166,28 @@ export function parseLizaBunkerOperatorState(value: unknown): LizaBunkerOperator
   const selectedMessage = value.selectedMessage === null
     ? null
     : parseMessage(value.selectedMessage, value.stage);
-  if (selectedMessage && value.windowOpen) fail();
+  const enteredAtMilliseconds = Date.parse(value.enteredAt);
+  const sendUntilMilliseconds = Date.parse(value.sendUntil);
+  const serverNowMilliseconds = Date.parse(value.serverNow);
+  if (
+    sendUntilMilliseconds - enteredAtMilliseconds !== 45_000
+    || serverNowMilliseconds < enteredAtMilliseconds
+  ) fail();
+  const beforeDeadline = serverNowMilliseconds < sendUntilMilliseconds;
+  if (selectedMessage === null) {
+    if (!beforeDeadline || value.windowOpen !== true) fail();
+  } else {
+    if (value.windowOpen) fail();
+    if (selectedMessage.source === 'fallback') {
+      const fallback = getDeterministicFallback(value.stage);
+      if (
+        beforeDeadline
+        || selectedMessage.optionKey !== fallback.key
+        || selectedMessage.body !== fallback.body
+        || Date.parse(selectedMessage.publishedAt) !== sendUntilMilliseconds
+      ) fail();
+    }
+  }
 
   return {
     status: 'active',

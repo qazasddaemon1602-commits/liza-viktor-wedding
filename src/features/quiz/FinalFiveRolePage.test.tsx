@@ -5,6 +5,7 @@ import {
   type FinalFiveRolePageDependencies,
 } from './FinalFiveRolePage';
 import type { LizaBunkerOperatorPanelDependencies } from '../bunker/operator/LizaBunkerOperatorPanel';
+import type { LizaBunkerOperatorState } from '../bunker/operator/bunkerOperator.service';
 
 function deps(overrides: Partial<FinalFiveRolePageDependencies> = {}): FinalFiveRolePageDependencies {
   return {
@@ -79,6 +80,28 @@ describe('FinalFiveRolePage', () => {
       operatorDependencies={operatorDependencies}
     />);
     expect(await screen.findByText('ССЫЛКА НЕДЕЙСТВИТЕЛЬНА')).toBeInTheDocument();
+  });
+
+  it('ignores a late initial operator response from the previous token/dependency session', async () => {
+    let resolveOld!: (state: LizaBunkerOperatorState) => void;
+    const oldLoad = new Promise<LizaBunkerOperatorState>((resolve) => { resolveOld = resolve; });
+    const oldDependencies = depsOperator({ load: vi.fn(() => oldLoad) });
+    const newDependencies = depsOperator({ load: vi.fn().mockResolvedValue({ status: 'invalid_access' }) });
+    const view = render(<FinalFiveRolePage
+      role="liza" token="old-token" dependencies={deps()} operatorDependencies={oldDependencies}
+    />);
+    view.rerender(<FinalFiveRolePage
+      role="liza" token="new-token" dependencies={deps()} operatorDependencies={newDependencies}
+    />);
+    expect(await screen.findByText('ССЫЛКА НЕДЕЙСТВИТЕЛЬНА')).toBeInTheDocument();
+    await act(async () => {
+      resolveOld({
+        status: 'idle', bunkerActive: true, globalGameState: 'MISSION_03', serverNow: '2026-08-23T12:00:00Z',
+      });
+      await oldLoad;
+    });
+    expect(screen.getByText('ССЫЛКА НЕДЕЙСТВИТЕЛЬНА')).toBeInTheDocument();
+    expect(screen.queryByText('СОСТАВ В ПУТИ')).not.toBeInTheDocument();
   });
 
   it('returns to the existing Final Five UX when the active Bunker ends', async () => {

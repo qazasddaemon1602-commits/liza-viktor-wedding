@@ -49,6 +49,7 @@ describe('bunkerOperator.service', () => {
   it('parses an active window and its optional selected message', () => {
     expect(parseLizaBunkerOperatorState({
       ...activePayload,
+      serverNow: '2026-08-23T12:00:07.000Z',
       windowOpen: false,
       selectedMessage: {
         id: 'c795159a-79ad-4dcb-9594-b3c974bdf33a',
@@ -67,6 +68,24 @@ describe('bunkerOperator.service', () => {
     });
   });
 
+  it('accepts 44.999 seconds as open and exactly 45.000 as closed with fallback', () => {
+    expect(parseLizaBunkerOperatorState({
+      ...activePayload,
+      serverNow: '2026-08-23T12:00:44.999Z',
+    })).toMatchObject({ status: 'active', windowOpen: true, selectedMessage: null });
+
+    expect(parseLizaBunkerOperatorState({
+      ...activePayload,
+      serverNow: '2026-08-23T12:00:45.000Z',
+      windowOpen: false,
+      selectedMessage: {
+        id: 'fallback-at-deadline', stage: 'MISSION_02', optionKey: 'm02_signal',
+        body: 'Сигнал слабый, но я вас слышу. Продолжайте.', source: 'fallback',
+        publishedAt: '2026-08-23T12:00:45.000Z',
+      },
+    })).toMatchObject({ status: 'active', windowOpen: false, selectedMessage: { source: 'fallback' } });
+  });
+
   it.each([
     null,
     {},
@@ -76,6 +95,21 @@ describe('bunkerOperator.service', () => {
     { ...activePayload, options: activePayload.options.slice(0, 1) },
     { ...activePayload, options: [...activePayload.options].reverse() },
     { ...activePayload, serverNow: 'not-a-date' },
+    { ...activePayload, sendUntil: '2026-08-23T12:00:44.999Z' },
+    { ...activePayload, sendUntil: '2026-08-23T12:00:45.001Z' },
+    { ...activePayload, serverNow: '2026-08-23T12:00:44.999Z', windowOpen: false },
+    { ...activePayload, serverNow: '2026-08-23T12:00:45.000Z', windowOpen: true },
+    { ...activePayload, serverNow: '2026-08-23T12:00:45.000Z', windowOpen: false },
+    {
+      ...activePayload,
+      serverNow: '2026-08-23T12:00:45.000Z',
+      windowOpen: false,
+      selectedMessage: {
+        id: 'wrong-fallback', stage: 'MISSION_02', optionKey: 'm02_fragments',
+        body: 'Не доверяйте одному фрагменту. Сверяйте всё, что нашли.', source: 'fallback',
+        publishedAt: '2026-08-23T12:00:45.000Z',
+      },
+    },
     { ...activePayload, selectedMessage: { id: 'x' } },
     { ...activePayload, lizaName: 'Лиза' },
   ])('rejects malformed or identity-leaking payload %#', (payload) => {
