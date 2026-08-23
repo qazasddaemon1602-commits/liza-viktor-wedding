@@ -1,9 +1,28 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BunkerV2ActiveGuestRuntime } from './v2/contracts';
 import type { BunkerV2DashboardReadModel } from './v2/dashboard.service';
 import { BunkerPlayerDashboard } from './BunkerPlayerDashboard';
+
+const bunkerResultsClient = vi.hoisted(() => {
+  const channel = {} as {
+    on: ReturnType<typeof vi.fn>;
+    subscribe: ReturnType<typeof vi.fn>;
+    unsubscribe: ReturnType<typeof vi.fn>;
+  };
+  channel.on = vi.fn(() => channel);
+  channel.subscribe = vi.fn(() => channel);
+  channel.unsubscribe = vi.fn();
+  return {
+    rpc: vi.fn(),
+    channel: vi.fn(() => channel),
+  };
+});
+
+vi.mock('../../lib/supabase', () => ({
+  getSupabaseClient: () => bunkerResultsClient,
+}));
 
 const runtime: BunkerV2ActiveGuestRuntime = {
   contractVersion: 2,
@@ -87,6 +106,30 @@ const dashboard: Extract<BunkerV2DashboardReadModel, { status: 'active' }> = {
     coordinationBonus: true,
   },
 };
+
+beforeEach(() => {
+  bunkerResultsClient.rpc.mockReset().mockResolvedValue({
+    data: {
+      contractVersion: 2,
+      status: 'completed',
+      serverNow: '2026-08-30T19:40:00.000Z',
+      finishTimeSeconds: 742,
+      emergencyOpen: false,
+      characters: { active: 1, saved: 16, excluded: 3 },
+      archiveFound: 4,
+      resourcesRemaining: 7,
+      resourcesUsed: 5,
+      tradesCompleted: 2,
+      wrongAttempts: 1,
+      hintsUsed: 1,
+      skillsUsed: 4,
+      missionsCompleted: 6,
+      missionsTotal: 6,
+      coordinationScore: 91,
+    },
+    error: null,
+  });
+});
 
 describe('persistent Bunker V2 player dashboard', () => {
   it('keeps passengers, inventory, archive and wagon state visible during M05 without old mission models', async () => {
@@ -217,5 +260,20 @@ describe('persistent Bunker V2 player dashboard', () => {
     );
     expect(screen.getByRole('region', { name: 'Итоги Бункера' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Лиза встречает поезд' })).not.toBeInTheDocument();
+  });
+
+  it('loads FINISHED results from the authoritative non-default event', async () => {
+    render(
+      <BunkerPlayerDashboard
+        eventSlug="winter-express"
+        runtime={{ ...runtime, state: 'FINISHED', currentMission: null }}
+        dashboard={dashboard}
+      />,
+    );
+
+    await waitFor(() => expect(bunkerResultsClient.rpc).toHaveBeenCalledWith(
+      'get_bunker_v2_results',
+      { p_event_slug: 'winter-express' },
+    ));
   });
 });

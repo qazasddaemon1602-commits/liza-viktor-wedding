@@ -386,7 +386,7 @@ export function BunkerPlayerDashboard({
         aria-label="Игровой модуль Бункер"
         data-large-text={largeText ? 'true' : undefined}
       >
-        {revealStage ? <LizaRevealPlayer /> : <BunkerResultsLivePlayer />}
+        {revealStage ? <LizaRevealPlayer /> : <BunkerResultsLivePlayer eventSlug={eventSlug} />}
       </section>
     );
   }
