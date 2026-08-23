@@ -165,7 +165,7 @@
 
 **Interfaces:**
 - Operator portrait source: supplied serious Liza photograph.
-- Viktor route source: supplied seated Viktor photograph.
+- Viktor route source: supplied Viktor-at-computer photograph transformed so the entire computer/office becomes a realistic locomotive driver's cab; the seated-chair photograph is reserve-only.
 - Reveal source: supplied smiling Liza photograph.
 - Epilogue source: supplied couple photograph.
 - Every component uses `<picture>` with AVIF first and WebP fallback, fixed aspect ratio, `object-fit: cover`, meaningful Russian alt text and no remote URLs.
