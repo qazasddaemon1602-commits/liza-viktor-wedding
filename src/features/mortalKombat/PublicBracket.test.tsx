@@ -29,7 +29,7 @@ const state: ActiveProjection = {
   tournamentId: 't1',
   state: 'active',
   activeCount: 9,
-  maxPlayers: 40,
+  maxPlayers: 16,
   ownRegistrationStatus: null,
   waitlistPosition: null,
   players,

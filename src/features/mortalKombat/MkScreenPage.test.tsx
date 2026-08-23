@@ -10,7 +10,7 @@ const liveFight: ActiveProjection = {
   tournamentId: 't1',
   state: 'active',
   activeCount: 16,
-  maxPlayers: 40,
+  maxPlayers: 16,
   ownRegistrationStatus: null,
   waitlistPosition: null,
   players: [
@@ -53,7 +53,7 @@ describe('MkScreenPage', () => {
 
     const board = await screen.findByTestId('mk-projector-bracket');
     expect(board).toHaveClass('mk-public-bracket--projector', 'mk-public-bracket--waiting');
-    expect(screen.getByText('9 / 40 БОЙЦОВ')).toBeInTheDocument();
+    expect(screen.getByText('9 / 16 БОЙЦОВ')).toBeInTheDocument();
     expect(screen.getByText('СЛЕДУЮЩЕЕ · ЖЕРЕБЬЁВКА')).toBeInTheDocument();
   });
 

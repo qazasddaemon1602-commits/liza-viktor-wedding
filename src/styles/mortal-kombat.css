@@ -727,6 +727,60 @@
   padding-left: 1.15rem;
 }
 
+/* Readable owner-console tokens on the dark arena surface. */
+.admin-mk-control .admin-mk-heading > span,
+.admin-mk-control .admin-mk-stats strong,
+.admin-mk-control .mk-seed-slot strong,
+.admin-mk-control .admin-mk-waitlist article > strong,
+.admin-mk-control .admin-mk-match-list article strong {
+  color: #f3ecdf;
+}
+
+.admin-mk-control .admin-mk-stats span,
+.admin-mk-control .mk-seed-slot label > span,
+.admin-mk-control .admin-mk-match-list article > span,
+.admin-mk-control .admin-mk-match-list article em,
+.admin-mk-control .admin-mk-launch p,
+.admin-mk-control .admin-mk-live-note p {
+  color: rgba(243, 236, 223, 0.78);
+}
+
+.admin-mk-control .admin-mk-stats,
+.admin-mk-control .admin-mk-stats > div,
+.admin-mk-control .mk-seed-slot,
+.admin-mk-control .admin-mk-waitlist,
+.admin-mk-control .admin-mk-waitlist article,
+.admin-mk-control .admin-mk-launch,
+.admin-mk-control .admin-mk-live-note,
+.admin-mk-control .admin-mk-current-match,
+.admin-mk-control .admin-mk-match-list article {
+  border-color: rgba(243, 236, 223, 0.22);
+}
+
+.admin-mk-control .mk-seed-slot,
+.admin-mk-control .admin-mk-launch,
+.admin-mk-control .admin-mk-live-note,
+.admin-mk-control .admin-mk-current-match,
+.admin-mk-control .admin-mk-match-list article {
+  background: rgba(243, 236, 223, 0.07);
+}
+
+.admin-mk-control .mk-seed-slot select {
+  border-color: rgba(243, 236, 223, 0.5);
+  background: #f3ecdf;
+  color: #1f2922;
+}
+
+.admin-mk-control .mk-impact-dialog {
+  background: #f3ecdf;
+  color: #1f2922;
+}
+
+.admin-mk-control .mk-impact-dialog p,
+.admin-mk-control .mk-impact-dialog li {
+  color: rgba(31, 41, 34, 0.82);
+}
+
 /* Guest activity CTA under ticket */
 .guest-event-actions {
   width: min(46rem, calc(100% - 2rem));

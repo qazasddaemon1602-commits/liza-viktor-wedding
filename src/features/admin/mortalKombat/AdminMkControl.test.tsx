@@ -10,7 +10,7 @@ const ready: MkOwnerControl = {
   state: 'draw_ready',
   activeCount: 16,
   waitlistCount: 1,
-  maxPlayers: 40,
+  maxPlayers: 16,
   registrations: [
     ...Array.from({ length: 16 }, (_, index) => ({
       registrationId: `r${index + 1}`,
@@ -61,7 +61,7 @@ describe('AdminMkControl', () => {
     expect(await screen.findByRole('heading', { name: 'ТУРНИРНЫЙ ПУЛЬТ' })).toBeInTheDocument();
     expect(screen.getAllByTestId('seed-slot')).toHaveLength(16);
     expect(screen.getByText('Запасной Игрок')).toBeInTheDocument();
-    expect(screen.getByText('16 / 40')).toBeInTheDocument();
+    expect(screen.getByText('16 / 16')).toBeInTheDocument();
     expect(screen.queryByText(/MORTAL KOMBAT|FATALITY/i)).not.toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe('AdminMkControl', () => {
       />,
     );
 
-    await screen.findByText('16 / 40');
+    await screen.findByText('16 / 16');
     await user.click(screen.getByRole('button', { name: 'ПЕРЕЖЕРЕБИТЬ ТУРНИР' }));
     expect(randomize).not.toHaveBeenCalled();
 
@@ -129,14 +129,14 @@ describe('AdminMkControl', () => {
       />,
     );
 
-    await screen.findByText('16 / 40');
+    await screen.findByText('16 / 16');
     await user.click(screen.getByRole('button', { name: 'УБРАТЬ ИЗ СЕТКИ · Игрок 1' }));
     expect(remove).toHaveBeenCalledWith('r1');
-    expect(await screen.findByText('15 / 40')).toBeInTheDocument();
+    expect(await screen.findByText('15 / 16')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'В ОСНОВНУЮ СЕТКУ' }));
     expect(promote).toHaveBeenCalledWith('wait-1');
-    expect(await screen.findByText('16 / 40')).toBeInTheDocument();
+    expect(await screen.findByText('16 / 16')).toBeInTheDocument();
   });
 
   it('switches the live projector to the full bracket and can return it to the main wedding screen', async () => {
@@ -270,7 +270,7 @@ describe('AdminMkControl', () => {
 
   it('shows the actionable server reason when tournament launch is rejected', async () => {
     const user = userEvent.setup();
-    const finalize = vi.fn().mockRejectedValue(new Error('between 2 and 40 active players required'));
+    const finalize = vi.fn().mockRejectedValue(new Error('between 2 and 16 active players required'));
 
     render(
       <AdminMkControl
@@ -281,7 +281,7 @@ describe('AdminMkControl', () => {
 
     await user.click(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 16 ИГРОКОВ' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Для запуска нужно от 2 до 40 участников.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Для запуска нужно от 2 до 16 участников.');
   });
 
   it('keeps a finalized tournament started when the shared projector is occupied', async () => {
@@ -352,9 +352,7 @@ describe('AdminMkControl', () => {
 
     expect(randomize).toHaveBeenCalledWith('event-1');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Изменение сохранено, но состояние пульта не обновилось. Обновите страницу.',
-    );
+    expect(await screen.findByRole('status')).toHaveTextContent('СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ');
   });
 });
 
@@ -378,8 +376,8 @@ describe('AdminMkControl with fewer than sixteen players', () => {
     const finalize = vi.fn().mockResolvedValue(undefined);
     render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(nine), finalize })} />);
 
-    expect(await screen.findByText('9 / 40')).toBeInTheDocument();
-    expect(screen.getAllByText('ДО 40 ИГРОКОВ · OWNER CONTROL').length).toBeGreaterThan(0);
+    expect(await screen.findByText('9 / 16')).toBeInTheDocument();
+    expect(screen.getAllByText('ДО 16 ИГРОКОВ · OWNER CONTROL').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'ПЕРЕЖЕРЕБИТЬ ТУРНИР' })).toBeEnabled();
 
     const launch = screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 9 ИГРОКОВ' });
@@ -431,7 +429,8 @@ describe('AdminMkControl with fewer than sixteen players', () => {
     expect(screen.getByText(/СОСТАВ ИЗМЕНИЛСЯ/i)).toBeInTheDocument();
   });
 
-  it.each([17, 40])('allows launching with %s seeded players', async (count) => {
+  it('refuses to launch a legacy oversized active pool', async () => {
+    const count = 17;
     const sized: MkOwnerControl = {
       ...nine,
       activeCount: count,
@@ -446,8 +445,8 @@ describe('AdminMkControl with fewer than sixteen players', () => {
     };
     render(<AdminMkControl eventId="event-1" dependencies={dependencies({ load: vi.fn().mockResolvedValue(sized) })} />);
 
-    expect(await screen.findByRole('button', { name: `ЗАПУСТИТЬ ТУРНИР · ${count} ИГРОКОВ` })).toBeEnabled();
-    expect(screen.getByText(`${count} / 40`)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: `ЗАПУСТИТЬ ТУРНИР · ${count} ИГРОКОВ` })).toBeDisabled();
+    expect(screen.getByText(`${count} / 16`)).toBeInTheDocument();
   });
 
   it('requires a reroll when seeds do not form the exact sequence from one to the active count', async () => {

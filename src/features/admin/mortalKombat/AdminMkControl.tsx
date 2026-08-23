@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
 import {
   setMkMainScreen,
@@ -7,7 +7,9 @@ import {
   type MkResultResponse,
 } from '../../mortalKombat/mk.owner.service';
 import { MK_MAX_PLAYERS, type MkOwnerControl } from '../../mortalKombat/mk.types';
+import { useMkRecovery } from '../../mortalKombat/useMkRecovery';
 import { MatchEditor } from './MatchEditor';
+import { MkResetDialog } from './MkResetDialog';
 import { PlayerPoolEditor } from './PlayerPoolEditor';
 
 export type AdminMkControlDependencies = {
@@ -26,6 +28,8 @@ export type AdminMkControlDependencies = {
   recordWinner: (matchId: string, winnerGuestId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   undo: (matchId: string, clearDownstream: boolean) => Promise<MkResultResponse>;
   broadcastRefresh: () => Promise<void>;
+  subscribeToRefresh?: (callback: () => void) => () => void;
+  pollIntervalMs?: number;
 };
 
 type AdminMkControlProps = {
@@ -63,18 +67,18 @@ function describeMkCommandError(error: unknown): string {
 }
 
 export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
-  const [state, setState] = useState<MkOwnerControl | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [confirmingReroll, setConfirmingReroll] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
-  const [resetConfirmation, setResetConfirmation] = useState('');
-
-  const reload = async () => {
-    const next = await dependencies.load(eventId);
-    setState(next);
-  };
+  const recovery = useMkRecovery({
+    scopeKey: eventId,
+    load: () => dependencies.load(eventId),
+    subscribe: dependencies.subscribeToRefresh,
+    pollIntervalMs: dependencies.pollIntervalMs,
+  });
+  const state = recovery.state;
 
   const appendNotice = (message: string) => {
     setNotice((current) => current ? `${current} ${message}` : message);
@@ -86,11 +90,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     } catch {
       appendNotice('Изменение сохранено, но автообновление экранов недоступно.');
     }
-    try {
-      await reload();
-    } catch {
-      appendNotice('Изменение сохранено, но состояние пульта не обновилось. Обновите страницу.');
-    }
+    recovery.invalidate();
   };
 
   const setSharedProjector = async (enabled: boolean) => {
@@ -130,20 +130,6 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     await claimSharedProjectorAfterMutation('Бой выбран.');
   };
 
-  useEffect(() => {
-    let active = true;
-    void dependencies.load(eventId)
-      .then((next) => {
-        if (active) setState(next);
-      })
-      .catch(() => {
-        if (active) setError('Не удалось загрузить турнирную арену.');
-      });
-    return () => {
-      active = false;
-    };
-  }, [dependencies, eventId]);
-
   const run = async (command: () => Promise<void>) => {
     if (busy) return;
     setBusy(true);
@@ -164,7 +150,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       <section className="admin-mk-control">
         <p className="eyebrow">АРЕНА · ПОСЛЕДНИЙ КРУГ</p>
         <h2>ЗАГРУЖАЕМ АРЕНУ…</h2>
-        {error && <p role="alert">{error}</p>}
+        {(error || recovery.stale) && <p role="alert">{error || 'Не удалось загрузить турнирную арену.'}</p>}
       </section>
     );
   }
@@ -386,46 +372,14 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
           </div>
 
           {confirmingReset && (
-            <div className="admin-mk-live-note" role="alertdialog" aria-label="Подтверждение сброса турнира">
-              <strong>ДЕЙСТВИЕ НЕЛЬЗЯ ОТМЕНИТЬ</strong>
-              <p>
-                Будут удалены участники MK, сетка и результаты боёв. Регистрации гостей свадьбы и ответы пары сохранятся.
-              </p>
-              <label>
-                <span>Введите СБРОСИТЬ ТУРНИР</span>
-                <input
-                  type="text"
-                  value={resetConfirmation}
-                  autoComplete="off"
-                  onChange={(event) => setResetConfirmation(event.target.value)}
-                />
-              </label>
-              <div className="admin-mk-actions">
-                <button
-                  type="button"
-                  className="registration-submit"
-                  disabled={busy || resetConfirmation !== 'СБРОСИТЬ ТУРНИР'}
-                  onClick={() => void run(async () => {
-                    await dependencies.reset(eventId, resetConfirmation);
-                    setConfirmingReset(false);
-                    setResetConfirmation('');
-                  })}
-                >
-                  ПОДТВЕРДИТЬ СБРОС ТУРНИРА
-                </button>
-                <button
-                  type="button"
-                  className="registration-secondary"
-                  disabled={busy}
-                  onClick={() => {
-                    setConfirmingReset(false);
-                    setResetConfirmation('');
-                  }}
-                >
-                  ОТМЕНА
-                </button>
-              </div>
-            </div>
+            <MkResetDialog
+              busy={busy}
+              onCancel={() => setConfirmingReset(false)}
+              onConfirm={(confirmation) => void run(async () => {
+                await dependencies.reset(eventId, confirmation);
+                setConfirmingReset(false);
+              })}
+            />
           )}
           <MatchEditor
             matches={state.matches}
@@ -440,6 +394,9 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
 
       {error && <p className="admin-mk-error" role="alert">{error}</p>}
       {notice && <p className="admin-mk-reseed-note" role="status">{notice}</p>}
+      {recovery.stale && (
+        <p className="admin-mk-reseed-note" role="status">СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ</p>
+      )}
     </section>
   );
 }

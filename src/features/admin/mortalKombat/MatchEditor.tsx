@@ -65,6 +65,20 @@ export function MatchEditor({
     }
   };
 
+  const selectCurrent = async (matchId: string) => {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onSetCurrent(matchId);
+      await onChanged();
+    } catch {
+      setError('Не удалось вывести бой. Сетка оставлена без изменений.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirmCorrection = async () => {
     if (!correction || busy) return;
     setBusy(true);
@@ -141,15 +155,7 @@ export function MatchEditor({
                 type="button"
                 className="registration-secondary"
                 disabled={busy}
-                onClick={() => void (async () => {
-                  setBusy(true);
-                  try {
-                    await onSetCurrent(match.id);
-                    await onChanged();
-                  } finally {
-                    setBusy(false);
-                  }
-                })()}
+                onClick={() => void selectCurrent(match.id)}
               >
                 ВЫВЕСТИ БОЙ
               </button>
@@ -170,6 +176,7 @@ export function MatchEditor({
           affected={correction.impact.affectedMatches}
           onCancel={() => setCorrection(null)}
           onConfirm={() => void confirmCorrection()}
+          busy={busy}
         />
       )}
     </div>

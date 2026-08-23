@@ -8,12 +8,14 @@ import { subscribeToMkRefresh, type MkRealtimeClient } from './mk.realtime';
 import { getMkTournamentDedicatedScreenState, type MkRpcClient } from './mk.service';
 import type { MkTournamentProjection } from './mk.types';
 import { PublicBracket } from './PublicBracket';
+import { useMkRecovery } from './useMkRecovery';
 
 const DEFAULT_EVENT_SLUG = 'liza-viktor';
 
 export type MkScreenPageDependencies = {
   load: () => Promise<MkTournamentProjection>;
   subscribeToRefresh?: (callback: () => void) => () => void;
+  pollIntervalMs?: number;
 };
 
 type MkScreenPageProps = {
@@ -50,36 +52,27 @@ function browserDependencies(eventSlug: string): MkScreenPageDependencies {
 
 export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: MkScreenPageProps) {
   const deps = useMemo(() => dependencies ?? browserDependencies(eventSlug), [dependencies, eventSlug]);
-  const [state, setState] = useState<MkTournamentProjection | null>(null);
   const [milestone, setMilestone] = useState<MkMilestone | null>(null);
-  const [degraded, setDegraded] = useState(false);
   const previousStateRef = useRef<MkTournamentProjection | null>(null);
+  const { state, stale } = useMkRecovery({
+    scopeKey: eventSlug,
+    load: deps.load,
+    subscribe: deps.subscribeToRefresh,
+    pollIntervalMs: deps.pollIntervalMs,
+  });
 
   useEffect(() => {
-    let active = true;
-    const reload = () => {
-      void deps.load()
-        .then((next) => {
-          if (!active) return;
-          const previous = previousStateRef.current;
-          const nextMilestone = previous ? deriveMkMilestone(previous, next) : null;
-          previousStateRef.current = next;
-          setState(next);
-          if (nextMilestone) setMilestone(nextMilestone);
-          setDegraded(false);
-        })
-        .catch(() => {
-          if (active) setDegraded(true);
-        });
-    };
+    if (!state) return;
+    const previous = previousStateRef.current;
+    const nextMilestone = previous ? deriveMkMilestone(previous, state) : null;
+    previousStateRef.current = state;
+    if (nextMilestone) setMilestone(nextMilestone);
+  }, [state]);
 
-    reload();
-    const unsubscribe = deps.subscribeToRefresh?.(reload);
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, [deps]);
+  useEffect(() => {
+    previousStateRef.current = null;
+    setMilestone(null);
+  }, [eventSlug]);
 
   useEffect(() => {
     if (!milestone) return;
@@ -116,7 +109,7 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
       ) : (
         <PublicBracket state={state} displayMode="projector" />
       )}
-      {degraded && (
+      {stale && (
         <div className="screen-connection-indicator" role="status" aria-live="polite">
           СВЯЗЬ · ПЕРЕПОДКЛЮЧЕНИЕ
         </div>

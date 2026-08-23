@@ -10,7 +10,7 @@ const ready: MkOwnerControl = {
   state: 'draw_ready',
   activeCount: 2,
   waitlistCount: 0,
-  maxPlayers: 40,
+  maxPlayers: 16,
   registrations: [
     {
       registrationId: 'r1',

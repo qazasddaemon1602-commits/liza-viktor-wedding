@@ -22,6 +22,37 @@ const currentMatch: MkMatch = {
 };
 
 describe('MatchEditor', () => {
+  it('clears busy state, preserves the bracket and reports a rejected fight selection', async () => {
+    const user = userEvent.setup();
+    const nextMatch: MkMatch = {
+      ...currentMatch,
+      id: 'm2',
+      matchKey: 'r16-2',
+      position: 2,
+      current: false,
+    };
+    const setCurrent = vi.fn().mockRejectedValue(new Error('network rejected'));
+
+    render(
+      <MatchEditor
+        matches={[currentMatch, nextMatch]}
+        registrations={registrations}
+        onSetCurrent={setCurrent}
+        onRecordWinner={vi.fn()}
+        onUndo={vi.fn()}
+        onChanged={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const select = screen.getByRole('button', { name: 'ВЫВЕСТИ БОЙ' });
+    await user.click(select);
+
+    expect(setCurrent).toHaveBeenCalledWith('m2');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось вывести бой. Сетка оставлена без изменений.');
+    expect(select).toBeEnabled();
+    expect(screen.getAllByText('1/8 ФИНАЛА · БОЙ 2')).toHaveLength(1);
+  });
+
   it('asks for destructive confirmation when changing a result would invalidate downstream matches', async () => {
     const user = userEvent.setup();
     const recordWinner = vi.fn()

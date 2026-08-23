@@ -30,7 +30,7 @@ import {
   undoMkResult,
   type MkOwnerRpcClient,
 } from '../mortalKombat/mk.owner.service';
-import { broadcastMkRefresh, type MkRealtimeClient } from '../mortalKombat/mk.realtime';
+import { broadcastMkRefresh, subscribeToMkRefresh, type MkRealtimeClient } from '../mortalKombat/mk.realtime';
 import {
   broadcastPremiereRefresh,
   type PremiereRealtimeClient,
@@ -367,6 +367,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       ),
       undo: (matchId, clearDownstream) => undoMkResult(mkRpcClient, matchId, clearDownstream),
       broadcastRefresh: () => broadcastMkRefresh(mkRealtimeClient, EVENT_SLUG),
+      subscribeToRefresh: (callback) => subscribeToMkRefresh(mkRealtimeClient, EVENT_SLUG, callback),
     },
     bunkerDock: {
       loadDashboard,

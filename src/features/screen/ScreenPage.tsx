@@ -12,6 +12,7 @@ import { subscribeToMkRefresh, type MkRealtimeClient } from '../mortalKombat/mk.
 import { getMkTournamentScreenState, type MkRpcClient } from '../mortalKombat/mk.service';
 import type { MkTournamentProjection } from '../mortalKombat/mk.types';
 import { PublicBracket } from '../mortalKombat/PublicBracket';
+import { useMkRecovery } from '../mortalKombat/useMkRecovery';
 import { createPremiereAudioController } from '../premiere/premiereAudio';
 import {
   broadcastPremiereScreenPresence,
@@ -84,6 +85,7 @@ export type ScreenPageDependencies = {
   subscribeToQuizRefresh?: (callback: () => void) => () => void;
   subscribeToPremiereRefresh?: (callback: () => void) => () => void;
   subscribeToMkRefresh?: (callback: () => void) => () => void;
+  mkPollIntervalMs?: number;
   broadcastPremierePresence?: (presence: PremiereScreenPresence) => Promise<void>;
   prepareArrival?: () => Promise<boolean>;
   armArrivalAudio?: () => Promise<boolean>;
@@ -295,7 +297,13 @@ export function ScreenPage({
   const [coupleAnswer, setCoupleAnswer] = useState<RevealedCoupleAnswer>({ status: 'hidden' });
   const [finalFive, setFinalFive] = useState<RevealedFinalFive>({ status: 'hidden' });
   const [premiereState, setPremiereState] = useState<PremiereScreenState | null>(null);
-  const [mkState, setMkState] = useState<MkTournamentProjection | null>(null);
+  const mkRecovery = useMkRecovery<MkTournamentProjection>({
+    scopeKey: `${eventSlug}:${deps.loadMortalKombat ? 'enabled' : 'disabled'}`,
+    load: deps.loadMortalKombat ?? (() => Promise.resolve({ status: 'idle' })),
+    subscribe: deps.subscribeToMkRefresh,
+    pollIntervalMs: deps.mkPollIntervalMs,
+  });
+  const mkState = mkRecovery.state;
   const [carriageMap, setCarriageMap] = useState<RegistrationCarriageMap | null>(null);
   const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
   const [audioSettings, setAudioSettings] = useState(() => siteAudio.getSettings());
@@ -327,7 +335,7 @@ export function ScreenPage({
     ? (preparedArrivalId === activePresentationId ? activePresentation : null)
     : activePresentation;
   const currentPremiereMediaUrl = premiereMediaUrl(premiereState);
-  const connectionDegraded = hasConnectionFailures(connectionFailures);
+  const connectionDegraded = mkRecovery.stale || hasConnectionFailures(connectionFailures);
   presentationProtectedRef.current = presentationProtected;
 
   const markConnection = useCallback((source: ConnectionSource, healthy: boolean) => {
@@ -413,7 +421,6 @@ export function ScreenPage({
       setCoupleAnswer({ status: 'hidden' });
       setFinalFive({ status: 'hidden' });
       setPremiereState(null);
-      setMkState(null);
       return;
     }
     setReconnectEpoch((current) => current + 1);
@@ -567,31 +574,6 @@ export function ScreenPage({
     reload();
     const unsubscribe = deps.subscribeToPremiereRefresh?.(reload);
 
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, [deps, reconnectEpoch, markConnection]);
-
-  useEffect(() => {
-    if (!deps.loadMortalKombat) return;
-    let active = true;
-
-    const reload = () => {
-      void deps.loadMortalKombat?.()
-        .then((next) => {
-          if (!active) return;
-          setMkState(next);
-          markConnection('mortalKombat', true);
-        })
-        .catch(() => {
-          if (active) markConnection('mortalKombat', false);
-          // Keep the last valid fight/bracket during a temporary network failure.
-        });
-    };
-
-    reload();
-    const unsubscribe = deps.subscribeToMkRefresh?.(reload);
     return () => {
       active = false;
       unsubscribe?.();
