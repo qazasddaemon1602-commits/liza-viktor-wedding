@@ -28,7 +28,9 @@ export function MkSignupCard({ state, joining, onJoin }: MkSignupCardProps) {
       <section className="mk-signup-card mk-signup-card--waitlist" role="status" aria-live="polite">
         <p className="eyebrow">{limit} / {limit}</p>
         <strong>ЛИСТ ОЖИДАНИЯ · №{state.waitlistPosition ?? '—'}</strong>
-        <p>Если освободится место, админ сможет поднять вас в основную сетку.</p>
+        <p>
+          ОСНОВНАЯ СЕТКА ЗАПОЛНЕНА · {limit} ИЗ {limit}. ВЫ В ЛИСТЕ ОЖИДАНИЯ · №{state.waitlistPosition ?? '—'}.
+        </p>
         <a className="mk-primary-button" href="/join">ВЕРНУТЬСЯ К БИЛЕТУ</a>
       </section>
     );

@@ -8,7 +8,7 @@ select ok(exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronames
 select ok(exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='owner_randomize_mk_seeds'), 'owner can randomize seeds');
 select ok(exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='owner_swap_mk_seeds'), 'owner can swap two seed positions');
 select ok(exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='owner_replace_mk_player'), 'owner can replace a no-show before start');
-select ok(exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='owner_finalize_mk_draw'), 'owner can finalize a 16-player draw');
+select ok(exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='owner_finalize_mk_draw'), 'owner can finalize a maximum 16-player draw');
 
 select ok(not has_function_privilege('anon', 'public.owner_get_mk_control(uuid)', 'EXECUTE'), 'anonymous cannot load owner MK control');
 select ok(not has_function_privilege('anon', 'public.owner_randomize_mk_seeds(uuid)', 'EXECUTE'), 'anonymous cannot randomize MK draw');

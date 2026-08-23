@@ -1,11 +1,9 @@
 export type MkTournamentState = 'registration' | 'draw_ready' | 'active' | 'complete';
 export type MkRegistrationStatus = 'active' | 'waitlist' | 'withdrawn';
-export const MK_MAX_PLAYERS = 40 as const;
-export const MK_ROUNDS = ['r64', 'r32', 'r16', 'qf', 'sf', 'final'] as const;
+export const MK_MAX_PLAYERS = 16 as const;
+export const MK_ROUNDS = ['r16', 'qf', 'sf', 'final'] as const;
 export type MkRound = typeof MK_ROUNDS[number];
 export const MK_ROUND_LABELS: Record<MkRound, string> = {
-  r64: '1/32 ФИНАЛА',
-  r32: '1/16 ФИНАЛА',
   r16: '1/8 ФИНАЛА',
   qf: '1/4 ФИНАЛА',
   sf: '1/2 ФИНАЛА',

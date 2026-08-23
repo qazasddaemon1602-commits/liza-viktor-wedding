@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(18);
+select plan(21);
 
 select is(
   (
@@ -175,6 +175,28 @@ select ok(
     false
   ),
   'the tournament helper has an immutable empty search path'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public._repair_mk_max_16_data()', 'EXECUTE'),
+  'anonymous guests cannot invoke the MK max-16 repair helper'
+);
+
+select ok(
+  not has_function_privilege('authenticated', 'public._repair_mk_max_16_data()', 'EXECUTE'),
+  'authenticated clients cannot invoke the MK max-16 repair helper'
+);
+
+select ok(
+  coalesce(
+    (
+      select 'search_path=public, pg_temp' = any(procedure.proconfig)
+      from pg_proc procedure
+      where procedure.oid = 'public._repair_mk_max_16_data()'::regprocedure
+    ),
+    false
+  ),
+  'the MK max-16 repair helper pins public and temporary schemas'
 );
 
 select ok(

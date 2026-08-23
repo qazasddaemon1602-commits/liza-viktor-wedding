@@ -8,8 +8,6 @@ type NextSlot = {
 };
 
 const ROUND_MATCH_COUNTS: Record<MkRound, number> = {
-  r64: 32,
-  r32: 16,
   r16: 8,
   qf: 4,
   sf: 2,
@@ -21,8 +19,6 @@ const FIRST_ROUND_BY_SIZE: Record<number, MkRound> = {
   4: 'sf',
   8: 'qf',
   16: 'r16',
-  32: 'r32',
-  64: 'r64',
 };
 
 function bracketSize(playerCount: number): number {
@@ -83,8 +79,6 @@ export function nextMatchSlot(match: MatchAddress): NextSlot | null {
   if (match.position < 1) return null;
 
   const downstreamRound: Partial<Record<MkRound, MkRound>> = {
-    r64: 'r32',
-    r32: 'r16',
     r16: 'qf',
     qf: 'sf',
     sf: 'final',

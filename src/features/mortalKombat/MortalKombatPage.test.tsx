@@ -11,7 +11,7 @@ const openState: ActiveProjection = {
   tournamentId: 't1',
   state: 'registration',
   activeCount: 9,
-  maxPlayers: 40,
+  maxPlayers: 16,
   ownRegistrationStatus: null,
   waitlistPosition: null,
   players: Array.from({ length: 9 }, (_, index) => ({
@@ -55,7 +55,7 @@ function dependencies(overrides: Partial<MortalKombatPageDependencies> = {}): Mo
       status: 'joined',
       registrationStatus: 'active',
       activeCount: 10,
-      maxPlayers: 40,
+      maxPlayers: 16,
       waitlistPosition: null,
     }),
     subscribeToRefresh: () => vi.fn(),
@@ -139,7 +139,7 @@ describe('MortalKombatPage', () => {
     });
 
     expect(load).toHaveBeenCalledTimes(2);
-    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
+    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
   });
 
   it('deduplicates refreshes while a tournament load is in flight', async () => {
@@ -214,7 +214,7 @@ describe('MortalKombatPage', () => {
       />,
     );
 
-    expect(await screen.findByText('9 / 40')).toBeInTheDocument();
+    expect(await screen.findByText('9 / 16')).toBeInTheDocument();
     await act(async () => {
       refresh?.();
       await Promise.resolve();
@@ -222,7 +222,7 @@ describe('MortalKombatPage', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'АРЕНА ПОСЛЕДНИЙ КРУГ' })).toBeInTheDocument();
-    expect(screen.getByText('9 / 40')).toBeInTheDocument();
+    expect(screen.getByText('9 / 16')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить турнир. Проверьте связь.');
   });
 
@@ -290,20 +290,20 @@ describe('MortalKombatPage', () => {
     });
 
     expect(load).toHaveBeenCalledTimes(3);
-    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
+    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
   });
 
-  it('uses the 40-player tournament limit instead of a stale event-wide guest count', async () => {
+  it('uses the 16-player tournament limit instead of a stale event-wide guest count', async () => {
     const limitedState: ActiveProjection = {
       ...openState,
       activeCount: 7,
-      maxPlayers: 40,
+      maxPlayers: 16,
     };
 
     render(<MortalKombatPage dependencies={dependencies({ load: vi.fn().mockResolvedValue(limitedState) })} />);
 
-    expect(await screen.findAllByText(/7 \/ 40/)).not.toHaveLength(0);
-    expect(screen.getByText('ПОСЛЕДНИЙ КРУГ · 40 МЕСТ')).toBeInTheDocument();
+    expect(await screen.findAllByText(/7 \/ 16/)).not.toHaveLength(0);
+    expect(screen.getByText('ПОСЛЕДНИЙ КРУГ · 16 МЕСТ')).toBeInTheDocument();
   });
 
   it('lets an already registered wedding guest join without entering their name again', async () => {
@@ -315,7 +315,7 @@ describe('MortalKombatPage', () => {
       status: 'joined',
       registrationStatus: 'active',
       activeCount: 10,
-      maxPlayers: 40,
+      maxPlayers: 16,
       waitlistPosition: null,
     });
 
@@ -323,13 +323,13 @@ describe('MortalKombatPage', () => {
 
     expect(await screen.findByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-    expect(screen.getByText('9 / 40')).toBeInTheDocument();
+    expect(screen.getByText('9 / 16')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' }));
 
     expect(join).toHaveBeenCalledTimes(1);
     expect(load).toHaveBeenCalledTimes(2);
-    expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
+    expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'ВЕРНУТЬСЯ К БИЛЕТУ' })).toHaveAttribute('href', '/join');
   });
@@ -346,7 +346,7 @@ describe('MortalKombatPage', () => {
       status: 'joined',
       registrationStatus: 'active',
       activeCount: 10,
-      maxPlayers: 40,
+      maxPlayers: 16,
       waitlistPosition: null,
     });
     let refresh: (() => void) | undefined;
@@ -385,7 +385,7 @@ describe('MortalKombatPage', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
+    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
   });
 
   it('shows the return-to-ticket link for waitlisted guests', async () => {
@@ -398,6 +398,7 @@ describe('MortalKombatPage', () => {
     render(<MortalKombatPage dependencies={dependencies({ load: vi.fn().mockResolvedValue(waitlistState) })} />);
 
     expect(await screen.findByText('ЛИСТ ОЖИДАНИЯ · №3')).toBeInTheDocument();
+    expect(screen.getByText('ОСНОВНАЯ СЕТКА ЗАПОЛНЕНА · 16 ИЗ 16. ВЫ В ЛИСТЕ ОЖИДАНИЯ · №3.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'ВЕРНУТЬСЯ К БИЛЕТУ' })).toHaveAttribute('href', '/join');
   });
 
@@ -419,7 +420,7 @@ describe('MortalKombatPage', () => {
       />,
     );
 
-    await screen.findByText('9 / 40');
+    await screen.findByText('9 / 16');
     await act(async () => {
       refresh?.();
       await Promise.resolve();
@@ -427,7 +428,7 @@ describe('MortalKombatPage', () => {
     });
 
     expect(load).toHaveBeenCalledTimes(2);
-    expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
+    expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 16')).toBeInTheDocument();
   });
 
   it('uses an original wedding arena identity without official game copy', async () => {

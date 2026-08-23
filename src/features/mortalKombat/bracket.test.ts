@@ -49,22 +49,18 @@ describe('Mortal Kombat bracket model', () => {
 describe('Mortal Kombat bracket with fewer than sixteen players', () => {
   const seededPlayers = (count: number) => Array.from({ length: count }, (_, index) => `p${index + 1}`);
 
-  it('rejects fewer than two players but accepts every meaningful size through forty', () => {
+  it('rejects fewer than two players and any bracket larger than sixteen', () => {
     expect(() => buildBracket(seededPlayers(1))).toThrow(/2/);
     expect(() => buildBracket(seededPlayers(2))).not.toThrow();
     expect(() => buildBracket(seededPlayers(9))).not.toThrow();
     expect(() => buildBracket(seededPlayers(16))).not.toThrow();
-    expect(() => buildBracket(seededPlayers(17))).not.toThrow();
-    expect(() => buildBracket(seededPlayers(40))).not.toThrow();
-    expect(() => buildBracket(seededPlayers(41))).toThrow(/40/);
+    expect(() => buildBracket(seededPlayers(17))).toThrow(/16/);
   });
 
   it.each([
     { players: 2, firstRound: 'final', firstRoundMatches: 1, internalMatches: 1, realOpeningFights: 1 },
     { players: 9, firstRound: 'r16', firstRoundMatches: 8, internalMatches: 15, realOpeningFights: 1 },
     { players: 16, firstRound: 'r16', firstRoundMatches: 8, internalMatches: 15, realOpeningFights: 8 },
-    { players: 17, firstRound: 'r32', firstRoundMatches: 16, internalMatches: 31, realOpeningFights: 1 },
-    { players: 40, firstRound: 'r64', firstRoundMatches: 32, internalMatches: 63, realOpeningFights: 8 },
   ])(
     'builds the smallest deterministic bracket for $players players',
     ({ players, firstRound, firstRoundMatches, internalMatches, realOpeningFights }) => {
@@ -124,9 +120,5 @@ describe('Mortal Kombat bracket with fewer than sixteen players', () => {
     expect(two[0]).toMatchObject({ player1GuestId: 'p1', player2GuestId: 'p2' });
   });
 
-  it('maps 64-player and 32-player rounds through the same authoritative branch', () => {
-    expect(nextMatchSlot({ round: 'r64' as never, position: 32 })).toEqual({ matchKey: 'r32-16', slot: 'player2' });
-    expect(nextMatchSlot({ round: 'r32' as never, position: 1 })).toEqual({ matchKey: 'r16-1', slot: 'player1' });
-  });
 });
 

@@ -22,10 +22,10 @@ const ownerPayload = {
   status: 'owner',
   tournamentId: 't1',
   state: 'draw_ready',
-  activeCount: 40,
+  activeCount: 16,
   waitlistCount: 2,
-  maxPlayers: 40,
-  registrations: Array.from({ length: 40 }, (_, index) => ({
+  maxPlayers: 16,
+  registrations: Array.from({ length: 16 }, (_, index) => ({
     registrationId: `r${index + 1}`,
     guestId: `g${index + 1}`,
     displayName: `Игрок ${index + 1}`,
@@ -43,23 +43,23 @@ describe('owner MK service', () => {
     const state = await getOwnerMkControl(client, 'event-1');
 
     expect(client.rpc).toHaveBeenCalledWith('owner_get_mk_control', { p_event_id: 'event-1' });
-    expect(state).toMatchObject({ status: 'owner', activeCount: 40, waitlistCount: 2, maxPlayers: 40 });
+    expect(state).toMatchObject({ status: 'owner', activeCount: 16, waitlistCount: 2, maxPlayers: 16 });
   });
 
-  it('accepts correction impact from the 64-slot opening round', async () => {
+  it('accepts correction impact from the sixteen-slot opening round', async () => {
     const client = clientWith({
       status: 'impact',
-      matchId: 'm-r64-1',
+      matchId: 'm-r16-1',
       affectedMatches: [
-        { matchId: 'm-r32-1', matchKey: 'r32-1', round: 'r32', position: 1 },
+        { matchId: 'm-qf-1', matchKey: 'qf-1', round: 'qf', position: 1 },
       ],
     });
 
-    const result = await recordMkWinner(client, 'm-r64-1', 'g1', false);
+    const result = await recordMkWinner(client, 'm-r16-1', 'g1', false);
 
     expect(result).toMatchObject({
       status: 'impact',
-      affectedMatches: [{ round: 'r32', matchKey: 'r32-1' }],
+      affectedMatches: [{ round: 'qf', matchKey: 'qf-1' }],
     });
   });
 
