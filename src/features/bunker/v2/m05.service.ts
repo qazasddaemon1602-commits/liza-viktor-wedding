@@ -115,9 +115,9 @@ function parseRoute(value: unknown): MissionFiveRoute {
   };
 }
 
-function parseSelectedVote(value: unknown): 'A' | 'B' | null {
+function parseSelectedVote(value: unknown, label = 'selected vote'): 'A' | 'B' | null {
   if (value === null || value === undefined) return null;
-  if (value !== 'A' && value !== 'B') throw new Error('Unexpected mission five selected vote');
+  if (value !== 'A' && value !== 'B') throw new Error(`Unexpected mission five ${label}`);
   return value;
 }
 
@@ -230,7 +230,7 @@ export function parseMissionFiveScreenReadModel(value: unknown): MissionFiveScre
       if (wagon.status !== 'active' && wagon.status !== 'completed') {
         throw new Error('Unexpected mission five wagon status');
       }
-      const routeChoice = parseSelectedVote(wagon.routeChoice);
+      const routeChoice = parseSelectedVote(wagon.routeChoice, 'route choice');
       return {
         wagonId: text(wagon.wagonId, 'wagon id'),
         label: text(wagon.label, 'wagon label'),

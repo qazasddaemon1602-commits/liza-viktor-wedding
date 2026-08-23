@@ -5,9 +5,10 @@ type ActiveProjection = Extract<MkTournamentProjection, { status: 'active' }>;
 
 type PublicBracketProps = {
   state: ActiveProjection;
+  displayMode?: 'embedded' | 'projector';
 };
 
-export function PublicBracket({ state }: PublicBracketProps) {
+export function PublicBracket({ state, displayMode = 'embedded' }: PublicBracketProps) {
   const playerById = new Map(state.players.map((player) => [player.guestId, player]));
   const playerName = (guestId: string | null) => (
     guestId ? playerById.get(guestId)?.displayName ?? 'ИГРОК' : '—'
@@ -74,18 +75,32 @@ export function PublicBracket({ state }: PublicBracketProps) {
 
   if (realMatches.length === 0) {
     return (
-      <section className="mk-public-bracket mk-public-bracket--waiting">
+      <section
+        className={`mk-public-bracket mk-public-bracket--waiting${displayMode === 'projector' ? ' mk-public-bracket--projector' : ''}`}
+        data-testid={displayMode === 'projector' ? 'mk-projector-bracket' : undefined}
+      >
+        {displayMode === 'projector' && (
+          <picture className="mk-projector-board-art" aria-hidden="true">
+            <source type="image/avif" srcSet="/images/tournament/arena-wide-960.avif 960w, /images/tournament/arena-wide-1672.avif 1672w" sizes="100vw" />
+            <source type="image/webp" srcSet="/images/tournament/arena-wide-960.webp 960w, /images/tournament/arena-wide-1672.webp 1672w" sizes="100vw" />
+            <img src="/images/tournament/arena-wide.png" alt="" />
+          </picture>
+        )}
         <p className="eyebrow">ARENA BOARD</p>
         <h2>ЖДЁМ ЖЕРЕБЬЁВКУ</h2>
         <p className="mk-bracket-live-label">LIVE BRACKET</p>
-        <p>Игроков в основной сетке: {state.activeCount} / {state.maxPlayers}.</p>
+        <strong className="mk-projector-count">{state.activeCount} / {state.maxPlayers} БОЙЦОВ</strong>
+        {displayMode === 'projector' && <p className="mk-projector-next">СЛЕДУЮЩЕЕ · ЖЕРЕБЬЁВКА</p>}
       </section>
     );
   }
 
 
   return (
-    <section className="mk-public-bracket">
+    <section
+      className={`mk-public-bracket${displayMode === 'projector' ? ' mk-public-bracket--projector' : ''}`}
+      data-testid={displayMode === 'projector' ? 'mk-projector-bracket' : undefined}
+    >
       <div className="mk-section-heading">
         <div>
           <p className="eyebrow">ARENA BOARD</p>

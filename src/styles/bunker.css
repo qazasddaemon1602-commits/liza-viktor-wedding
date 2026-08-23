@@ -1,13 +1,17 @@
 .bunker-emergency {
+  --bunker-audio-safe-width: clamp(9.5rem, 13vw, 13rem);
   position: fixed;
   inset: 0;
   z-index: 1000;
   display: grid;
-  grid-template-rows: auto 1fr auto;
   min-height: 100vh;
   min-height: 100dvh;
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
   box-sizing: border-box;
-  padding: 5vh 5vw;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: clamp(16px, 4vh, 48px) clamp(24px, 5vw, 96px);
   overflow: hidden;
   color: #d8d8d8;
   background-color: #0c0c0c;
@@ -97,6 +101,7 @@
 
 .bunker-emergency__header {
   border-bottom: 1px solid rgba(216, 216, 216, 0.15);
+  padding-right: var(--bunker-audio-safe-width);
   padding-bottom: 1.5rem;
 }
 
@@ -122,6 +127,7 @@
   display: grid;
   place-items: center;
   align-content: center;
+  min-height: 0;
   text-align: center;
   padding: 2vh 0;
 }
@@ -138,7 +144,7 @@
 .bunker-emergency__content h1 {
   margin: 2rem 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(5rem, 14vw, 16rem);
+  font-size: clamp(4rem, min(14vw, 24vh), 16rem);
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.05em;
@@ -175,7 +181,7 @@
 .bunker-emergency__timer-block strong {
   font-family: monospace;
   font-variant-numeric: tabular-nums;
-  font-size: clamp(4rem, 10vw, 12rem);
+  font-size: clamp(3.5rem, min(10vw, 18vh), 12rem);
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.05em;
@@ -223,11 +229,11 @@
   }
 
   .bunker-emergency__content h1 {
-    font-size: clamp(3rem, 20vw, 7rem);
+    font-size: clamp(3rem, min(20vw, 20vh), 7rem);
   }
 
   .bunker-emergency__timer-block strong {
-    font-size: clamp(3rem, 18vw, 6rem);
+    font-size: clamp(3rem, min(18vw, 16vh), 6rem);
   }
 }
 

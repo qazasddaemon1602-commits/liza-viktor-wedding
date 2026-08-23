@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from '../bunker/bunker.realtime';
+import { broadcastBunkerRefresh, subscribeToBunkerRefresh, type BunkerRealtimeClient } from '../bunker/bunker.realtime';
 import type { BunkerRpcClient } from '../bunker/bunker.service';
+import { submitGuestBunkerGlobalMission } from '../bunker/bunkerGlobalMission.service';
 import { getGuestBunkerQuest,submitBunkerFinalCode,submitBunkerMission } from '../bunker/bunkerQuest.service';
-import { getGuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
+import { getGuestBunkerRuntime, useGuestBunkerAbility } from '../bunker/bunkerRuntime.service';
 import { getGuestBunkerV2Dashboard } from '../bunker/v2/dashboard.service';
 import { confirmMissionOneSelection,getGuestMissionOneReadModel } from '../bunker/v2/m01.service';
 import { getGuestMissionTwoReadModel,submitMissionTwoAnswers,useMissionTwoAbility } from '../bunker/v2/m02.service';
@@ -74,6 +75,9 @@ export function GuestJoinPage({client,realtimeClient,quizClient,quizRealtimeClie
         requestFinalAccess:(key,input)=>requestFinalAccess(bunker,{eventSlug,deviceKey:key,...input}),
         submitMission:(key,stage,answer)=>submitBunkerMission(bunker,eventSlug,key,stage,answer),
         submitFinalCode:(key,code)=>submitBunkerFinalCode(bunker,eventSlug,key,code),
+        submitGlobalMission:(key,missionState,payload)=>submitGuestBunkerGlobalMission(bunker,eventSlug,key,missionState,payload),
+        useAbility:(key,clientActionId)=>useGuestBunkerAbility(bunker,eventSlug,key,clientActionId),
+        broadcastRefresh:bunkerRt?()=>broadcastBunkerRefresh(bunkerRt,eventSlug):undefined,
         subscribeToRefresh:bunkerRt?(cb)=>subscribeToBunkerRefresh(bunkerRt,eventSlug,cb):undefined,
       }:undefined,
     };

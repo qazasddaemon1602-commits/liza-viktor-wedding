@@ -110,7 +110,7 @@
   grid-template-rows: 1fr auto;
   place-items: center;
   gap: clamp(0.8rem, 2vh, 1.5rem);
-  padding: clamp(1.2rem, 2.4vw, 2.8rem);
+  padding: clamp(1rem, 2.4vh, 2.8rem) clamp(1.2rem, 2.4vw, 2.8rem);
   color: var(--idle-ink);
   background:
     radial-gradient(circle at 88% 9%, rgba(110, 138, 159, 0.24), transparent 29rem),

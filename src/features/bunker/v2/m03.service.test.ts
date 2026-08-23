@@ -87,7 +87,7 @@ describe('M03 service', () => {
 
   it('commits only the caller ability to one problem', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'use_ability' },
+      data: { contractVersion: 2, status: 'accepted', commandId: 'c', commandType: 'use_ability' },
       error: null,
     });
     await commitMissionThreeAbility(
@@ -102,7 +102,7 @@ describe('M03 service', () => {
 
   it('captain confirms at most three problem keys using instance version', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'mission_confirm' },
+      data: { contractVersion: 2, status: 'accepted', commandId: 'c', commandType: 'mission_confirm' },
       error: null,
     });
     await confirmMissionThree(

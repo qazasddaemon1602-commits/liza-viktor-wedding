@@ -5,6 +5,16 @@ import { broadcastBunkerRefresh, subscribeToBunkerRefresh, type BunkerRealtimeCl
 import type { BunkerRpcClient } from './bunker.service';
 import { getGuestBunkerQuest, submitBunkerFinalCode, submitBunkerMission } from './bunkerQuest.service';
 import { getGuestBunkerRuntime, type GuestBunkerReadRuntime } from './bunkerRuntime.service';
+import {
+  useGuestBunkerAbility,
+  type GuestBunkerAbilityResult,
+} from './bunkerRuntime.service';
+import {
+  submitGuestBunkerGlobalMission,
+  type BunkerGlobalMissionPayload,
+  type BunkerGlobalMissionState,
+  type GuestBunkerGlobalMissionSubmission,
+} from './bunkerGlobalMission.service';
 import type { BunkerMissionStage, GuestBunkerQuestState, SubmitBunkerFinalResult, SubmitBunkerMissionResult } from './bunkerQuest.types';
 import type { MissionOnePlayerReadModel } from './v2/MissionOnePlayer';
 import { confirmMissionOneSelection, getGuestMissionOneReadModel, type ConfirmMissionOneSelectionInput, type MissionOneGuestReadModel } from './v2/m01.service';
@@ -55,6 +65,15 @@ export type GuestBunkerLiveDependencies = {
   broadcastRefresh?: () => Promise<void>;
   submitMission: (deviceKey: string, stage: BunkerMissionStage, answer: string) => Promise<SubmitBunkerMissionResult>;
   submitFinalCode: (deviceKey: string, code: string) => Promise<SubmitBunkerFinalResult>;
+  submitGlobalMission?: (
+    deviceKey: string,
+    missionState: BunkerGlobalMissionState,
+    payload: BunkerGlobalMissionPayload,
+  ) => Promise<GuestBunkerGlobalMissionSubmission>;
+  useAbility?: (
+    deviceKey: string,
+    clientActionId: string,
+  ) => Promise<GuestBunkerAbilityResult>;
   subscribeToRefresh?: (callback: () => void) => () => void;
 };
 
@@ -101,6 +120,19 @@ function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
     requestFinalAccess: (key, input) => requestFinalAccessCommand(rpc, { eventSlug, deviceKey: key, ...input }),
     submitMission: (key, stage, answer) => submitBunkerMission(rpc, eventSlug, key, stage, answer),
     submitFinalCode: (key, code) => submitBunkerFinalCode(rpc, eventSlug, key, code),
+    submitGlobalMission: (key, missionState, payload) => submitGuestBunkerGlobalMission(
+      rpc,
+      eventSlug,
+      key,
+      missionState,
+      payload,
+    ),
+    useAbility: (key, clientActionId) => useGuestBunkerAbility(
+      rpc,
+      eventSlug,
+      key,
+      clientActionId,
+    ),
     broadcastRefresh: () => broadcastBunkerRefresh(realtime, eventSlug),
     subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtime, eventSlug, callback),
   };
@@ -159,6 +191,7 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
   const generation = useRef(0);
   const runtimeStage = useRef<string | null>(null);
   const runtimeRunNonce = useRef<string | null>(null);
+  const abilityActionId = useRef<string | null>(null);
 
   const clearNonCurrent = useCallback((stage: string | null) => {
     if (stage !== 'MISSION_01') setMissionOne(undefined);
@@ -303,7 +336,19 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
     try { await deps?.broadcastRefresh?.(); } catch { /* polling recovers automatically */ }
   }, [deps]);
 
-  const authoritative = useCallback(async (action: () => Promise<unknown>, copy?: string): Promise<void> => {
+  const convergeAfterMutation = useCallback(async () => {
+    if (!deps) return;
+    void Promise.resolve()
+      .then(() => deps.broadcastRefresh?.())
+      .catch(() => undefined);
+    await reload();
+  }, [deps, reload]);
+
+  const authoritative = useCallback(async (
+    action: () => Promise<unknown>,
+    copy?: string,
+    recoverAmbiguous?: () => Promise<boolean>,
+  ): Promise<void> => {
     if (submitting) throw new Error('Bunker command is already in progress');
     setSubmitting(true);
     setFeedback('');
@@ -312,6 +357,13 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
       await broadcast();
       await reload();
       if (copy) setFeedback(copy);
+    } catch (cause) {
+      if (recoverAmbiguous && await recoverAmbiguous()) {
+        await broadcast();
+        if (copy) setFeedback(copy);
+        return;
+      }
+      throw cause;
     } finally {
       setSubmitting(false);
     }
@@ -323,13 +375,13 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
     try {
       const result = await deps.submitMission(deps.getDeviceKey(), stage, answer);
       setFeedback(result.status === 'completed' ? result.successCopy || 'Задание выполнено.' : 'Ответ не подошёл.');
-      await reload();
+      await convergeAfterMutation();
     } catch {
       setFeedback('Ответ не отправился.');
     } finally {
       setSubmitting(false);
     }
-  }, [deps, reload, submitting]);
+  }, [convergeAfterMutation, deps, submitting]);
 
   const submitFinalCode = useCallback(async (code: string) => {
     if (!deps || submitting) return;
@@ -337,17 +389,74 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
     try {
       const result = await deps.submitFinalCode(deps.getDeviceKey(), code);
       setFeedback(result.status === 'unlocked' ? 'Доступ получен.' : result.status === 'not_ready' ? 'Не все вагоны готовы.' : 'Код не подошёл.');
-      await reload();
+      await convergeAfterMutation();
     } catch {
       setFeedback('Код не отправился.');
     } finally {
       setSubmitting(false);
     }
-  }, [deps, reload, submitting]);
+  }, [convergeAfterMutation, deps, submitting]);
+
+  const submitGlobalMission = useCallback(async (
+    missionState: BunkerGlobalMissionState,
+    payload: BunkerGlobalMissionPayload,
+  ) => {
+    if (!deps || submitting) return;
+    if (!deps.submitGlobalMission) {
+      setFeedback('Действие миссии ещё не подключено. Обновите страницу или обратитесь к ведущему.');
+      return;
+    }
+    setSubmitting(true);
+    setFeedback('');
+    try {
+      const result = await deps.submitGlobalMission(deps.getDeviceKey(), missionState, payload);
+      setFeedback(result.changed
+        ? 'Решение вагона принято. Дождитесь остальных команд.'
+        : 'Это решение вагона уже принято и сохранено.');
+      await convergeAfterMutation();
+    } catch {
+      setFeedback('Решение не отправилось. Проверьте данные и попробуйте ещё раз.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [convergeAfterMutation, deps, submitting]);
+
+  const useAbility = useCallback(async (): Promise<GuestBunkerAbilityResult> => {
+    if (!deps || submitting) throw new Error('Bunker action is already in progress');
+    if (!deps.useAbility) {
+      const missing = new Error('Bunker ability action is not connected');
+      setFeedback('Способность ещё не подключена. Обновите страницу или обратитесь к ведущему.');
+      throw missing;
+    }
+    abilityActionId.current ??= globalThis.crypto.randomUUID();
+    setSubmitting(true);
+    setFeedback('');
+    try {
+      const result = await deps.useAbility(deps.getDeviceKey(), abilityActionId.current);
+      abilityActionId.current = null;
+      setFeedback(result.resultCopy);
+      await convergeAfterMutation();
+      return result;
+    } catch (cause) {
+      setFeedback('Ответ способности не получен. Повторите отправку — заряд не пропадёт.');
+      throw cause;
+    } finally {
+      setSubmitting(false);
+    }
+  }, [convergeAfterMutation, deps, submitting]);
 
   const confirmMissionOne = useCallback((ids: string[]) => {
-    if (!deps?.confirmMissionOne || !missionOne) throw new Error('M01 unavailable');
-    return authoritative(() => deps.confirmMissionOne!(deps.getDeviceKey(), { commandId: commandId('m01'), instanceId: missionOne.instanceId, instanceVersion: missionOne.instanceVersion, selectedGuestIds: ids }));
+    if (!deps?.confirmMissionOne || !deps.loadMissionOne || !missionOne) throw new Error('M01 unavailable');
+    const instanceId = missionOne.instanceId;
+    return authoritative(
+      () => deps.confirmMissionOne!(deps.getDeviceKey(), { commandId: commandId('m01'), instanceId, instanceVersion: missionOne.instanceVersion, selectedGuestIds: ids }),
+      undefined,
+      async () => {
+        const next = await deps.loadMissionOne!(deps.getDeviceKey());
+        setMissionOne(m01(next));
+        return next.status === 'completed' && next.instanceId === instanceId;
+      },
+    );
   }, [authoritative, deps, missionOne]);
   const submitMissionTwo = useCallback((answers: string[]) => {
     if (!deps?.submitMissionTwo || !missionTwo) throw new Error('M02 unavailable');
@@ -427,6 +536,8 @@ export function useGuestBunkerLiveState({ eventSlug = 'liza-viktor', dependencie
     reload,
     submitMission,
     submitFinalCode,
+    submitGlobalMission,
+    useAbility,
     confirmMissionOne,
     submitMissionTwo,
     useMissionTwoAbility,

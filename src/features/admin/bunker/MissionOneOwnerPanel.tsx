@@ -193,7 +193,7 @@ export function MissionOneOwnerPanel({ model, onOverride }: MissionOneOwnerPanel
       <header>
         <div>
           <p className="eyebrow">МИССИЯ 01 · OWNER</p>
-          <h3 id="admin-mission-one-title">ЛИШНИЙ ПАССАЖИР</h3>
+          <h3 id="admin-mission-one-title">МИССИЯ 01 · ЛИШНИЙ ПАССАЖИР</h3>
         </div>
         <time dateTime={`PT${Math.max(0, model.remainingSeconds)}S`}>
           {model.status === 'completed' ? 'ЗАВЕРШЕНО' : formatTimer(model.remainingSeconds)}

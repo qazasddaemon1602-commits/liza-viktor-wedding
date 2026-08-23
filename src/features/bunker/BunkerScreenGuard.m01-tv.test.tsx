@@ -95,7 +95,7 @@ describe('BunkerScreenGuard · M01 on common TV', () => {
     );
     await flush();
 
-    expect(screen.getByRole('region', { name: 'Бункер · общий экран' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Бункер · экран квеста' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Задание 1 · общий экран' })).not.toBeInTheDocument();
   });
 });

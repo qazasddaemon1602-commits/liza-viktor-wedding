@@ -3,7 +3,7 @@ import source from './AdminBunkerControl.tsx?raw';
 
 describe('AdminBunkerControl V2 routing release guard', () => {
   it('labels the Unknown Passenger stage explicitly', () => {
-    expect(source).toContain("UNKNOWN_PASSENGER: 'НЕИЗВЕСТНЫЙ ПАССАЖИР'");
+    expect(source).toContain("UNKNOWN_PASSENGER: 'НЕИЗВЕСТНЫЙ ПАССАЖИР · ДОСЬЕ BK-17'");
   });
 
   it('does not expose a generic FINAL_30 to BUNKER_OPEN transition in V2 controls', () => {

@@ -131,6 +131,32 @@ describe('JoinPage', () => {
     });
   });
 
+  it('shows the newly issued ticket before handing the guest into the persistent hub', async () => {
+    const user = userEvent.setup();
+    const register = vi.fn().mockResolvedValue({ status: 'registered', guest });
+
+    render(
+      <JoinPage
+        dependencies={dependencies({ register })}
+        revealDelayMs={0}
+        ticketHoldMs={80}
+      />,
+    );
+
+    await screen.findByRole('button', { name: /получить билет/i });
+    await user.type(screen.getByLabelText('Имя'), 'Иван');
+    await user.type(screen.getByLabelText('Фамилия'), 'Петров');
+    await user.selectOptions(screen.getByLabelText('С кем вы сегодня?'), 'viktor');
+    await user.click(screen.getByRole('button', { name: /получить билет/i }));
+
+    expect(await screen.findByText('ДОБРО ПОЖАЛОВАТЬ В СОСТАВ')).toBeInTheDocument();
+    expect(screen.getByTestId('virtual-ticket')).toHaveTextContent('LV-031');
+    expect(screen.queryByRole('heading', { name: 'ВАШ ВЕЧЕР' })).not.toBeInTheDocument();
+
+    expect(await screen.findByRole('heading', { name: 'ВАШ ВЕЧЕР' }, { timeout: 1000 })).toBeInTheDocument();
+    expect(screen.getByLabelText('Мой билет')).toHaveTextContent('LV-031');
+  });
+
   it('recovers the old ticket from an owner-issued code on a new phone', async () => {
     const user = userEvent.setup();
     const recover = vi.fn().mockResolvedValue({ status: 'recovered', guest });

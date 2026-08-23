@@ -122,7 +122,7 @@ describe('M04 service', () => {
 
   it('uses authoritative propose/respond trade commands', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'propose_trade' },
+      data: { contractVersion: 2, status: 'accepted', commandId: 'c', commandType: 'propose_trade' },
       error: null,
     });
     await proposeMissionFourTrade(
@@ -134,7 +134,7 @@ describe('M04 service', () => {
     );
     expect(rpc).toHaveBeenCalledWith('submit_bunker_command', expect.objectContaining({ p_command_type: 'propose_trade' }));
     rpc.mockResolvedValue({
-      data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'respond_trade' },
+      data: { contractVersion: 2, status: 'accepted', commandId: 'd', commandType: 'respond_trade' },
       error: null,
     });
     await respondMissionFourTrade(
@@ -149,7 +149,7 @@ describe('M04 service', () => {
 
   it('submits a group answer only through submit_answer', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'submit_answer' },
+      data: { contractVersion: 2, status: 'accepted', commandId: 'c', commandType: 'submit_answer' },
       error: null,
     });
     await submitMissionFourAnswer(

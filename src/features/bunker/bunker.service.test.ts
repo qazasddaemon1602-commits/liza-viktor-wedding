@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  forceOpenBunker,
   getBunkerScreenState,
   getOwnerBunkerControl,
   startBunker,
@@ -52,9 +53,12 @@ describe('bunker service', () => {
         id: 'mission_06', state: 'MISSION_06', plan: { checkpoint: 'north' },
       },
       teams: [
-        { carriageNumber: 1, label: 'ВАГОН №1', missionAComplete: true, missionBComplete: true },
-        { carriageNumber: 2, label: 'ВАГОН №2', missionAComplete: true, missionBComplete: false },
+        { carriageNumber: 1, label: 'ВАГОН №1', missionAComplete: true, missionBComplete: true, currentMissionComplete: true },
+        { carriageNumber: 2, label: 'ВАГОН №2', missionAComplete: true, missionBComplete: false, currentMissionComplete: false },
       ],
+      missionProgress: {
+        missionState: 'MISSION_06', completedWagons: 1, totalWagons: 2, complete: false,
+      },
       serverNow: '2026-08-30T18:10:00.000Z',
     });
 
@@ -69,9 +73,12 @@ describe('bunker service', () => {
         id: 'mission_06', state: 'MISSION_06', plan: { checkpoint: 'north' },
       },
       teams: [
-        { carriageNumber: 1, missionBComplete: true },
-        { carriageNumber: 2, missionBComplete: false },
+        { carriageNumber: 1, missionBComplete: true, currentMissionComplete: true },
+        { carriageNumber: 2, missionBComplete: false, currentMissionComplete: false },
       ],
+      missionProgress: {
+        missionState: 'MISSION_06', completedWagons: 1, totalWagons: 2, complete: false,
+      },
     });
     expect(JSON.stringify(state)).not.toContain('fragment');
   });
@@ -86,6 +93,22 @@ describe('bunker service', () => {
       p_duration_seconds: 1800,
     });
     expect(client.rpc).toHaveBeenNthCalledWith(2, 'owner_stop_bunker', { p_event_id: 'event-1' });
+  });
+
+  it('sends the operational reason and exact confirmation to the forced-open RPC', async () => {
+    const client = clientWith({ status: 'transitioned' });
+    await forceOpenBunker(
+      client,
+      'event-1',
+      'Финальный телефон не отвечает',
+      'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    );
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_force_open_bunker', {
+      p_event_id: 'event-1',
+      p_reason: 'Финальный телефон не отвечает',
+      p_confirmation: 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    });
   });
 
   it('loads owner state without exposing anything beyond timer/sound metadata', async () => {
@@ -121,6 +144,44 @@ describe('bunker service', () => {
       status: 'active',
       globalGameState: 'MISSION_03',
       currentMission: { id: 'mission_03', state: 'MISSION_03' },
+    });
+  });
+
+  it('keeps current mission progress visible to the owner while the timer is stopped', async () => {
+    const client = clientWith({
+      status: 'idle',
+      durationSeconds: 1800,
+      soundEnabled: true,
+      runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+      globalGameState: 'MISSION_04',
+      currentMission: { id: 'mission_04', state: 'MISSION_04', plan: null },
+      missionProgress: {
+        missionState: 'MISSION_04', completedWagons: 2, totalWagons: 4, complete: false,
+      },
+      serverNow: '2026-08-30T18:15:00.000Z',
+    });
+
+    await expect(getOwnerBunkerControl(client, 'event-1')).resolves.toMatchObject({
+      status: 'idle',
+      missionProgress: {
+        missionState: 'MISSION_04', completedWagons: 2, totalWagons: 4, complete: false,
+      },
+    });
+  });
+
+  it('keeps an empty recovery snapshot incomplete instead of treating zero wagons as done', async () => {
+    const client = clientWith({
+      status: 'idle', durationSeconds: 1800, soundEnabled: true,
+      globalGameState: 'MISSION_01',
+      currentMission: { id: 'mission_01', state: 'MISSION_01', plan: [] },
+      missionProgress: {
+        missionState: 'MISSION_01', completedWagons: 0, totalWagons: 0, complete: false,
+      },
+      serverNow: '2026-08-30T18:15:00.000Z',
+    });
+
+    await expect(getOwnerBunkerControl(client, 'event-1')).resolves.toMatchObject({
+      missionProgress: { completedWagons: 0, totalWagons: 0, complete: false },
     });
   });
 });

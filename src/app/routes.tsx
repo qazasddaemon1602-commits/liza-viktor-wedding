@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
-import { AdminBunkerDock } from '../features/admin/bunker/AdminBunkerDock';
 import { BunkerScreenGuard } from '../features/bunker/BunkerScreenGuard';
 import { MortalKombatPage } from '../features/mortalKombat/MortalKombatPage';
 import { MkScreenPage } from '../features/mortalKombat/MkScreenPage';
@@ -49,7 +48,7 @@ export function AppRoutes() {
       <Route path="/couple-preanswers" element={<CouplePreanswersPage />} />
       <Route path="/liza" element={<FinalFiveRolePage role="liza" />} />
       <Route path="/viktor" element={<FinalFiveRolePage role="viktor" />} />
-      <Route path="/admin" element={<><AdminPage /><AdminBunkerDock /></>} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="/screen" element={projector(<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />)} />
       <Route path="/screen/connect" element={<Navigate to={routeRedirects['/screen/connect']} replace />} />
       <Route path="/premiere" element={<Navigate to={routeRedirects['/premiere']} replace />} />

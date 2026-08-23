@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { QuizScreenScene } from './QuizScreenScene';
+import { describe, expect, it, vi } from 'vitest';
+import { QuizScreenScene, toAvifQuizImagePath } from './QuizScreenScene';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 
 const votingState: Extract<QuizScreenState, { status: 'active'; phase: 'voting' }> = {
@@ -16,6 +16,36 @@ const votingState: Extract<QuizScreenState, { status: 'active'; phase: 'voting' 
 };
 
 describe('QuizScreenScene', () => {
+  it('uses the shared transition language and signals only the presented phase', () => {
+    const onSignal = vi.fn();
+
+    const { rerender } = render(
+      <QuizScreenScene state={votingState} expectedGuestCount={40} onSignal={onSignal} />,
+    );
+
+    expect(screen.getByTestId('scene-transition')).toHaveAttribute(
+      'data-scene-key',
+      'question-1-voting',
+    );
+    expect(onSignal).toHaveBeenCalledWith('voting');
+
+    rerender(<QuizScreenScene state={votingState} expectedGuestCount={40} onSignal={onSignal} />);
+    expect(onSignal).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <QuizScreenScene
+        state={{
+          ...votingState,
+          phase: 'results',
+          results: { liza: 18, viktor: 12, total: 30 },
+        }}
+        expectedGuestCount={40}
+        onSignal={onSignal}
+      />,
+    );
+    expect(onSignal).toHaveBeenLastCalledWith('results');
+  });
+
   it('shows a live question and participation count without percentages before reveal', () => {
     render(<QuizScreenScene state={votingState} expectedGuestCount={40} />);
 
@@ -43,7 +73,7 @@ describe('QuizScreenScene', () => {
     expect(screen.getByText('30 / 40 ОТВЕТИЛИ')).toBeInTheDocument();
   });
 
-  it('renders the optional thematic image as decorative content', () => {
+  it('renders the optional thematic image with AVIF preference and WebP fallback', () => {
     const withImage: typeof votingState = {
       ...votingState,
       question: {
@@ -52,9 +82,31 @@ describe('QuizScreenScene', () => {
       },
     };
 
-    render(<QuizScreenScene state={withImage} expectedGuestCount={40} />);
+    const { container } = render(
+      <QuizScreenScene state={withImage} expectedGuestCount={40} />,
+    );
 
-    expect(screen.getByRole('presentation')).toHaveAttribute('src', '/quiz/chief.webp');
+    const fallback = screen.getByRole('presentation');
+    expect(fallback).toHaveAttribute('src', '/quiz/chief.webp');
+    expect(fallback.closest('picture')).not.toBeNull();
+    expect(container.querySelector('picture source')).toHaveAttribute('type', 'image/avif');
+    expect(container.querySelector('picture source')).toHaveAttribute('srcset', '/quiz/chief.avif');
+  });
+
+  it('keeps query strings and fragments when deriving the AVIF candidate', () => {
+    expect(toAvifQuizImagePath('/images/quiz/q02.webp?v=7#frame')).toBe(
+      '/images/quiz/q02.avif?v=7#frame',
+    );
+    expect(toAvifQuizImagePath('/images/quiz/q02.png?v=7')).toBeNull();
+  });
+
+  it('omits the complete image frame when the question has no image', () => {
+    const { container } = render(
+      <QuizScreenScene state={votingState} expectedGuestCount={40} />,
+    );
+
+    expect(container.querySelector('.quiz-screen-image-frame')).toBeNull();
+    expect(container.querySelector('picture')).toBeNull();
   });
 
   it('uses the wedding editorial spread and route mark for the TV composition', () => {

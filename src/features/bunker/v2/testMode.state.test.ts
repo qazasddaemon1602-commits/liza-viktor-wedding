@@ -8,7 +8,7 @@ describe('Bunker V2 rehearsal state', () => {
     }, error: null });
     const state = await getOwnerTestModeState({ rpc }, 'event-1');
     expect(rpc).toHaveBeenCalledWith('get_owner_bunker_v2_test_state', { p_event_id: 'event-1' });
-    expect(state).toEqual({ gameMode: 'test', globalState: 'MISSION_03', runActive: true, guestCount: 20, wagonCount: 3 });
+    expect(state).toEqual({ gameMode: 'test', globalState: 'MISSION_03', runActive: true, guestCount: 20, realGuestCount: 20, wagonCount: 3 });
   });
 
   it('rejects unknown stages and inconsistent active-run state', async () => {

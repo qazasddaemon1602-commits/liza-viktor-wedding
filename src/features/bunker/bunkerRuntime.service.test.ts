@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { getGuestBunkerRuntime, parseGuestBunkerRuntime } from './bunkerRuntime.service';
+import {
+  getGuestBunkerRuntime,
+  parseGuestBunkerRuntime,
+  useGuestBunkerAbility,
+} from './bunkerRuntime.service';
 import type { BunkerRpcClient } from './bunker.service';
 
 const activeRuntime = {
@@ -23,6 +27,14 @@ const activeRuntime = {
     profession: 'МЕХАНИК', health: 'отличное', visibleSkill: 'ремонт механизмов',
     hiddenTrait: null, hiddenTraitRevealed: false, specialAbility: 'mechanical_fix',
     abilityDescription: 'Открывает отсек.', abilityUsesRemaining: 1, status: 'active',
+    abilityAction: {
+      applicable: true,
+      code: 'ability_available',
+      missionState: 'MISSION_03',
+      effectKind: 'technical_door_unlocked',
+      effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+      effectDescription: 'Технический отсек будет разблокирован без расходования инструментов.',
+    },
   },
   passengers: [], inventory: [], archive: [],
   wagonState: {
@@ -34,6 +46,17 @@ const activeRuntime = {
     id: 'mission-03',
     state: 'MISSION_03',
     plan: null,
+  },
+  missionAction: {
+    missionState: 'MISSION_03',
+    completed: false,
+    completedAt: null,
+    submittedPayload: null,
+    requirements: {
+      availableItemKeys: ['medkit', 'radio', 'water'],
+      minItems: 1,
+      maxItems: 3,
+    },
   },
 };
 
@@ -48,7 +71,9 @@ describe('Bunker runtime response', () => {
       ...activeRuntime,
       contractVersion: 1,
       game: { ...activeRuntime.game, state: 'STORY_BUNKER' },
+      character: { ...activeRuntime.character, abilityAction: undefined },
       currentMission: { id: 'story', state: 'STORY_BUNKER', plan: null },
+      missionAction: undefined,
     });
     expect(v1).toMatchObject({ status: 'active', game: { state: 'STORY_BUNKER' } });
     expect(v1).not.toHaveProperty('contractVersion');
@@ -87,8 +112,21 @@ describe('Bunker runtime response', () => {
       status: 'active',
       guest: { realName: 'Сергей П.', joinedLate: true },
       game: { state: 'MISSION_03', finalDuration: 1800 },
-      character: { profession: 'МЕХАНИК', hiddenTrait: null },
+      character: {
+        profession: 'МЕХАНИК',
+        hiddenTrait: null,
+        abilityAction: {
+          applicable: true,
+          code: 'ability_available',
+          missionState: 'MISSION_03',
+          effectKind: 'technical_door_unlocked',
+        },
+      },
       currentMission: { id: 'mission-03', state: 'MISSION_03', plan: null },
+      missionAction: {
+        missionState: 'MISSION_03', completed: false, completedAt: null,
+        requirements: { availableItemKeys: ['medkit', 'radio', 'water'] },
+      },
     });
   });
 
@@ -103,10 +141,26 @@ describe('Bunker runtime response', () => {
     expect(parseGuestBunkerRuntime({
       ...activeRuntime,
       game: { ...activeRuntime.game, state: 'MISSION_01' },
+      character: {
+        ...activeRuntime.character,
+        abilityAction: {
+          applicable: false,
+          code: 'ability_not_applicable',
+          missionState: 'MISSION_01',
+          effectKind: null,
+          effectLabel: 'НЕДОСТУПНА В ЗАДАНИИ 1',
+          effectDescription: 'В первом задании способности отключены.',
+        },
+      },
       currentMission: {
         id: 'mission_01',
         state: 'MISSION_01',
         plan: [{ wagonId: 'f8b201f3-23ae-4e32-b990-d3bed73d90d6', exclusionCount: 2 }],
+      },
+      missionAction: {
+        missionState: 'MISSION_01', completed: false, completedAt: null,
+        submittedPayload: null,
+        requirements: { exclusionCount: 2, selectableProfiles: [] },
       },
     })).toMatchObject({
       currentMission: {
@@ -123,10 +177,164 @@ describe('Bunker runtime response', () => {
     })).toEqual({ status: 'idle', serverNow: '2026-08-20T18:00:00.000Z' });
   });
 
+  it('rejects mission action progress for a different authoritative mission', () => {
+    expect(() => parseGuestBunkerRuntime({
+      ...activeRuntime,
+      missionAction: { ...activeRuntime.missionAction, missionState: 'MISSION_04' },
+    })).toThrow(/mission action/i);
+  });
+
+  it('accepts no action outside the six actionable missions', () => {
+    expect(parseGuestBunkerRuntime({
+      ...activeRuntime,
+      game: { ...activeRuntime.game, state: 'BREAK' },
+      character: {
+        ...activeRuntime.character,
+        abilityAction: {
+          applicable: false,
+          code: 'ability_not_applicable',
+          missionState: 'BREAK',
+          effectKind: null,
+          effectLabel: 'НЕДОСТУПНА В ЭТОМ ЭТАПЕ',
+          effectDescription: 'Дождитесь следующего задания.',
+        },
+      },
+      currentMission: null,
+      missionAction: null,
+    })).toMatchObject({ status: 'active', missionAction: null });
+  });
+
+  it('rejects malformed inventory lots before they can be offered for a real transfer', () => {
+    expect(() => parseGuestBunkerRuntime({
+      ...activeRuntime,
+      inventory: [{
+        id: 'lot-1', itemKey: 'radio', quantity: 0, status: 'available',
+        acquiredAt: '2026-08-20T18:00:00.000Z', usedAt: null,
+        transferredTo: null, sourceLotId: null,
+      }],
+    })).toThrow(/inventory item/i);
+  });
+
   it('rejects a leaked hidden trait before reveal', () => {
     expect(() => parseGuestBunkerRuntime({
       ...activeRuntime,
       character: { ...activeRuntime.character, hiddenTrait: 'СЕКРЕТ' },
     })).toThrow(/hidden trait/i);
+  });
+
+  it('rejects an ability preview that claims a different server mission', () => {
+    expect(() => parseGuestBunkerRuntime({
+      ...activeRuntime,
+      character: {
+        ...activeRuntime.character,
+        abilityAction: {
+          ...activeRuntime.character.abilityAction,
+          missionState: 'MISSION_05',
+        },
+      },
+    })).toThrow(/ability action/i);
+  });
+
+  it('rejects an unknown server ability effect kind', () => {
+    expect(() => parseGuestBunkerRuntime({
+      ...activeRuntime,
+      character: {
+        ...activeRuntime.character,
+        abilityAction: {
+          ...activeRuntime.character.abilityAction,
+          effectKind: 'drop_table',
+        },
+      },
+    })).toThrow(/ability action/i);
+  });
+});
+
+describe('Bunker character ability RPC', () => {
+  it('sends only device identity plus an idempotency key and parses the server-derived result', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        status: 'used',
+        changed: true,
+        idempotent: false,
+        clientActionId: '00000000-0000-4000-8000-000000000951',
+        missionState: 'MISSION_03',
+        abilityKey: 'mechanical_fix',
+        effectKind: 'technical_door_unlocked',
+        effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+        effectDescription: 'Технический отсек будет разблокирован без расходования инструментов.',
+        resultCopy: 'Механик разблокировал технический отсек вагона.',
+        abilityUsesRemaining: 0,
+      },
+      error: null,
+    });
+
+    await expect(useGuestBunkerAbility(
+      { rpc },
+      'liza-viktor',
+      'device-key-123',
+      '00000000-0000-4000-8000-000000000951',
+    )).resolves.toMatchObject({
+      status: 'used',
+      missionState: 'MISSION_03',
+      abilityKey: 'mechanical_fix',
+      abilityUsesRemaining: 0,
+    });
+    expect(rpc).toHaveBeenCalledWith('use_guest_bunker_ability', {
+      p_event_slug: 'liza-viktor',
+      p_device_key: 'device-key-123',
+      p_client_action_id: '00000000-0000-4000-8000-000000000951',
+    });
+  });
+
+  it('rejects a malformed ability result instead of inventing client state', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        status: 'used',
+        changed: true,
+        idempotent: false,
+        clientActionId: '00000000-0000-4000-8000-000000000951',
+        missionState: 'MISSION_03',
+        abilityKey: 'mechanical_fix',
+        effectKind: 'technical_door_unlocked',
+        effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+        effectDescription: 'Технический отсек будет разблокирован.',
+        resultCopy: 'Технический отсек разблокирован.',
+        abilityUsesRemaining: -1,
+      },
+      error: null,
+    });
+
+    await expect(useGuestBunkerAbility(
+      { rpc },
+      'liza-viktor',
+      'device-key-123',
+      '00000000-0000-4000-8000-000000000951',
+    )).rejects.toThrow(/ability result/i);
+  });
+
+  it('rejects an unknown result effect kind', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        status: 'used',
+        changed: true,
+        idempotent: false,
+        clientActionId: '00000000-0000-4000-8000-000000000951',
+        missionState: 'MISSION_03',
+        abilityKey: 'mechanical_fix',
+        effectKind: 'drop_table',
+        effectLabel: 'НЕИЗВЕСТНЫЙ ЭФФЕКТ',
+        effectDescription: 'Этот эффект не входит в серверный контракт.',
+        resultCopy: 'Неизвестный результат.',
+        abilityUsesRemaining: 0,
+      },
+      error: null,
+    });
+
+    await expect(useGuestBunkerAbility(
+      { rpc },
+      'liza-viktor',
+      'device-key-123',
+      '00000000-0000-4000-8000-000000000951',
+    )).rejects.toThrow(/ability result/i);
   });
 });

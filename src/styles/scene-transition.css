@@ -1,0 +1,98 @@
+.scene-transition {
+  --scene-transition-accent: var(--sage, #78806a);
+  position: relative;
+  min-width: 0;
+  isolation: isolate;
+}
+
+.scene-transition--wine { --scene-transition-accent: var(--wine, #7e3f3c); }
+.scene-transition--gold { --scene-transition-accent: #c7a45d; }
+
+.scene-transition__content {
+  min-width: 0;
+  animation: scene-content-enter 620ms cubic-bezier(.2, .78, .2, 1) both;
+}
+
+.scene-transition__wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scene-transition__wipe::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background:
+    linear-gradient(108deg, transparent 22%, color-mix(in srgb, var(--scene-transition-accent) 68%, #111 32%) 46%, #111 58%, transparent 78%);
+  transform: translateX(-115%);
+  animation: scene-wipe 760ms cubic-bezier(.62, 0, .3, 1) both;
+}
+
+.scene-transition__wipe span {
+  position: absolute;
+  left: clamp(1.25rem, 4vw, 5rem);
+  bottom: clamp(1.25rem, 4vw, 4rem);
+  z-index: 1;
+  color: #f1e4cf;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.58rem, 0.75vw, 0.82rem);
+  font-weight: 850;
+  letter-spacing: 0.18em;
+  opacity: 0;
+  animation: scene-label 620ms 80ms ease both;
+}
+
+.scene-transition__wipe i {
+  position: absolute;
+  right: clamp(1.25rem, 4vw, 5rem);
+  bottom: clamp(1.25rem, 4vw, 4rem);
+  width: clamp(3rem, 9vw, 9rem);
+  height: 1px;
+  background: color-mix(in srgb, var(--scene-transition-accent) 72%, #f1e4cf 28%);
+  transform-origin: right;
+  animation: scene-line 720ms 90ms ease both;
+}
+
+.scene-transition--overlay-only {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+}
+
+@keyframes scene-wipe {
+  0% { transform: translateX(-115%); }
+  48% { transform: translateX(0); }
+  100% { transform: translateX(115%); }
+}
+
+@keyframes scene-content-enter {
+  from { opacity: 0.15; transform: scale(1.012); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scene-label {
+  0%, 24% { opacity: 0; transform: translateY(0.5rem); }
+  42%, 62% { opacity: 0.9; transform: translateY(0); }
+  100% { opacity: 0; }
+}
+
+@keyframes scene-line {
+  0%, 28% { opacity: 0; transform: scaleX(0); }
+  50%, 72% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-transition__content,
+  .scene-transition__wipe::before,
+  .scene-transition__wipe span,
+  .scene-transition__wipe i {
+    animation: none !important;
+  }
+
+  .scene-transition__wipe { display: none; }
+}

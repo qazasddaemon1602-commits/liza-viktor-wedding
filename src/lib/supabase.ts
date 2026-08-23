@@ -62,17 +62,31 @@ let singleton: SupabaseClient | null = null;
 const FALLBACK_BACKEND_URL = 'https://vogcchocbpqqwhfnzzwy.supabase.co';
 const FALLBACK_PUBLISHABLE_KEY = 'sb_publishable_5qVXua51ZEO5-WFq5UUOZg_2CaPSswA';
 
+export function applyBackendFallbacks(env: BackendEnvironment): BackendEnvironment {
+  const hasPublishableKey = Boolean(env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim());
+  const hasAnonKey = Boolean(env.VITE_SUPABASE_ANON_KEY?.trim());
+
+  return {
+    ...env,
+    VITE_SUPABASE_URL: env.VITE_SUPABASE_URL?.trim() || FALLBACK_BACKEND_URL,
+    VITE_SUPABASE_PUBLISHABLE_KEY: hasPublishableKey
+      ? env.VITE_SUPABASE_PUBLISHABLE_KEY
+      : hasAnonKey
+        ? undefined
+        : FALLBACK_PUBLISHABLE_KEY,
+  };
+}
+
 export function getSupabaseClient(): SupabaseClient {
   if (singleton) return singleton;
 
   singleton = createBackendClient(
-    {
+    applyBackendFallbacks({
       VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
-      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || FALLBACK_BACKEND_URL,
-      VITE_SUPABASE_PUBLISHABLE_KEY:
-        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_PUBLISHABLE_KEY,
+      VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
-    },
+    }),
     (url, key, options) => createClient(url, key, options),
   );
 

@@ -137,6 +137,7 @@ describe('AdminBunkerDock dashboard scheduling', () => {
     await flushPromises();
 
     expect(await screen.findByRole('heading', { name: 'ЛИШНИЙ ПАССАЖИР' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'МИССИЯ 01 · ЛИШНИЙ ПАССАЖИР' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'ИЗМЕНИТЬ РЕШЕНИЕ · ВАГОН №1' }));
     const form = screen.getByRole('form', { name: 'Override · ВАГОН №1' });
     fireEvent.click(within(form).getByRole('checkbox', { name: /александра-мария/i }));
@@ -292,6 +293,8 @@ describe('AdminBunkerDock dashboard scheduling', () => {
     await flushPromises();
 
     expect(screen.getByRole('heading', { name: 'БУНКЕР' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Экстренный сюжетный поворот' }))
+      .toHaveAttribute('id', 'admin-bunker');
     expect(screen.getByText('OWNER-ДАННЫЕ ПОДТВЕРЖДЕНЫ')).toBeInTheDocument();
     expect(screen.getByText('20')).toBeInTheDocument();
 

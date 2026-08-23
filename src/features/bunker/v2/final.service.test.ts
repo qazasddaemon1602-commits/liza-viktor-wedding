@@ -90,7 +90,7 @@ describe('final guest contract', () => {
 
   it('submits the five terminal fields only through request_access', async () => {
     const rpc = vi.fn().mockResolvedValue({
-      data: { contractVersion: 2, status: 'accepted', commandId: 'x', commandType: 'request_access' },
+      data: { contractVersion: 2, status: 'accepted', commandId: 'cmd', commandType: 'request_access' },
       error: null,
     });
     const client: FinalRpcClient = { rpc };

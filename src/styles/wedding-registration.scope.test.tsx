@@ -74,8 +74,10 @@ describe('wedding registration stylesheet scope', () => {
 
     expect(getComputedStyle(ticketForm).display).toBe('grid');
     expect(getComputedStyle(ticketForm).gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))');
-    expect(getComputedStyle(ticketPrimary).minHeight).toBe('44px');
-    expect(getComputedStyle(ticketSecondary).minHeight).toBe('44px');
+    expect(getComputedStyle(ticketPrimary).minHeight).toBe('48px');
+    expect(getComputedStyle(ticketSecondary).minHeight).toBe('48px');
+    expect(getComputedStyle(ticketPrimary).fontSize).toBe('16px');
+    expect(getComputedStyle(ticketSecondary).fontSize).toBe('16px');
 
   });
 });

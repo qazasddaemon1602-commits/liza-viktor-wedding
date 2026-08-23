@@ -18,6 +18,7 @@ export type AdminMkControlDependencies = {
   swap: (registrationA: string, registrationB: string) => Promise<void>;
   remove: (registrationId: string) => Promise<void>;
   promote: (registrationId: string) => Promise<void>;
+  reset: (eventId: string, confirmation: string) => Promise<void>;
   finalize: (eventId: string) => Promise<void>;
   setCurrent: (matchId: string) => Promise<void>;
   showBracket?: (eventId: string) => Promise<void>;
@@ -32,42 +33,64 @@ type AdminMkControlProps = {
   dependencies: AdminMkControlDependencies;
 };
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim().slice(0, 180);
+function describeMkCommandError(error: unknown): string {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error !== null && 'message' in error
+      ? String(error.message)
+      : '';
+
+  const playerLimit = message.match(/between 2 and (\d+) active players required/)?.[1];
+  if (playerLimit) {
+    return `Для запуска нужно от 2 до ${playerLimit} участников.`;
   }
-  if (error && typeof error === 'object' && 'message' in error) {
-    const message = String((error as { message?: unknown }).message ?? '').trim();
-    if (message) return message.slice(0, 180);
+  if (message.includes('unique seed')) {
+    return 'Перед запуском пережеребите турнир: у каждого участника должна быть своя позиция.';
   }
-  return 'сервер отклонил команду';
+  if (message.includes('draw is already locked')) {
+    return 'Сетка уже запущена. Для нового состава сначала сбросьте турнир.';
+  }
+  if (message.includes('Bunker emergency owns the shared projector')) {
+    return 'Общий экран занят Бункером. Турнир можно открыть на отдельном экране.';
+  }
+  if (message.includes('Premiere owns the shared projector')) {
+    return 'Общий экран занят премьерой. Турнир можно открыть на отдельном экране.';
+  }
+  if (message && /[А-Яа-яЁё]/.test(message)) return message;
+  return message
+    ? `Команда турнира не выполнена: ${message}`
+    : 'Команда турнира не выполнена. Проверьте состояние и попробуйте ещё раз.';
 }
 
 export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
   const [state, setState] = useState<MkOwnerControl | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [confirmingReroll, setConfirmingReroll] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resetConfirmation, setResetConfirmation] = useState('');
 
   const reload = async () => {
     const next = await dependencies.load(eventId);
     setState(next);
   };
 
+  const appendNotice = (message: string) => {
+    setNotice((current) => current ? `${current} ${message}` : message);
+  };
+
   const refreshAll = async () => {
-    let warning = '';
     try {
       await dependencies.broadcastRefresh();
     } catch {
-      warning = 'Команда выполнена. Сигнал обновления не отправлен — экраны перечитают состояние автоматически.';
+      appendNotice('Изменение сохранено, но автообновление экранов недоступно.');
     }
-
     try {
       await reload();
     } catch {
-      warning = warning || 'Команда выполнена, но не удалось перечитать состояние. Не нажимайте повторно — обновите страницу.';
+      appendNotice('Изменение сохранено, но состояние пульта не обновилось. Обновите страницу.');
     }
-
-    if (warning) setError(warning);
   };
 
   const setSharedProjector = async (enabled: boolean) => {
@@ -79,6 +102,14 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     await setMkMainScreen(client, eventId, enabled);
   };
 
+  const claimSharedProjectorAfterMutation = async (committedMessage: string) => {
+    try {
+      await setSharedProjector(true);
+    } catch (projectorError) {
+      appendNotice(`${committedMessage} ${describeMkCommandError(projectorError)}`);
+    }
+  };
+
   const showBracketOnProjector = async () => {
     if (dependencies.showBracket) {
       await dependencies.showBracket(eventId);
@@ -86,21 +117,17 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       const client = getSupabaseClient() as unknown as MkOwnerRpcClient;
       await showMkBracket(client, eventId);
     }
-    await setSharedProjector(true);
+    await claimSharedProjectorAfterMutation('Сетка выбрана.');
   };
 
   const startTournament = async () => {
     await dependencies.finalize(eventId);
-    try {
-      await setSharedProjector(true);
-    } catch (projectorError) {
-      setError(`Турнир запущен, но общий ТВ не переключился: ${errorMessage(projectorError)}. Сетка сохранена — повторно стартовать турнир не нужно.`);
-    }
+    await claimSharedProjectorAfterMutation('Турнир запущен.');
   };
 
   const setCurrentOnProjector = async (matchId: string) => {
     await dependencies.setCurrent(matchId);
-    await setSharedProjector(true);
+    await claimSharedProjectorAfterMutation('Бой выбран.');
   };
 
   useEffect(() => {
@@ -121,21 +148,15 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
     if (busy) return;
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       await command();
+      await refreshAll();
     } catch (commandError) {
-      try {
-        await reload();
-      } catch {
-        // The mutation error remains primary; a later poll or page refresh can still reconcile.
-      }
-      setError(`Команда турнира не выполнена: ${errorMessage(commandError)}. Состояние перечитано с сервера; не запускайте повторно, если турнир уже активен.`);
+      setError(describeMkCommandError(commandError));
+    } finally {
       setBusy(false);
-      return;
     }
-
-    await refreshAll();
-    setBusy(false);
   };
 
   if (!state) {
@@ -172,11 +193,16 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
 
   const active = state.registrations.filter((registration) => registration.status === 'active');
   const waitlist = state.registrations.filter((registration) => registration.status === 'waitlist');
-  const activeSeeds = active.map((registration) => registration.seed);
+  const activeSeeds = new Set(
+    active
+      .map((registration) => registration.seed)
+      .filter((seed): seed is number => Number.isInteger(seed)),
+  );
   const allSeeded = active.length >= 2
     && active.length <= state.maxPlayers
-    && activeSeeds.every((seed) => seed !== null && seed >= 1 && seed <= active.length)
-    && new Set(activeSeeds).size === active.length;
+    && activeSeeds.size === active.length
+    && Array.from({ length: active.length }, (_, index) => index + 1)
+      .every((seed) => activeSeeds.has(seed));
   const setupOpen = state.state === 'registration' || state.state === 'draw_ready';
   const needsReseed = state.state === 'draw_ready' && active.length >= 2 && !allSeeded;
 
@@ -203,9 +229,9 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               type="button"
               className="registration-secondary"
               disabled={busy || active.length < 2}
-              onClick={() => void run(() => dependencies.randomize(eventId))}
+              onClick={() => setConfirmingReroll(true)}
             >
-              ПЕРЕМЕШАТЬ {active.length} ИГРОКОВ
+              ПЕРЕЖЕРЕБИТЬ ТУРНИР
             </button>
             {state.state === 'registration' && (
               <button
@@ -229,9 +255,37 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
             )}
           </div>
 
+          {confirmingReroll && (
+            <div className="admin-mk-live-note" role="alertdialog" aria-label="Подтверждение пережеребьёвки">
+              <strong>СМЕНИТЬ ВСЕ ПОЗИЦИИ?</strong>
+              <p>Состав участников сохранится. Изменится только порядок игроков до запуска турнира.</p>
+              <div className="admin-mk-actions">
+                <button
+                  type="button"
+                  className="registration-submit"
+                  disabled={busy}
+                  onClick={() => void run(async () => {
+                    await dependencies.randomize(eventId);
+                    setConfirmingReroll(false);
+                  })}
+                >
+                  ПОДТВЕРДИТЬ ПЕРЕЖЕРЕБЬЁВКУ
+                </button>
+                <button
+                  type="button"
+                  className="registration-secondary"
+                  disabled={busy}
+                  onClick={() => setConfirmingReroll(false)}
+                >
+                  ОТМЕНА
+                </button>
+              </div>
+            </div>
+          )}
+
           {needsReseed && (
             <p className="admin-mk-reseed-note" role="status">
-              СОСТАВ ИЗМЕНИЛСЯ · нажмите «ПЕРЕМЕШАТЬ {active.length} ИГРОКОВ» или расставьте позиции заново перед стартом.
+              СОСТАВ ИЗМЕНИЛСЯ · пережеребите турнир или расставьте позиции заново перед стартом.
             </p>
           )}
 
@@ -318,6 +372,61 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
               </button>
             </div>
           </div>
+          <div className="admin-mk-live-note">
+            <strong>НОВЫЙ ТУРНИР</strong>
+            <p>Сброс удалит только участников, сетку и результаты этого турнира.</p>
+            <button
+              type="button"
+              className="registration-secondary"
+              disabled={busy}
+              onClick={() => setConfirmingReset(true)}
+            >
+              СБРОСИТЬ ТУРНИР
+            </button>
+          </div>
+
+          {confirmingReset && (
+            <div className="admin-mk-live-note" role="alertdialog" aria-label="Подтверждение сброса турнира">
+              <strong>ДЕЙСТВИЕ НЕЛЬЗЯ ОТМЕНИТЬ</strong>
+              <p>
+                Будут удалены участники MK, сетка и результаты боёв. Регистрации гостей свадьбы и ответы пары сохранятся.
+              </p>
+              <label>
+                <span>Введите СБРОСИТЬ ТУРНИР</span>
+                <input
+                  type="text"
+                  value={resetConfirmation}
+                  autoComplete="off"
+                  onChange={(event) => setResetConfirmation(event.target.value)}
+                />
+              </label>
+              <div className="admin-mk-actions">
+                <button
+                  type="button"
+                  className="registration-submit"
+                  disabled={busy || resetConfirmation !== 'СБРОСИТЬ ТУРНИР'}
+                  onClick={() => void run(async () => {
+                    await dependencies.reset(eventId, resetConfirmation);
+                    setConfirmingReset(false);
+                    setResetConfirmation('');
+                  })}
+                >
+                  ПОДТВЕРДИТЬ СБРОС ТУРНИРА
+                </button>
+                <button
+                  type="button"
+                  className="registration-secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setConfirmingReset(false);
+                    setResetConfirmation('');
+                  }}
+                >
+                  ОТМЕНА
+                </button>
+              </div>
+            </div>
+          )}
           <MatchEditor
             matches={state.matches}
             registrations={state.registrations}
@@ -330,6 +439,7 @@ export function AdminMkControl({ eventId, dependencies }: AdminMkControlProps) {
       )}
 
       {error && <p className="admin-mk-error" role="alert">{error}</p>}
+      {notice && <p className="admin-mk-reseed-note" role="status">{notice}</p>}
     </section>
   );
 }
