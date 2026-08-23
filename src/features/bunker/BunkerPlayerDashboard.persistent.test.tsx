@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { BunkerV2ActiveGuestRuntime } from './v2/contracts';
 import type { BunkerV2DashboardReadModel } from './v2/dashboard.service';
 import { BunkerPlayerDashboard } from './BunkerPlayerDashboard';
@@ -133,5 +133,38 @@ describe('persistent Bunker V2 player dashboard', () => {
     await user.click(screen.getByRole('button', { name: 'СОСТОЯНИЕ' }));
     expect(screen.getByText(/Бонус маршрута · -5 мин/i)).toBeInTheDocument();
     expect(screen.queryByText(/\+-5/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the latest BK-17 transmission above the mission shell while the guest changes tabs', async () => {
+    const user = userEvent.setup();
+    render(
+      <BunkerPlayerDashboard
+        runtime={runtime}
+        dashboard={dashboard}
+        operatorFeedDependencies={{
+          load: vi.fn().mockResolvedValue({
+            status: 'active', active: true, globalGameState: 'MISSION_05', revealed: false,
+            serverNow: '2026-08-30T19:10:00.000Z',
+            message: {
+              id: 'signal-04', stage: 'MISSION_04', source: 'fallback',
+              body: 'Один вагон не дойдёт. Держите связь.',
+              publishedAt: '2026-08-30T19:09:50.000Z',
+            },
+          }),
+        }}
+      />,
+    );
+
+    const transmission = await screen.findByRole('note', { name: 'Последняя передача оператора BK-17' });
+    expect(transmission).toHaveTextContent('РЕЗЕРВНЫЙ СИГНАЛ');
+    const dashboardHeader = document.querySelector('.bunker-player-dashboard__header');
+    expect(dashboardHeader).not.toBeNull();
+    expect(transmission.compareDocumentPosition(dashboardHeader!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'ИНВЕНТАРЬ' }));
+    await waitFor(() => expect(screen.getByLabelText('Инвентарь вагона')).toBeInTheDocument());
+    expect(screen.getByRole('note', { name: 'Последняя передача оператора BK-17' })).toHaveTextContent(
+      'Один вагон не дойдёт. Держите связь.',
+    );
   });
 });

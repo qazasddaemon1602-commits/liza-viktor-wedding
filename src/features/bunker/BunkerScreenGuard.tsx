@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PROJECTOR_AUDIO_REARM_EVENT } from '../../lib/siteAudio';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
@@ -30,6 +30,13 @@ import { FinalScreen, type FinalScreenModel } from './v2/FinalScreen';
 import { getBunkerV2Results, type BunkerV2ResultSummary, type BunkerV2ResultsReadModel } from './v2/results.service';
 import { BunkerResultsScreen, type BunkerResultsScreenModel } from './v2/BunkerResultsScreen';
 import { getBunkerMissionContent } from './v2/content/missionContent';
+import { BunkerOperatorTransmission } from './operator/BunkerOperatorTransmission';
+import {
+  getBunkerOperatorFeed,
+  useBunkerOperatorFeed,
+  type BunkerOperatorFeedDependencies,
+  type BunkerOperatorFeedRpcClient,
+} from './operator/useBunkerOperatorFeed';
 
 export type BunkerScreenGuardDependencies = {
   load: () => Promise<BunkerScreenState>;
@@ -42,6 +49,7 @@ export type BunkerScreenGuardDependencies = {
   loadUnknownPassenger?: () => Promise<UnknownPassengerScreenReadModel>;
   loadFinal?: () => Promise<FinalScreenReadModel>;
   loadResults?: () => Promise<BunkerV2ResultsReadModel>;
+  loadOperatorFeed?: BunkerOperatorFeedDependencies['load'];
   subscribe?: (callback: () => void) => () => void;
   audio?: BunkerAudioController;
   narration?: BunkerNarrationSessionController;
@@ -66,6 +74,10 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
       loadUnknownPassenger: () => getUnknownPassengerScreenReadModel(rpc, eventSlug),
       loadFinal: () => getFinalScreenReadModel(rpc, eventSlug),
       loadResults: () => getBunkerV2Results(rpc, eventSlug),
+      loadOperatorFeed: () => getBunkerOperatorFeed(
+        client as unknown as BunkerOperatorFeedRpcClient,
+        eventSlug,
+      ),
       subscribe: (callback) => subscribeToBunkerRefresh(realtime, eventSlug, callback),
       audio: createBunkerAudioController(),
       narration: bunkerNarrationSession,
@@ -346,6 +358,16 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     ? stateRemaining(state, nowMs, offset.current)
     : 0;
   const bunkerActive = state?.status === 'active';
+  const operatorFeedDependencies = useMemo<BunkerOperatorFeedDependencies | null>(() => (
+    deps?.loadOperatorFeed
+      ? { load: deps.loadOperatorFeed, subscribe: deps.subscribe }
+      : null
+  ), [deps]);
+  const operatorFeed = useBunkerOperatorFeed({
+    eventSlug,
+    enabled: Boolean(bunkerActive && operatorFeedDependencies),
+    dependencies: operatorFeedDependencies,
+  });
   const phase = state?.status === 'active'
     ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency')
     : null;
@@ -531,6 +553,14 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
             bunkerContractVersion={contractVersion ?? 2}
           />
         )}
+      {bunkerActive && (
+        <BunkerOperatorTransmission
+          variant="projector"
+          message={operatorFeed.feed?.message ?? null}
+          motionPreference={motion}
+          soundEnabled={state?.status === 'active' && state.soundEnabled}
+        />
+      )}
     </>
   );
 }

@@ -896,6 +896,57 @@
   }
 }
 
+.bunker-operator-transmission--phone {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  margin: 0 0 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(105, 158, 188, 0.42);
+  border-left: 3px solid #b89a60;
+  background: linear-gradient(115deg, rgba(18, 37, 49, 0.92), rgba(20, 23, 24, 0.96));
+  box-shadow: 0 0.8rem 2.4rem rgba(0, 0, 0, 0.18);
+}
+
+.bunker-operator-transmission--phone p,
+.bunker-operator-transmission--phone blockquote {
+  margin: 0;
+}
+
+.bunker-operator-transmission--phone p {
+  color: #bda36e;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+}
+
+.bunker-operator-transmission--phone blockquote {
+  margin-top: 0.4rem;
+  color: #eee8db;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.08rem;
+  line-height: 1.42;
+}
+
+.bunker-operator-transmission__channel {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 0.35rem;
+  min-width: 3.2rem;
+  color: #c7dce7;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+}
+
+.bunker-operator-transmission__channel span {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid #b89a60;
+  border-radius: 50%;
+  background: #8bbbd3;
+  box-shadow: 0 0 0.8rem rgba(139, 187, 211, 0.55);
+}
+
 .bunker-global-action__routes {
   padding: 0;
   border: 0;

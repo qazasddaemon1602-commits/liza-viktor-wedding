@@ -506,4 +506,44 @@ describe('BunkerScreenGuard', () => {
 
     expect(load).toHaveBeenCalledTimes(3);
   });
+
+  it('layers a BK-17 transmission over the authoritative mission scene without replacing it', async () => {
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue({
+          contractVersion: 2,
+          status: 'active',
+          startedAt: '2026-08-30T18:00:00.000Z',
+          durationSeconds: 1800,
+          remainingSeconds: 900,
+          soundEnabled: false,
+          phase: 'mission_b',
+          unlocked: false,
+          teams: [],
+          characterCounts: { active: 15, saved: 0, excluded: 0 },
+          globalGameState: 'MISSION_04',
+          currentMission: { id: 'mission-04', state: 'MISSION_04', plan: null },
+          serverNow: '2026-08-30T18:15:00.000Z',
+        }),
+        loadOperatorFeed: vi.fn().mockResolvedValue({
+          status: 'active', active: true, globalGameState: 'MISSION_04', revealed: false,
+          serverNow: '2026-08-30T18:15:00.000Z',
+          message: {
+            id: 'signal-04', stage: 'MISSION_04', source: 'selected',
+            body: 'Один вагон не дойдёт. Держите связь.',
+            publishedAt: '2026-08-30T18:14:59.000Z',
+          },
+        }),
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(screen.getByRole('region', { name: 'Задание 4 · общий экран' })).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Входящая передача оператора BK-17' })).toHaveTextContent(
+      'ВХОДЯЩИЙ СИГНАЛ · ОПЕРАТОР BK-17',
+    );
+    expect(screen.queryByText('Лиза')).not.toBeInTheDocument();
+  });
 });

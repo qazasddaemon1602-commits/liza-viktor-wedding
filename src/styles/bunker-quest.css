@@ -833,6 +833,81 @@
   }
 }
 
+/* BK-17 arrives above the active projector scene without entering screen_events. */
+.bunker-operator-transmission--projector {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: grid;
+  place-items: center;
+  padding: clamp(2rem, 7vw, 8rem);
+  color: #f0eadc;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(25, 55, 74, 0.78), rgba(5, 8, 10, 0.96) 68%),
+    rgba(4, 7, 9, 0.96);
+  overflow: hidden;
+  pointer-events: none;
+  animation: bunker-operator-signal-in 420ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.bunker-operator-transmission__projector-frame {
+  position: relative;
+  width: min(78rem, 100%);
+  padding: clamp(2rem, 5vw, 5rem);
+  border: 1px solid rgba(190, 154, 91, 0.72);
+  background: rgba(8, 15, 20, 0.9);
+  box-shadow: 0 0 0 1px rgba(103, 154, 184, 0.2), 0 2rem 8rem rgba(0, 0, 0, 0.58);
+}
+
+.bunker-operator-transmission__projector-frame > p,
+.bunker-operator-transmission__projector-frame footer {
+  margin: 0;
+  color: #c3a66d;
+  font-size: clamp(0.72rem, 1.1vw, 1.2rem);
+  letter-spacing: 0.22em;
+}
+
+.bunker-operator-transmission__projector-frame blockquote {
+  max-width: 24ch;
+  margin: clamp(1.4rem, 3vw, 3rem) 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.4rem, 5vw, 6.8rem);
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.bunker-operator-transmission__projector-frame footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(190, 154, 91, 0.35);
+}
+
+.bunker-operator-transmission__scan {
+  position: absolute;
+  inset: -30% 0;
+  opacity: 0.16;
+  background: repeating-linear-gradient(0deg, transparent 0 5px, rgba(157, 211, 237, 0.22) 6px);
+  animation: bunker-operator-scan 3.2s linear infinite;
+}
+
+@keyframes bunker-operator-signal-in {
+  from { opacity: 0; transform: scale(1.015); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bunker-operator-scan {
+  from { transform: translateY(-8%); }
+  to { transform: translateY(8%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bunker-operator-transmission--projector {
+    animation: none;
+  }
+}
+
 .bunker-quest-scene[data-motion="reduced"] .bunker-quest-scene__train-wipe {
   display: none;
   animation: none;

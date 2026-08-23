@@ -35,6 +35,11 @@ import type {
   BunkerGlobalMissionState,
 } from './bunkerGlobalMission.service';
 import { getBunkerMissionContent } from './v2/content/missionContent';
+import { BunkerOperatorTransmission } from './operator/BunkerOperatorTransmission';
+import {
+  useBunkerOperatorFeed,
+  type BunkerOperatorFeedDependencies,
+} from './operator/useBunkerOperatorFeed';
 
 const SECTIONS = [
   'МОЙ ВАГОН',
@@ -132,6 +137,8 @@ function signedMinutes(value: number): string {
 
 type Props = {
   runtime: ActiveGuestBunkerRuntime | BunkerV2ActiveGuestRuntime;
+  eventSlug?: string;
+  operatorFeedDependencies?: BunkerOperatorFeedDependencies | null;
   dashboard?: ActiveDashboard;
   connectionError?: string;
   missionOne?: MissionOnePlayerReadModel;
@@ -238,6 +245,8 @@ function BunkerAbilityActionCard({ runtime, onAbility }: BunkerAbilityActionCard
 
 export function BunkerPlayerDashboard({
   runtime,
+  eventSlug = 'liza-viktor',
+  operatorFeedDependencies,
   dashboard,
   connectionError = '',
   missionOne,
@@ -286,6 +295,13 @@ export function BunkerPlayerDashboard({
     ? { id: dashboard?.wagon.id ?? activeId, ...(dashboard?.wagon ?? runtime.viewer.wagon) }
     : runtime.wagon;
   const gameState = isV2 ? runtime.state : runtime.game.state;
+  const operatorFeed = useBunkerOperatorFeed({
+    eventSlug,
+    enabled: isV2,
+    dependencies: isV2
+      ? operatorFeedDependencies ?? (import.meta.env.MODE === 'test' ? null : undefined)
+      : null,
+  });
   const fallbackV2Passengers = missionOne?.members.map((member) => ({
     ...member,
     hiddenTraitRevealed: false,
@@ -373,6 +389,12 @@ export function BunkerPlayerDashboard({
       aria-label="Игровой модуль Бункер"
       data-large-text={largeText ? 'true' : undefined}
     >
+      {isV2 && (
+        <BunkerOperatorTransmission
+          variant="phone"
+          message={operatorFeed.feed?.message ?? null}
+        />
+      )}
       {missionOne && <MissionOnePlayer model={missionOne} onConfirm={onConfirmMissionOne} />}
       {missionTwo && (
         <MissionTwoPlayer
