@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(55);
+select plan(57);
 
 select has_table(
   'public', 'bunker_operator_messages',
@@ -227,6 +227,38 @@ select ok(
     ) definitions
   ),
   'private RPCs lock state before locking and revalidating the matching Liza access row'
+);
+
+select ok(
+  (
+    with function_definition as (
+      select lower(pg_get_functiondef(
+        'public.get_bunker_operator_feed(text)'::regprocedure
+      )) as definition
+    ), lock_position as (
+      select definition, strpos(definition, 'for update') as lock_at
+      from function_definition
+    )
+    select lock_at > 0
+      and length(definition) - length(replace(definition, 'for update', '')) =
+        length('for update')
+      and substring(definition from 1 for lock_at - 1) ~
+        'from public\.bunker_state'
+      and substring(definition from 1 for lock_at - 1) ~
+        'from public\.bunker_operator_messages'
+      and substring(definition from 1 for lock_at - 1) ~
+        'if v_fallback_required then'
+      and substring(definition from lock_at) ~
+        'from public\.bunker_game_runs'
+      and substring(definition from lock_at) ~
+        'from public\.bunker_mission_instances'
+      and substring(definition from lock_at) ~
+        'from public\.bunker_operator_messages'
+      and substring(definition from lock_at) ~
+        'on conflict \(event_id, run_nonce, stage\) do nothing'
+    from lock_position
+  ),
+  'public feed locks only the fallback branch and revalidates authoritative state'
 );
 
 insert into auth.users(id)
@@ -530,6 +562,27 @@ values (
   'active',
   '{}'::jsonb,
   clock_timestamp() - interval '10 seconds'
+);
+
+select ok(
+  (
+    with response as (
+      select public.get_bunker_operator_feed(
+        'bunker-operator-contract'
+      ) as body
+    )
+    select body->>'status' = 'active'
+      and body->>'globalGameState' = 'MISSION_02'
+      and body->'message' = 'null'::jsonb
+      and (
+        select count(*)
+        from public.bunker_operator_messages message
+        where message.event_id = '00000000-0000-4000-8000-000000000802'
+          and message.run_nonce = '00000000-0000-4000-8000-000000000803'
+      ) = 0
+    from response
+  ),
+  'a pre-deadline feed poll returns without creating a fallback message'
 );
 
 select throws_ok(
