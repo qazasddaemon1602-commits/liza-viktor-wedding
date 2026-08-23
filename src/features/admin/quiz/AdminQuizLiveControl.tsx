@@ -1,5 +1,7 @@
 import type { AdminQuizControl, AdminQuizQuestion } from '../../quiz/adminQuiz.service';
 import { QuizPhaseTimer } from '../../quiz/QuizPhaseTimer';
+import { quizAnnouncementKey, quizPresentationKey } from '../../quiz/quizPresentation';
+import { SceneTransition } from '../../screen/SceneTransition';
 
 type ActiveAdminQuizControl = Extract<AdminQuizControl, { phase: 'voting' | 'results' }>;
 
@@ -38,6 +40,12 @@ export function AdminQuizLiveControl({
     : null;
 
   return (
+    <SceneTransition
+      sceneKey={quizPresentationKey(question.id, control.phase)}
+      label={control.phase === 'voting' ? 'НОВЫЙ ВОПРОС' : 'РЕЗУЛЬТАТЫ'}
+      tone={control.phase === 'voting' ? 'sage' : 'wine'}
+      className="admin-quiz-live-transition"
+    >
     <div className="admin-quiz-current admin-quiz-live-control">
       <div className="admin-quiz-live-control__top">
         <div>
@@ -50,6 +58,19 @@ export function AdminQuizLiveControl({
           <QuizPhaseTimer endsAt={control.phaseEndsAt} onExpire={onDeadline} />
         </div>
       </div>
+
+      <p
+        className="admin-quiz-live-control__status"
+        role="status"
+        aria-atomic="true"
+        data-announcement-key={quizAnnouncementKey(
+          question.id,
+          control.phase,
+          control.phase === 'voting' ? 'open' : 'results',
+        )}
+      >
+        {control.phase === 'voting' ? 'ВОПРОС ОТКРЫТ · ГОСТИ ВЫБИРАЮТ ОТВЕТ' : 'РЕЗУЛЬТАТЫ ОТКРЫТЫ'}
+      </p>
 
       {control.phase === 'results' && (
         <div className="admin-quiz-results" aria-label="Результаты голосования">
@@ -101,6 +122,7 @@ export function AdminQuizLiveControl({
         </button>
       </div>
     </div>
+    </SceneTransition>
   );
 }
 

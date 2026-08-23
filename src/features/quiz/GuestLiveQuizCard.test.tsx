@@ -28,6 +28,37 @@ describe('GuestLiveQuizCard', () => {
     expect(screen.getByRole('region', { name: selectedState.question.text })).not.toHaveAttribute('aria-live');
     expect(screen.getByRole('button', { name: 'ЛИЗА' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'ВИКТОР' })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByText('ОТВЕТ ПРИНЯТ')).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('status')).toHaveTextContent('ОТВЕТ ПРИНЯТ');
+  });
+
+  it('names the selected answer while it is being fixed and exposes a dedicated live status', () => {
+    render(
+      <GuestLiveQuizCard
+        state={{ ...selectedState, selectedChoice: null }}
+        submitting="liza"
+        onVote={vi.fn()}
+        compact
+      />,
+    );
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('ЛИЗА · ФИКСИРУЕМ ОТВЕТ…');
+    expect(status).toHaveAttribute('data-announcement-key', 'question-1:voting:submitting');
+  });
+
+  it('explains that a vote is locked when the results phase begins', () => {
+    render(
+      <GuestLiveQuizCard
+        state={{
+          ...selectedState,
+          phase: 'results',
+          results: { liza: 18, viktor: 12, total: 30 },
+        }}
+        onVote={vi.fn()}
+        compact
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('ОТВЕТЫ ЗАФИКСИРОВАНЫ · ГОЛОСОВАНИЕ ЗАКРЫТО');
   });
 });

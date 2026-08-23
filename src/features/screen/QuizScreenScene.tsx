@@ -1,4 +1,5 @@
 import { QuizPhaseTimer } from '../quiz/QuizPhaseTimer';
+import { quizAnnouncementKey, quizPresentationKey } from '../quiz/quizPresentation';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 import { SceneTransition } from './SceneTransition';
 
@@ -39,27 +40,19 @@ export function QuizScreenScene({
 
   return (
     <SceneTransition
-      sceneKey={`${state.question.id}-${state.phase}`}
+      sceneKey={quizPresentationKey(state.question.id, state.phase)}
       label={state.phase === 'voting' ? 'НОВЫЙ ВОПРОС' : 'РЕЗУЛЬТАТЫ'}
       tone={state.phase === 'voting' ? 'sage' : 'wine'}
     >
       <section
         className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`}
         data-testid="quiz-screen-scene"
-        aria-live="polite"
       >
       <div
         className="quiz-screen-frame"
         data-testid="quiz-editorial-spread"
         data-phase={state.phase}
       >
-        <div
-          className="quiz-screen-transition-curtain generated-artwork-picture"
-          data-testid="quiz-transition-curtain"
-          aria-hidden="true"
-        >
-          <img src="/images/ticket/paper-texture-1024.webp" alt="" />
-        </div>
         <div className="quiz-screen-editorial-meta" aria-hidden="true">
           <span>WEDDING EDITION · LV</span>
           <span>30 AUG 2026</span>
@@ -72,6 +65,18 @@ export function QuizScreenScene({
             <span className="quiz-screen-counter">{answeredLabel}</span>
           </div>
         </header>
+        <p
+          className="quiz-screen-status"
+          role="status"
+          aria-atomic="true"
+          data-announcement-key={quizAnnouncementKey(
+            state.question.id,
+            state.phase,
+            state.phase === 'voting' ? 'open' : 'results',
+          )}
+        >
+          {state.phase === 'voting' ? 'ВОПРОС ОТКРЫТ · ГОСТИ ВЫБИРАЮТ ОТВЕТ' : 'РЕЗУЛЬТАТЫ ОТКРЫТЫ'}
+        </p>
 
         <div className="quiz-screen-question-wrap">
           <div className="quiz-screen-question-copy">

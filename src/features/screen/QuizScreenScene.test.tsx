@@ -23,7 +23,7 @@ describe('QuizScreenScene', () => {
 
     expect(screen.getByTestId('scene-transition')).toHaveAttribute(
       'data-scene-key',
-      'question-1-voting',
+      'question-1:voting',
     );
     rerender(<QuizScreenScene state={votingState} expectedGuestCount={40} />);
 
@@ -39,7 +39,7 @@ describe('QuizScreenScene', () => {
     );
     expect(screen.getByTestId('scene-transition')).toHaveAttribute(
       'data-scene-key',
-      'question-1-results',
+      'question-1:results',
     );
   });
 
@@ -113,7 +113,8 @@ describe('QuizScreenScene', () => {
     expect(screen.getByTestId('quiz-route-mark')).toBeInTheDocument();
     expect(screen.getByText('WEDDING EDITION · LV')).toBeInTheDocument();
     expect(screen.getByTestId('quiz-editorial-spread')).toHaveAttribute('data-phase', 'voting');
-    expect(screen.getByTestId('quiz-transition-curtain')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByTestId('quiz-transition-curtain')).not.toBeInTheDocument();
+    expect(screen.getByText('17 / 40 ОТВЕТИЛИ')).not.toHaveAttribute('aria-live');
   });
 });
 

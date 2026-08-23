@@ -2,6 +2,7 @@ import { useEffect, useId } from 'react';
 import { siteAudio } from '../../lib/siteAudio';
 import { SceneTransition } from '../screen/SceneTransition';
 import type { GuestQuizState, QuizChoice } from './quiz.service';
+import { quizAnnouncementKey, quizPresentationKey, type QuizAnnouncementStatus } from './quizPresentation';
 import { QuizPhaseTimer } from './QuizPhaseTimer';
 
 type ActiveGuestQuizState = Extract<GuestQuizState, { status: 'active' }>;
@@ -41,9 +42,28 @@ export function GuestLiveQuizCard({
     if (error) siteAudio.play('error');
   }, [error]);
 
+  const status: QuizAnnouncementStatus = error
+    ? 'error'
+    : submitting
+      ? 'submitting'
+      : state.phase === 'results'
+        ? 'results'
+        : state.selectedChoice
+          ? 'accepted'
+          : 'open';
+  const selectedLabel = submitting === 'liza' ? 'ЛИЗА' : submitting === 'viktor' ? 'ВИКТОР' : null;
+  const statusCopy = status === 'submitting'
+    ? `${selectedLabel} · ФИКСИРУЕМ ОТВЕТ…`
+    : status === 'accepted'
+      ? 'ОТВЕТ ПРИНЯТ'
+      : status === 'results'
+        ? 'РЕЗУЛЬТАТЫ · ОТВЕТЫ ЗАФИКСИРОВАНЫ · ГОЛОСОВАНИЕ ЗАКРЫТО'
+        : 'ВЫБЕРИТЕ ОТВЕТ ДО КОНЦА ТАЙМЕРА';
+  const announcementKey = quizAnnouncementKey(state.question.id, state.phase, status);
+
   return (
     <SceneTransition
-      sceneKey={`${state.question.id}-${state.phase}`}
+      sceneKey={quizPresentationKey(state.question.id, state.phase)}
       label={state.phase === 'voting' ? 'НОВЫЙ ВОПРОС' : 'РЕЗУЛЬТАТЫ'}
       tone={state.phase === 'voting' ? 'sage' : 'wine'}
     >
@@ -89,17 +109,17 @@ export function GuestLiveQuizCard({
         </button>
       </div>
 
-      {submitting && <p className="quiz-status" role="status">ФИКСИРУЕМ ОТВЕТ…</p>}
-      {!submitting && state.phase === 'voting' && state.selectedChoice && (
-        <p className="quiz-status" role="status">ОТВЕТ ПРИНЯТ</p>
+      {!error && (
+        <p
+          className={`quiz-status quiz-status-${status}`}
+          role="status"
+          aria-atomic="true"
+          data-announcement-key={announcementKey}
+        >
+          {statusCopy}
+        </p>
       )}
-      {state.phase === 'voting' && !state.selectedChoice && !submitting && (
-        <p className="quiz-status quiz-status-open" role="status">ВЫБЕРИТЕ ОТВЕТ ДО КОНЦА ТАЙМЕРА</p>
-      )}
-      {state.phase === 'results' && (
-        <p className="quiz-status quiz-status-results" role="status">РЕЗУЛЬТАТЫ · СЛЕДУЮЩИЙ ЭТАП СКОРО</p>
-      )}
-      {error && <p className="quiz-error" role="alert">{error}</p>}
+      {error && <p className="quiz-error" role="alert" aria-atomic="true" data-announcement-key={announcementKey}>{error}</p>}
       </section>
     </SceneTransition>
   );
