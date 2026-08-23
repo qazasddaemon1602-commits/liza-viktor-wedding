@@ -6,6 +6,12 @@ const testRuntime = globalThis as typeof globalThis & { process: { cwd: () => st
 const css = readFileSync(`${testRuntime.process.cwd()}/src/styles/bunker-player.css`, 'utf8');
 
 describe('Bunker phone mission action sizing', () => {
+  it('provides an 18px body token and 52px targets in large-text mode', () => {
+    expect(css).toMatch(/\.bunker-player-dashboard\[data-large-text="true"\]\s*\{[^}]*--bunker-player-body-size:\s*1\.125rem/);
+    expect(css).toMatch(/\.bunker-player-dashboard\[data-large-text="true"\][\s\S]*?\.bunker-player-dashboard__nav button[\s\S]*?min-height:\s*52px/);
+    expect(css).toMatch(/\.bunker-player-dashboard\[data-large-text="true"\][\s\S]*?\.bunker-player-dashboard__large-text-toggle[\s\S]*?min-height:\s*52px/);
+  });
+
   it('keeps mission inputs and buttons at least 48px tall', () => {
     expect(css).toMatch(/\.bunker-mission-actions[^}]*button[\s\S]*?min-height:\s*48px/);
     expect(css).toMatch(/\.bunker-mission-actions[^}]*input[\s\S]*?min-height:\s*48px/);

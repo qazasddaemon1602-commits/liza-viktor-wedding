@@ -75,9 +75,12 @@ describe('Bunker responsive layout contract', () => {
     expect(header).toMatch(/padding-right:\s*var\(--bunker-audio-safe-width\)/);
   });
 
-  it('reserves the full two-row mobile navigation and keeps its controls at least 48px tall', () => {
-    expect(playerStyle).toContain('--bunker-player-mobile-nav-height: 7rem');
+  it('reserves one-row primary navigation with an overflow disclosure and keeps its controls at least 48px tall', () => {
+    expect(playerStyle).toContain('--bunker-player-mobile-nav-height: 4.5rem');
     expect(playerStyle).toMatch(/padding:[^;]*var\(--bunker-player-mobile-nav-height\)/);
+    const mobile = playerStyle.slice(playerStyle.indexOf('@media (max-width: 760px)'));
+    expect(mobile).toMatch(/grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)\s*minmax\(3\.8rem,\s*0\.8fr\)/);
+    expect(mobile).toMatch(/\.bunker-player-dashboard__nav-overflow-toggle\s*\{[^}]*display:\s*block/);
     render(<nav className="bunker-player-dashboard__nav"><button type="button">Архив</button></nav>);
     expect(getComputedStyle(screen.getByRole('button', { name: 'Архив' })).minHeight).toBe('48px');
   });

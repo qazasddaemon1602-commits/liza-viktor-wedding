@@ -24,6 +24,16 @@
   bottom: max(clamp(0.7rem, 1.4vw, 1.25rem), env(safe-area-inset-bottom));
 }
 
+/* The Bunker large-text setting is intentionally stronger than the legacy
+   compact controls below: it is the accessible recovery mode for older guests. */
+@media (max-width: 760px) {
+  .bunker-player-dashboard[data-large-text="true"] .bunker-mission-actions label,
+  .bunker-player-dashboard[data-large-text="true"] .bunker-global-action__choices label,
+  .bunker-player-dashboard[data-large-text="true"] .bunker-global-action__routes label {
+    min-height: 52px;
+  }
+}
+
 @media (max-width: 560px) {
   .screen-audio-control {
     top: max(0.55rem, env(safe-area-inset-top));

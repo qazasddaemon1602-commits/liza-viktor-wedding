@@ -23,6 +23,54 @@ const runtime: ActiveGuestBunkerRuntime = {
 };
 
 describe('BunkerPlayerDashboard', () => {
+  it('persists the large-text preference and applies it to the dashboard', async () => {
+    const user = userEvent.setup();
+    window.localStorage.removeItem('bunker.largeText.v1');
+
+    const { unmount } = render(<BunkerPlayerDashboard runtime={runtime} />);
+    const toggle = screen.getByRole('button', { name: 'КРУПНЫЙ ТЕКСТ' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Игровой модуль Бункер')).toHaveAttribute('data-large-text', 'true');
+    expect(window.localStorage.getItem('bunker.largeText.v1')).toBe('true');
+
+    unmount();
+    render(<BunkerPlayerDashboard runtime={runtime} />);
+    expect(screen.getByRole('button', { name: 'КРУПНЫЙ ТЕКСТ' })).toHaveAttribute('aria-pressed', 'true');
+    window.localStorage.removeItem('bunker.largeText.v1');
+  });
+
+  it('keeps an overflow section selected while the compact navigation menu closes', async () => {
+    const user = userEvent.setup();
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    });
+
+    try {
+      render(<BunkerPlayerDashboard runtime={runtime} />);
+      const overflow = screen.getByRole('group', { name: 'Дополнительные разделы' });
+      await user.click(screen.getByRole('button', { name: 'ЕЩЁ' }));
+      const archive = within(overflow).getByRole('button', { name: 'АРХИВ' });
+      await user.click(archive);
+      expect(archive).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('heading', { name: 'АРХИВ ВАГОНА' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'ЕЩЁ' }));
+      expect(archive).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('heading', { name: 'АРХИВ ВАГОНА' })).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
+    }
+  });
+
   it('exposes all seven required archive sections as navigation targets', () => {
     render(<BunkerPlayerDashboard runtime={runtime} />);
     const relief = screen.getByTestId('bunker-tunnel-relief');

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   ActiveGuestBunkerRuntime,
   GuestBunkerAbilityResult,
@@ -23,6 +23,40 @@ const SECTIONS = [
   'АРХИВ', 'СОСТОЯНИЕ', 'ТЕКУЩЕЕ ЗАДАНИЕ',
 ] as const;
 type Section = typeof SECTIONS[number];
+
+const PRIMARY_SECTIONS: readonly Section[] = [
+  'МОЙ ВАГОН', 'ПЕРСОНАЖ', 'ИНВЕНТАРЬ', 'ТЕКУЩЕЕ ЗАДАНИЕ',
+];
+const OVERFLOW_SECTIONS = SECTIONS.filter((section) => !PRIMARY_SECTIONS.includes(section));
+const LARGE_TEXT_STORAGE_KEY = 'bunker.largeText.v1';
+const COMPACT_NAVIGATION_QUERY = '(max-width: 760px)';
+
+function readLargeTextPreference(): boolean {
+  try {
+    return window.localStorage.getItem(LARGE_TEXT_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function useCompactNavigation(): boolean {
+  const [compact, setCompact] = useState(() => (
+    typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia(COMPACT_NAVIGATION_QUERY).matches
+  ));
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const media = window.matchMedia(COMPACT_NAVIGATION_QUERY);
+    const update = () => setCompact(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return compact;
+}
 
 function rows(value: unknown[]): Record<string, unknown>[] {
   return value.filter((entry): entry is Record<string, unknown> => (
@@ -173,6 +207,9 @@ export function BunkerPlayerDashboard({
   onAbility,
 }: BunkerPlayerDashboardProps) {
   const [section, setSection] = useState<Section>('МОЙ ВАГОН');
+  const [largeText, setLargeText] = useState(readLargeTextPreference);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const compactNavigation = useCompactNavigation();
   const inventory = rows(runtime.inventory);
   const passengers = rows(runtime.passengers);
   const archive = archiveEntries(runtime.archive);
@@ -183,8 +220,29 @@ export function BunkerPlayerDashboard({
   const gameStateLabel = missionContent?.title.toLocaleUpperCase('ru-RU')
     ?? (runtime.game.bunkerRevealed ? 'БУНКЕР ОТКРЫТ' : 'ПРОТОКОЛ АКТИВЕН');
 
+  const chooseSection = (nextSection: Section) => {
+    setSection(nextSection);
+    if (OVERFLOW_SECTIONS.includes(nextSection)) setOverflowOpen(true);
+  };
+
+  const toggleLargeText = () => {
+    setLargeText((current) => {
+      const next = !current;
+      try {
+        window.localStorage.setItem(LARGE_TEXT_STORAGE_KEY, String(next));
+      } catch {
+        // A privacy-restricted browser may refuse storage; the current visit still remains readable.
+      }
+      return next;
+    });
+  };
+
   return (
-    <section className="bunker-player-dashboard" aria-label="Игровой модуль Бункер">
+    <section
+      className="bunker-player-dashboard"
+      aria-label="Игровой модуль Бункер"
+      data-large-text={largeText ? 'true' : undefined}
+    >
       <header className="bunker-player-dashboard__header">
         <div>
           <p className="bunker-player-dashboard__index">ПОСЛЕДНИЙ ВАГОН · {runtime.wagon.label}</p>
@@ -192,7 +250,17 @@ export function BunkerPlayerDashboard({
             {runtime.guest.realName.toLocaleUpperCase('ru-RU')}
           </h2>
         </div>
-        <span className="bunker-player-dashboard__state">{gameStateLabel}</span>
+        <div className="bunker-player-dashboard__status-controls">
+          <span className="bunker-player-dashboard__state">{gameStateLabel}</span>
+          <button
+            className="bunker-player-dashboard__large-text-toggle"
+            type="button"
+            aria-pressed={largeText}
+            onClick={toggleLargeText}
+          >
+            КРУПНЫЙ ТЕКСТ
+          </button>
+        </div>
       </header>
 
       <BunkerResponsivePicture
@@ -230,23 +298,48 @@ export function BunkerPlayerDashboard({
         <button
           className="bunker-player-dashboard__primary-action"
           type="button"
-          onClick={() => setSection('ТЕКУЩЕЕ ЗАДАНИЕ')}
+          onClick={() => chooseSection('ТЕКУЩЕЕ ЗАДАНИЕ')}
         >
           ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ
         </button>
       )}
 
       <nav className="bunker-player-dashboard__nav" aria-label="Разделы игры">
-        {SECTIONS.map((item) => (
+        {PRIMARY_SECTIONS.map((item) => (
           <button
             key={item}
             type="button"
             aria-pressed={section === item}
-            onClick={() => setSection(item)}
+            onClick={() => chooseSection(item)}
           >
             {item}
           </button>
         ))}
+        <div className="bunker-player-dashboard__nav-overflow" role="group" aria-label="Дополнительные разделы">
+          <button
+            className="bunker-player-dashboard__nav-overflow-toggle"
+            type="button"
+            aria-expanded={compactNavigation ? overflowOpen : true}
+            onClick={() => setOverflowOpen((current) => !current)}
+          >
+            ЕЩЁ
+          </button>
+          <div
+            className="bunker-player-dashboard__nav-overflow-content"
+            hidden={compactNavigation && !overflowOpen}
+          >
+            {OVERFLOW_SECTIONS.map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={section === item}
+                onClick={() => chooseSection(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
       </nav>
 
       <div className="bunker-player-dashboard__content">

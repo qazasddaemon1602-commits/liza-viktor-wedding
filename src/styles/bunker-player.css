@@ -4,7 +4,7 @@
   --bunker-player-ivory: #eee9dd;
   --bunker-player-muted: #9f9b91;
   --bunker-player-rule: rgba(238, 233, 221, 0.18);
-  --bunker-player-mobile-nav-height: 7rem;
+  --bunker-player-mobile-nav-height: 4.5rem;
   min-height: 100vh;
   min-height: 100dvh;
   padding: clamp(0.75rem, 3vw, 2.5rem);
@@ -20,6 +20,11 @@
   gap: clamp(1rem, 2.5vw, 2rem);
   margin-inline: auto;
   padding-bottom: 1rem;
+}
+
+.bunker-player-dashboard[data-large-text="true"] {
+  --bunker-player-body-size: 1.125rem;
+  --bunker-player-mobile-nav-height: 5.25rem;
 }
 
 .bunker-player-dashboard__header {
@@ -91,6 +96,30 @@
   overflow-wrap: anywhere;
 }
 
+.bunker-player-dashboard__status-controls {
+  display: grid;
+  justify-items: end;
+  gap: 0.65rem;
+}
+
+.bunker-player-dashboard__large-text-toggle {
+  min-height: 48px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--bunker-player-rule);
+  color: var(--bunker-player-ivory);
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.bunker-player-dashboard__large-text-toggle[aria-pressed="true"] {
+  color: var(--bunker-player-black);
+  background: var(--bunker-player-ivory);
+}
+
 .bunker-player-dashboard__connection,
 .bunker-player-dashboard__late,
 .bunker-player-dashboard__continuity {
@@ -119,7 +148,7 @@
 
 .bunker-player-dashboard__nav {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 3fr);
   border-top: 1px solid var(--bunker-player-rule);
   border-bottom: 1px solid var(--bunker-player-rule);
 }
@@ -136,7 +165,22 @@
   overflow-wrap: anywhere;
 }
 
-.bunker-player-dashboard__nav button:last-child {
+.bunker-player-dashboard__nav-overflow {
+  min-width: 0;
+}
+
+.bunker-player-dashboard__nav-overflow-toggle {
+  display: none;
+}
+
+.bunker-player-dashboard__nav-overflow-content {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  height: 100%;
+}
+
+.bunker-player-dashboard__nav-overflow-content button:last-child {
   border-right: 0;
 }
 
@@ -226,6 +270,14 @@
 
 .bunker-player-character__ability small {
   color: var(--bunker-player-muted);
+}
+
+.bunker-player-dashboard[data-large-text="true"] button,
+.bunker-player-dashboard[data-large-text="true"] input:not([type="checkbox"]):not([type="radio"]),
+.bunker-player-dashboard[data-large-text="true"] select,
+.bunker-player-dashboard[data-large-text="true"] textarea {
+  min-height: 52px;
+  font-size: 1.125rem;
 }
 
 .bunker-player-character__ability > strong {
@@ -863,6 +915,10 @@
     justify-self: start;
   }
 
+  .bunker-player-dashboard__status-controls {
+    justify-items: start;
+  }
+
   .bunker-player-dashboard__primary-action {
     width: 100%;
   }
@@ -873,23 +929,55 @@
     bottom: 0;
     left: 0;
     z-index: 50;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(3.8rem, 0.8fr);
     min-height: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom));
     max-height: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     border-color: rgba(238, 233, 221, 0.28);
     background: #10100f;
-    overflow-y: auto;
+    overflow: visible;
     overscroll-behavior: contain;
   }
 
   .bunker-player-dashboard__nav button {
-    min-height: 3rem;
+    min-height: 4.5rem;
     padding: 0.35rem 0.2rem;
     border-bottom: 1px solid var(--bunker-player-rule);
     font-size: 1rem;
     line-height: 1.05;
     letter-spacing: 0.04em;
+  }
+
+  .bunker-player-dashboard__nav-overflow {
+    position: relative;
+  }
+
+  .bunker-player-dashboard__nav-overflow-toggle {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-right: 0;
+  }
+
+  .bunker-player-dashboard__nav-overflow-content {
+    position: fixed;
+    right: 0.65rem;
+    bottom: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom));
+    left: 0.65rem;
+    z-index: 51;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    height: auto;
+    border: 1px solid rgba(238, 233, 221, 0.28);
+    background: #10100f;
+    box-shadow: 0 -0.75rem 1.5rem rgba(0, 0, 0, 0.28);
+  }
+
+  .bunker-player-dashboard__nav-overflow-content[hidden] {
+    display: none;
+  }
+
+  .bunker-player-dashboard[data-large-text="true"] .bunker-player-dashboard__nav button {
+    min-height: 52px;
   }
 
   .bunker-player-dashboard__content {
