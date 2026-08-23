@@ -30,6 +30,7 @@ import './styles/bunker-player.css';
 import './styles/bunker-quest.css';
 import './styles/mobile-hardening.css';
 import './styles/bunker-accessibility.css';
+import './styles/bunker-projector-contrast.css';
 
 const root = document.getElementById('root');
 

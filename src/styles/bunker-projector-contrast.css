@@ -1,0 +1,189 @@
+/* Projector readability hardening.
+ * This file is intentionally TV-only and is loaded after the base Bunker styles.
+ * Phone/player surfaces keep their existing visual treatment.
+ */
+
+.bunker-mission-one-screen {
+  --projector-ink: #f7f3e9;
+  --projector-muted: rgba(247, 243, 233, 0.82);
+  --projector-line: rgba(247, 243, 233, 0.42);
+  color: var(--projector-ink);
+  isolation: isolate;
+}
+
+.bunker-mission-one-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5, 7, 6, 0.44) 0%, rgba(5, 7, 6, 0.62) 48%, rgba(5, 7, 6, 0.78) 100%),
+    linear-gradient(90deg, rgba(3, 5, 4, 0.36), transparent 58%, rgba(3, 5, 4, 0.3));
+}
+
+.bunker-mission-one-screen__backdrop {
+  opacity: 0.48;
+}
+
+.bunker-mission-one-screen__backdrop img {
+  filter: grayscale(0.92) contrast(1.06) brightness(0.74);
+}
+
+.bunker-mission-one-screen__header,
+.bunker-mission-one-screen__main,
+.bunker-mission-one-screen footer {
+  z-index: 2;
+}
+
+.bunker-mission-one-screen__header {
+  border-color: var(--projector-line);
+}
+
+.bunker-mission-one-screen__header p,
+.bunker-mission-one-screen__summary span,
+.bunker-mission-one-screen__wagons span,
+.bunker-mission-one-screen__wagons b,
+.bunker-mission-one-screen footer {
+  color: var(--projector-muted);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.92);
+}
+
+.bunker-mission-one-screen__header h1,
+.bunker-mission-one-screen__header time,
+.bunker-mission-one-screen__summary p,
+.bunker-mission-one-screen__summary strong,
+.bunker-mission-one-screen__wagons strong {
+  color: var(--projector-ink);
+  text-shadow: 0 3px 22px rgba(0, 0, 0, 0.96);
+}
+
+.bunker-mission-one-screen__summary {
+  padding: clamp(1rem, 1.6vw, 1.5rem);
+  border: 1px solid rgba(247, 243, 233, 0.28);
+  border-left: 3px solid rgba(247, 243, 233, 0.72);
+  background: rgba(8, 10, 9, 0.82);
+  box-shadow: 0 1.2rem 3.5rem rgba(0, 0, 0, 0.24);
+}
+
+.bunker-mission-one-screen__summary span {
+  color: rgba(247, 243, 233, 0.72);
+}
+
+.bunker-mission-one-screen__summary p {
+  font-weight: 500;
+}
+
+.bunker-mission-one-screen__summary strong {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(247, 243, 233, 0.34);
+  background: rgba(247, 243, 233, 0.07);
+}
+
+.bunker-mission-one-screen__wagons li {
+  border-color: rgba(247, 243, 233, 0.36);
+  background: rgba(10, 12, 10, 0.9);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035), 0 0.8rem 2.4rem rgba(0, 0, 0, 0.2);
+}
+
+.bunker-mission-one-screen__wagons li.is-complete {
+  border-color: rgba(194, 220, 197, 0.72);
+  background: rgba(37, 49, 39, 0.94);
+}
+
+.bunker-mission-one-screen__wagons b {
+  color: rgba(247, 243, 233, 0.7);
+}
+
+/* Shared TV mission scenes (M02-M06 and loading states). */
+.bunker-v2-screen {
+  --projector-ink: #f7f3e9;
+  --projector-muted: #d5cfc3;
+  color: var(--projector-ink);
+}
+
+.bunker-v2-screen h1,
+.bunker-v2-screen h2,
+.bunker-v2-screen h3,
+.bunker-v2-screen strong,
+.bunker-v2-screen time {
+  color: var(--projector-ink);
+  text-shadow: 0 3px 22px rgba(0, 0, 0, 0.94);
+}
+
+.bunker-v2-screen p,
+.bunker-v2-screen span,
+.bunker-v2-screen small,
+.bunker-v2-screen label {
+  color: var(--projector-muted);
+}
+
+.bunker-v2-screen article,
+.bunker-v2-screen li {
+  border-color: rgba(247, 243, 233, 0.34);
+  background-color: rgba(11, 13, 11, 0.88);
+}
+
+/* Shared fallback/briefing projector scene. */
+.bunker-quest-scene {
+  --bq-paper: #f7f3e9;
+  --bq-muted: #d2ccc0;
+  --bq-line: rgba(247, 243, 233, 0.28);
+  --bq-line-strong: rgba(247, 243, 233, 0.54);
+  color: var(--bq-paper);
+}
+
+.bunker-quest-scene__backdrop {
+  opacity: 0.36;
+}
+
+.bunker-quest-scene__backdrop img {
+  filter: grayscale(0.95) contrast(1.06) brightness(0.7);
+}
+
+.bunker-quest-scene__header h1,
+.bunker-quest-scene__header > strong,
+.bunker-quest-scene__story h2,
+.bunker-quest-scene__story strong,
+.bunker-quest-scene__progress-heading strong,
+.bunker-quest-scene__teams article > strong,
+.bunker-quest-scene__slots article > strong {
+  color: #f7f3e9;
+  text-shadow: 0 3px 22px rgba(0, 0, 0, 0.94);
+}
+
+.bunker-quest-scene__story p {
+  color: #ddd7ca;
+}
+
+.bunker-quest-scene__mission,
+.bunker-quest-scene__final,
+.bunker-quest-scene__briefing {
+  padding: clamp(0.9rem, 1.5vw, 1.35rem);
+  border: 1px solid rgba(247, 243, 233, 0.24);
+  background: rgba(8, 10, 9, 0.74);
+}
+
+.bunker-quest-scene__teams article,
+.bunker-quest-scene__slots article {
+  border-color: rgba(247, 243, 233, 0.34);
+  background: rgba(10, 12, 10, 0.86);
+}
+
+.bunker-quest-scene__teams article.is-complete,
+.bunker-quest-scene__slots article.is-open {
+  border-color: rgba(205, 225, 207, 0.7);
+  background: rgba(42, 54, 43, 0.9);
+}
+
+@media (max-height: 760px) and (min-width: 900px) {
+  .bunker-mission-one-screen__summary {
+    padding: 0.8rem 1rem;
+  }
+
+  .bunker-quest-scene__mission,
+  .bunker-quest-scene__final,
+  .bunker-quest-scene__briefing {
+    padding: 0.7rem 0.9rem;
+  }
+}
