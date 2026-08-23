@@ -34,6 +34,7 @@ import './styles/bunker-accessibility.css';
 import './styles/bunker-projector-contrast.css';
 import './styles/wedding-live.css';
 import './styles/wedding-radio.css';
+import './styles/wedding-nominations.css';
 
 const root = document.getElementById('root');
 
