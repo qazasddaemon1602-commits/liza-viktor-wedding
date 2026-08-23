@@ -9,6 +9,7 @@ import {
   type MkTournamentProjection,
   type MkTournamentState,
 } from './mk.types';
+import { isCompatibleMkPlayerLimit } from './mk.compatibility';
 
 export type MkRpcError = Error | { message?: string; code?: string } | null;
 export type MkRpcClient = {
@@ -68,7 +69,7 @@ function parseTournament(data: unknown): MkTournamentProjection {
     || typeof data.tournamentId !== 'string'
     || !tournamentStates.has(data.state as MkTournamentState)
     || typeof data.activeCount !== 'number'
-    || data.maxPlayers !== MK_MAX_PLAYERS
+    || !isCompatibleMkPlayerLimit(data.maxPlayers, data.activeCount)
     || !Array.isArray(data.players)
     || !Array.isArray(data.matches)
     || typeof data.presentOnMainScreen !== 'boolean'
@@ -101,7 +102,7 @@ function parseJoin(data: unknown): MkJoinResult {
     || !['joined', 'already_joined'].includes(String(data.status))
     || !['active', 'waitlist'].includes(String(data.registrationStatus))
     || typeof data.activeCount !== 'number'
-    || data.maxPlayers !== MK_MAX_PLAYERS) {
+    || !isCompatibleMkPlayerLimit(data.maxPlayers, data.activeCount)) {
     throw new Error('Unexpected MK signup response');
   }
   return {

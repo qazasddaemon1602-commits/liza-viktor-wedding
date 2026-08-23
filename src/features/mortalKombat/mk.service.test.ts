@@ -84,6 +84,28 @@ describe('Mortal Kombat service', () => {
       .resolves.toMatchObject({ maxPlayers: 16, matches: [{ round: 'r16' }] });
   });
 
+  it('normalizes the legacy production cap while no more than 16 players are active', async () => {
+    const client = clientWith({
+      ...hiddenActiveTournament,
+      activeCount: 0,
+      maxPlayers: 40,
+    });
+
+    await expect(getMkTournamentDedicatedScreenState(client, 'liza-viktor'))
+      .resolves.toMatchObject({ activeCount: 0, maxPlayers: 16 });
+  });
+
+  it('does not hide an over-cap legacy tournament behind the 16-player contract', async () => {
+    const client = clientWith({
+      ...hiddenActiveTournament,
+      activeCount: 17,
+      maxPlayers: 40,
+    });
+
+    await expect(getMkTournamentDedicatedScreenState(client, 'liza-viktor'))
+      .rejects.toThrow('Unexpected MK tournament payload');
+  });
+
   it('rejects active tournament payloads that omit the main-screen presentation flag', async () => {
     const client = clientWith({
       status: 'active',
@@ -118,6 +140,19 @@ describe('Mortal Kombat service', () => {
       p_device_key: 'device-123456',
     });
     expect(result).toMatchObject({ registrationStatus: 'waitlist', waitlistPosition: 1 });
+  });
+
+  it('normalizes a legacy join response to the 16-player client cap', async () => {
+    const client = clientWith({
+      status: 'joined',
+      registrationStatus: 'active',
+      activeCount: 1,
+      maxPlayers: 40,
+      waitlistPosition: null,
+    });
+
+    await expect(joinMkTournament(client, 'liza-viktor', 'device-123456'))
+      .resolves.toMatchObject({ activeCount: 1, maxPlayers: 16 });
   });
 });
 

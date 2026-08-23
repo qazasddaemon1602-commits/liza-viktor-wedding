@@ -7,6 +7,7 @@ import {
   type MkRound,
   type MkTournamentState,
 } from './mk.types';
+import { isCompatibleMkPlayerLimit } from './mk.compatibility';
 
 export type MkOwnerRpcError = Error | { message?: string; code?: string } | null;
 export type MkOwnerRpcClient = {
@@ -117,7 +118,7 @@ export async function getOwnerMkControl(
     || !['registration', 'draw_ready', 'active', 'complete'].includes(String(data.state))
     || typeof data.activeCount !== 'number'
     || typeof data.waitlistCount !== 'number'
-    || data.maxPlayers !== MK_MAX_PLAYERS
+    || !isCompatibleMkPlayerLimit(data.maxPlayers, data.activeCount)
     || !Array.isArray(data.registrations)
     || !Array.isArray(data.matches)
   ) {

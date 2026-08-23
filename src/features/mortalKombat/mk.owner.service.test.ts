@@ -46,6 +46,20 @@ describe('owner MK service', () => {
     expect(state).toMatchObject({ status: 'owner', activeCount: 16, waitlistCount: 2, maxPlayers: 16 });
   });
 
+  it('normalizes the legacy production cap for an owner tournament within 16 active players', async () => {
+    const client = clientWith({ ...ownerPayload, activeCount: 0, maxPlayers: 40, registrations: [] });
+
+    await expect(getOwnerMkControl(client, 'event-1'))
+      .resolves.toMatchObject({ status: 'owner', activeCount: 0, maxPlayers: 16 });
+  });
+
+  it('rejects a legacy owner tournament that already exceeds 16 active players', async () => {
+    const client = clientWith({ ...ownerPayload, activeCount: 17, maxPlayers: 40 });
+
+    await expect(getOwnerMkControl(client, 'event-1'))
+      .rejects.toThrow('Unexpected owner MK control payload');
+  });
+
   it('accepts correction impact from the sixteen-slot opening round', async () => {
     const client = clientWith({
       status: 'impact',
