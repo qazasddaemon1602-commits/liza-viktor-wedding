@@ -190,6 +190,16 @@ async function expectInsideViewport(page: Page, locator: Locator) {
   expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height + 1);
 }
 
+async function expectHorizontallyInsideViewport(page: Page, locator: Locator) {
+  await expect(locator).toBeVisible();
+  const viewport = page.viewportSize();
+  const box = await locator.boundingBox();
+  expect(viewport).not.toBeNull();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(-1);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width + 1);
+}
+
 async function expectInsideContainer(locator: Locator, container: Locator) {
   const box = await locator.boundingBox();
   const containerBox = await container.boundingBox();
@@ -422,8 +432,10 @@ test.describe.serial('authoritative Bunker layouts', () => {
         const boardCards = page.getByRole('list', { name: 'Риски вагона' }).locator(':scope > li');
         await expect(boardCards).toHaveCount(5);
         for (const card of await boardCards.all()) {
-          await card.scrollIntoViewIfNeeded();
-          await expectInsideViewport(page, card);
+          // A large-text risk card can be taller than the unobscured phone viewport.
+          // Keep the card within the horizontal reflow boundary, then verify every
+          // piece of copy and the control can be scrolled into view independently.
+          await expectHorizontallyInsideViewport(page, card);
           const status = card.locator(':scope > div > p');
           const title = card.getByRole('heading', { level: 4 });
           const risk = card.locator(':scope > div > span');
