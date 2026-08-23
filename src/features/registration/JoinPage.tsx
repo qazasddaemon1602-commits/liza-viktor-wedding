@@ -164,6 +164,7 @@ export function JoinPage({ dependencies, revealDelayMs, ticketHoldMs }: JoinPage
         onBunkerMission={(stage, answer) => void bunker.submitMission(stage, answer)}
         onBunkerFinalCode={(code) => void bunker.submitFinalCode(code)}
         onBunkerGlobalMission={(missionState, payload) => bunker.submitGlobalMission(missionState, payload)}
+        onBunkerAbility={() => bunker.useAbility()}
         quizState={quiz.state}
         quizError={quiz.error}
         quizSubmitting={quiz.submitting}

@@ -255,6 +255,88 @@
   margin: 0.65rem 0;
 }
 
+.bunker-player-ability-action {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding: clamp(1rem, 3.5vw, 1.5rem);
+  border: 1px solid #557864;
+  background:
+    linear-gradient(135deg, rgba(85, 120, 100, 0.2), transparent 58%),
+    var(--bunker-player-black);
+}
+
+.bunker-player-dashboard__content .bunker-player-ability-action h3 {
+  margin: 0;
+  font-size: clamp(1.65rem, 5vw, 2.75rem);
+  line-height: 1.05;
+}
+
+.bunker-player-ability-action > strong,
+.bunker-player-ability-action__uses {
+  color: var(--bunker-player-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bunker-player-ability-action p {
+  margin: 0;
+}
+
+.bunker-player-ability-action button {
+  min-height: 48px;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--bunker-player-ivory);
+  border-radius: 0;
+  color: var(--bunker-player-black);
+  background: var(--bunker-player-ivory);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.bunker-player-ability-action button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.bunker-player-ability-action__confirm {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border-left: 3px solid var(--bunker-player-ivory);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-player-ability-action__confirm > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.7rem;
+}
+
+.bunker-player-ability-action__confirm button:last-child {
+  color: var(--bunker-player-ivory);
+  background: transparent;
+}
+
+.bunker-player-ability-action__result,
+.bunker-player-ability-action__error,
+.bunker-player-ability-action__spent {
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--bunker-player-muted);
+  background: var(--bunker-player-graphite);
+}
+
+.bunker-player-ability-action__result {
+  border-color: #638370;
+}
+
+.bunker-player-ability-action__error {
+  border-color: #a9594f;
+}
+
 .bunker-mission-actions {
   display: grid;
   gap: 1rem;

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(56);
+select plan(74);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -23,6 +23,11 @@ select has_function(
   array['uuid', 'text', 'text'],
   'the owner has a separately confirmed final recovery command'
 );
+select has_function(
+  'public', 'use_guest_bunker_ability',
+  array['text', 'text', 'uuid'],
+  'a device-authenticated RPC uses the server-derived character ability'
+);
 select ok(
   not has_table_privilege('anon', 'public.bunker_global_mission_progress', 'SELECT'),
   'anonymous clients cannot read mission progress rows directly'
@@ -34,6 +39,14 @@ select ok(
     'EXECUTE'
   ),
   'anonymous devices may call only the guarded guest RPC'
+);
+select ok(
+  has_function_privilege(
+    'anon',
+    'public.use_guest_bunker_ability(text,text,uuid)',
+    'EXECUTE'
+  ),
+  'anonymous devices may call only the guarded ability RPC'
 );
 select ok(
   not has_function_privilege(
@@ -130,6 +143,84 @@ join public.guests guest on guest.id = profile.guest_id
 where profile.event_id = '00000000-0000-4000-8000-000000000902'
 group by guest.carriage_id;
 
+update public.bunker_guest_profiles
+set special_ability = 'mechanical_fix',
+    ability_description = 'Один раз разблокировать техническую дверь.',
+    ability_uses_remaining = 1,
+    ability_used_at = null
+where event_id = '00000000-0000-4000-8000-000000000902'
+  and guest_id = '00000000-0000-4000-8000-000000000921';
+
+select throws_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000951'
+  ) $$,
+  '55000',
+  'ability_not_applicable',
+  'Mission 01 rejects character abilities without consuming the charge'
+);
+select is(
+  public.get_guest_bunker_runtime(
+    'global-mission-runtime', 'global-device-1'
+  )#>>'{character,abilityAction,code}',
+  'ability_not_applicable',
+  'guest runtime explains that the ability is unavailable in Mission 01'
+);
+select ok(
+  not exists (
+    select 1
+    from public.bunker_character_profiles profile
+    where profile.enabled
+      and (public._bunker_ability_action(
+        profile.special_ability, 'MISSION_01'
+      )->>'applicable')::boolean
+  ),
+  'all 36 assigned character profiles are explicitly unavailable in Mission 01'
+);
+select is(
+  (
+    select count(distinct profile.special_ability)::integer
+    from public.bunker_character_profiles profile
+    where profile.enabled
+      and (
+        public._bunker_ability_action(
+          profile.special_ability,
+          case
+            when profile.special_ability in (
+              'system_access', 'terminal_hack', 'document_analysis',
+              'archive_search', 'visual_memory', 'organize_data'
+            ) then 'MISSION_02'
+            when profile.special_ability in (
+              'medical_help', 'stabilize_person', 'power_restore',
+              'power_bypass', 'mechanical_fix', 'resource_save',
+              'hidden_supply', 'water_treatment', 'chemical_analysis',
+              'bio_scan', 'emergency_action', 'hazard_entry'
+            ) then 'MISSION_03'
+            when profile.special_ability in (
+              'extra_message', 'clarification', 'trade_bonus'
+            ) then 'MISSION_04'
+            when profile.special_ability in (
+              'route_analysis', 'terrain_analysis', 'map_reconstruction',
+              'structure_analysis', 'plan_analysis', 'physical_task',
+              'dangerous_route', 'route_feel'
+            ) then 'MISSION_05'
+            when profile.special_ability in (
+              'weak_signal', 'bunker_knowledge', 'access_protocol',
+              'bunker_systems', 'coordinate_analysis', 'gate_timing'
+            ) then 'MISSION_06'
+          end
+        )->>'applicable'
+      )::boolean
+  ),
+  (
+    select count(distinct profile.special_ability)::integer
+    from public.bunker_character_profiles profile
+    where profile.enabled
+  ),
+  'every assigned ability key has at least one explicit applicable mission'
+);
+
 create temporary table mission_result(result jsonb) on commit drop;
 insert into mission_result(result)
 select public.submit_guest_bunker_global_mission(
@@ -223,6 +314,150 @@ select public.owner_force_complete_bunker_global_mission(
 );
 select public.owner_advance_bunker_game_state(
   '00000000-0000-4000-8000-000000000902', 'MISSION_03'
+);
+
+select is(
+  public.get_guest_bunker_runtime(
+    'global-mission-runtime', 'global-device-1'
+  )#>>'{character,abilityAction,effectKind}',
+  'technical_door_unlocked',
+  'guest runtime previews the server-derived mechanical effect in Mission 03'
+);
+select throws_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'unknown-device',
+    '00000000-0000-4000-8000-000000000951'
+  ) $$,
+  '42501',
+  'guest access required',
+  'an unbound device cannot use a character ability'
+);
+
+create temporary table ability_result(result jsonb) on commit drop;
+insert into ability_result(result)
+select public.use_guest_bunker_ability(
+  'global-mission-runtime', 'global-device-1',
+  '00000000-0000-4000-8000-000000000951'
+);
+
+select is(
+  (select result->>'status' from ability_result),
+  'used',
+  'an applicable character ability is consumed once'
+);
+select is(
+  (select wagon.technical_door_unlocked::text
+   from public.bunker_wagon_state wagon
+   where wagon.run_nonce = (
+     select state.run_nonce from public.bunker_state state
+     where state.event_id = '00000000-0000-4000-8000-000000000902'
+   ) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911'),
+  'true',
+  'the supported mechanical ability updates authoritative wagon state'
+);
+select is(
+  (select profile.ability_uses_remaining::text || ':' ||
+          (profile.ability_used_at is not null)::text
+   from public.bunker_guest_profiles profile
+   where profile.event_id = '00000000-0000-4000-8000-000000000902'
+     and profile.guest_id = '00000000-0000-4000-8000-000000000921'),
+  '0:true',
+  'ability consumption decrements the remaining charge and records its time'
+);
+select ok(
+  exists (
+    select 1
+    from public.bunker_game_events game_event
+    where game_event.event_id = '00000000-0000-4000-8000-000000000902'
+      and game_event.event_type = 'character_ability_used'
+      and game_event.guest_id = '00000000-0000-4000-8000-000000000921'
+      and game_event.carriage_id = '00000000-0000-4000-8000-000000000911'
+      and game_event.payload->>'abilityKey' = 'mechanical_fix'
+      and game_event.payload->>'effectKind' = 'technical_door_unlocked'
+      and game_event.payload->>'clientActionId' = '00000000-0000-4000-8000-000000000951'
+      and game_event.payload#>>'{result,status}' = 'used'
+      and game_event.payload#>>'{resultingWagonState,technicalDoorStatus}' = 'unlocked'
+  ),
+  'ability use records guest, wagon, ability and authoritative result'
+);
+select is(
+  public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000951'
+  )->>'idempotent',
+  'true',
+  'retrying the same client action id returns its prior result'
+);
+select is(
+  (select count(*)::integer
+   from public.bunker_game_events game_event
+   where game_event.event_id = '00000000-0000-4000-8000-000000000902'
+     and game_event.event_type = 'character_ability_used'
+     and game_event.guest_id = '00000000-0000-4000-8000-000000000921'),
+  1,
+  'an idempotent retry neither consumes nor records the ability twice'
+);
+select throws_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000952'
+  ) $$,
+  '55000',
+  'ability already used',
+  'a distinct parallel action loses the locked final-charge race'
+);
+
+update public.bunker_guest_profiles
+set special_ability = 'medical_help',
+    ability_description = 'Один раз получить медицинскую подсказку.',
+    ability_uses_remaining = 1,
+    ability_used_at = null
+where event_id = '00000000-0000-4000-8000-000000000902'
+  and guest_id = '00000000-0000-4000-8000-000000000921';
+
+create temporary table wagon_before_clue(state jsonb) on commit drop;
+insert into wagon_before_clue(state)
+select to_jsonb(wagon)
+from public.bunker_wagon_state wagon
+where wagon.run_nonce = (
+  select state.run_nonce from public.bunker_state state
+  where state.event_id = '00000000-0000-4000-8000-000000000902'
+) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911';
+
+create temporary table clue_result(result jsonb) on commit drop;
+insert into clue_result(result)
+select public.use_guest_bunker_ability(
+  'global-mission-runtime', 'global-device-1',
+  '00000000-0000-4000-8000-000000000953'
+);
+
+select is(
+  (select result->>'effectKind' from clue_result),
+  'mission_clue',
+  'a narrative ability returns a concrete mission clue marker'
+);
+select is(
+  (select state from wagon_before_clue),
+  (select to_jsonb(wagon)
+   from public.bunker_wagon_state wagon
+   where wagon.run_nonce = (
+     select state.run_nonce from public.bunker_state state
+     where state.event_id = '00000000-0000-4000-8000-000000000902'
+   ) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911'),
+  'a narrative clue does not fabricate an unsupported wagon field'
+);
+select ok(
+  exists (
+    select 1
+    from public.bunker_game_events game_event
+    where game_event.event_id = '00000000-0000-4000-8000-000000000902'
+      and game_event.event_type = 'character_ability_used'
+      and game_event.guest_id = '00000000-0000-4000-8000-000000000921'
+      and game_event.payload->>'abilityKey' = 'medical_help'
+      and game_event.payload->>'effectKind' = 'mission_clue'
+      and length(game_event.payload#>>'{result,resultCopy}') > 20
+  ),
+  'a narrative ability records its concrete clue for the host history'
 );
 
 select is(

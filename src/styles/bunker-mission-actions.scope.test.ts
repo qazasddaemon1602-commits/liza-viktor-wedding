@@ -12,6 +12,7 @@ describe('Bunker phone mission action sizing', () => {
     expect(css).toMatch(/\.bunker-mission-actions[^}]*textarea[\s\S]*?min-height:\s*8rem/);
     expect(css).toMatch(/\.bunker-mission-actions[^}]*select[\s\S]*?min-height:\s*48px/);
     expect(css).toMatch(/\.bunker-global-action__choices label[^}]*min-height:\s*48px/);
+    expect(css).toMatch(/\.bunker-player-ability-action button[^}]*min-height:\s*48px/);
   });
 
   it('keeps phone navigation labels at a readable 16px minimum', () => {

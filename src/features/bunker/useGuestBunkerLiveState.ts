@@ -14,7 +14,12 @@ import {
   submitBunkerFinalCode,
   submitBunkerMission,
 } from './bunkerQuest.service';
-import { getGuestBunkerRuntime, type GuestBunkerRuntime } from './bunkerRuntime.service';
+import {
+  getGuestBunkerRuntime,
+  useGuestBunkerAbility,
+  type GuestBunkerAbilityResult,
+  type GuestBunkerRuntime,
+} from './bunkerRuntime.service';
 import type {
   BunkerMissionStage,
   GuestBunkerQuestState,
@@ -37,6 +42,10 @@ export type GuestBunkerLiveDependencies = {
     missionState: BunkerGlobalMissionState,
     payload: BunkerGlobalMissionPayload,
   ) => Promise<GuestBunkerGlobalMissionSubmission>;
+  useAbility?: (
+    deviceKey: string,
+    clientActionId: string,
+  ) => Promise<GuestBunkerAbilityResult>;
   subscribeToRefresh?: (callback: () => void) => () => void;
 };
 
@@ -68,6 +77,12 @@ function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
       missionState,
       payload,
     ),
+    useAbility: (key, clientActionId) => useGuestBunkerAbility(
+      rpcClient,
+      eventSlug,
+      key,
+      clientActionId,
+    ),
     subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
   };
 }
@@ -89,6 +104,7 @@ export function useGuestBunkerLiveState({
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const reloadGeneration = useRef(0);
+  const abilityActionId = useRef<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!enabled || !deps) return null;
@@ -225,6 +241,30 @@ export function useGuestBunkerLiveState({
     }
   }, [deps, reload, submitting]);
 
+  const useAbility = useCallback(async (): Promise<GuestBunkerAbilityResult> => {
+    if (!deps || submitting) throw new Error('Bunker action is already in progress');
+    if (!deps.useAbility) {
+      const missing = new Error('Bunker ability action is not connected');
+      setFeedback('Способность ещё не подключена. Обновите страницу или обратитесь к ведущему.');
+      throw missing;
+    }
+    abilityActionId.current ??= crypto.randomUUID();
+    setSubmitting(true);
+    setFeedback('');
+    try {
+      const result = await deps.useAbility(deps.getDeviceKey(), abilityActionId.current);
+      abilityActionId.current = null;
+      setFeedback(result.resultCopy);
+      await reload();
+      return result;
+    } catch (cause) {
+      setFeedback('Ответ способности не получен. Повторите отправку — заряд не пропадёт.');
+      throw cause;
+    } finally {
+      setSubmitting(false);
+    }
+  }, [deps, reload, submitting]);
+
   return {
     state,
     runtime,
@@ -237,5 +277,6 @@ export function useGuestBunkerLiveState({
     submitMission,
     submitFinalCode,
     submitGlobalMission,
+    useAbility,
   };
 }

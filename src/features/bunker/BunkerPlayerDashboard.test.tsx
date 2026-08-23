@@ -62,6 +62,79 @@ describe('BunkerPlayerDashboard', () => {
     expect(screen.queryByText(/легендар/i)).not.toBeInTheDocument();
   });
 
+  it('explains and confirms an applicable ability inside the current mission', async () => {
+    const user = userEvent.setup();
+    const onAbility = vi.fn().mockResolvedValue({
+      status: 'used',
+      changed: true,
+      idempotent: false,
+      clientActionId: '00000000-0000-4000-8000-000000000951',
+      missionState: 'MISSION_03',
+      abilityKey: 'mechanical_fix',
+      effectKind: 'technical_door_unlocked',
+      effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+      resultCopy: 'Механик разблокировал технический отсек вагона.',
+      abilityUsesRemaining: 0,
+    });
+    const missionRuntime = {
+      ...runtime,
+      game: { ...runtime.game, state: 'MISSION_03' },
+      currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+      character: {
+        ...runtime.character,
+        abilityAction: {
+          applicable: true,
+          code: 'ability_available',
+          missionState: 'MISSION_03',
+          title: 'Ремонтный доступ',
+          effectKind: 'technical_door_unlocked',
+          effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+        },
+      },
+    } as unknown as ActiveGuestBunkerRuntime;
+
+    render(<BunkerPlayerDashboard runtime={missionRuntime} onAbility={onAbility} />);
+    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
+
+    const mission = within(screen.getByLabelText('Текущее задание'));
+    expect(mission.getByRole('heading', { name: 'ОСОБАЯ СПОСОБНОСТЬ' })).toBeInTheDocument();
+    expect(mission.getByText(/отсек будет разблокирован/i)).toBeInTheDocument();
+    await user.click(mission.getByRole('button', { name: 'ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ' }));
+    expect(mission.getByText(/действие нельзя отменить/i)).toBeInTheDocument();
+    await user.dblClick(mission.getByRole('button', { name: 'ПОДТВЕРДИТЬ ИСПОЛЬЗОВАНИЕ' }));
+
+    expect(onAbility).toHaveBeenCalledTimes(1);
+    expect(await mission.findByText(/механик разблокировал/i)).toBeInTheDocument();
+    expect(mission.getByText(/осталось использований · 0/i)).toBeInTheDocument();
+  });
+
+  it('states clearly that abilities are unavailable during Mission 01', async () => {
+    const user = userEvent.setup();
+    const missionRuntime = {
+      ...runtime,
+      game: { ...runtime.game, state: 'MISSION_01' },
+      currentMission: { id: 'mission_01', state: 'MISSION_01', plan: [] },
+      character: {
+        ...runtime.character,
+        abilityAction: {
+          applicable: false,
+          code: 'ability_not_applicable',
+          missionState: 'MISSION_01',
+          title: 'Сейчас способность недоступна',
+          effectKind: null,
+          effectPreview: 'В первом задании способности отключены: решение принимает весь вагон.',
+        },
+      },
+    } as unknown as ActiveGuestBunkerRuntime;
+
+    render(<BunkerPlayerDashboard runtime={missionRuntime} />);
+    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
+
+    const mission = within(screen.getByLabelText('Текущее задание'));
+    expect(mission.getByText(/в первом задании способности отключены/i)).toBeInTheDocument();
+    expect(mission.queryByRole('button', { name: 'ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ' })).not.toBeInTheDocument();
+  });
+
   it('opens inventory with explicit item status', async () => {
     const user = userEvent.setup();
     render(<BunkerPlayerDashboard runtime={runtime} />);

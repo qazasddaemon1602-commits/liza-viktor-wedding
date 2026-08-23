@@ -32,6 +32,28 @@ export type GuestBunkerInventoryItem = {
   sourceLotId?: string | null;
 };
 
+export type GuestBunkerAbilityAction = {
+  applicable: boolean;
+  code: 'ability_available' | 'ability_not_applicable';
+  missionState: BunkerGlobalGameState;
+  title: string;
+  effectKind: string | null;
+  effectPreview: string;
+};
+
+export type GuestBunkerAbilityResult = {
+  status: 'used';
+  changed: boolean;
+  idempotent: boolean;
+  clientActionId: string;
+  missionState: BunkerGlobalGameState;
+  abilityKey: string;
+  effectKind: string;
+  effectPreview: string;
+  resultCopy: string;
+  abilityUsesRemaining: number;
+};
+
 type IdleRuntime = { status: 'idle' | 'not_found' | 'guest_not_found'; serverNow: string };
 
 export type ActiveGuestBunkerRuntime = {
@@ -47,6 +69,7 @@ export type ActiveGuestBunkerRuntime = {
     profession: string; health: string; visibleSkill: string; hiddenTrait: string | null;
     hiddenTraitRevealed: boolean; specialAbility: string; abilityDescription: string;
     abilityUsesRemaining: number; status: 'active' | 'saved' | 'excluded';
+    abilityAction?: GuestBunkerAbilityAction;
   };
   passengers: unknown[];
   inventory: GuestBunkerInventoryItem[];
@@ -59,6 +82,7 @@ export type ActiveGuestBunkerRuntime = {
 export type GuestBunkerRuntime = IdleRuntime | ActiveGuestBunkerRuntime;
 
 const GAME_STATES = new Set<BunkerGlobalGameState>(BUNKER_GLOBAL_GAME_STATES);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function object(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -115,6 +139,32 @@ function missionAction(
     throw new Error('Unexpected Bunker mission action');
   }
   return action as GuestBunkerGlobalMissionAction;
+}
+
+function abilityAction(
+  value: unknown,
+  authoritativeState: BunkerGlobalGameState,
+): GuestBunkerAbilityAction {
+  const action = object(value, 'ability action');
+  const applicable = action.applicable;
+  const code = action.code;
+  const effectKind = action.effectKind;
+  if (typeof applicable !== 'boolean'
+    || (code !== 'ability_available' && code !== 'ability_not_applicable')
+    || action.missionState !== authoritativeState
+    || (applicable && (code !== 'ability_available'
+      || typeof effectKind !== 'string' || !effectKind.trim()))
+    || (!applicable && (code !== 'ability_not_applicable' || effectKind !== null))) {
+    throw new Error('Unexpected Bunker ability action');
+  }
+  return {
+    applicable,
+    code,
+    missionState: authoritativeState,
+    title: text(action.title, 'ability action title'),
+    effectKind: effectKind as string | null,
+    effectPreview: text(action.effectPreview, 'ability action preview'),
+  };
 }
 
 function positiveInteger(value: unknown, label: string): number {
@@ -207,6 +257,7 @@ export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
       abilityDescription: text(character.abilityDescription, 'ability description'),
       abilityUsesRemaining: integer(character.abilityUsesRemaining, 'ability uses'),
       status: characterStatus,
+      abilityAction: abilityAction(character.abilityAction, game.state as BunkerGlobalGameState),
     },
     passengers: root.passengers,
     inventory: root.inventory.map(inventoryItem),
@@ -233,4 +284,45 @@ export async function getGuestBunkerRuntime(
   });
   if (error) throwRpc(error);
   return parseGuestBunkerRuntime(data);
+}
+
+export function parseGuestBunkerAbilityResult(data: unknown): GuestBunkerAbilityResult {
+  const result = object(data, 'ability result');
+  if (result.status !== 'used'
+    || typeof result.changed !== 'boolean'
+    || typeof result.idempotent !== 'boolean'
+    || result.changed === result.idempotent
+    || typeof result.clientActionId !== 'string'
+    || !UUID.test(result.clientActionId)
+    || !GAME_STATES.has(result.missionState as BunkerGlobalGameState)) {
+    throw new Error('Unexpected Bunker ability result');
+  }
+  return {
+    status: 'used',
+    changed: result.changed,
+    idempotent: result.idempotent,
+    clientActionId: result.clientActionId,
+    missionState: result.missionState as BunkerGlobalGameState,
+    abilityKey: text(result.abilityKey, 'ability result key'),
+    effectKind: text(result.effectKind, 'ability result effect'),
+    effectPreview: text(result.effectPreview, 'ability result preview'),
+    resultCopy: text(result.resultCopy, 'ability result copy'),
+    abilityUsesRemaining: integer(result.abilityUsesRemaining, 'ability result uses'),
+  };
+}
+
+export async function useGuestBunkerAbility(
+  client: BunkerRpcClient,
+  eventSlug: string,
+  deviceKey: string,
+  clientActionId: string,
+): Promise<GuestBunkerAbilityResult> {
+  if (!UUID.test(clientActionId)) throw new Error('Invalid Bunker ability action id');
+  const { data, error } = await client.rpc('use_guest_bunker_ability', {
+    p_event_slug: eventSlug,
+    p_device_key: deviceKey,
+    p_client_action_id: clientActionId,
+  });
+  if (error) throwRpc(error);
+  return parseGuestBunkerAbilityResult(data);
 }

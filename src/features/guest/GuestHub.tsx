@@ -4,7 +4,10 @@ import type {
   BunkerGlobalMissionState,
 } from '../bunker/bunkerGlobalMission.service';
 import { BunkerPlayerDashboard } from '../bunker/BunkerPlayerDashboard';
-import type { GuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
+import type {
+  GuestBunkerAbilityResult,
+  GuestBunkerRuntime,
+} from '../bunker/bunkerRuntime.service';
 import type { GuestCarriageCall } from '../carriages/carriageCalls.service';
 import type { RegisteredGuest } from '../registration/registration.types';
 import { VirtualTicket } from '../registration/VirtualTicket';
@@ -27,6 +30,7 @@ type GuestHubProps = {
     missionState: BunkerGlobalMissionState,
     payload: BunkerGlobalMissionPayload,
   ) => Promise<void> | void;
+  onBunkerAbility?: () => Promise<GuestBunkerAbilityResult>;
   quizState: GuestQuizState | null;
   quizError?: string;
   quizSubmitting?: QuizChoice | null;
@@ -69,6 +73,7 @@ export function GuestHub({
   onBunkerMission = () => undefined,
   onBunkerFinalCode = () => undefined,
   onBunkerGlobalMission = () => undefined,
+  onBunkerAbility,
   quizState,
   quizError = '',
   quizSubmitting = null,
@@ -87,6 +92,7 @@ export function GuestHub({
           onMission={onBunkerMission}
           onFinalCode={onBunkerFinalCode}
           onGlobalMission={onBunkerGlobalMission}
+          onAbility={onBunkerAbility}
         />
       </main>
     );

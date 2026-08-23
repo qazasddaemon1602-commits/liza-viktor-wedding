@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
+import { useRef, useState } from 'react';
+import type {
+  ActiveGuestBunkerRuntime,
+  GuestBunkerAbilityResult,
+} from './bunkerRuntime.service';
 import { BunkerResponsivePicture, type BunkerAsset } from './BunkerResponsivePicture';
 import { BunkerMissionBriefing } from './BunkerMissionBriefing';
 import {
@@ -79,7 +82,84 @@ type BunkerPlayerDashboardProps = {
     missionState: BunkerGlobalMissionState,
     payload: BunkerGlobalMissionPayload,
   ) => Promise<void> | void;
+  onAbility?: () => Promise<GuestBunkerAbilityResult>;
 };
+
+type BunkerAbilityActionCardProps = {
+  runtime: ActiveGuestBunkerRuntime;
+  onAbility?: () => Promise<GuestBunkerAbilityResult>;
+};
+
+function BunkerAbilityActionCard({ runtime, onAbility }: BunkerAbilityActionCardProps) {
+  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<GuestBunkerAbilityResult | null>(null);
+  const [error, setError] = useState('');
+  const requestInFlight = useRef(false);
+  const action = runtime.character.abilityAction;
+  if (!action) return null;
+
+  const remaining = result?.abilityUsesRemaining ?? runtime.character.abilityUsesRemaining;
+  const usable = action.applicable && remaining > 0 && Boolean(onAbility);
+
+  const submit = async () => {
+    if (!usable || !onAbility || requestInFlight.current) return;
+    requestInFlight.current = true;
+    setSubmitting(true);
+    setError('');
+    try {
+      const next = await onAbility();
+      setResult(next);
+      setConfirming(false);
+    } catch {
+      setError('Способность не активировалась. Повторите отправку — заряд не пропадёт.');
+    } finally {
+      requestInFlight.current = false;
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="bunker-player-ability-action" aria-label="Особая способность персонажа">
+      <p className="bunker-player-dashboard__index">ЛИЧНОЕ ДЕЙСТВИЕ</p>
+      <h3>ОСОБАЯ СПОСОБНОСТЬ</h3>
+      <strong>{action.title}</strong>
+      <p>{action.effectPreview}</p>
+      <p className="bunker-player-ability-action__uses">
+        ОСТАЛОСЬ ИСПОЛЬЗОВАНИЙ · {remaining}
+      </p>
+
+      {result && (
+        <p className="bunker-player-ability-action__result" role="status">
+          {result.resultCopy}
+        </p>
+      )}
+      {error && <p className="bunker-player-ability-action__error" role="alert">{error}</p>}
+
+      {usable && !result && !confirming && (
+        <button type="button" onClick={() => setConfirming(true)}>
+          ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ
+        </button>
+      )}
+      {usable && !result && confirming && (
+        <div className="bunker-player-ability-action__confirm" role="group" aria-label="Подтверждение способности">
+          <p>Действие нельзя отменить: будет израсходован один заряд способности.</p>
+          <div>
+            <button type="button" disabled={submitting} onClick={() => void submit()}>
+              {submitting ? 'АКТИВИРУЕМ…' : 'ПОДТВЕРДИТЬ ИСПОЛЬЗОВАНИЕ'}
+            </button>
+            <button type="button" disabled={submitting} onClick={() => setConfirming(false)}>
+              ОТМЕНА
+            </button>
+          </div>
+        </div>
+      )}
+      {action.applicable && remaining === 0 && !result && (
+        <p className="bunker-player-ability-action__spent">Заряд уже использован в этой игре.</p>
+      )}
+    </section>
+  );
+}
 
 export function BunkerPlayerDashboard({
   runtime,
@@ -90,6 +170,7 @@ export function BunkerPlayerDashboard({
   onMission = () => undefined,
   onFinalCode = () => undefined,
   onGlobalMission = () => undefined,
+  onAbility,
 }: BunkerPlayerDashboardProps) {
   const [section, setSection] = useState<Section>('МОЙ ВАГОН');
   const inventory = rows(runtime.inventory);
@@ -263,6 +344,7 @@ export function BunkerPlayerDashboard({
                 <p>Для текущего этапа активное задание не назначено.</p>
               </>
             )}
+            <BunkerAbilityActionCard runtime={runtime} onAbility={onAbility} />
             <BunkerMissionActions
               state={questState}
               globalMissionState={runtime.game.state}

@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { GuestJoinPage } from './GuestJoinPage';
 
@@ -20,6 +21,7 @@ const restoredGuest = {
 
 describe('GuestJoinPage', () => {
   it('loads the authoritative Bunker runtime through production dependencies and opens the active dashboard', async () => {
+    const user = userEvent.setup();
     const registrationRpc = vi.fn(async (name: string) => {
       if (name === 'restore_guest') {
         return { data: { status: 'restored', guest: restoredGuest }, error: null };
@@ -38,10 +40,18 @@ describe('GuestJoinPage', () => {
         profession: 'МЕХАНИК', health: 'отличное', visibleSkill: 'ремонт механизмов',
         hiddenTrait: null, hiddenTraitRevealed: false, specialAbility: 'mechanical_fix',
         abilityDescription: 'Открывает технический отсек.', abilityUsesRemaining: 1, status: 'active',
+        abilityAction: {
+          applicable: true,
+          code: 'ability_available',
+          missionState: 'MISSION_03',
+          title: 'Ремонтный доступ',
+          effectKind: 'technical_door_unlocked',
+          effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+        },
       },
       passengers: [], inventory: [], archive: [],
       wagonState: { powerStatus: 'stable', communicationStatus: 'working', navigationStatus: 'working' },
-      currentMission: null,
+      currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
     };
     const bunkerRpc = vi.fn(async (name: string) => {
       if (name === 'get_guest_bunker_state') {
@@ -49,6 +59,20 @@ describe('GuestJoinPage', () => {
       }
       if (name === 'get_guest_bunker_runtime') {
         return { data: activeRuntime, error: null };
+      }
+      if (name === 'use_guest_bunker_ability') {
+        return {
+          data: {
+            status: 'used', changed: true, idempotent: false,
+            clientActionId: '00000000-0000-4000-8000-000000000951',
+            missionState: 'MISSION_03', abilityKey: 'mechanical_fix',
+            effectKind: 'technical_door_unlocked',
+            effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+            resultCopy: 'Механик разблокировал технический отсек вагона.',
+            abilityUsesRemaining: 0,
+          },
+          error: null,
+        };
       }
       return { data: null, error: new Error(`Unexpected Bunker RPC ${name}`) };
     });
@@ -69,6 +93,16 @@ describe('GuestJoinPage', () => {
       p_event_slug: 'liza-viktor',
       p_device_key: 'lvw_device_31',
     });
+
+    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
+    await user.click(screen.getByRole('button', { name: 'ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ' }));
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ИСПОЛЬЗОВАНИЕ' }));
+    expect(await screen.findAllByText(/механик разблокировал/i)).toHaveLength(2);
+    expect(bunkerRpc).toHaveBeenCalledWith('use_guest_bunker_ability', expect.objectContaining({
+      p_event_slug: 'liza-viktor',
+      p_device_key: 'lvw_device_31',
+      p_client_action_id: expect.stringMatching(/^[0-9a-f-]{36}$/i),
+    }));
   });
 
   it('restores the existing ticket before showing a new registration form', async () => {

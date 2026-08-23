@@ -7,7 +7,10 @@ import {
   submitBunkerMission,
 } from '../bunker/bunkerQuest.service';
 import { submitGuestBunkerGlobalMission } from '../bunker/bunkerGlobalMission.service';
-import { getGuestBunkerRuntime } from '../bunker/bunkerRuntime.service';
+import {
+  getGuestBunkerRuntime,
+  useGuestBunkerAbility,
+} from '../bunker/bunkerRuntime.service';
 import {
   subscribeToCarriageCallRefresh,
   type CarriageCallRealtimeClient,
@@ -152,6 +155,12 @@ export function GuestJoinPage({
           key,
           missionState,
           payload,
+        ),
+        useAbility: (key, clientActionId) => useGuestBunkerAbility(
+          activeBunkerClient,
+          eventSlug,
+          key,
+          clientActionId,
         ),
         subscribeToRefresh: activeBunkerRealtimeClient
           ? (callback) => subscribeToBunkerRefresh(activeBunkerRealtimeClient, eventSlug, callback)

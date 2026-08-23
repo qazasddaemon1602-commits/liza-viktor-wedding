@@ -196,6 +196,43 @@ describe('useGuestBunkerLiveState', () => {
     expect(load.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('reuses one client action id when an ability response is lost and reloads after success', async () => {
+    const useAbility = vi.fn()
+      .mockRejectedValueOnce(new Error('response lost'))
+      .mockResolvedValueOnce({
+        status: 'used',
+        changed: false,
+        idempotent: true,
+        clientActionId: '00000000-0000-4000-8000-000000000951',
+        missionState: 'MISSION_03',
+        abilityKey: 'mechanical_fix',
+        effectKind: 'technical_door_unlocked',
+        effectPreview: 'Технический отсек будет разблокирован.',
+        resultCopy: 'Технический отсек разблокирован.',
+        abilityUsesRemaining: 0,
+      });
+    const load = vi.fn().mockResolvedValue(emergency);
+    const dependencies = deps({ load, useAbility });
+    const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
+    await waitFor(() => expect(result.current.state).not.toBeNull());
+
+    await act(async () => {
+      await result.current.useAbility().catch(() => undefined);
+    });
+    expect(result.current.feedback).toMatch(/повторите/i);
+
+    await act(async () => {
+      await result.current.useAbility();
+    });
+
+    expect(useAbility).toHaveBeenCalledTimes(2);
+    expect(useAbility.mock.calls[0][0]).toBe('device-key-123');
+    expect(useAbility.mock.calls[0][1]).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(useAbility.mock.calls[1][1]).toBe(useAbility.mock.calls[0][1]);
+    expect(result.current.feedback).toMatch(/отсек разблокирован/i);
+    expect(load.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('reloads after final unlock and uses a neutral wrong-code message', async () => {
     const submitFinalCode = vi.fn().mockResolvedValue({ status: 'incorrect', unlocked: false });
     const dependencies = deps({ submitFinalCode });
