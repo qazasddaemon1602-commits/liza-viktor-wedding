@@ -23,6 +23,8 @@ describe('LizaRevealScreen', () => {
       'src',
       '/images/bunker/story/liza-reveal.webp',
     );
+    expect(screen.getByRole('img')).toHaveAttribute('width', '1122');
+    expect(screen.getByRole('img')).toHaveAttribute('height', '1402');
 
     fireEvent.error(screen.getByRole('img'));
     expect(screen.queryByRole('img')).not.toBeInTheDocument();

@@ -62,6 +62,18 @@ describe('LizaBunkerOperatorPanel', () => {
     expect(screen.queryByText(/Лиза/)).not.toBeInTheDocument();
     expect(screen.queryByText(/баланс|очки|сч[её]т/i)).not.toBeInTheDocument();
     expect(screen.getByText('00:40')).toBeInTheDocument();
+    const portrait = screen.getByRole('img', { name: 'Оператор BK-17 в диспетчерской' });
+    expect(portrait).toHaveAttribute('src', '/images/bunker/story/liza-operator.webp');
+    expect(portrait).toHaveAttribute('width', '1122');
+    expect(portrait).toHaveAttribute('height', '1402');
+    expect(portrait.closest('picture')?.querySelector('source[type="image/avif"]')).toHaveAttribute(
+      'srcset',
+      '/images/bunker/story/liza-operator.avif',
+    );
+    expect(screen.getByText('АРХИВНЫЙ КАНАЛ · ЛИЧНОСТЬ СКРЫТА')).toBeInTheDocument();
+    fireEvent.error(portrait);
+    expect(screen.queryByRole('img', { name: 'Оператор BK-17 в диспетчерской' })).not.toBeInTheDocument();
+    expect(screen.getByText('ВЫБЕРИТЕ СИГНАЛ')).toBeInTheDocument();
   });
 
   it('confirms the exact phrase, submits once, locks the card and broadcasts refresh', async () => {

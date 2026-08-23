@@ -41,6 +41,7 @@ export function LizaBunkerOperatorPanel({
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [portraitAvailable, setPortraitAvailable] = useState(true);
   const [clock, setClock] = useState(() => Date.now());
   const syncedAt = useRef(Date.now());
   const stateRef = useRef(initialState);
@@ -307,6 +308,8 @@ export function LizaBunkerOperatorPanel({
     );
   })();
 
+  const showAnonymousPortrait = state.status === 'active' || state.status === 'idle';
+
   return (
     <main className="bunker-player-shell bunker-operator-shell">
       <section className="bunker-operator-panel" aria-label="Личный канал оператора BK-17">
@@ -314,6 +317,22 @@ export function LizaBunkerOperatorPanel({
           <p>ОПЕРАТОР BK-17 · PRIVATE CHANNEL</p>
           <span aria-label="Статус канала">● КАНАЛ АКТИВЕН</span>
         </header>
+        {showAnonymousPortrait && portraitAvailable && (
+          <figure className="bunker-operator-panel__identity">
+            <picture>
+              <source srcSet="/images/bunker/story/liza-operator.avif" type="image/avif" />
+              <img
+                src="/images/bunker/story/liza-operator.webp"
+                width={1122}
+                height={1402}
+                alt="Оператор BK-17 в диспетчерской"
+                decoding="async"
+                onError={() => setPortraitAvailable(false)}
+              />
+            </picture>
+            <figcaption>АРХИВНЫЙ КАНАЛ · ЛИЧНОСТЬ СКРЫТА</figcaption>
+          </figure>
+        )}
         {content}
         {error && <p className="bunker-operator-panel__error" role="alert">{error}</p>}
       </section>

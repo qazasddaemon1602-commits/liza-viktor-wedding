@@ -36,7 +36,11 @@ export function BunkerResultsPlayer({ model }: { model: BunkerResultsScreenModel
             <source srcSet="/images/bunker/story/couple-epilogue.avif" type="image/avif" />
             <img
               src="/images/bunker/story/couple-epilogue.webp"
+              width={1536}
+              height={1024}
               alt="Лиза и Виктор вместе после прибытия поезда"
+              loading="lazy"
+              decoding="async"
               onError={() => setEpilogueImageAvailable(false)}
             />
           </picture>

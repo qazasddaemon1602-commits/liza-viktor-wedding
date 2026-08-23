@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
@@ -27,6 +27,22 @@ describe('BunkerEmergencyScene', () => {
       '/images/bunker/tunnel-map-master.png',
     );
     expect(document.querySelector('.bunker-emergency svg')).not.toBeInTheDocument();
+  });
+
+  it('adds Viktor in the driver cab as a story-only route insert', () => {
+    render(<BunkerEmergencyScene remainingSeconds={600} />);
+
+    const route = screen.getByRole('img', { name: 'Виктор ведёт поезд по ночному маршруту к Бункеру' });
+    expect(route).toHaveAttribute('src', '/images/bunker/story/viktor-route.webp');
+    expect(route).toHaveAttribute('width', '1536');
+    expect(route).toHaveAttribute('height', '1024');
+    expect(route.closest('picture')?.querySelector('source[type="image/avif"]')).toHaveAttribute(
+      'srcset',
+      '/images/bunker/story/viktor-route.avif',
+    );
+    fireEvent.error(route);
+    expect(screen.queryByRole('img', { name: /Виктор ведёт поезд/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId('bunker-timer')).toHaveTextContent('10:00');
   });
 
   it('renders the archival index marks as aria-hidden', () => {

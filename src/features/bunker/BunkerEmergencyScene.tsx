@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BunkerResponsivePicture } from './BunkerResponsivePicture';
 
 type BunkerEmergencySceneProps = {
@@ -16,6 +17,7 @@ export function BunkerEmergencyScene({
   remainingSeconds,
   motionPreference = 'full',
 }: BunkerEmergencySceneProps) {
+  const [routeImageAvailable, setRouteImageAvailable] = useState(true);
   const arrived = remainingSeconds <= 0;
   const reducedMotion = motionPreference === 'reduced';
 
@@ -32,6 +34,23 @@ export function BunkerEmergencyScene({
         testId="bunker-emergency-artwork"
         loading="eager"
       />
+
+      {routeImageAvailable && (
+        <figure className="bunker-emergency__route-story">
+          <picture>
+            <source srcSet="/images/bunker/story/viktor-route.avif" type="image/avif" />
+            <img
+              src="/images/bunker/story/viktor-route.webp"
+              width={1536}
+              height={1024}
+              alt="Виктор ведёт поезд по ночному маршруту к Бункеру"
+              decoding="async"
+              onError={() => setRouteImageAvailable(false)}
+            />
+          </picture>
+          <figcaption>МАШИНИСТ · МАРШРУТ BK-17</figcaption>
+        </figure>
+      )}
       {!reducedMotion && (
         <>
           <div className="bunker-emergency__blackout" aria-hidden="true" data-testid="bunker-blackout" />

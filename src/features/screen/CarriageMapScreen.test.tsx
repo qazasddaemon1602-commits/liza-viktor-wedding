@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CarriageMapScreen } from './CarriageMapScreen';
 import type { RegistrationCarriageMap } from './carriageMap.service';
@@ -111,5 +111,24 @@ describe('CarriageMapScreen', () => {
 
     rerender(<CarriageMapScreen map={missing} />);
     expect(screen.getByText('СОСТАВ ПОКА НЕ СФОРМИРОВАН')).toBeInTheDocument();
+  });
+
+  it('shows Ilya as train chief and host only in the full map story frame', () => {
+    const view = render(<CarriageMapScreen map={makeMap(2)} variant="full" />);
+    const portrait = screen.getByRole('img', {
+      name: 'Илья Нагавкин, начальник поезда и ведущий, в вагоне',
+    });
+    expect(portrait).toHaveAttribute('src', '/images/bunker/story/train-chief.webp');
+    expect(portrait).toHaveAttribute('width', '971');
+    expect(portrait).toHaveAttribute('height', '1619');
+    expect(screen.getByText('ИЛЬЯ НАГАВКИН · НАЧАЛЬНИК ПОЕЗДА · ВЕДУЩИЙ')).toBeInTheDocument();
+
+    fireEvent.error(portrait);
+    expect(screen.queryByRole('img', { name: /Илья Нагавкин/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('group', { name: /ВАГОН №/ })).toHaveLength(2);
+
+    view.rerender(<CarriageMapScreen map={makeMap(2)} variant="compact" />);
+    expect(screen.queryByRole('img', { name: /Илья Нагавкин/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('ИЛЬЯ НАГАВКИН · НАЧАЛЬНИК ПОЕЗДА · ВЕДУЩИЙ')).not.toBeInTheDocument();
   });
 });

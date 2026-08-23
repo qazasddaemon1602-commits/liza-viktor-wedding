@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type {
   RegistrationCarriageMap,
   RegistrationCarriageMapCarriage,
@@ -98,6 +98,7 @@ function CarriagePlan({ carriage }: { carriage: RegistrationCarriageMapCarriage 
 }
 
 export function CarriageMapScreen({ map, variant = 'full' }: CarriageMapScreenProps) {
+  const [trainChiefImageAvailable, setTrainChiefImageAvailable] = useState(true);
   return (
     <section
       className={`carriage-map carriage-map--${variant} wedding-editorial-surface`}
@@ -112,6 +113,23 @@ export function CarriageMapScreen({ map, variant = 'full' }: CarriageMapScreenPr
         <p className="carriage-map__progress">
           ЗАРЕГИСТРИРОВАНО {map.registeredGuestCount} ИЗ {map.expectedGuestCount}
         </p>
+        {variant === 'full' && trainChiefImageAvailable && (
+          <figure className="carriage-map__train-chief">
+            <picture>
+              <source srcSet="/images/bunker/story/train-chief.avif" type="image/avif" />
+              <img
+                src="/images/bunker/story/train-chief.webp"
+                width={971}
+                height={1619}
+                alt="Илья Нагавкин, начальник поезда и ведущий, в вагоне"
+                loading="eager"
+                decoding="async"
+                onError={() => setTrainChiefImageAvailable(false)}
+              />
+            </picture>
+            <figcaption>ИЛЬЯ НАГАВКИН · НАЧАЛЬНИК ПОЕЗДА · ВЕДУЩИЙ</figcaption>
+          </figure>
+        )}
       </header>
 
       {map.carriages.length > 0 ? (

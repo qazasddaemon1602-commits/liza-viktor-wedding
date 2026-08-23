@@ -1162,7 +1162,7 @@
   display: block;
   min-height: 0;
   width: min(100%, 32rem);
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 5;
   justify-self: center;
   border: 1px solid rgba(199, 168, 108, 0.62);
   background: #10191d;
@@ -1224,7 +1224,7 @@
 
 .bunker-v2-results .bunker-results-epilogue picture {
   display: block;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 3 / 2;
   overflow: hidden;
 }
 

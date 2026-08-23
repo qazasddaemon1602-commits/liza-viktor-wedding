@@ -311,9 +311,59 @@
   filter: grayscale(1) contrast(1.18);
 }
 
+.bunker-emergency__route-story {
+  position: absolute;
+  top: clamp(7.5rem, 14vh, 10rem);
+  right: clamp(1.6rem, 2.6vw, 3.2rem);
+  z-index: -1;
+  width: min(22vw, 22rem);
+  margin: 0;
+  border: 1px solid rgba(216, 216, 216, 0.32);
+  background: #080d10;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+}
+
+.bunker-emergency__route-story picture,
+.bunker-emergency__route-story img {
+  display: block;
+  width: 100%;
+}
+
+.bunker-emergency__route-story picture {
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+}
+
+.bunker-emergency__route-story img {
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.72) contrast(1.08) brightness(0.76);
+}
+
+.bunker-emergency__route-story figcaption {
+  padding: 0.55rem 0.7rem;
+  color: rgba(216, 216, 216, 0.76);
+  font: 600 clamp(0.48rem, 0.6vw, 0.68rem)/1.3 monospace;
+  letter-spacing: 0.13em;
+}
+
 @media (max-width: 1100px) {
   .bunker-emergency__index,
   .bunker-emergency__schematic {
+    display: none;
+  }
+
+  .bunker-emergency__route-story {
+    top: auto;
+    right: clamp(1rem, 2.5vw, 2rem);
+    bottom: clamp(5.5rem, 12vh, 8rem);
+    width: min(24vw, 13rem);
+  }
+}
+
+@media (max-width: 700px), (max-height: 580px) {
+  .bunker-emergency__route-story {
     display: none;
   }
 }
@@ -323,6 +373,7 @@
   .bunker-emergency__sync-tear,
   .bunker-emergency__title-reveal,
   .bunker-emergency__schematic,
+  .bunker-emergency__route-story,
   .bunker-emergency__signal {
     animation: none;
   }

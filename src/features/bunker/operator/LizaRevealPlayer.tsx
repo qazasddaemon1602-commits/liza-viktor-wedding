@@ -20,7 +20,10 @@ export function LizaRevealPlayer() {
           <source srcSet="/images/bunker/story/liza-reveal.avif" type="image/avif" />
           <img
             src="/images/bunker/story/liza-reveal.webp"
+            width={1122}
+            height={1402}
             alt="Лиза встречает прибывший поезд у открытого Бункера"
+            decoding="async"
             onError={() => setImageAvailable(false)}
           />
         </picture>

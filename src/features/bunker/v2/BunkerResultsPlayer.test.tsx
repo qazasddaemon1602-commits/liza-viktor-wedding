@@ -25,6 +25,13 @@ describe('BunkerResultsPlayer', () => {
     expect(screen.getByText('91 / 100')).toBeInTheDocument();
     expect(screen.getByText(/ваш состав справился/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Эпилог Лизы и Виктора')).toHaveTextContent('Поезд Виктора прибыл к Лизе. Теперь маршрут продолжается вместе.');
+    const epilogue = screen.getByRole('img', { name: 'Лиза и Виктор вместе после прибытия поезда' });
+    expect(epilogue).toHaveAttribute('width', '1536');
+    expect(epilogue).toHaveAttribute('height', '1024');
+    expect(epilogue.closest('picture')?.querySelector('source[type="image/avif"]')).toHaveAttribute(
+      'srcset',
+      '/images/bunker/story/couple-epilogue.avif',
+    );
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 });

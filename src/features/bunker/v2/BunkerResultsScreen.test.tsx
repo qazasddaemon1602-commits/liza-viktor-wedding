@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { BunkerResultsScreen } from './BunkerResultsScreen';
 
@@ -27,6 +27,11 @@ describe('BunkerResultsScreen', () => {
     expect(screen.getByText(/12:22/)).toBeInTheDocument();
     expect(screen.getByText(/16 персонажей спасено/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Эпилог Лизы и Виктора')).toHaveTextContent('Поезд Виктора прибыл к Лизе. Теперь маршрут продолжается вместе.');
+    expect(screen.getByRole('img', { name: 'Лиза и Виктор вместе после прибытия поезда' })).toHaveAttribute('width', '1536');
+    expect(screen.getByRole('img', { name: 'Лиза и Виктор вместе после прибытия поезда' })).toHaveAttribute('height', '1024');
+    fireEvent.error(screen.getByRole('img', { name: 'Лиза и Виктор вместе после прибытия поезда' }));
+    expect(screen.queryByRole('img', { name: 'Лиза и Виктор вместе после прибытия поезда' })).not.toBeInTheDocument();
+    expect(screen.getByText('91 / 100')).toBeInTheDocument();
     expect(screen.queryByText('4719')).not.toBeInTheDocument();
     expect(screen.queryByText('LV0830')).not.toBeInTheDocument();
   });
