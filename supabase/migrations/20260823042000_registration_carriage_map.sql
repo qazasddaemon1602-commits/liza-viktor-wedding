@@ -89,30 +89,36 @@ begin
           from (
             select
               guest.id,
-              pg_catalog.left(
-                pg_catalog.upper(
-                  pg_catalog.concat(
-                    pg_catalog.left(
-                      pg_catalog.regexp_replace(
-                        guest.first_name,
-                        '[^[:alpha:]]',
-                        '',
-                        'g'
-                      ),
-                      1
+              coalesce(
+                nullif(
+                  pg_catalog.left(
+                    pg_catalog.upper(
+                      pg_catalog.concat(
+                        pg_catalog.left(
+                          pg_catalog.regexp_replace(
+                            guest.first_name,
+                            '[^[:alpha:]]',
+                            '',
+                            'g'
+                          ),
+                          1
+                        ),
+                        pg_catalog.left(
+                          pg_catalog.regexp_replace(
+                            guest.last_name,
+                            '[^[:alpha:]]',
+                            '',
+                            'g'
+                          ),
+                          1
+                        )
+                      )
                     ),
-                    pg_catalog.left(
-                      pg_catalog.regexp_replace(
-                        guest.last_name,
-                        '[^[:alpha:]]',
-                        '',
-                        'g'
-                      ),
-                      1
-                    )
-                  )
+                    2
+                  ),
+                  ''
                 ),
-                2
+                'Г'
               ) as initials,
               pg_catalog.row_number() over (
                 order by

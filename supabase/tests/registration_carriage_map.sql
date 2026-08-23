@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(36);
+select plan(38);
 
 create or replace function pg_temp.call_registration_carriage_map(p_event_slug text)
 returns jsonb
@@ -195,6 +195,7 @@ values
   ('83000000-0000-4000-8000-000000000105', '83000000-0000-4000-8000-000000000010', 'Disabled', 'Passenger', 'other', null, '83000000-0000-4000-8000-000000000016', 5, 'PRIVATE-TOKEN-005', '2026-08-23 12:00:00+00'),
   ('83000000-0000-4000-8000-000000000106', '83000000-0000-4000-8000-000000000010', 'Null', 'Passenger', 'other', null, null, 6, 'PRIVATE-TOKEN-006', '2026-08-23 13:00:00+00'),
   ('83000000-0000-4000-8000-000000000107', '83000000-0000-4000-8000-000000000010', 'Bunker', 'Fixture', 'other', '__BUNKER_TEST__', '83000000-0000-4000-8000-000000000011', 7, 'PRIVATE-TOKEN-007', '2026-08-23 08:00:00+00'),
+  ('83000000-0000-4000-8000-000000000108', '83000000-0000-4000-8000-000000000010', '123', '---', 'other', null, '83000000-0000-4000-8000-000000000012', 8, 'PRIVATE-TOKEN-008', '2026-08-23 14:00:00+00'),
   ('83000000-0000-4000-8000-000000000201', '83000000-0000-4000-8000-000000000020', 'Complete', 'One', 'liza', null, '83000000-0000-4000-8000-000000000021', 1, 'COMPLETE-001', '2026-08-23 09:00:00+00'),
   ('83000000-0000-4000-8000-000000000202', '83000000-0000-4000-8000-000000000020', 'Complete', 'Two', 'viktor', null, '83000000-0000-4000-8000-000000000022', 2, 'COMPLETE-002', '2026-08-23 10:00:00+00'),
   ('83000000-0000-4000-8000-000000000301', '83000000-0000-4000-8000-000000000030', 'Zero', 'Expected', 'common', null, '83000000-0000-4000-8000-000000000031', 1, 'ZERO-001', '2026-08-23 09:00:00+00');
@@ -283,6 +284,14 @@ select is(
   'registration',
   'incomplete registration remains in registration state'
 );
+set local role anon;
+select is(
+  public.get_registration_carriage_map('registration-carriage-map-main')
+    ->> 'status',
+  'registration',
+  'anonymous API role can execute the private-table read model'
+);
+reset role;
 select is(
   (
     pg_temp.call_registration_carriage_map('registration-carriage-map-main')
@@ -296,7 +305,7 @@ select is(
     pg_temp.call_registration_carriage_map('registration-carriage-map-main')
       ->> 'registeredGuestCount'
   )::integer,
-  6,
+  7,
   'Bunker test guests are excluded from the registered count'
 );
 select is(
@@ -407,6 +416,19 @@ select is(
   ),
   '["MO", "ИЁ", "AS"]'::jsonb,
   'initials contain only the normalized first two letters'
+);
+select is(
+  (
+    select guest ->> 'initials'
+    from jsonb_array_elements(
+      pg_temp.call_registration_carriage_map('registration-carriage-map-main')
+        -> 'carriages'
+    ) carriage
+    cross join lateral jsonb_array_elements(carriage -> 'guests') guest
+    where guest ->> 'id' = '83000000-0000-4000-8000-000000000108'
+  ),
+  'Г',
+  'names without letters receive a safe non-empty letter fallback'
 );
 select ok(
   not exists (
