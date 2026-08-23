@@ -21,6 +21,7 @@ describe('Bunker V2 projector layout', () => {
     expect(shell).toMatch(/height:\s*100dvh/);
     expect(shell).toMatch(/overflow:\s*hidden/);
     expect(shell).toMatch(/grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)\s+auto/);
+    expect(css).toMatch(/html:has\(\.bunker-v2-screen\),\s*body:has\(\.bunker-v2-screen\)\s*\{[^}]*overflow:\s*hidden/);
   });
 
   it('keeps mission headings fluid in both width and height', () => {
