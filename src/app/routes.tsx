@@ -8,6 +8,7 @@ import { CouplePreanswersPage } from '../features/quiz/CouplePreanswersPage';
 import { FinalFiveRolePage } from '../features/quiz/FinalFiveRolePage';
 import { GuestQuizPage } from '../features/quiz/GuestQuizPage';
 import { GuestJoinPage } from '../features/registration/GuestJoinPage';
+import { ProjectorSoundtrack } from '../features/screen/ProjectorSoundtrack';
 import { ScreenPage } from '../features/screen/ScreenPage';
 import { WeddingHomePage } from '../features/wedding/WeddingHomePage';
 
@@ -36,7 +37,11 @@ function currentJoinUrl(): string {
 }
 
 function projector(element: ReactNode) {
-  return <BunkerScreenGuard eventSlug="liza-viktor">{element}</BunkerScreenGuard>;
+  return (
+    <ProjectorSoundtrack eventSlug="liza-viktor">
+      <BunkerScreenGuard eventSlug="liza-viktor">{element}</BunkerScreenGuard>
+    </ProjectorSoundtrack>
+  );
 }
 
 export function AppRoutes() {
