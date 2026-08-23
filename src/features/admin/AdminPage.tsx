@@ -101,6 +101,7 @@ import {
   type AdminRealtimeClient,
 } from './admin.realtime';
 import { AdminShell } from './AdminShell';
+import type { GuestReassignmentCommand } from './guests/AdminGuestsPage';
 import type { AdminMkControlDependencies } from './mortalKombat/AdminMkControl';
 import type { AdminPremiereControlDependencies } from './premiere/AdminPremiereControl';
 import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCouplePreanswersPanel';
@@ -124,7 +125,7 @@ export type AdminPageDependencies = {
   signOut: () => Promise<void>;
   loadDashboard: () => Promise<AdminDashboard>;
   deleteGuest: (guestId: string) => Promise<void>;
-  reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
+  reassignGuest: (command: GuestReassignmentCommand) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
   applyCarriageDistribution?: (
     eventId: string,
@@ -162,6 +163,20 @@ function buildFinalFiveRoleUrl(role: FinalFiveRole, token: string): string {
   const url = new URL(role === 'liza' ? '/liza' : '/viktor', window.location.origin);
   url.searchParams.set('token', token);
   return url.toString();
+}
+
+export function createReassignGuestDependency(
+  reassign: (guestId: string, carriageId: string) => Promise<void>,
+  broadcast: (carriageIds: string[]) => Promise<void>,
+) {
+  return async (command: GuestReassignmentCommand): Promise<void> => {
+    await reassign(command.guestId, command.toCarriageId);
+    try {
+      await broadcast([...new Set([command.fromCarriageId, command.toCarriageId])]);
+    } catch {
+      // Realtime is best effort; the successful RPC remains authoritative.
+    }
+  };
 }
 
 export function createAdminPageDependencies(): AdminPageDependencies {
@@ -209,7 +224,10 @@ export function createAdminPageDependencies(): AdminPageDependencies {
     },
     loadDashboard,
     deleteGuest: (guestId) => deleteGuestRpc(client, guestId),
-    reassignGuest: (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
+    reassignGuest: createReassignGuestDependency(
+      (guestId, carriageId) => reassignGuestRpc(client, guestId, carriageId),
+      (carriageIds) => broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds),
+    ),
     lockComposition: (eventId) => lockCompositionRpc(client, eventId),
     applyCarriageDistribution: (eventId, carriageCount) =>
       applyCarriageDistributionRpc(client, eventId, carriageCount),

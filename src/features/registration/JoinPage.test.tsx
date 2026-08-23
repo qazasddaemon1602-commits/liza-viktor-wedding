@@ -107,6 +107,38 @@ describe('JoinPage', () => {
     expect(screen.queryByRole('button', { name: /получить билет/i })).not.toBeInTheDocument();
   });
 
+  it('polls the issued ticket every exact five seconds', async () => {
+    vi.useFakeTimers();
+    const restore = vi.fn().mockResolvedValue({ status: 'restored', guest });
+    render(<JoinPage dependencies={dependencies({ restore })} />);
+    await act(async () => { await Promise.resolve(); });
+    expect(restore).toHaveBeenCalledTimes(1);
+
+    await act(() => vi.advanceTimersByTimeAsync(4_999));
+    expect(restore).toHaveBeenCalledTimes(1);
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(restore).toHaveBeenCalledTimes(2);
+  });
+
+  it('coalesces overlapping focus and online refreshes into one trailing load', async () => {
+    let resolveRefresh!: (value: unknown) => void;
+    const refresh = new Promise((resolve) => { resolveRefresh = resolve; });
+    const restore = vi.fn()
+      .mockResolvedValueOnce({ status: 'restored', guest })
+      .mockReturnValueOnce(refresh)
+      .mockResolvedValue({ status: 'restored', guest });
+    render(<JoinPage dependencies={dependencies({ restore })} />);
+    expect(await screen.findByTestId('virtual-ticket')).toBeInTheDocument();
+
+    window.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new Event('online'));
+    window.dispatchEvent(new Event('focus'));
+    await waitFor(() => expect(restore).toHaveBeenCalledTimes(2));
+    resolveRefresh({ status: 'restored', guest });
+    await waitFor(() => expect(restore).toHaveBeenCalledTimes(3));
+    expect(restore).toHaveBeenCalledTimes(3);
+  });
+
   it('refreshes the same guest ticket and carriage subscription after owner reassignment', async () => {
     const reassignedGuest = {
       ...guest,

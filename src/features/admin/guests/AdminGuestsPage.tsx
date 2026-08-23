@@ -12,6 +12,12 @@ export type AdminGuest = {
   carriage: CarriageSummary;
 };
 
+export type GuestReassignmentCommand = {
+  guestId: string;
+  fromCarriageId: string;
+  toCarriageId: string;
+};
+
 type RecoveryCodeResult = {
   code: string;
   expiresAt: string;
@@ -21,7 +27,7 @@ type AdminGuestsPageProps = {
   guests: AdminGuest[];
   carriages?: CarriageSummary[];
   onDelete: (guestId: string) => Promise<void> | void;
-  onReassign: (guestId: string, carriageId: string) => Promise<void> | void;
+  onReassign: (command: GuestReassignmentCommand) => Promise<void> | void;
   onIssueRecovery?: (guestId: string) => Promise<RecoveryCodeResult>;
 };
 
@@ -58,6 +64,10 @@ export function AdminGuestsPage({
   const [recoveryGuest, setRecoveryGuest] = useState<AdminGuest | null>(null);
   const [recoveryCode, setRecoveryCode] = useState<RecoveryCodeResult | null>(null);
   const [issuingRecovery, setIssuingRecovery] = useState(false);
+  const [reassignment, setReassignment] = useState<Record<string, {
+    kind: 'pending' | 'success' | 'error';
+    toCarriageId: string;
+  }>>({});
 
   const filteredGuests = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('ru-RU');
@@ -89,6 +99,17 @@ export function AdminGuestsPage({
     }
   };
 
+  const reassign = async (guest: AdminGuest, toCarriageId: string) => {
+    const command = { guestId: guest.id, fromCarriageId: guest.carriage.id, toCarriageId };
+    setReassignment((current) => ({ ...current, [guest.id]: { kind: 'pending', toCarriageId } }));
+    try {
+      await onReassign(command);
+      setReassignment((current) => ({ ...current, [guest.id]: { kind: 'success', toCarriageId } }));
+    } catch {
+      setReassignment((current) => ({ ...current, [guest.id]: { kind: 'error', toCarriageId } }));
+    }
+  };
+
   return (
     <section className="admin-guests">
       <header className="admin-section-header">
@@ -108,7 +129,10 @@ export function AdminGuestsPage({
       </header>
 
       <div className="admin-guest-list">
-        {filteredGuests.map((guest) => (
+        {filteredGuests.map((guest) => {
+          const feedback = reassignment[guest.id];
+          const target = carriages?.find((carriage) => carriage.id === feedback?.toCarriageId);
+          return (
           <article className="admin-guest-card" key={guest.id}>
             <div className="admin-guest-card__identity">
               <span
@@ -133,13 +157,24 @@ export function AdminGuestsPage({
                   <select
                     aria-label={`Вагон ${guest.firstName} ${guest.lastName}`}
                     value={guest.carriage.id}
-                    onChange={(event) => void onReassign(guest.id, event.target.value)}
+                    disabled={feedback?.kind === 'pending'}
+                    onChange={(event) => void reassign(guest, event.target.value)}
                   >
                     {carriages.map((carriage) => (
                       <option key={carriage.id} value={carriage.id}>{carriage.label}</option>
                     ))}
                   </select>
                 </label>
+              )}
+              {feedback?.kind === 'pending' && <span>ПЕРЕСАЖИВАЕМ…</span>}
+              {feedback?.kind === 'success' && (
+                <p role="status">{guest.firstName} {guest.lastName}: назначен {target?.label ?? 'новый вагон'}.</p>
+              )}
+              {feedback?.kind === 'error' && (
+                <p role="alert">
+                  Не удалось пересадить. Остаётся {guest.carriage.label}.{' '}
+                  <button type="button" onClick={() => void reassign(guest, feedback.toCarriageId)}>ПОВТОРИТЬ</button>
+                </p>
               )}
             </div>
 
@@ -164,7 +199,7 @@ export function AdminGuestsPage({
               </button>
             </div>
           </article>
-        ))}
+        );})}
         {filteredGuests.length === 0 && (
           <p className="admin-empty">Никого не нашли. Общий список гостей не изменён.</p>
         )}

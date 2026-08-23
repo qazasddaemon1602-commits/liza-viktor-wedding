@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GuestBunkerLiveDependencies } from '../bunker/useGuestBunkerLiveState';
 import { useGuestBunkerLiveState } from '../bunker/useGuestBunkerLiveState';
 import type { GuestActiveCarriageCalls, GuestCarriageCall } from '../carriages/carriageCalls.service';
@@ -31,7 +31,7 @@ export function JoinPage({
   dependencies,
   revealDelayMs,
   ticketHoldMs,
-  guestRecheckIntervalMs = 15_000,
+  guestRecheckIntervalMs = 5_000,
 }: JoinPageProps) {
   const [guest, setGuest] = useState<RegisteredGuest | null>(null);
   const [activeCall, setActiveCall] = useState<GuestCarriageCall | null>(null);
@@ -40,6 +40,8 @@ export function JoinPage({
   const [recoveryCode, setRecoveryCode] = useState('');
   const [recoveryError, setRecoveryError] = useState('');
   const [recovering, setRecovering] = useState(false);
+  const restoreGenerationRef = useRef(0);
+  const guestRefreshRef = useRef<() => void>(() => undefined);
   const quiz = useGuestQuizLiveState({
     dependencies: dependencies.quiz,
     enabled: Boolean(guest && dependencies.quiz),
@@ -50,49 +52,71 @@ export function JoinPage({
   });
 
   const restore = useCallback(async () => {
+    const generation = ++restoreGenerationRef.current;
     setState('loading');
     try {
       const result = await dependencies.restore(dependencies.getDeviceKey());
+      if (generation !== restoreGenerationRef.current) return;
       setGuest(result.status === 'restored' ? result.guest : null);
       setState('ready');
     } catch {
+      if (generation !== restoreGenerationRef.current) return;
       setState('error');
     }
   }, [dependencies]);
 
   useEffect(() => {
     void restore();
+    return () => { restoreGenerationRef.current += 1; };
   }, [restore]);
 
   useEffect(() => {
     if (!guest) return;
 
     let active = true;
-    const recheck = async () => {
-      try {
-        const result = await dependencies.restore(dependencies.getDeviceKey());
-        if (!active) return;
-        if (result.status === 'not_found') {
-          setGuest(null);
-          setActiveCall(null);
-          return;
-        }
-        setGuest(result.guest);
-      } catch {
-        // A transient network error must not hide an already-issued ticket.
+    let inFlight = false;
+    let trailing = false;
+    const recheck = () => {
+      if (!active) return;
+      if (inFlight) {
+        trailing = true;
+        return;
       }
+      inFlight = true;
+      void dependencies.restore(dependencies.getDeviceKey())
+        .then((result) => {
+          if (!active) return;
+          if (result.status === 'not_found') {
+            setGuest(null);
+            setActiveCall(null);
+            return;
+          }
+          setGuest(result.guest);
+        })
+        .catch(() => {
+          // Preserve the last valid ticket until a later refresh converges.
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!active || !trailing) return;
+          trailing = false;
+          recheck();
+        });
     };
 
-    const interval = window.setInterval(() => void recheck(), guestRecheckIntervalMs);
-    const recheckOnFocus = () => void recheck();
-    window.addEventListener('focus', recheckOnFocus);
+    guestRefreshRef.current = recheck;
+    const interval = window.setInterval(recheck, guestRecheckIntervalMs);
+    window.addEventListener('focus', recheck);
+    window.addEventListener('online', recheck);
 
     return () => {
       active = false;
+      guestRefreshRef.current = () => undefined;
       window.clearInterval(interval);
-      window.removeEventListener('focus', recheckOnFocus);
+      window.removeEventListener('focus', recheck);
+      window.removeEventListener('online', recheck);
     };
-  }, [dependencies, guest, guestRecheckIntervalMs]);
+  }, [dependencies, guest?.id, guestRecheckIntervalMs]);
 
   useEffect(() => {
     if (!guest || !dependencies.loadCarriageCalls) {
@@ -113,6 +137,7 @@ export function JoinPage({
 
     void refresh();
     const unsubscribe = dependencies.subscribeToCarriageCalls?.(guest.carriage.id, () => {
+      guestRefreshRef.current();
       void refresh();
     });
 

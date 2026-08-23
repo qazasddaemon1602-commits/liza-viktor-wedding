@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { SceneTransition } from '../screen/SceneTransition';
 import {
   normalizeRegistration,
@@ -61,6 +61,11 @@ export function RegistrationPage({
   const [pendingDraft, setPendingDraft] = useState<RegistrationDraft | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [handoffGuest, setHandoffGuest] = useState<RegisteredGuest | null>(null);
+  const revealTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (revealTimerRef.current !== null) window.clearTimeout(revealTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (status !== 'ticket' || !handoffGuest || !onTicketReady) return;
@@ -82,13 +87,18 @@ export function RegistrationPage({
     setHandoffGuest(guest);
     setDuplicateWarning(null);
     setPendingDraft(null);
-    if (revealDelayMs <= 0) {
+    const reducedMotion = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (revealDelayMs <= 0 || reducedMotion) {
       setStatus('ticket');
       return;
     }
 
     setStatus('routing');
-    window.setTimeout(() => setStatus('ticket'), revealDelayMs);
+    revealTimerRef.current = window.setTimeout(() => {
+      revealTimerRef.current = null;
+      setStatus('ticket');
+    }, revealDelayMs);
   };
 
   const handleResult = (result: RegistrationSubmitResult, normalizedDraft: RegistrationDraft) => {

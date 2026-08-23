@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminGuestsPage, type AdminGuest } from './AdminGuestsPage';
@@ -79,7 +79,38 @@ describe('AdminGuestsPage', () => {
     );
 
     await user.selectOptions(screen.getByLabelText('Вагон Иван Петров'), 'c4');
-    expect(onReassign).toHaveBeenCalledWith('guest-31', 'c4');
+    expect(onReassign).toHaveBeenCalledWith({
+      guestId: 'guest-31',
+      fromCarriageId: 'c3',
+      toCarriageId: 'c4',
+    });
+  });
+
+  it('keeps reassignment pending and feedback scoped to the affected row', async () => {
+    let resolve!: () => void;
+    const onReassign = vi.fn(() => new Promise<void>((done) => { resolve = done; }));
+    const user = userEvent.setup();
+    render(<AdminGuestsPage guests={guests} carriages={carriages} onDelete={vi.fn()} onReassign={onReassign} />);
+    const rowA = screen.getByRole('heading', { name: 'Иван Петров' }).closest('article')!;
+    const rowB = screen.getByRole('heading', { name: 'Анна Смирнова' }).closest('article')!;
+
+    await user.selectOptions(within(rowA).getByRole('combobox'), 'c4');
+    expect(within(rowA).getByRole('combobox')).toBeDisabled();
+    expect(within(rowB).getByRole('combobox')).toBeEnabled();
+    expect(within(rowA).getByText('ПЕРЕСАЖИВАЕМ…')).toBeInTheDocument();
+    resolve();
+    expect(await within(rowA).findByRole('status')).toHaveTextContent('назначен ВАГОН №4');
+  });
+
+  it('reports a row-scoped failure with the latest authoritative carriage', async () => {
+    const user = userEvent.setup();
+    render(<AdminGuestsPage guests={guests} carriages={carriages} onDelete={vi.fn()} onReassign={vi.fn().mockRejectedValue(new Error('offline'))} />);
+    const row = screen.getByRole('heading', { name: 'Иван Петров' }).closest('article')!;
+
+    await user.selectOptions(within(row).getByRole('combobox'), 'c4');
+
+    expect(await within(row).findByRole('alert')).toHaveTextContent('Остаётся ВАГОН №3');
+    expect(within(row).getByRole('button', { name: 'ПОВТОРИТЬ' })).toBeInTheDocument();
   });
 
   it('issues a one-time recovery code for a lost or replaced phone', async () => {

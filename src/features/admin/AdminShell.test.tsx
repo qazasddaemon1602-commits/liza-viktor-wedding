@@ -136,14 +136,46 @@ describe('AdminShell', () => {
   it('updates the visible carriage after an explicit owner reassignment', async () => {
     const user = userEvent.setup();
     const reassignGuest = vi.fn().mockResolvedValue(undefined);
-    render(<AdminShell dependencies={dependencies({ reassignGuest })} />);
+    const reassigned = structuredClone(dashboard);
+    reassigned.guests[0].carriage = reassigned.carriages[1];
+    const load = vi.fn().mockResolvedValueOnce(structuredClone(dashboard)).mockResolvedValue(reassigned);
+    render(<AdminShell dependencies={dependencies({ reassignGuest, load })} />);
 
     await screen.findByText('Иван Петров');
     const carriageSelect = screen.getByLabelText('Вагон Иван Петров');
     await user.selectOptions(carriageSelect, 'c4');
 
-    expect(reassignGuest).toHaveBeenCalledWith('g31', 'c4');
+    expect(reassignGuest).toHaveBeenCalledWith({ guestId: 'g31', fromCarriageId: 'c3', toCarriageId: 'c4' });
     expect(carriageSelect).toHaveValue('c4');
+  });
+
+  it('rejects a dashboard response started before reassignment, then accepts the post-settlement reload', async () => {
+    let registrationRefresh!: () => void;
+    let resolveStale!: (value: AdminDashboard) => void;
+    let resolveAuthoritative!: (value: AdminDashboard) => void;
+    const stale = new Promise<AdminDashboard>((resolve) => { resolveStale = resolve; });
+    const authoritative = new Promise<AdminDashboard>((resolve) => { resolveAuthoritative = resolve; });
+    const load = vi.fn()
+      .mockResolvedValueOnce(structuredClone(dashboard))
+      .mockReturnValueOnce(stale)
+      .mockReturnValueOnce(authoritative);
+    const subscribeToRegistrations = vi.fn((callback: (guestId: string) => void) => {
+      registrationRefresh = () => callback('g31');
+      return vi.fn();
+    });
+    const user = userEvent.setup();
+    render(<AdminShell dependencies={dependencies({ load, subscribeToRegistrations })} refreshIntervalMs={0} />);
+    await screen.findByText('Иван Петров');
+
+    act(() => registrationRefresh());
+    await user.selectOptions(screen.getByLabelText('Вагон Иван Петров'), 'c4');
+    expect(screen.getByLabelText('Вагон Иван Петров')).toHaveValue('c4');
+
+    await act(async () => resolveStale(structuredClone(dashboard)));
+    expect(screen.getByLabelText('Вагон Иван Петров')).toHaveValue('c4');
+
+    await act(async () => resolveAuthoritative(structuredClone(dashboard)));
+    expect(screen.getByLabelText('Вагон Иван Петров')).toHaveValue('c3');
   });
 
   it('issues a recovery code from the real owner guest list', async () => {

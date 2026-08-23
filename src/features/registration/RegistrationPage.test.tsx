@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RegistrationPage } from './RegistrationPage';
 
 const registeredGuest = {
@@ -20,6 +20,29 @@ const registeredGuest = {
 };
 
 describe('RegistrationPage', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function submitRegistration() {
+    const user = vi.isFakeTimers()
+      ? userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      : userEvent.setup();
+    await user.type(screen.getByLabelText('Имя'), 'Иван');
+    await user.type(screen.getByLabelText('Фамилия'), 'Петров');
+    await user.selectOptions(screen.getByLabelText('С кем вы сегодня?'), 'viktor');
+    await user.click(screen.getByRole('button', { name: /получить билет/i }));
+  }
+
+  async function submitRegistrationWithFakeTimers() {
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Иван' } });
+    fireEvent.change(screen.getByLabelText('Фамилия'), { target: { value: 'Петров' } });
+    fireEvent.change(screen.getByLabelText('С кем вы сегодня?'), { target: { value: 'viktor' } });
+    fireEvent.click(screen.getByRole('button', { name: /получить билет/i }));
+    await act(async () => { await Promise.resolve(); });
+  }
+
   it('shows required-field errors before registration', async () => {
     const user = userEvent.setup();
     render(<RegistrationPage onRegister={vi.fn()} revealDelayMs={0} />);
@@ -96,5 +119,51 @@ describe('RegistrationPage', () => {
       affiliationDetail: '',
     }, true);
     expect(await screen.findByText('LV-031')).toBeInTheDocument();
+  });
+
+  it('skips the route ceremony entirely when reduced motion is requested', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({ matches: true }),
+    });
+    render(<RegistrationPage onRegister={vi.fn().mockResolvedValue(registeredGuest)} />);
+
+    await submitRegistrationWithFakeTimers();
+
+    expect(screen.getByTestId('virtual-ticket')).toBeInTheDocument();
+    expect(screen.queryByText('ФОРМИРУЕМ МАРШРУТ…')).not.toBeInTheDocument();
+  });
+
+  it('keeps the standard-motion route ceremony for exactly the default 900 ms', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({ matches: false }),
+    });
+    render(<RegistrationPage onRegister={vi.fn().mockResolvedValue(registeredGuest)} />);
+
+    await submitRegistrationWithFakeTimers();
+    expect(screen.getByText('ФОРМИРУЕМ МАРШРУТ…')).toBeInTheDocument();
+
+    await act(() => vi.advanceTimersByTimeAsync(899));
+    expect(screen.queryByTestId('virtual-ticket')).not.toBeInTheDocument();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(screen.getByTestId('virtual-ticket')).toBeInTheDocument();
+  });
+
+  it('clears a pending route reveal timer on unmount', async () => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({ matches: false }),
+    });
+    const clearTimeout = vi.spyOn(window, 'clearTimeout');
+    const view = render(<RegistrationPage onRegister={vi.fn().mockResolvedValue(registeredGuest)} />);
+
+    await submitRegistrationWithFakeTimers();
+    view.unmount();
+
+    expect(clearTimeout).toHaveBeenCalled();
   });
 });

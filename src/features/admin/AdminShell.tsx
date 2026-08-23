@@ -7,7 +7,7 @@ import type {
 } from './admin.service';
 import { AdminCarriageCalls } from './carriages/AdminCarriageCalls';
 import { AdminCarriageDistribution } from './carriages/AdminCarriageDistribution';
-import { AdminGuestsPage } from './guests/AdminGuestsPage';
+import { AdminGuestsPage, type GuestReassignmentCommand } from './guests/AdminGuestsPage';
 import { AdminMkControl, type AdminMkControlDependencies } from './mortalKombat/AdminMkControl';
 import { AdminRegistrationToasts } from './notifications/AdminRegistrationToasts';
 import { enqueueNotices, type RegistrationNotice } from './notifications/notificationQueue';
@@ -30,7 +30,7 @@ import { EventHostRunbook } from './runbook/EventHostRunbook';
 export type AdminShellDependencies = {
   load: () => Promise<AdminDashboard>;
   deleteGuest: (guestId: string) => Promise<void>;
-  reassignGuest: (guestId: string, carriageId: string) => Promise<void>;
+  reassignGuest: (command: GuestReassignmentCommand) => Promise<void>;
   lockComposition: (eventId: string) => Promise<{ registrationOpen: boolean }>;
   applyCarriageDistribution?: (
     eventId: string,
@@ -106,15 +106,31 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
   const [syncWarning, setSyncWarning] = useState(false);
   const [locking, setLocking] = useState(false);
   const [notices, setNotices] = useState<RegistrationNotice[]>([]);
+  const guestGenerationsRef = useRef(new Map<string, number>());
+
+  const captureGuestGenerations = () => new Map(guestGenerationsRef.current);
 
   const storeDashboard = useCallback((next: AdminDashboard) => {
     dashboardRef.current = next;
     setDashboard(next);
   }, []);
 
-  const storeFreshDashboard = useCallback((fresh: AdminDashboard, announceNewGuests: boolean) => {
-    const nextNotices = announceNewGuests ? registrationNotices(dashboardRef.current, fresh) : [];
-    storeDashboard(fresh);
+  const storeFreshDashboard = useCallback((
+    fresh: AdminDashboard,
+    announceNewGuests: boolean,
+    startedGenerations: Map<string, number> = new Map(),
+  ) => {
+    const currentById = new Map(dashboardRef.current?.guests.map((guest) => [guest.id, guest]) ?? []);
+    const merged = {
+      ...fresh,
+      guests: fresh.guests.map((guest) => {
+        const currentGeneration = guestGenerationsRef.current.get(guest.id) ?? 0;
+        const startedGeneration = startedGenerations.get(guest.id) ?? 0;
+        return currentGeneration > startedGeneration ? (currentById.get(guest.id) ?? guest) : guest;
+      }),
+    };
+    const nextNotices = announceNewGuests ? registrationNotices(dashboardRef.current, merged) : [];
+    storeDashboard(merged);
     if (nextNotices.length > 0) {
       setNotices((current) => enqueueNotices(current, nextNotices));
     }
@@ -122,9 +138,10 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
   }, [storeDashboard]);
 
   const refreshBackground = useCallback(async () => {
+    const startedGenerations = captureGuestGenerations();
     try {
       const fresh = await dependencies.load();
-      storeFreshDashboard(fresh, true);
+      storeFreshDashboard(fresh, true, startedGenerations);
     } catch (refreshError) {
       if (isOwnerSessionExpired(refreshError) && dependencies.onSessionExpired) {
         dependencies.onSessionExpired();
@@ -208,11 +225,18 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
     });
   };
 
-  const handleReassign = async (guestId: string, carriageId: string) => {
-    await dependencies.reassignGuest(guestId, carriageId);
+  const handleReassign = async (command: GuestReassignmentCommand) => {
+    const { guestId, toCarriageId } = command;
+    guestGenerationsRef.current.set(guestId, (guestGenerationsRef.current.get(guestId) ?? 0) + 1);
+    try {
+      await dependencies.reassignGuest(command);
+    } catch (error) {
+      void refreshBackground();
+      throw error;
+    }
     setDashboard((current) => {
       if (!current) return current;
-      const carriage = current.carriages.find((item) => item.id === carriageId);
+      const carriage = current.carriages.find((item) => item.id === toCarriageId);
       if (!carriage) return current;
       const next = {
         ...current,
@@ -230,6 +254,7 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
       dashboardRef.current = next;
       return next;
     });
+    void refreshBackground();
   };
 
   const handleLockComposition = async () => {
