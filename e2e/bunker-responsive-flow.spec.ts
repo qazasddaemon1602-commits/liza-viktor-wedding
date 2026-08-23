@@ -1,0 +1,386 @@
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  expect,
+  test,
+  type Browser,
+  type Locator,
+  type Page,
+} from '@playwright/test';
+
+const OWNER_EMAIL = 'owner@wedding.test';
+const OWNER_PASSWORD = 'WeddingTest!2026';
+const EVENT_SLUG = 'liza-viktor';
+const DEVICE_STORAGE_KEY = 'lvw:device-key';
+const FORCE_OPEN_CONFIRMATION = 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО';
+
+const PHONE_VIEWPORTS = [
+  { width: 320, height: 720 },
+  { width: 390, height: 844 },
+] as const;
+
+const PROJECTOR_VIEWPORTS = [
+  { width: 1366, height: 768 },
+  { width: 1920, height: 1080 },
+] as const;
+
+type BunkerMissionState =
+  | 'MISSION_01'
+  | 'MISSION_02'
+  | 'MISSION_03'
+  | 'MISSION_04'
+  | 'MISSION_05'
+  | 'MISSION_06';
+
+type Dashboard = {
+  event: { id: string };
+  carriages: Array<{ id: string; enabled: boolean }>;
+};
+
+type BunkerFixture = {
+  owner: SupabaseClient;
+  eventId: string;
+  carriageIds: string[];
+  guestDeviceKey: string;
+};
+
+async function ownerClient(): Promise<SupabaseClient> {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error('E2E Supabase environment is missing');
+
+  const client = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { error } = await client.auth.signInWithPassword({
+    email: OWNER_EMAIL,
+    password: OWNER_PASSWORD,
+  });
+  if (error) throw error;
+  return client;
+}
+
+async function rpc(
+  client: SupabaseClient,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const { data, error } = await client.rpc(name, args);
+  if (error) throw error;
+  return data;
+}
+
+async function dashboard(client: SupabaseClient): Promise<Dashboard> {
+  const data = await rpc(client, 'owner_get_dashboard', { p_event_slug: EVENT_SLUG });
+  if (
+    typeof data !== 'object'
+    || data === null
+    || !('event' in data)
+    || !('carriages' in data)
+  ) {
+    throw new Error('Unexpected owner dashboard in Bunker responsive E2E');
+  }
+  return data as unknown as Dashboard;
+}
+
+async function resetRuntime(client: SupabaseClient, eventId: string) {
+  await rpc(client, 'owner_reset_event_test_data', {
+    p_event_id: eventId,
+    p_confirmation: 'СБРОСИТЬ',
+  });
+}
+
+async function prepareAuthoritativeBunker(): Promise<BunkerFixture> {
+  const owner = await ownerClient();
+  const initial = await dashboard(owner);
+  await resetRuntime(owner, initial.event.id);
+
+  const deviceKeys = Array.from({ length: 4 }, (_, index) => (
+    `lvw_bunker_responsive_${index + 1}`
+  ));
+  for (const [index, deviceKey] of deviceKeys.entries()) {
+    await rpc(owner, 'register_guest', {
+      p_event_slug: EVENT_SLUG,
+      p_device_key: deviceKey,
+      p_first_name: `Тест ${index + 1}`,
+      p_last_name: 'Бункер',
+      p_affiliation_type: 'common',
+      p_affiliation_detail: 'Responsive E2E',
+      p_confirm_duplicate: false,
+    });
+  }
+
+  await rpc(owner, 'owner_apply_carriage_distribution', {
+    p_event_id: initial.event.id,
+    p_carriage_count: 2,
+  });
+  const distributed = await dashboard(owner);
+  const carriageIds = distributed.carriages
+    .filter((carriage) => carriage.enabled)
+    .map((carriage) => carriage.id);
+  expect(carriageIds).toHaveLength(2);
+
+  await rpc(owner, 'owner_prepare_bunker_game', {
+    p_event_id: initial.event.id,
+    p_game_mode: 'production',
+  });
+  await rpc(owner, 'owner_distribute_bunker_characters', {
+    p_event_id: initial.event.id,
+  });
+  await rpc(owner, 'owner_start_bunker', {
+    p_event_id: initial.event.id,
+    p_duration_seconds: 1800,
+  });
+  await rpc(owner, 'owner_advance_bunker_game_state', {
+    p_event_id: initial.event.id,
+    p_next_state: 'MISSION_01',
+  });
+
+  return {
+    owner,
+    eventId: initial.event.id,
+    carriageIds,
+    guestDeviceKey: deviceKeys[0],
+  };
+}
+
+async function completeMission(fixture: BunkerFixture, missionState: BunkerMissionState) {
+  for (const carriageId of fixture.carriageIds) {
+    await rpc(fixture.owner, 'owner_force_complete_bunker_global_mission', {
+      p_event_id: fixture.eventId,
+      p_carriage_id: carriageId,
+      p_mission_state: missionState,
+    });
+  }
+}
+
+async function advance(fixture: BunkerFixture, nextState: string) {
+  await rpc(fixture.owner, 'owner_advance_bunker_game_state', {
+    p_event_id: fixture.eventId,
+    p_next_state: nextState,
+  });
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  const metrics = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    bodyWidth: document.body.scrollWidth,
+  }));
+  expect(metrics.documentWidth).toBeLessThanOrEqual(metrics.viewport + 1);
+  expect(metrics.bodyWidth).toBeLessThanOrEqual(metrics.viewport + 1);
+}
+
+async function expectInsideViewport(page: Page, locator: Locator) {
+  await expect(locator).toBeVisible();
+  const viewport = page.viewportSize();
+  const box = await locator.boundingBox();
+  expect(viewport).not.toBeNull();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(-1);
+  expect(box!.y).toBeGreaterThanOrEqual(-1);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width + 1);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height + 1);
+}
+
+async function expectActionClearOfFixedNavigation(page: Page, action: Locator) {
+  await action.scrollIntoViewIfNeeded();
+  await expectInsideViewport(page, action);
+  const actionBox = await action.boundingBox();
+  const navigationBox = await page.getByRole('navigation', { name: 'Разделы игры' }).boundingBox();
+  expect(actionBox).not.toBeNull();
+  expect(navigationBox).not.toBeNull();
+  expect(actionBox!.y + actionBox!.height).toBeLessThanOrEqual(navigationBox!.y - 1);
+  expect(actionBox!.height).toBeGreaterThanOrEqual(48);
+}
+
+async function openGuestPhone(
+  browser: Browser,
+  viewport: (typeof PHONE_VIEWPORTS)[number],
+  deviceKey: string,
+) {
+  const context = await browser.newContext({
+    viewport,
+    isMobile: true,
+    hasTouch: true,
+  });
+  await context.addInitScript(
+    ({ storageKey, value }) => localStorage.setItem(storageKey, value),
+    { storageKey: DEVICE_STORAGE_KEY, value: deviceKey },
+  );
+  const page = await context.newPage();
+  await page.goto('/join');
+  await expect(page.getByRole('region', { name: 'Игровой модуль Бункер' })).toBeVisible({ timeout: 15_000 });
+  return { context, page };
+}
+
+async function expectProjectorMission(
+  browser: Browser,
+  missionKey: 'M01' | 'M03' | 'M04' | 'M06' | 'FINAL',
+) {
+  for (const viewport of PROJECTOR_VIEWPORTS) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    try {
+      await page.goto('/screen');
+      const scene = page.getByRole('region', { name: 'Бункер · экран квеста' });
+      await expect(scene).toHaveAttribute('data-mission-key', missionKey, { timeout: 15_000 });
+      await expectInsideViewport(page, scene);
+      await expectInsideViewport(page, scene.locator('.bunker-quest-scene__header'));
+      await expectInsideViewport(page, scene.locator('.bunker-quest-scene__body'));
+      await expectInsideViewport(page, scene.locator('.bunker-quest-scene__story'));
+      await expectInsideViewport(page, scene.locator('footer'));
+      await expectNoHorizontalOverflow(page);
+    } finally {
+      await context.close();
+    }
+  }
+}
+
+test.describe.serial('authoritative Bunker layouts', () => {
+  test.describe.configure({ timeout: 120_000 });
+  let fixture: BunkerFixture;
+
+  test.beforeAll(async () => {
+    fixture = await prepareAuthoritativeBunker();
+  });
+
+  test.afterAll(async () => {
+    if (!fixture) return;
+    await resetRuntime(fixture.owner, fixture.eventId);
+    await fixture.owner.auth.signOut();
+  });
+
+  test('M01 intro fits both supported projector sizes', async ({ browser }) => {
+    await expectProjectorMission(browser, 'M01');
+  });
+
+  test('M03 stays actionable at 320x720 and 390x844 with large text and compact navigation', async ({ browser }) => {
+    await completeMission(fixture, 'MISSION_01');
+    await advance(fixture, 'BREAK');
+    await advance(fixture, 'MISSION_02');
+    await completeMission(fixture, 'MISSION_02');
+    await advance(fixture, 'MISSION_03');
+
+    await expectProjectorMission(browser, 'M03');
+
+    for (const viewport of PHONE_VIEWPORTS) {
+      const { context, page } = await openGuestPhone(browser, viewport, fixture.guestDeviceKey);
+      try {
+        const dashboardRoot = page.getByRole('region', { name: 'Игровой модуль Бункер' });
+        const openMission = page.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' });
+        const largeText = page.getByRole('button', { name: 'КРУПНЫЙ ТЕКСТ' });
+        const navigation = page.getByRole('navigation', { name: 'Разделы игры' });
+
+        await expect(openMission).toBeInViewport({ ratio: 0.75 });
+        await expectInsideViewport(page, largeText);
+        await expectInsideViewport(page, navigation);
+        await expect(navigation.getByRole('button')).toHaveCount(5);
+
+        await largeText.click();
+        await expect(dashboardRoot).toHaveAttribute('data-large-text', 'true');
+        const bodyFontSize = await page.locator('.bunker-player-dashboard__content p').first().evaluate(
+          (element) => Number.parseFloat(getComputedStyle(element).fontSize),
+        );
+        expect(bodyFontSize).toBeGreaterThanOrEqual(18);
+        for (const button of await navigation.getByRole('button').all()) {
+          const box = await button.boundingBox();
+          expect(box).not.toBeNull();
+          expect(box!.height).toBeGreaterThanOrEqual(52);
+        }
+
+        const overflow = navigation.getByRole('button', { name: 'ЕЩЁ', exact: true });
+        await overflow.click();
+        await expect(navigation.getByRole('button', { name: 'ПАССАЖИРЫ' })).toBeVisible();
+        await expect(navigation.getByRole('button', { name: 'АРХИВ' })).toBeVisible();
+        await navigation.getByRole('button', { name: 'СОСТОЯНИЕ' }).click();
+        await expect(page.getByRole('heading', { name: 'СОСТОЯНИЕ ВАГОНА' })).toBeVisible();
+        await expect(navigation.getByRole('button', { name: 'ЕЩЁ · СОСТОЯНИЕ' })).toBeFocused();
+
+        await page.reload();
+        await expect(dashboardRoot).toHaveAttribute('data-large-text', 'true', { timeout: 15_000 });
+        await page.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }).click();
+        await expect(page.getByRole('list', { name: 'Риски вагона' }).locator(':scope > li')).toHaveCount(5);
+        const availableRisk = page.getByRole('checkbox', { name: /Применить:/ }).first();
+        await expect(availableRisk).toBeVisible();
+        await availableRisk.check();
+        await expect(page.getByLabel('Предварительный итог').getByText(/Закрыто рисков: 1 из 5/)).toBeVisible();
+        const submit = page.getByRole('button', { name: 'ПРИМЕНИТЬ ЗАПАС' });
+        await expect(submit).toBeEnabled();
+        await expectActionClearOfFixedNavigation(page, submit);
+        await expectNoHorizontalOverflow(page);
+      } finally {
+        await context.close();
+      }
+    }
+  });
+
+  test('M03 to M04 replaces the live projector intro and M04 remains usable on both phones', async ({ browser }) => {
+    const replayContext = await browser.newContext({ viewport: PROJECTOR_VIEWPORTS[0] });
+    try {
+      const replayPage = await replayContext.newPage();
+      await replayPage.goto('/screen');
+      const replayScene = replayPage.getByRole('region', { name: 'Бункер · экран квеста' });
+      await expect(replayScene).toHaveAttribute('data-mission-key', 'M03', { timeout: 15_000 });
+      const previousScene = await replayScene.elementHandle();
+
+      await completeMission(fixture, 'MISSION_03');
+      await advance(fixture, 'MISSION_04');
+
+      await expect(replayScene).toHaveAttribute('data-mission-key', 'M04', { timeout: 15_000 });
+      expect(await previousScene!.evaluate((element) => element.isConnected)).toBe(false);
+      await expect(replayScene.getByRole('heading', { name: 'Межвагонная связь' })).toBeVisible();
+    } finally {
+      await replayContext.close();
+    }
+
+    await expectProjectorMission(browser, 'M04');
+
+    for (const viewport of PHONE_VIEWPORTS) {
+      const { context, page } = await openGuestPhone(browser, viewport, fixture.guestDeviceKey);
+      try {
+        await page.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }).click();
+        const stepper = page.getByRole('list', { name: 'Порядок межвагонного обмена' });
+        await expect(stepper.locator(':scope > li')).toHaveCount(4);
+        await expect(stepper.getByText('ШАГ 1')).toBeVisible();
+        await expect(stepper.getByText('ШАГ 4')).toBeVisible();
+        await page.getByLabel('Сообщение партнёрам').fill(
+          'Сектор 04: тоннель и маршрут проверены, общий канал связи восстановлен.',
+        );
+        const submit = page.getByRole('button', { name: 'ОТПРАВИТЬ СООБЩЕНИЕ' });
+        await expect(submit).toBeEnabled();
+        await expectActionClearOfFixedNavigation(page, submit);
+        await expectNoHorizontalOverflow(page);
+      } finally {
+        await context.close();
+      }
+    }
+  });
+
+  test('M06 and final retain complete projector compositions at both exact sizes', async ({ browser }) => {
+    await completeMission(fixture, 'MISSION_04');
+    await advance(fixture, 'MISSION_05');
+    await completeMission(fixture, 'MISSION_05');
+    await advance(fixture, 'MISSION_06');
+    await expectProjectorMission(browser, 'M06');
+
+    await completeMission(fixture, 'MISSION_06');
+    await advance(fixture, 'STORY_BUNKER');
+    await advance(fixture, 'BREAK_BEFORE_FINAL');
+    await advance(fixture, 'FINAL_30');
+    await expectProjectorMission(browser, 'FINAL');
+
+    await rpc(fixture.owner, 'owner_force_open_bunker', {
+      p_event_id: fixture.eventId,
+      p_reason: 'Проверка финального экрана E2E',
+      p_confirmation: FORCE_OPEN_CONFIRMATION,
+    });
+    const context = await browser.newContext({ viewport: PROJECTOR_VIEWPORTS[1] });
+    const page = await context.newPage();
+    await page.goto('/screen');
+    const scene = page.getByRole('region', { name: 'Бункер · экран квеста' });
+    await expect(scene).toHaveAttribute('data-phase', 'completed', { timeout: 15_000 });
+    await expect(scene.locator('.bunker-quest-scene__unlock-state strong')).toHaveText('ДОСТУП ПОЛУЧЕН');
+    await expectInsideViewport(page, scene);
+    await context.close();
+  });
+});
