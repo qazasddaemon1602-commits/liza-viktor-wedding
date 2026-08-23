@@ -960,7 +960,10 @@
     width: 100%;
   }
 
-  .bunker-player-dashboard .bunker-mission-actions > button:last-child {
+  .bunker-player-dashboard .bunker-mission-actions .bunker-global-action > button:last-child,
+  .bunker-player-dashboard .bunker-mission-actions .bunker-mission-actions__form > button:last-child,
+  .bunker-player-dashboard .bunker-mission-actions .bunker-mission-actions__answer > button:last-child,
+  .bunker-player-dashboard .bunker-mission-actions .bunker-mission-actions__options > button:last-child {
     scroll-margin-block-end: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom) + 0.75rem);
   }
 

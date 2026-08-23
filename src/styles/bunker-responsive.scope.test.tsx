@@ -37,6 +37,15 @@ function ruleBody(css: string, selector: string): string {
   return matches.at(-1)?.[1] ?? '';
 }
 
+function ruleForDeclaration(css: string, declaration: string): { selector: string; body: string } {
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  const rule = rules.find(([, selector, body]) => (
+    selector.includes('.bunker-mission-actions') && body.includes(declaration)
+  ));
+  expect(rule, `missing CSS rule containing ${declaration}`).toBeDefined();
+  return { selector: rule?.[1].trim() ?? '', body: rule?.[2] ?? '' };
+}
+
 describe('Bunker responsive layout contract', () => {
   it('keeps the active TV scene inside one landscape viewport', () => {
     const headerTitle = ruleBody(questStyle, '.bunker-quest-scene__header h1');
@@ -105,15 +114,36 @@ describe('Bunker responsive layout contract', () => {
     expect(largeButton).toContain('box-sizing: border-box');
   });
 
-  it('reserves fixed-navigation clearance when a mobile mission action is scrolled into view', () => {
-    const action = ruleBody(
-      playerStyle,
-      '.bunker-player-dashboard .bunker-mission-actions > button:last-child',
+  it('reserves fixed-navigation clearance for the actual M03, M04, and fallback action DOM', () => {
+    const declaration = 'scroll-margin-block-end: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom) + 0.75rem)';
+    const actionRule = ruleForDeclaration(playerStyle, declaration);
+
+    render(
+      <main className="bunker-player-dashboard">
+        <section className="bunker-mission-actions">
+          <div className="bunker-global-action bunker-global-action--selection">
+            <button data-testid="m03-submit" type="button">Применить запас</button>
+          </div>
+          <div className="bunker-global-action bunker-m04-exchange">
+            <button data-testid="m04-submit" type="button">Отправить сообщение</button>
+          </div>
+          <form className="bunker-mission-actions__form">
+            <button data-testid="final-submit" type="submit">Подтвердить</button>
+          </form>
+          <div className="bunker-mission-actions__answer">
+            <button data-testid="answer-submit" type="button">Ответить</button>
+          </div>
+          <div className="bunker-mission-actions__options">
+            <button data-testid="option-submit" type="button">Выбрать</button>
+          </div>
+        </section>
+      </main>,
     );
 
-    expect(action).toContain(
-      'scroll-margin-block-end: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom) + 0.75rem)',
-    );
+    expect(actionRule.body).toContain(declaration);
+    for (const testId of ['m03-submit', 'm04-submit', 'final-submit', 'answer-submit', 'option-submit']) {
+      expect(screen.getByTestId(testId).matches(actionRule.selector), `${testId} must match ${actionRule.selector}`).toBe(true);
+    }
   });
 
   it('lets M03 copy and controls reflow inside a narrow large-text card', () => {
