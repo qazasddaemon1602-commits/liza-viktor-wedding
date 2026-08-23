@@ -23,6 +23,7 @@ import {
 } from './quiz/AdminCouplePreanswersPanel';
 import { AdminFinalFivePanel, type AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import { AdminQuizPanel, type AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
+import { EventHostRunbook } from './runbook/EventHostRunbook';
 
 export type AdminShellDependencies = {
   load: () => Promise<AdminDashboard>;
@@ -300,6 +301,8 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
         </div>
       )}
 
+      <EventHostRunbook dashboard={dashboard} />
+
       <AdminRehearsalPanel
         eventId={dashboard.event.id}
         currentModule={dashboard.state?.currentModule ?? 'idle'}
@@ -312,7 +315,7 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
         couplePreanswers={dependencies.couplePreanswers}
       />
 
-      <section className="admin-operations" aria-label="Управление составом">
+      <section id="admin-registration-module" className="admin-operations" aria-label="Управление составом">
         <AdminCarriageDistribution
           guestCount={dashboard.guests.length}
           compositionLocked={dashboard.event.compositionLocked}
@@ -333,25 +336,33 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
       )}
 
       {dependencies.premiere && (
-        <AdminPremiereControl
-          eventId={dashboard.event.id}
-          registeredCount={dashboard.guests.length}
-          expectedGuestCount={dashboard.event.expectedGuestCount}
-          lastRegisteredAt={latestRegistrationAt(dashboard)}
-          dependencies={dependencies.premiere}
-        />
+        <div id="admin-premiere-module" className="admin-module-anchor">
+          <AdminPremiereControl
+            eventId={dashboard.event.id}
+            registeredCount={dashboard.guests.length}
+            expectedGuestCount={dashboard.event.expectedGuestCount}
+            lastRegisteredAt={latestRegistrationAt(dashboard)}
+            dependencies={dependencies.premiere}
+          />
+        </div>
       )}
 
       {dependencies.quiz && (
-        <AdminQuizPanel eventId={dashboard.event.id} dependencies={dependencies.quiz} />
+        <div id="admin-quiz-module" className="admin-module-anchor">
+          <AdminQuizPanel eventId={dashboard.event.id} dependencies={dependencies.quiz} />
+        </div>
       )}
 
       {dependencies.finalFive && (
-        <AdminFinalFivePanel eventId={dashboard.event.id} dependencies={dependencies.finalFive} />
+        <div id="admin-final-five-module" className="admin-module-anchor">
+          <AdminFinalFivePanel eventId={dashboard.event.id} dependencies={dependencies.finalFive} />
+        </div>
       )}
 
       {dependencies.mortalKombat && (
-        <AdminMkControl eventId={dashboard.event.id} dependencies={dependencies.mortalKombat} />
+        <div id="admin-mk-module" className="admin-module-anchor">
+          <AdminMkControl eventId={dashboard.event.id} dependencies={dependencies.mortalKombat} />
+        </div>
       )}
 
       {dependencies.sendCarriageCall && dependencies.clearCarriageCall && (
