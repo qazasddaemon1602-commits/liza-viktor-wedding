@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
 import { BunkerScreenGuard } from '../features/bunker/BunkerScreenGuard';
+import { GuestReactionSurface } from '../features/live/GuestReactionSurface';
+import { WeddingLiveProjectorLayer } from '../features/live/WeddingLiveProjectorLayer';
 import { MortalKombatPage } from '../features/mortalKombat/MortalKombatPage';
 import { MkScreenPage } from '../features/mortalKombat/MkScreenPage';
 import { CouplePreanswersPage } from '../features/quiz/CouplePreanswersPage';
@@ -35,15 +37,23 @@ function currentJoinUrl(): string {
   return new URL('/join', window.location.origin).toString();
 }
 
+function guestLive(element: ReactNode) {
+  return <GuestReactionSurface eventSlug="liza-viktor">{element}</GuestReactionSurface>;
+}
+
 function projector(element: ReactNode) {
-  return <BunkerScreenGuard eventSlug="liza-viktor">{element}</BunkerScreenGuard>;
+  return (
+    <WeddingLiveProjectorLayer eventSlug="liza-viktor">
+      <BunkerScreenGuard eventSlug="liza-viktor">{element}</BunkerScreenGuard>
+    </WeddingLiveProjectorLayer>
+  );
 }
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<WeddingHomePage />} />
-      <Route path="/join" element={<GuestJoinPage />} />
+      <Route path="/join" element={guestLive(<GuestJoinPage />)} />
       <Route path="/play" element={<GuestQuizPage />} />
       <Route path="/couple-preanswers" element={<CouplePreanswersPage />} />
       <Route path="/liza" element={<FinalFiveRolePage role="liza" />} />
@@ -52,7 +62,7 @@ export function AppRoutes() {
       <Route path="/screen" element={projector(<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />)} />
       <Route path="/screen/connect" element={<Navigate to={routeRedirects['/screen/connect']} replace />} />
       <Route path="/premiere" element={<Navigate to={routeRedirects['/premiere']} replace />} />
-      <Route path="/mortal-kombat" element={<MortalKombatPage eventSlug="liza-viktor" />} />
+      <Route path="/mortal-kombat" element={guestLive(<MortalKombatPage eventSlug="liza-viktor" />)} />
       <Route path="/mortal-kombat/screen" element={projector(<MkScreenPage eventSlug="liza-viktor" />)} />
       <Route path="*" element={<Navigate to="/join" replace />} />
     </Routes>

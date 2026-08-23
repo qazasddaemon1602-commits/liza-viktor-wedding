@@ -32,6 +32,7 @@ import './styles/bunker-v2-projector.css';
 import './styles/mobile-hardening.css';
 import './styles/bunker-accessibility.css';
 import './styles/bunker-projector-contrast.css';
+import './styles/wedding-live.css';
 
 const root = document.getElementById('root');
 
