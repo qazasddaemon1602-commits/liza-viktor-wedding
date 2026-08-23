@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MkTournamentProjection } from './mk.types';
 import { MortalKombatPage, type MortalKombatPageDependencies } from './MortalKombatPage';
 
@@ -31,6 +31,23 @@ const joinedState: ActiveProjection = {
   ownRegistrationStatus: 'active',
 };
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function settle() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 function dependencies(overrides: Partial<MortalKombatPageDependencies> = {}): MortalKombatPageDependencies {
   return {
     load: vi.fn().mockResolvedValue(openState),
@@ -47,6 +64,168 @@ function dependencies(overrides: Partial<MortalKombatPageDependencies> = {}): Mo
 }
 
 describe('MortalKombatPage', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('recovers from an initial loading failure without remounting', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn()
+      .mockRejectedValueOnce(new Error('network unavailable'))
+      .mockResolvedValueOnce(openState);
+
+    render(<MortalKombatPage dependencies={dependencies({ load })} />);
+
+    await settle();
+    expect(screen.getByRole('heading', { name: 'АРЕНА ПОКА НЕДОСТУПНА' })).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).toBeInTheDocument();
+  });
+
+  it('lets a guest retry a full-page loading failure immediately', async () => {
+    const user = userEvent.setup();
+    const load = vi.fn()
+      .mockRejectedValueOnce(new Error('network unavailable'))
+      .mockResolvedValueOnce(openState);
+
+    render(<MortalKombatPage dependencies={dependencies({ load })} />);
+
+    expect(await screen.findByRole('heading', { name: 'АРЕНА ПОКА НЕДОСТУПНА' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'ПОВТОРИТЬ' }));
+
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).toBeInTheDocument();
+  });
+
+  it('polls an idle arena until registration opens when realtime is missed', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn()
+      .mockResolvedValueOnce({ status: 'idle' } satisfies MkTournamentProjection)
+      .mockResolvedValueOnce(openState);
+
+    render(<MortalKombatPage dependencies={dependencies({ load })} />);
+
+    await settle();
+    expect(screen.getByRole('heading', { name: 'РЕГИСТРАЦИЯ ЕЩЁ НЕ ОТКРЫТА' })).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).toBeInTheDocument();
+  });
+
+  it('polls an active arena every ten seconds to converge missed updates', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn()
+      .mockResolvedValueOnce(openState)
+      .mockResolvedValueOnce(joinedState);
+
+    render(<MortalKombatPage dependencies={dependencies({ load })} />);
+
+    await settle();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9_999);
+    });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
+  });
+
+  it('deduplicates refreshes while a tournament load is in flight', async () => {
+    const pendingLoad = deferred<MkTournamentProjection>();
+    const load = vi.fn().mockReturnValue(pendingLoad.promise);
+    let refresh: (() => void) | undefined;
+
+    render(
+      <MortalKombatPage
+        dependencies={dependencies({
+          load,
+          subscribeToRefresh: (callback) => {
+            refresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    await act(async () => {
+      refresh?.();
+      refresh?.();
+      await Promise.resolve();
+    });
+
+    expect(load).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      pendingLoad.resolve(openState);
+      await Promise.resolve();
+    });
+  });
+
+  it('cancels the scheduled reload and realtime subscription on unmount', async () => {
+    vi.useFakeTimers();
+    const unsubscribe = vi.fn();
+
+    const { unmount } = render(
+      <MortalKombatPage
+        dependencies={dependencies({
+          load: vi.fn().mockResolvedValue({ status: 'idle' }),
+          subscribeToRefresh: () => unsubscribe,
+        })}
+      />,
+    );
+
+    await settle();
+    expect(screen.getByRole('heading', { name: 'РЕГИСТРАЦИЯ ЕЩЁ НЕ ОТКРЫТА' })).toBeInTheDocument();
+    expect(vi.getTimerCount()).toBe(1);
+
+    unmount();
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps the last valid tournament state visible after a later load error', async () => {
+    let refresh: (() => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce(openState)
+      .mockRejectedValueOnce(new Error('network unavailable'));
+
+    render(
+      <MortalKombatPage
+        dependencies={dependencies({
+          load,
+          subscribeToRefresh: (callback) => {
+            refresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    expect(await screen.findByText('9 / 40')).toBeInTheDocument();
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('heading', { name: 'АРЕНА ПОСЛЕДНИЙ КРУГ' })).toBeInTheDocument();
+    expect(screen.getByText('9 / 40')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить турнир. Проверьте связь.');
+  });
+
   it('uses the 40-player tournament limit instead of a stale event-wide guest count', async () => {
     const limitedState: ActiveProjection = {
       ...openState,

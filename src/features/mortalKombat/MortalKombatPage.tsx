@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { broadcastMkRefresh, subscribeToMkRefresh, type MkRealtimeClient } from './mk.realtime';
@@ -56,13 +56,33 @@ export function MortalKombatPage({
   const [state, setState] = useState<MkTournamentProjection | null>(null);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
+  const stateRef = useRef<MkTournamentProjection | null>(null);
+  const reloadRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     let active = true;
+    let loading = false;
+    let reloadTimer: number | undefined;
+
+    const scheduleReload = () => {
+      if (!active) return;
+      const delay = !stateRef.current || !isActiveTournament(stateRef.current)
+        ? 2_000
+        : 10_000;
+      reloadTimer = window.setTimeout(reload, delay);
+    };
+
     const reload = () => {
+      if (loading) return;
+      if (reloadTimer !== undefined) {
+        window.clearTimeout(reloadTimer);
+        reloadTimer = undefined;
+      }
+      loading = true;
       void deps.load()
         .then((next) => {
           if (!active) return;
+          stateRef.current = next;
           setState(next);
           setError('');
         })
@@ -74,13 +94,20 @@ export function MortalKombatPage({
           setError(code === '42501'
             ? 'Сначала зарегистрируйтесь гостем по QR-коду.'
             : 'Не удалось загрузить турнир. Проверьте связь.');
+        })
+        .finally(() => {
+          loading = false;
+          scheduleReload();
         });
     };
 
+    reloadRef.current = reload;
     reload();
     const unsubscribe = deps.subscribeToRefresh?.(reload);
     return () => {
       active = false;
+      reloadRef.current = () => undefined;
+      if (reloadTimer !== undefined) window.clearTimeout(reloadTimer);
       unsubscribe?.();
     };
   }, [deps]);
@@ -122,6 +149,16 @@ export function MortalKombatPage({
           <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
           <h1>АРЕНА ПОКА НЕДОСТУПНА</h1>
           <p>{error}</p>
+          <button
+            className="mk-primary-button"
+            type="button"
+            onClick={() => {
+              setError('');
+              reloadRef.current();
+            }}
+          >
+            ПОВТОРИТЬ
+          </button>
           <a className="mk-primary-button" href="/join">ПЕРЕЙТИ К РЕГИСТРАЦИИ</a>
         </section>
       </main>
