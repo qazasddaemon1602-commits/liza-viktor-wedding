@@ -271,7 +271,6 @@ async function openGuestPhone(
 async function expectProjectorMission(
   browser: Browser,
   missionKey: 'M01' | 'M03' | 'M04' | 'M06' | 'FINAL',
-  options: { unlocked?: boolean } = {},
 ) {
   for (const viewport of PROJECTOR_VIEWPORTS) {
     const context = await browser.newContext({ viewport });
@@ -309,15 +308,9 @@ async function expectProjectorMission(
           await expectInsideViewport(page, card);
           await expectInsideContainer(card, finalPanel);
         }
-        if (options.unlocked) {
-          const unlock = finalPanel.locator('.bunker-quest-scene__unlock-state');
-          await expect(unlock.locator('strong')).toHaveText('ДОСТУП ПОЛУЧЕН');
-          await expect(unlock.locator('span')).toHaveText('ОЖИДАЕМ ПРИБЫТИЕ');
-          await expectInsideViewport(page, unlock);
-          await expectInsideContainer(unlock, finalPanel);
-        } else {
-          await expect(finalPanel.locator('.bunker-quest-scene__unlock-state')).toHaveCount(0);
-        }
+        await expect(scene).toHaveAttribute('data-phase', 'final');
+        await expect(scene.locator('.bunker-quest-scene__header > strong')).not.toHaveText('00:00');
+        await expect(finalPanel.locator('.bunker-quest-scene__unlock-state')).toHaveCount(0);
       } else {
         const missionPanel = scene.locator('.bunker-quest-scene__mission');
         await expectInsideViewport(page, missionPanel);
@@ -332,6 +325,61 @@ async function expectProjectorMission(
         }
       }
       await expectInsideViewport(page, scene.locator('footer'));
+      await expectNoHorizontalOverflow(page);
+    } finally {
+      await context.close();
+    }
+  }
+}
+
+async function expectProjectorArrival(browser: Browser) {
+  for (const viewport of PROJECTOR_VIEWPORTS) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    try {
+      await page.goto('/screen');
+      const scene = page.getByRole('region', { name: 'Бункер · экран квеста' });
+      await expect(scene).toHaveAttribute('data-phase', 'completed', { timeout: 15_000 });
+      await expectInsideViewport(page, scene);
+
+      const header = scene.locator('.bunker-quest-scene__header');
+      const body = scene.locator('.bunker-quest-scene__body');
+      const finalPanel = scene.locator('.bunker-quest-scene__final');
+      const footer = scene.locator('footer');
+      const arrivalHeading = scene.getByRole('heading', {
+        level: 1,
+        name: 'ПРИБЫТИЕ · ДОСТУП РАЗРЕШЁН',
+      });
+      const timer = header.locator(':scope > strong');
+      await expect(arrivalHeading).toBeVisible();
+      await expect(timer).toHaveText('00:00');
+      await expect(scene.getByTestId('bunker-scene-backdrop').locator('img')).toHaveAttribute(
+        'src',
+        '/images/bunker/bunker-door-open.png',
+      );
+
+      for (const region of [header, body, finalPanel, footer]) {
+        await expectInsideViewport(page, region);
+      }
+      await expectInsideViewport(page, arrivalHeading);
+      await expectInsideContainer(arrivalHeading, header);
+      await expectInsideViewport(page, timer);
+      await expectInsideContainer(timer, header);
+      await expectInsideContainer(finalPanel, body);
+      await expect(finalPanel.locator('.bunker-quest-scene__progress-heading span')).toHaveText(
+        'КОНТУР ФИНАЛЬНОГО ДОСТУПА',
+      );
+      await expect(finalPanel.locator('.bunker-quest-scene__unlock-state')).toHaveCount(0);
+
+      const slots = finalPanel.getByLabel('Активные вагоны');
+      await expectInsideViewport(page, slots);
+      await expectInsideContainer(slots, finalPanel);
+      const cards = slots.locator(':scope > article');
+      expect(await cards.count()).toBeGreaterThan(0);
+      for (const card of await cards.all()) {
+        await expectInsideViewport(page, card);
+        await expectInsideContainer(card, finalPanel);
+      }
       await expectNoHorizontalOverflow(page);
     } finally {
       await context.close();
@@ -603,6 +651,6 @@ test.describe.serial('authoritative Bunker layouts', () => {
       p_reason: 'Проверка финального экрана E2E',
       p_confirmation: FORCE_OPEN_CONFIRMATION,
     });
-    await expectProjectorMission(browser, 'FINAL', { unlocked: true });
+    await expectProjectorArrival(browser);
   });
 });
