@@ -74,7 +74,38 @@ Result: **1 failed, 5 passed** before the publisher-only cached channel was impl
 
 The current worktree does not have the local Supabase/Postgres runtime or a configured live browser stack. Therefore these commands were deliberately not reported as passed:
 
-1. `supabase test db` — must execute the updated 84-assertion `supabase/tests/bunker_global_mission_progress.sql` suite against a clean migrated database. The repository's `.github/workflows/db-tests.yml` runs this gate.
+1. `supabase test db` — must execute the updated 86-assertion `supabase/tests/bunker_global_mission_progress.sql` suite against a clean migrated database. The repository's `.github/workflows/db-tests.yml` runs this gate.
 2. `npm run e2e` — must execute the 32 discovered Chromium tests with the seeded local Supabase environment, including the new cross-tab guest-to-TV scenario. The repository's `.github/workflows/e2e.yml` runs this gate.
 
 No production database, Lovable session, or remote deployment was mutated in this fix wave.
+
+## Compatibility addendum: M04 rolling deployment
+
+The final scoped re-review identified one release-order hazard: an already-open old phone tab can still submit `transferItemKey` while the new frontend and edited historical migration use `transferLotId`.
+
+### Fix and safety rule
+
+- Added the independent forward migration `20260823034500_bunker_m04_transfer_compat.sql`, ordered after the original M04 migration and before character abilities. It uses only `create or replace function`, so it does not depend on replaying or renaming an already-recorded migration.
+- The server temporarily accepts either the new exact `transferLotId` or the legacy `transferItemKey`.
+- Exact lot ID has priority. If a payload contains both fields, the locked lot's server item key must match the legacy key or the request fails with `invalid Mission 04 transfer item mismatch`.
+- A legacy item key resolves deterministically to the earliest available matching lot for the authoritative event, run, and source wagon, ordered by `acquired_at, id`, and locks that lot before transfer.
+- Quantity, item key, labels, destination label, and summary remain server-derived. The new requirements and frontend remain strict per-lot UI and do not expose the legacy field in TypeScript.
+- The pgTAP plan is now 86 assertions and covers a successful old-tab call, an exact-lot call, consistent dual fields, a dual-field mismatch, unavailable/foreign lots, nonpartner destinations, server-resolved lot persistence, and idempotency.
+
+### Required rollout order
+
+1. Deploy/apply database migrations first, through `20260823034500_bunker_m04_transfer_compat.sql` (and later migrations).
+2. Run `supabase test db` in the database-test workflow.
+3. Only after the DB gate is green, merge/deploy the frontend commit that sends `transferLotId`.
+4. Keep the compatibility migration during the event release window so already-open old tabs continue working. Removal, if desired later, must be a separate forward migration after old clients are no longer possible.
+
+### Addendum RED/GREEN
+
+- RED: `npm test -- --run src/features/bunker/bunkerM04Migration.test.ts` — **2 failed, 2 passed** while the required forward migration was absent.
+- Focused GREEN: M04 migration, service, and UI suites — **3 files passed, 21 tests passed**.
+- TypeScript: `npm run typecheck` — **passed**.
+- Full Vitest: **170 files passed, 927 tests passed**.
+- Production build: **passed**, with only the previously noted Vite chunk-size advisory.
+- Playwright discovery: **32 tests in 7 files**.
+- Diff hygiene: **passed**, with only Windows line-ending notices.
+- Still deferred to the configured CI/runtime gates: executable `supabase test db` and `npm run e2e`.

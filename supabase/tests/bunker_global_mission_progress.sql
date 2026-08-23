@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(84);
+select plan(86);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -605,12 +605,13 @@ select throws_ok(
       'transferLotId', (select item.id::text from public.bunker_inventory_lots item
         where item.carriage_id = '00000000-0000-4000-8000-000000000911'
           and item.item_key = 'tools' limit 1),
+      'transferItemKey', 'tools',
       'transferToWagonId', '00000000-0000-4000-8000-000000000913'
     )
   ) $$,
   '22023',
   'invalid Mission 04 transfer destination',
-  'Mission 04 rejects a transfer to a wagon outside the planned partner group'
+  'Mission 04 accepts consistent dual transfer fields but rejects a nonpartner wagon'
 );
 select throws_ok(
   $$ select public.submit_guest_bunker_global_mission(
@@ -627,6 +628,23 @@ select throws_ok(
   '22023',
   'invalid Mission 04 inventory item',
   'Mission 04 rejects a valid lot id owned by another wagon'
+);
+select throws_ok(
+  $$ select public.submit_guest_bunker_global_mission(
+    'global-mission-runtime', 'global-device-1', 'MISSION_04',
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000912'),
+      'transferLotId', (select item.id::text from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000911'
+          and item.item_key = 'tools' limit 1),
+      'transferItemKey', 'water',
+      'transferToWagonId', '00000000-0000-4000-8000-000000000912'
+    )
+  ) $$,
+  '22023',
+  'invalid Mission 04 transfer item mismatch',
+  'Mission 04 rejects mismatched lot and legacy item-key fields'
 );
 select is(
   public.submit_guest_bunker_global_mission(
@@ -742,10 +760,28 @@ select is(
 select is(
   public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-2', 'MISSION_04',
-    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000911"]}'::jsonb
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000911'),
+      'transferItemKey', (select item.item_key from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000912'
+          and item.status = 'available'
+        order by item.acquired_at, item.id limit 1),
+      'transferToWagonId', '00000000-0000-4000-8000-000000000911'
+    )
   )->>'status',
   'completed',
-  'Mission 04 keeps the item transfer optional for a valid exchange message'
+  'Mission 04 accepts an old phone tab item-key transfer during rollout'
+);
+select ok(
+  nullif((
+    select progress.submitted_payload->>'transferLotId'
+    from public.bunker_global_mission_progress progress
+    where progress.event_id = '00000000-0000-4000-8000-000000000902'
+      and progress.carriage_id = '00000000-0000-4000-8000-000000000912'
+      and progress.mission_state = 'MISSION_04'
+  ), '') is not null,
+  'Mission 04 stores the server-resolved lot id for a legacy item-key transfer'
 );
 select public.owner_advance_bunker_game_state(
   '00000000-0000-4000-8000-000000000902', 'MISSION_05'
