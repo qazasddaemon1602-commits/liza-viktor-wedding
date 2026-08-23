@@ -29,9 +29,9 @@ const activeRuntime = {
       applicable: true,
       code: 'ability_available',
       missionState: 'MISSION_03',
-      title: 'Ремонтный доступ',
       effectKind: 'technical_door_unlocked',
-      effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+      effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+      effectDescription: 'Технический отсек будет разблокирован без расходования инструментов.',
     },
   },
   passengers: [], inventory: [], archive: [],
@@ -99,9 +99,9 @@ describe('Bunker runtime response', () => {
           applicable: false,
           code: 'ability_not_applicable',
           missionState: 'MISSION_01',
-          title: 'Сейчас способность недоступна',
           effectKind: null,
-          effectPreview: 'В первом задании способности отключены.',
+          effectLabel: 'НЕДОСТУПНА В ЗАДАНИИ 1',
+          effectDescription: 'В первом задании способности отключены.',
         },
       },
       currentMission: {
@@ -146,9 +146,9 @@ describe('Bunker runtime response', () => {
           applicable: false,
           code: 'ability_not_applicable',
           missionState: 'BREAK',
-          title: 'Сейчас способность недоступна',
           effectKind: null,
-          effectPreview: 'Дождитесь следующего задания.',
+          effectLabel: 'НЕДОСТУПНА В ЭТОМ ЭТАПЕ',
+          effectDescription: 'Дождитесь следующего задания.',
         },
       },
       currentMission: null,
@@ -186,6 +186,19 @@ describe('Bunker runtime response', () => {
       },
     })).toThrow(/ability action/i);
   });
+
+  it('rejects an unknown server ability effect kind', () => {
+    expect(() => parseGuestBunkerRuntime({
+      ...activeRuntime,
+      character: {
+        ...activeRuntime.character,
+        abilityAction: {
+          ...activeRuntime.character.abilityAction,
+          effectKind: 'drop_table',
+        },
+      },
+    })).toThrow(/ability action/i);
+  });
 });
 
 describe('Bunker character ability RPC', () => {
@@ -199,7 +212,8 @@ describe('Bunker character ability RPC', () => {
         missionState: 'MISSION_03',
         abilityKey: 'mechanical_fix',
         effectKind: 'technical_door_unlocked',
-        effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+        effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+        effectDescription: 'Технический отсек будет разблокирован без расходования инструментов.',
         resultCopy: 'Механик разблокировал технический отсек вагона.',
         abilityUsesRemaining: 0,
       },
@@ -234,9 +248,36 @@ describe('Bunker character ability RPC', () => {
         missionState: 'MISSION_03',
         abilityKey: 'mechanical_fix',
         effectKind: 'technical_door_unlocked',
-        effectPreview: 'Технический отсек будет разблокирован.',
+        effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+        effectDescription: 'Технический отсек будет разблокирован.',
         resultCopy: 'Технический отсек разблокирован.',
         abilityUsesRemaining: -1,
+      },
+      error: null,
+    });
+
+    await expect(useGuestBunkerAbility(
+      { rpc },
+      'liza-viktor',
+      'device-key-123',
+      '00000000-0000-4000-8000-000000000951',
+    )).rejects.toThrow(/ability result/i);
+  });
+
+  it('rejects an unknown result effect kind', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: {
+        status: 'used',
+        changed: true,
+        idempotent: false,
+        clientActionId: '00000000-0000-4000-8000-000000000951',
+        missionState: 'MISSION_03',
+        abilityKey: 'mechanical_fix',
+        effectKind: 'drop_table',
+        effectLabel: 'НЕИЗВЕСТНЫЙ ЭФФЕКТ',
+        effectDescription: 'Этот эффект не входит в серверный контракт.',
+        resultCopy: 'Неизвестный результат.',
+        abilityUsesRemaining: 0,
       },
       error: null,
     });

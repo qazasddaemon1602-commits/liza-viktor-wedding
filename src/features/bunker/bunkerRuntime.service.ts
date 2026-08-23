@@ -32,13 +32,22 @@ export type GuestBunkerInventoryItem = {
   sourceLotId?: string | null;
 };
 
+export type GuestBunkerAbilityEffectKind =
+  | 'power_stable'
+  | 'technical_door_unlocked'
+  | 'water_stable'
+  | 'communication_boost'
+  | 'route_hint'
+  | 'sector_hint'
+  | 'mission_clue';
+
 export type GuestBunkerAbilityAction = {
   applicable: boolean;
   code: 'ability_available' | 'ability_not_applicable';
   missionState: BunkerGlobalGameState;
-  title: string;
-  effectKind: string | null;
-  effectPreview: string;
+  effectKind: GuestBunkerAbilityEffectKind | null;
+  effectLabel: string;
+  effectDescription: string;
 };
 
 export type GuestBunkerAbilityResult = {
@@ -48,8 +57,9 @@ export type GuestBunkerAbilityResult = {
   clientActionId: string;
   missionState: BunkerGlobalGameState;
   abilityKey: string;
-  effectKind: string;
-  effectPreview: string;
+  effectKind: GuestBunkerAbilityEffectKind;
+  effectLabel: string;
+  effectDescription: string;
   resultCopy: string;
   abilityUsesRemaining: number;
 };
@@ -82,6 +92,15 @@ export type ActiveGuestBunkerRuntime = {
 export type GuestBunkerRuntime = IdleRuntime | ActiveGuestBunkerRuntime;
 
 const GAME_STATES = new Set<BunkerGlobalGameState>(BUNKER_GLOBAL_GAME_STATES);
+const ABILITY_EFFECT_KINDS = new Set<GuestBunkerAbilityEffectKind>([
+  'power_stable',
+  'technical_door_unlocked',
+  'water_stable',
+  'communication_boost',
+  'route_hint',
+  'sector_hint',
+  'mission_clue',
+]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function object(value: unknown, label: string): Record<string, unknown> {
@@ -153,7 +172,8 @@ function abilityAction(
     || (code !== 'ability_available' && code !== 'ability_not_applicable')
     || action.missionState !== authoritativeState
     || (applicable && (code !== 'ability_available'
-      || typeof effectKind !== 'string' || !effectKind.trim()))
+      || typeof effectKind !== 'string'
+      || !ABILITY_EFFECT_KINDS.has(effectKind as GuestBunkerAbilityEffectKind)))
     || (!applicable && (code !== 'ability_not_applicable' || effectKind !== null))) {
     throw new Error('Unexpected Bunker ability action');
   }
@@ -161,9 +181,9 @@ function abilityAction(
     applicable,
     code,
     missionState: authoritativeState,
-    title: text(action.title, 'ability action title'),
-    effectKind: effectKind as string | null,
-    effectPreview: text(action.effectPreview, 'ability action preview'),
+    effectKind: effectKind as GuestBunkerAbilityEffectKind | null,
+    effectLabel: text(action.effectLabel, 'ability action label'),
+    effectDescription: text(action.effectDescription, 'ability action description'),
   };
 }
 
@@ -294,7 +314,9 @@ export function parseGuestBunkerAbilityResult(data: unknown): GuestBunkerAbility
     || result.changed === result.idempotent
     || typeof result.clientActionId !== 'string'
     || !UUID.test(result.clientActionId)
-    || !GAME_STATES.has(result.missionState as BunkerGlobalGameState)) {
+    || !GAME_STATES.has(result.missionState as BunkerGlobalGameState)
+    || typeof result.effectKind !== 'string'
+    || !ABILITY_EFFECT_KINDS.has(result.effectKind as GuestBunkerAbilityEffectKind)) {
     throw new Error('Unexpected Bunker ability result');
   }
   return {
@@ -304,8 +326,9 @@ export function parseGuestBunkerAbilityResult(data: unknown): GuestBunkerAbility
     clientActionId: result.clientActionId,
     missionState: result.missionState as BunkerGlobalGameState,
     abilityKey: text(result.abilityKey, 'ability result key'),
-    effectKind: text(result.effectKind, 'ability result effect'),
-    effectPreview: text(result.effectPreview, 'ability result preview'),
+    effectKind: result.effectKind as GuestBunkerAbilityEffectKind,
+    effectLabel: text(result.effectLabel, 'ability result label'),
+    effectDescription: text(result.effectDescription, 'ability result description'),
     resultCopy: text(result.resultCopy, 'ability result copy'),
     abilityUsesRemaining: integer(result.abilityUsesRemaining, 'ability result uses'),
   };

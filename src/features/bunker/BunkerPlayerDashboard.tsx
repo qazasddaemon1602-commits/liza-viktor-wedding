@@ -123,8 +123,8 @@ function BunkerAbilityActionCard({ runtime, onAbility }: BunkerAbilityActionCard
     <section className="bunker-player-ability-action" aria-label="Особая способность персонажа">
       <p className="bunker-player-dashboard__index">ЛИЧНОЕ ДЕЙСТВИЕ</p>
       <h3>ОСОБАЯ СПОСОБНОСТЬ</h3>
-      <strong>{action.title}</strong>
-      <p>{action.effectPreview}</p>
+      <strong>{action.effectLabel}</strong>
+      <p>{action.effectDescription}</p>
       <p className="bunker-player-ability-action__uses">
         ОСТАЛОСЬ ИСПОЛЬЗОВАНИЙ · {remaining}
       </p>
@@ -268,9 +268,16 @@ export function BunkerPlayerDashboard({
               <div><dt>Скрытая характеристика</dt><dd>{runtime.character.hiddenTrait ?? 'ДАННЫЕ НЕДОСТУПНЫ'}</dd></div>
             </dl>
             <div className="bunker-player-character__ability">
-              <span>ОСОБАЯ СПОСОБНОСТЬ</span>
-              <p>{runtime.character.abilityDescription}</p>
-              <small>При подходящей ситуации система уведомит вас.</small>
+              <span>ОПЕРАЦИОННЫЙ ЭФФЕКТ СПОСОБНОСТИ</span>
+              {runtime.character.abilityAction ? (
+                <>
+                  <strong>{runtime.character.abilityAction.effectLabel}</strong>
+                  <p>{runtime.character.abilityAction.effectDescription}</p>
+                  <small>Осталось использований: {runtime.character.abilityUsesRemaining}</small>
+                </>
+              ) : (
+                <p>Система ещё не получила серверное описание способности.</p>
+              )}
             </div>
           </article>
         )}

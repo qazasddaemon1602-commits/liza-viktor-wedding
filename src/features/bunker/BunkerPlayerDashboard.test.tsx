@@ -54,11 +54,27 @@ describe('BunkerPlayerDashboard', () => {
 
   it('shows one memorable ability without exposing the hidden trait', async () => {
     const user = userEvent.setup();
-    render(<BunkerPlayerDashboard runtime={runtime} />);
+    const runtimeWithOperationalCopy = {
+      ...runtime,
+      character: {
+        ...runtime.character,
+        abilityAction: {
+          applicable: false,
+          code: 'ability_not_applicable',
+          missionState: 'CHARACTERS_READY',
+          effectKind: null,
+          effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+          effectDescription: 'Техническая дверь будет разблокирована. Эффект станет активен в задании 3.',
+        },
+      },
+    } as unknown as ActiveGuestBunkerRuntime;
+    render(<BunkerPlayerDashboard runtime={runtimeWithOperationalCopy} />);
     await user.click(screen.getByRole('button', { name: 'ПЕРСОНАЖ' }));
     expect(screen.getByText('МЕХАНИК')).toBeInTheDocument();
     expect(screen.getByText('ДАННЫЕ НЕДОСТУПНЫ')).toBeInTheDocument();
-    expect(screen.getByText('Открывает технический отсек без инструментов.')).toBeInTheDocument();
+    expect(screen.getByText('РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ')).toBeInTheDocument();
+    expect(screen.getByText(/эффект станет активен в задании 3/i)).toBeInTheDocument();
+    expect(screen.queryByText('Открывает технический отсек без инструментов.')).not.toBeInTheDocument();
     expect(screen.queryByText(/легендар/i)).not.toBeInTheDocument();
   });
 
@@ -72,7 +88,8 @@ describe('BunkerPlayerDashboard', () => {
       missionState: 'MISSION_03',
       abilityKey: 'mechanical_fix',
       effectKind: 'technical_door_unlocked',
-      effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+      effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+      effectDescription: 'Технический отсек будет разблокирован без расходования инструментов.',
       resultCopy: 'Механик разблокировал технический отсек вагона.',
       abilityUsesRemaining: 0,
     });
@@ -86,9 +103,9 @@ describe('BunkerPlayerDashboard', () => {
           applicable: true,
           code: 'ability_available',
           missionState: 'MISSION_03',
-          title: 'Ремонтный доступ',
           effectKind: 'technical_door_unlocked',
-          effectPreview: 'Технический отсек будет разблокирован без расходования инструментов.',
+          effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+          effectDescription: 'Технический отсек будет разблокирован без расходования инструментов.',
         },
       },
     } as unknown as ActiveGuestBunkerRuntime;
@@ -120,9 +137,9 @@ describe('BunkerPlayerDashboard', () => {
           applicable: false,
           code: 'ability_not_applicable',
           missionState: 'MISSION_01',
-          title: 'Сейчас способность недоступна',
           effectKind: null,
-          effectPreview: 'В первом задании способности отключены: решение принимает весь вагон.',
+          effectLabel: 'НЕДОСТУПНА В ЗАДАНИИ 1',
+          effectDescription: 'В первом задании способности отключены: решение принимает весь вагон.',
         },
       },
     } as unknown as ActiveGuestBunkerRuntime;

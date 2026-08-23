@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(74);
+select plan(82);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -346,13 +346,13 @@ select is(
   'an applicable character ability is consumed once'
 );
 select is(
-  (select wagon.technical_door_unlocked::text
+  (select wagon.technical_door_status
    from public.bunker_wagon_state wagon
    where wagon.run_nonce = (
      select state.run_nonce from public.bunker_state state
      where state.event_id = '00000000-0000-4000-8000-000000000902'
    ) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911'),
-  'true',
+  'unlocked',
   'the supported mechanical ability updates authoritative wagon state'
 );
 select is(
@@ -460,6 +460,36 @@ select ok(
   'a narrative ability records its concrete clue for the host history'
 );
 
+update public.bunker_guest_profiles
+set special_ability = 'power_restore',
+    ability_description = 'Один раз стабилизировать питание.',
+    ability_uses_remaining = 1,
+    ability_used_at = null
+where event_id = '00000000-0000-4000-8000-000000000902'
+  and guest_id = '00000000-0000-4000-8000-000000000921';
+select lives_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000954'
+  ) $$,
+  'the power effect can be activated before Mission 03 submission'
+);
+
+update public.bunker_guest_profiles
+set special_ability = 'water_treatment',
+    ability_description = 'Один раз стабилизировать воду.',
+    ability_uses_remaining = 1,
+    ability_used_at = null
+where event_id = '00000000-0000-4000-8000-000000000902'
+  and guest_id = '00000000-0000-4000-8000-000000000921';
+select lives_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000955'
+  ) $$,
+  'the water effect can be activated before Mission 03 submission'
+);
+
 select is(
   public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_03',
@@ -477,6 +507,23 @@ select is(
   'radio:used:1,water:available:1',
   'Mission 03 consumes one unit per selected inventory key'
 );
+select is(
+  (select jsonb_build_object(
+    'power', wagon.power_status,
+    'door', wagon.technical_door_status,
+    'water', wagon.water_status,
+    'powerMarker', wagon.ability_power_stabilized,
+    'doorMarker', wagon.ability_technical_door_unlocked,
+    'waterMarker', wagon.ability_water_stabilized
+  )
+   from public.bunker_wagon_state wagon
+   where wagon.run_nonce = (
+     select state.run_nonce from public.bunker_state state
+     where state.event_id = '00000000-0000-4000-8000-000000000902'
+   ) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911'),
+  '{"power":"stable","door":"unlocked","water":"stable","powerMarker":true,"doorMarker":true,"waterMarker":true}'::jsonb,
+  'Mission 03 submission preserves all three direct character effects and their markers'
+);
 
 select public.owner_force_complete_bunker_global_mission(
   '00000000-0000-4000-8000-000000000902',
@@ -490,6 +537,21 @@ select ok(
     'global-mission-runtime', 'global-device-1'
   )#>'{missionAction,requirements,transferableItems}' @> '[{"itemKey":"tools","quantity":1}]'::jsonb,
   'Mission 04 requirements expose transferable available inventory with quantity'
+);
+
+update public.bunker_guest_profiles
+set special_ability = 'extra_message',
+    ability_description = 'Один раз усилить межвагонную связь.',
+    ability_uses_remaining = 1,
+    ability_used_at = null
+where event_id = '00000000-0000-4000-8000-000000000902'
+  and guest_id = '00000000-0000-4000-8000-000000000921';
+select lives_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000956'
+  ) $$,
+  'the communication modifier can be activated before Mission 04 submission'
 );
 select throws_ok(
   $$ select public.submit_guest_bunker_global_mission(
@@ -525,6 +587,20 @@ select is(
   )->>'status',
   'completed',
   'Mission 04 validates the planned partner, exchange message and real transfer'
+);
+select is(
+  (select jsonb_build_object(
+    'communication', wagon.communication_status,
+    'coordination', wagon.coordination_bonus,
+    'abilityCommunicationBonus', wagon.ability_communication_bonus
+  )
+   from public.bunker_wagon_state wagon
+   where wagon.run_nonce = (
+     select state.run_nonce from public.bunker_state state
+     where state.event_id = '00000000-0000-4000-8000-000000000902'
+   ) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911'),
+  '{"communication":"working","coordination":true,"abilityCommunicationBonus":1}'::jsonb,
+  'Mission 04 submission preserves the dedicated character communication modifier'
 );
 select is(
   (select progress.submitted_payload
@@ -613,6 +689,36 @@ select public.owner_advance_bunker_game_state(
   '00000000-0000-4000-8000-000000000902', 'MISSION_05'
 );
 
+update public.bunker_guest_profiles
+set special_ability = 'route_analysis',
+    ability_description = 'Один раз усилить маршрут.',
+    ability_uses_remaining = 1,
+    ability_used_at = null
+where event_id = '00000000-0000-4000-8000-000000000902'
+  and guest_id = '00000000-0000-4000-8000-000000000921';
+select lives_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000957'
+  ) $$,
+  'the route modifier can be activated before Mission 05 submission'
+);
+
+update public.bunker_guest_profiles
+set special_ability = 'plan_analysis',
+    ability_description = 'Один раз открыть подсказку сектора 04.',
+    ability_uses_remaining = 1,
+    ability_used_at = null
+where event_id = '00000000-0000-4000-8000-000000000902'
+  and guest_id = '00000000-0000-4000-8000-000000000921';
+select lives_ok(
+  $$ select public.use_guest_bunker_ability(
+    'global-mission-runtime', 'global-device-1',
+    '00000000-0000-4000-8000-000000000958'
+  ) $$,
+  'the sector modifier can be activated before Mission 05 submission'
+);
+
 select is(
   public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_05',
@@ -629,6 +735,21 @@ select is(
    ) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911'),
   'A',
   'the safe route updates the existing authoritative wagon state'
+);
+select is(
+  (select jsonb_build_object(
+    'routeBonus', wagon.route_bonus,
+    'abilityRouteBonus', wagon.ability_route_bonus,
+    'sectorFound', wagon.sector04_found,
+    'abilitySectorHint', wagon.ability_sector_hint
+  )
+   from public.bunker_wagon_state wagon
+   where wagon.run_nonce = (
+     select state.run_nonce from public.bunker_state state
+     where state.event_id = '00000000-0000-4000-8000-000000000902'
+   ) and wagon.carriage_id = '00000000-0000-4000-8000-000000000911'),
+  '{"routeBonus":5,"abilityRouteBonus":2,"sectorFound":true,"abilitySectorHint":true}'::jsonb,
+  'Mission 05 adds both character route modifiers after calculating the base route result'
 );
 
 select public.owner_force_complete_bunker_global_mission(

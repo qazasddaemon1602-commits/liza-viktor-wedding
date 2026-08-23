@@ -46,3 +46,27 @@ The pgTAP assertions were added before the migration. They cover function grants
 - Same-ID retries return the stored result with `changed: false` and `idempotent: true`, without another decrement, state mutation or event.
 - Narrative effects never update wagon fields. The pgTAP snapshot assertion proves a `mission_clue` leaves the wagon row unchanged while preserving its concrete result in history.
 - No Lovable UI, remote database or production deployment was touched.
+
+## Review fix round 1
+
+Addressed all five findings from `task-5-review-1.md`.
+
+- Corrected the DB assertion to read the real `technical_door_status` column and compare it with `unlocked`.
+- Added persistent ability markers to `bunker_wagon_state`. The guarded global-mission wrapper now restores M03 power/door/water effects, preserves the M04 communication modifier, and adds M05 route/sector modifiers after the core mission computes its base route result.
+- Expanded pgTAP from 74 to 82 assertions. Ability-before-submit integration now covers all direct effect families through their real M03, M04 and M05 submissions.
+- Made migration replay safe: the partial unique index uses `IF NOT EXISTS`; runtime and mission-submit renames run only when their internal predecessors do not yet exist. A static migration contract test protects both guards.
+- Replaced the character-tab story promise with server-authoritative `effectLabel` and `effectDescription`, including current applicability. The current-mission action uses the same copy.
+- Closed `effectKind` to the seven server values in both action and result parsers; unknown values are rejected.
+
+Review RED evidence:
+
+- Focused Vitest: 2 failures, 27 passed. The character tab did not render operational copy and the parser accepted `drop_table` as an effect kind.
+- The database integration assertions were authored against the pre-fix migration. Local execution remained unavailable because PostgreSQL at `127.0.0.1:54322` is not running.
+
+Review GREEN evidence:
+
+- Focused Vitest: 6 files, 50 tests passed.
+- Full Vitest: 164 files, 851 tests passed.
+- `npm run typecheck` passed.
+- `npm run build` passed with only the existing bundle-size warning.
+- pgTAP static plan count is exactly 82; local database execution remains a required CI gate and no local DB pass is claimed.

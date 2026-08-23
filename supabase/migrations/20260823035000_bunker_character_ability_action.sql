@@ -10,8 +10,8 @@ as $$
 declare
   v_expected_mission text;
   v_effect_kind text;
-  v_title text := 'СПЕЦИАЛЬНАЯ СПОСОБНОСТЬ';
-  v_effect_preview text;
+  v_effect_label text;
+  v_effect_description text;
   v_result_copy text;
 begin
   v_expected_mission := case
@@ -40,41 +40,15 @@ begin
     else null
   end;
 
-  if p_mission_state = 'MISSION_01' then
-    return jsonb_build_object(
-      'applicable', false,
-      'code', 'ability_not_applicable',
-      'missionState', p_mission_state,
-      'title', v_title,
-      'effectKind', null,
-      'effectPreview',
-        'В первом задании способность недоступна: решение о пассажирах принимает весь вагон.'
-    );
-  end if;
-
   if v_expected_mission is null then
     return jsonb_build_object(
       'applicable', false,
       'code', 'ability_not_applicable',
       'missionState', p_mission_state,
-      'title', v_title,
       'effectKind', null,
-      'effectPreview',
+      'effectLabel', 'НЕТ ОПЕРАЦИОННОГО ЭФФЕКТА',
+      'effectDescription',
         'Эта способность пока не привязана к заданию. Сообщите ведущему; заряд не будет потрачен.'
-    );
-  end if;
-
-  if p_mission_state is distinct from v_expected_mission then
-    return jsonb_build_object(
-      'applicable', false,
-      'code', 'ability_not_applicable',
-      'missionState', p_mission_state,
-      'title', v_title,
-      'effectKind', null,
-      'effectPreview', format(
-        'Сейчас способность не применяется. Она станет доступна в задании %s.',
-        substring(v_expected_mission from '[0-9]+')::integer
-      )
     );
   end if;
 
@@ -96,7 +70,17 @@ begin
     else 'mission_clue'
   end;
 
-  v_effect_preview := case v_effect_kind
+  v_effect_label := case v_effect_kind
+    when 'power_stable' then 'СТАБИЛИЗАЦИЯ ПИТАНИЯ'
+    when 'technical_door_unlocked' then 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ'
+    when 'water_stable' then 'СТАБИЛИЗАЦИЯ ВОДЫ'
+    when 'communication_boost' then 'БОНУС МЕЖВАГОННОЙ СВЯЗИ'
+    when 'route_hint' then 'ДОПОЛНИТЕЛЬНАЯ МАРШРУТНАЯ ПОДСКАЗКА'
+    when 'sector_hint' then 'ПОДСКАЗКА О СЕКТОРЕ 04'
+    else 'ПЕРСОНАЛЬНАЯ ПОДСКАЗКА'
+  end;
+
+  v_effect_description := case v_effect_kind
     when 'power_stable' then
       'Питание вагона станет стабильным, а накопленная нестабильность будет снята.'
     when 'technical_door_unlocked' then
@@ -112,6 +96,32 @@ begin
     else
       'После подтверждения откроется персональная подсказка для текущего задания.'
   end;
+
+  if p_mission_state = 'MISSION_01' then
+    return jsonb_build_object(
+      'applicable', false,
+      'code', 'ability_not_applicable',
+      'missionState', p_mission_state,
+      'effectKind', null,
+      'effectLabel', v_effect_label,
+      'effectDescription', v_effect_description ||
+        ' В задании 1 эффект недоступен: решение о пассажирах принимает весь вагон.'
+    );
+  end if;
+
+  if p_mission_state is distinct from v_expected_mission then
+    return jsonb_build_object(
+      'applicable', false,
+      'code', 'ability_not_applicable',
+      'missionState', p_mission_state,
+      'effectKind', null,
+      'effectLabel', v_effect_label,
+      'effectDescription', v_effect_description || format(
+        ' Сейчас эффект недоступен; он станет активен в задании %s.',
+        substring(v_expected_mission from '[0-9]+')::integer
+      )
+    );
+  end if;
 
   v_result_copy := case
     when p_ability_key in ('system_access', 'terminal_hack') then
@@ -134,22 +144,32 @@ begin
       'Координатная подсказка: читайте четыре цифры слева направо в порядке номеров вагонов.'
     when p_ability_key = 'gate_timing' then
       'Подсказка шлюза: код нужно вводить после подтверждения протокола всеми вагонами.'
-    else v_effect_preview
+    else v_effect_description
   end;
 
   return jsonb_build_object(
     'applicable', true,
     'code', 'ability_available',
     'missionState', p_mission_state,
-    'title', v_title,
     'effectKind', v_effect_kind,
-    'effectPreview', v_effect_preview,
+    'effectLabel', v_effect_label,
+    'effectDescription', v_effect_description,
     'resultCopy', v_result_copy
   );
 end;
 $$;
 
-create unique index bunker_character_ability_action_unique
+alter table public.bunker_wagon_state
+  add column if not exists ability_power_stabilized boolean not null default false,
+  add column if not exists ability_technical_door_unlocked boolean not null default false,
+  add column if not exists ability_water_stabilized boolean not null default false,
+  add column if not exists ability_communication_bonus integer not null default 0
+    check (ability_communication_bonus >= 0),
+  add column if not exists ability_route_bonus integer not null default 0
+    check (ability_route_bonus >= 0),
+  add column if not exists ability_sector_hint boolean not null default false;
+
+create unique index if not exists bunker_character_ability_action_unique
   on public.bunker_game_events(
     run_nonce,
     guest_id,
@@ -255,6 +275,7 @@ begin
     update public.bunker_wagon_state wagon
     set power_status = 'stable',
         power_instability = 0,
+        ability_power_stabilized = true,
         updated_at = now()
     where wagon.event_id = v_event_id
       and wagon.run_nonce = v_state.run_nonce
@@ -262,6 +283,7 @@ begin
   elsif v_action->>'effectKind' = 'technical_door_unlocked' then
     update public.bunker_wagon_state wagon
     set technical_door_status = 'unlocked',
+        ability_technical_door_unlocked = true,
         updated_at = now()
     where wagon.event_id = v_event_id
       and wagon.run_nonce = v_state.run_nonce
@@ -269,6 +291,7 @@ begin
   elsif v_action->>'effectKind' = 'water_stable' then
     update public.bunker_wagon_state wagon
     set water_status = 'stable',
+        ability_water_stabilized = true,
         updated_at = now()
     where wagon.event_id = v_event_id
       and wagon.run_nonce = v_state.run_nonce
@@ -277,6 +300,7 @@ begin
     update public.bunker_wagon_state wagon
     set communication_status = 'working',
         coordination_bonus = true,
+        ability_communication_bonus = ability_communication_bonus + 1,
         updated_at = now()
     where wagon.event_id = v_event_id
       and wagon.run_nonce = v_state.run_nonce
@@ -284,6 +308,7 @@ begin
   elsif v_action->>'effectKind' = 'route_hint' then
     update public.bunker_wagon_state wagon
     set route_bonus = route_bonus + 1,
+        ability_route_bonus = ability_route_bonus + 1,
         updated_at = now()
     where wagon.event_id = v_event_id
       and wagon.run_nonce = v_state.run_nonce
@@ -292,6 +317,8 @@ begin
     update public.bunker_wagon_state wagon
     set sector04_found = true,
         route_bonus = route_bonus + 1,
+        ability_route_bonus = ability_route_bonus + 1,
+        ability_sector_hint = true,
         updated_at = now()
     where wagon.event_id = v_event_id
       and wagon.run_nonce = v_state.run_nonce
@@ -305,7 +332,13 @@ begin
     'waterStatus', wagon.water_status,
     'routeBonus', wagon.route_bonus,
     'sector04Found', wagon.sector04_found,
-    'coordinationBonus', wagon.coordination_bonus
+    'coordinationBonus', wagon.coordination_bonus,
+    'abilityPowerStabilized', wagon.ability_power_stabilized,
+    'abilityTechnicalDoorUnlocked', wagon.ability_technical_door_unlocked,
+    'abilityWaterStabilized', wagon.ability_water_stabilized,
+    'abilityCommunicationBonus', wagon.ability_communication_bonus,
+    'abilityRouteBonus', wagon.ability_route_bonus,
+    'abilitySectorHint', wagon.ability_sector_hint
   ) into v_resulting_wagon_state
   from public.bunker_wagon_state wagon
   where wagon.event_id = v_event_id
@@ -329,7 +362,8 @@ begin
     'missionState', v_state.global_game_state,
     'abilityKey', v_profile.special_ability,
     'effectKind', v_action->>'effectKind',
-    'effectPreview', v_action->>'effectPreview',
+    'effectLabel', v_action->>'effectLabel',
+    'effectDescription', v_action->>'effectDescription',
     'resultCopy', v_action->>'resultCopy',
     'abilityUsesRemaining', v_remaining
   );
@@ -364,8 +398,17 @@ begin
 end;
 $$;
 
-alter function public.get_guest_bunker_runtime(text, text)
-  rename to _get_guest_bunker_runtime_before_character_abilities;
+do $$
+begin
+  if to_regprocedure(
+    'public._get_guest_bunker_runtime_before_character_abilities(text,text)'
+  ) is null then
+    alter function public.get_guest_bunker_runtime(text, text)
+      rename to _get_guest_bunker_runtime_before_character_abilities;
+  end if;
+end;
+$$;
+
 revoke all on function public._get_guest_bunker_runtime_before_character_abilities(text, text)
   from public, anon, authenticated;
 
@@ -380,6 +423,7 @@ set search_path = ''
 as $$
 declare
   v_result jsonb;
+  v_wagon public.bunker_wagon_state%rowtype;
 begin
   v_result := public._get_guest_bunker_runtime_before_character_abilities(
     p_event_slug,
@@ -389,7 +433,7 @@ begin
     return v_result;
   end if;
 
-  return jsonb_set(
+  v_result := jsonb_set(
     v_result,
     '{character,abilityAction}',
     public._bunker_ability_action(
@@ -398,6 +442,128 @@ begin
     ),
     true
   );
+
+  select wagon.* into v_wagon
+  from public.bunker_wagon_state wagon
+  where wagon.run_nonce = (v_result#>>'{game,runNonce}')::uuid
+    and wagon.carriage_id = (v_result#>>'{wagon,id}')::uuid;
+
+  return jsonb_set(
+    v_result,
+    '{wagonState,abilityModifiers}',
+    jsonb_build_object(
+      'powerStabilized', v_wagon.ability_power_stabilized,
+      'technicalDoorUnlocked', v_wagon.ability_technical_door_unlocked,
+      'waterStabilized', v_wagon.ability_water_stabilized,
+      'communicationBonus', v_wagon.ability_communication_bonus,
+      'routeBonus', v_wagon.ability_route_bonus,
+      'sectorHint', v_wagon.ability_sector_hint
+    ),
+    true
+  );
+end;
+$$;
+
+do $$
+begin
+  if to_regprocedure(
+    'public._submit_guest_bunker_global_mission_before_ability_modifiers(text,text,text,jsonb)'
+  ) is null then
+    alter function public.submit_guest_bunker_global_mission(text, text, text, jsonb)
+      rename to _submit_guest_bunker_global_mission_before_ability_modifiers;
+  end if;
+end;
+$$;
+
+revoke all on function public._submit_guest_bunker_global_mission_before_ability_modifiers(text, text, text, jsonb)
+  from public, anon, authenticated;
+
+create or replace function public.submit_guest_bunker_global_mission(
+  p_event_slug text,
+  p_device_key text,
+  p_mission_state text,
+  p_payload jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_result jsonb;
+  v_event_id uuid;
+  v_guest_id uuid;
+  v_carriage_id uuid;
+  v_run_nonce uuid;
+begin
+  v_result := public._submit_guest_bunker_global_mission_before_ability_modifiers(
+    p_event_slug,
+    p_device_key,
+    p_mission_state,
+    p_payload
+  );
+  if not coalesce((v_result->>'changed')::boolean, false)
+    or p_mission_state not in ('MISSION_03', 'MISSION_04', 'MISSION_05') then
+    return v_result;
+  end if;
+
+  select event.id into v_event_id
+  from public.events event
+  where event.slug = public._normalize_spaces(p_event_slug);
+  v_guest_id := public._bunker_guest_id(p_event_slug, p_device_key);
+  select guest.carriage_id into v_carriage_id
+  from public.guests guest
+  where guest.id = v_guest_id
+    and guest.event_id = v_event_id;
+  select state.run_nonce into v_run_nonce
+  from public.bunker_state state
+  where state.event_id = v_event_id;
+
+  if p_mission_state = 'MISSION_03' then
+    update public.bunker_wagon_state wagon
+    set power_status = case
+          when wagon.ability_power_stabilized then 'stable'
+          else wagon.power_status
+        end,
+        power_instability = case
+          when wagon.ability_power_stabilized then 0
+          else wagon.power_instability
+        end,
+        technical_door_status = case
+          when wagon.ability_technical_door_unlocked then 'unlocked'
+          else wagon.technical_door_status
+        end,
+        water_status = case
+          when wagon.ability_water_stabilized then 'stable'
+          else wagon.water_status
+        end,
+        updated_at = now()
+    where wagon.event_id = v_event_id
+      and wagon.run_nonce = v_run_nonce
+      and wagon.carriage_id = v_carriage_id;
+  elsif p_mission_state = 'MISSION_04' then
+    update public.bunker_wagon_state wagon
+    set communication_status = case
+          when wagon.ability_communication_bonus > 0 then 'working'
+          else wagon.communication_status
+        end,
+        coordination_bonus = wagon.coordination_bonus
+          or wagon.ability_communication_bonus > 0,
+        updated_at = now()
+    where wagon.event_id = v_event_id
+      and wagon.run_nonce = v_run_nonce
+      and wagon.carriage_id = v_carriage_id;
+  else
+    update public.bunker_wagon_state wagon
+    set route_bonus = wagon.route_bonus + wagon.ability_route_bonus,
+        sector04_found = wagon.sector04_found or wagon.ability_sector_hint,
+        updated_at = now()
+    where wagon.event_id = v_event_id
+      and wagon.run_nonce = v_run_nonce
+      and wagon.carriage_id = v_carriage_id;
+  end if;
+
+  return v_result;
 end;
 $$;
 
@@ -407,8 +573,12 @@ revoke all on function public.use_guest_bunker_ability(text, text, uuid)
   from public, anon, authenticated;
 revoke all on function public.get_guest_bunker_runtime(text, text)
   from public, anon, authenticated;
+revoke all on function public.submit_guest_bunker_global_mission(text, text, text, jsonb)
+  from public, anon, authenticated;
 
 grant execute on function public.use_guest_bunker_ability(text, text, uuid)
   to anon, authenticated;
 grant execute on function public.get_guest_bunker_runtime(text, text)
+  to anon, authenticated;
+grant execute on function public.submit_guest_bunker_global_mission(text, text, text, jsonb)
   to anon, authenticated;

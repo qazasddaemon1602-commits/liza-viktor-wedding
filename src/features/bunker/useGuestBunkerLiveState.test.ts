@@ -207,7 +207,8 @@ describe('useGuestBunkerLiveState', () => {
         missionState: 'MISSION_03',
         abilityKey: 'mechanical_fix',
         effectKind: 'technical_door_unlocked',
-        effectPreview: 'Технический отсек будет разблокирован.',
+        effectLabel: 'РАЗБЛОКИРОВКА ТЕХНИЧЕСКОЙ ДВЕРИ',
+        effectDescription: 'Технический отсек будет разблокирован.',
         resultCopy: 'Технический отсек разблокирован.',
         abilityUsesRemaining: 0,
       });
