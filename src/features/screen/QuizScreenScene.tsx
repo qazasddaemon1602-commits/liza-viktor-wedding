@@ -16,6 +16,14 @@ function percentage(value: number, total: number): number {
   return Math.round((value / total) * 100);
 }
 
+export function toAvifQuizImagePath(imagePath: string): string | null {
+  const suffixIndex = imagePath.search(/[?#]/);
+  const pathname = suffixIndex === -1 ? imagePath : imagePath.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? '' : imagePath.slice(suffixIndex);
+  if (!pathname.toLowerCase().endsWith('.webp')) return null;
+  return `${pathname.slice(0, -'.webp'.length)}.avif${suffix}`;
+}
+
 export function QuizScreenScene({
   state,
   expectedGuestCount = 40,
@@ -30,6 +38,9 @@ export function QuizScreenScene({
     : null;
   const viktorPercent = state.phase === 'results'
     ? percentage(state.results.viktor, state.results.total)
+    : null;
+  const avifImagePath = state.question.imagePath
+    ? toAvifQuizImagePath(state.question.imagePath)
     : null;
 
   return (
@@ -67,12 +78,17 @@ export function QuizScreenScene({
           </div>
           {state.question.imagePath && (
             <div className="quiz-screen-image-frame">
-              <img
-                className="quiz-screen-question-image"
-                src={state.question.imagePath}
-                alt=""
-                role="presentation"
-              />
+              <picture>
+                {avifImagePath && (
+                  <source srcSet={avifImagePath} type="image/avif" />
+                )}
+                <img
+                  className="quiz-screen-question-image"
+                  src={state.question.imagePath}
+                  alt=""
+                  role="presentation"
+                />
+              </picture>
               <span aria-hidden="true">ARCHIVE / L×V</span>
             </div>
           )}
