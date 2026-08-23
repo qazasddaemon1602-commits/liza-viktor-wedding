@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   isBunkerGlobalMissionState,
   type BunkerGlobalMissionPayload,
@@ -98,16 +98,42 @@ function humanWagons(value: unknown): { ids: string[]; labels: string[] } {
   };
 }
 
-function transferableItems(value: unknown): Array<{ itemKey: string; quantity: number }> {
+type M03ClosureSource = 'ability' | 'wagon' | null;
+
+function m03ClosureSource(
+  problemKey: string,
+  wagonState: Record<string, unknown>,
+): M03ClosureSource {
+  const modifiers = record(wagonState.abilityModifiers)
+    ? wagonState.abilityModifiers
+    : {};
+  if (problemKey === 'water') {
+    if (modifiers.waterStabilized === true) return 'ability';
+    if (wagonState.waterStatus === 'stable') return 'wagon';
+  }
+  if (problemKey === 'power') {
+    if (modifiers.powerStabilized === true) return 'ability';
+    if (wagonState.powerStatus === 'stable') return 'wagon';
+  }
+  if (problemKey === 'mechanical_navigation') {
+    if (modifiers.technicalDoorUnlocked === true) return 'ability';
+    if (wagonState.technicalDoorStatus === 'unlocked') return 'wagon';
+  }
+  return null;
+}
+
+function transferableItems(value: unknown): Array<{ lotId: string; itemKey: string; quantity: number }> {
   if (!Array.isArray(value)) return [];
   return value.flatMap((entry) => {
     if (!record(entry)
+      || typeof entry.lotId !== 'string'
+      || !entry.lotId.trim()
       || typeof entry.itemKey !== 'string'
       || !entry.itemKey.trim()
       || typeof entry.quantity !== 'number'
       || !Number.isInteger(entry.quantity)
       || entry.quantity < 1) return [];
-    return [{ itemKey: entry.itemKey, quantity: entry.quantity }];
+    return [{ lotId: entry.lotId, itemKey: entry.itemKey, quantity: entry.quantity }];
   });
 }
 
@@ -186,6 +212,7 @@ type MissionActionsProps = {
   globalMissionState?: string | null;
   globalAction?: GuestBunkerGlobalMissionAction | null;
   inventory?: InventoryRow[];
+  wagonState?: Record<string, unknown>;
   submitting?: boolean;
   feedback?: string;
   onGlobalMission?: (
@@ -199,16 +226,17 @@ type MissionActionsProps = {
 type GlobalActionFormProps = {
   action: GuestBunkerGlobalMissionAction;
   inventory: InventoryRow[];
+  wagonState: Record<string, unknown>;
   submitting: boolean;
   onSubmit: (missionState: BunkerGlobalMissionState, payload: BunkerGlobalMissionPayload) => void;
 };
 
-function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalActionFormProps) {
+function GlobalActionForm({ action, inventory, wagonState, submitting, onSubmit }: GlobalActionFormProps) {
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
   const [chronology, setChronology] = useState('');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [message, setMessage] = useState('');
-  const [transferItem, setTransferItem] = useState('');
+  const [transferLotId, setTransferLotId] = useState('');
   const [transferToWagonId, setTransferToWagonId] = useState('');
   const [routeChoice, setRouteChoice] = useState<'safe' | 'short' | ''>('');
   const [routeItem, setRouteItem] = useState('');
@@ -218,6 +246,15 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
   const availableInWagon = new Set(availableInventoryKeys(inventory));
   const availableForMission = stringList(requirements.availableItemKeys)
     .filter((key) => availableInWagon.has(key));
+  const m03ClosedItemKeys = M03_PROBLEMS
+    .filter((problem) => m03ClosureSource(problem.key, wagonState) !== null)
+    .map((problem) => problem.resolvingItemKey);
+  const m03ClosedSignature = m03ClosedItemKeys.join('|');
+  useEffect(() => {
+    if (!m03ClosedSignature) return;
+    const closed = new Set<string>(m03ClosedItemKeys);
+    setSelectedItems((current) => current.filter((key) => !closed.has(key)));
+  }, [m03ClosedSignature]);
   const toggle = (values: string[], value: string, max = Number.POSITIVE_INFINITY) => (
     values.includes(value) ? values.filter((entry) => entry !== value) : values.length < max ? [...values, value] : values
   );
@@ -286,11 +323,21 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
   if (action.missionState === 'MISSION_03') {
     const minItems = positiveInteger(requirements.minItems, 1);
     const maxItems = positiveInteger(requirements.maxItems, 3);
-    const selectedProblems = M03_PROBLEMS.filter((problem) => selectedItems.includes(problem.resolvingItemKey));
-    const unresolvedProblems = M03_PROBLEMS.filter((problem) => !selectedItems.includes(problem.resolvingItemKey));
+    const authoritativeProblems = M03_PROBLEMS.filter(
+      (problem) => m03ClosureSource(problem.key, wagonState) !== null,
+    );
+    const selectedProblems = M03_PROBLEMS.filter((problem) => (
+      m03ClosureSource(problem.key, wagonState) === null
+      && selectedItems.includes(problem.resolvingItemKey)
+    ));
+    const resolvedProblems = [...authoritativeProblems, ...selectedProblems];
+    const unresolvedProblems = M03_PROBLEMS.filter((problem) => (
+      m03ClosureSource(problem.key, wagonState) === null
+      && !selectedItems.includes(problem.resolvingItemKey)
+    ));
     const unassignedItems = selectedItems.filter((key) => !M03_PROBLEMS.some((problem) => problem.resolvingItemKey === key));
     const resolvingItemKeys = new Set<string>(M03_PROBLEMS.map((problem) => problem.resolvingItemKey));
-    const additionalItems = availableForMission.filter((key) => !resolvingItemKeys.has(key));
+  const additionalItems = availableForMission.filter((key) => !resolvingItemKeys.has(key));
     return (
       <div className="bunker-global-action bunker-global-action--selection">
         <h3>РАСПРЕДЕЛИТЕ АВАРИЙНЫЙ ЗАПАС</h3>
@@ -298,17 +345,27 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
         <ol className="bunker-m03-problem-board" aria-label="Риски вагона">
           {M03_PROBLEMS.map((problem) => {
             const guide = itemGuide({ itemKey: problem.resolvingItemKey });
-            const resolved = selectedItems.includes(problem.resolvingItemKey);
+            const closureSource = m03ClosureSource(problem.key, wagonState);
+            const selected = selectedItems.includes(problem.resolvingItemKey);
+            const resolved = closureSource !== null || selected;
             const available = availableForMission.includes(problem.resolvingItemKey);
             return (
               <li key={problem.key} data-status={resolved ? 'resolved' : 'open'}>
                 <img src={guide.asset} alt={guide.label} width="96" height="96" loading="lazy" />
                 <div>
-                  <p>{resolved ? 'ЗАКРЫТО ВЫБРАННЫМ ЗАПАСОМ' : 'РИСК ОСТАЁТСЯ'}</p>
+                  <p>{closureSource === 'ability'
+                    ? 'ЗАКРЫТО СПОСОБНОСТЬЮ'
+                    : closureSource === 'wagon'
+                      ? 'ЗАКРЫТО СОСТОЯНИЕМ ВАГОНА'
+                      : selected
+                        ? 'ЗАКРЫТО ВЫБРАННЫМ ЗАПАСОМ'
+                        : 'РИСК ОСТАЁТСЯ'}</p>
                   <h4>{problem.label}</h4>
                   <span>{problem.risk}</span>
-                  <strong>{resolved
-                    ? `Выбран предмет: ${guide.label}. Этот риск закрыт.`
+                  <strong>{closureSource !== null
+                    ? `${guide.label} не требуется: риск уже закрыт авторитетным состоянием вагона. Сохраните запас.`
+                    : selected
+                      ? `Выбран предмет: ${guide.label}. Этот риск закрыт.`
                     : available
                       ? `Отметьте ${guide.label}, чтобы закрыть этот риск.`
                       : `Нужный предмет сейчас недоступен в инвентаре вагона.`}</strong>
@@ -316,11 +373,13 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
                     <label className="bunker-m03-problem-board__control">
                       <input
                         type="checkbox"
-                        checked={selectedItems.includes(problem.resolvingItemKey)}
-                        disabled={submitting || (!selectedItems.includes(problem.resolvingItemKey) && selectedItems.length >= maxItems)}
+                        checked={selected}
+                        disabled={submitting || closureSource !== null || (!selected && selectedItems.length >= maxItems)}
                         onChange={() => setSelectedItems(toggle(selectedItems, problem.resolvingItemKey, maxItems))}
                       />
-                      <span>Применить: {guide.label}</span>
+                      <span>{closureSource !== null
+                        ? `Сохранить: ${guide.label} · запас не требуется`
+                        : `Применить: ${guide.label}`}</span>
                     </label>
                   )}
                 </div>
@@ -331,7 +390,7 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
         <section className="bunker-m03-preview" aria-label="Предварительный итог" aria-live="polite">
           <h4>ПРОВЕРКА РЕШЕНИЯ</h4>
           <p>Выбрано предметов: {selectedItems.length} из {maxItems}</p>
-          <p>Закрыто рисков: {selectedProblems.length} из {M03_PROBLEMS.length}</p>
+          <p>Закрыто рисков: {resolvedProblems.length} из {M03_PROBLEMS.length}</p>
           <p>Осталось рисков: {unresolvedProblems.length} из {M03_PROBLEMS.length}</p>
           {selectedProblems.length > 0 ? (
             <ul>
@@ -340,6 +399,13 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
               ))}
             </ul>
           ) : <p>Пока не выбран ни один предмет.</p>}
+          {authoritativeProblems.length > 0 && (
+            <ul>
+              {authoritativeProblems.map((problem) => (
+                <li key={`authoritative-${problem.key}`}>Риск «{problem.label}» уже закрыт состоянием вагона — соответствующий запас сохранён.</li>
+              ))}
+            </ul>
+          )}
           {unassignedItems.length > 0 && (
             <p>{unassignedItems.map((key) => itemGuide({ itemKey: key }).label).join(', ')} пока не закрывает один из пяти рисков на этой доске.</p>
           )}
@@ -388,14 +454,14 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
     const requiredTerms = stringList(requirements.requiredTerms);
     const transferOptions = transferableItems(requirements.transferableItems)
       .filter((item) => availableInWagon.has(item.itemKey));
-    const selectedTransfer = transferOptions.find((item) => item.itemKey === transferItem) ?? null;
+    const selectedTransfer = transferOptions.find((item) => item.lotId === transferLotId) ?? null;
     const transferDestination = partners.ids.includes(transferToWagonId)
       ? partners.labels[partners.ids.indexOf(transferToWagonId)]
       : '';
     const messageValid = message.trim().length >= minLength
       && normalizedIncludes(message, requiredIncludes)
       && normalizedIncludesAny(message, requiredTerms);
-    const transferValid = !transferItem || Boolean(selectedTransfer && transferDestination);
+    const transferValid = !transferLotId || Boolean(selectedTransfer && transferDestination);
     const submitExchange = () => {
       const base = {
         message: message.trim(),
@@ -404,7 +470,7 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
       if (selectedTransfer && transferDestination) {
         onSubmit(action.missionState, {
           ...base,
-          transferItemKey: selectedTransfer.itemKey,
+          transferLotId: selectedTransfer.lotId,
           transferToWagonId,
         });
         return;
@@ -440,22 +506,22 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
               <label>
                 <span>Предмет для передачи</span>
                 <select
-                  value={transferItem}
+                  value={transferLotId}
                   disabled={submitting}
                   onChange={(event) => {
-                    setTransferItem(event.target.value);
+                    setTransferLotId(event.target.value);
                     setTransferToWagonId('');
                   }}
                 >
                   <option value="">Без передачи предмета</option>
                   {transferOptions.map((item) => (
-                    <option key={item.itemKey} value={item.itemKey}>
+                    <option key={item.lotId} value={item.lotId}>
                       {itemGuide({ itemKey: item.itemKey }).label} · {item.quantity} ШТ.
                     </option>
                   ))}
                 </select>
               </label>
-              {transferItem && (
+              {transferLotId && (
                 <label>
                   <span>Кому передать предмет</span>
                   <select
@@ -492,8 +558,8 @@ function GlobalActionForm({ action, inventory, submitting, onSubmit }: GlobalAct
                 <h5>ЧТО БУДЕТ ОТПРАВЛЕНО</h5>
                 <p>{messageValid ? `Сообщение готово: ${message.trim()}` : 'Сообщение пока не прошло проверку.'}</p>
                 <p>{selectedTransfer && transferDestination
-                  ? `${itemGuide({ itemKey: selectedTransfer.itemKey }).label} → ${transferDestination}`
-                  : transferItem
+                  ? `${itemGuide({ itemKey: selectedTransfer.itemKey }).label} · ${selectedTransfer.quantity} ШТ. → ${transferDestination}`
+                  : transferLotId
                     ? 'Выберите получателя предмета.'
                     : 'Предмет не передаётся.'}</p>
               </section>
@@ -575,6 +641,7 @@ export function BunkerMissionActions({
   globalMissionState = null,
   globalAction = null,
   inventory = [],
+  wagonState = {},
   submitting = false,
   feedback = '',
   onGlobalMission = () => undefined,
@@ -614,6 +681,7 @@ export function BunkerMissionActions({
           <GlobalActionForm
             action={globalAction}
             inventory={inventory}
+            wagonState={wagonState}
             submitting={submitting}
             onSubmit={handleGlobalSubmit}
           />

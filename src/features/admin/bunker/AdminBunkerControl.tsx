@@ -88,13 +88,14 @@ export type AdminBunkerControlDependencies = {
   start: (eventId: string, durationSeconds: number) => Promise<unknown>;
   stop: (eventId: string) => Promise<unknown>;
   setSound: (eventId: string, enabled: boolean) => Promise<unknown>;
-  broadcastRefresh: () => Promise<void>;
-  subscribeRefresh?: (eventId: string, callback: () => void) => () => void;
+  broadcastRefresh: (eventSlug: string) => Promise<void>;
+  subscribeRefresh?: (eventSlug: string, callback: () => void) => () => void;
   subscribeScreenPresence?: (callback: (presence: PremiereScreenPresence) => void) => () => void;
 };
 
 type AdminBunkerControlProps = {
   eventId: string;
+  eventSlug: string;
   dependencies?: AdminBunkerControlDependencies;
   dashboard?: AdminDashboard;
   onAcceptDistribution?: (carriageCount: SupportedCarriageCount) => Promise<void> | void;
@@ -103,7 +104,7 @@ type AdminBunkerControlProps = {
 
 const SUPPORTED_WAGON_COUNTS: SupportedCarriageCount[] = [2, 3, 4, 5];
 
-function browserDependencies(): AdminBunkerControlDependencies | null {
+function browserDependencies(eventSlug: string): AdminBunkerControlDependencies | null {
   try {
     const client = getSupabaseClient();
     const rpcClient = client as unknown as BunkerRpcClient;
@@ -133,15 +134,15 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
       start: (eventId, durationSeconds) => startBunker(rpcClient, eventId, durationSeconds),
       stop: (eventId) => stopBunker(rpcClient, eventId),
       setSound: (eventId, enabled) => setBunkerSound(rpcClient, eventId, enabled),
-      broadcastRefresh: () => broadcastBunkerRefresh(realtimeClient, 'liza-viktor'),
-      subscribeRefresh: (_eventId, callback) => subscribeToBunkerRefresh(
+      broadcastRefresh: (eventSlug) => broadcastBunkerRefresh(realtimeClient, eventSlug),
+      subscribeRefresh: (eventSlug, callback) => subscribeToBunkerRefresh(
         realtimeClient,
-        'liza-viktor',
+        eventSlug,
         callback,
       ),
       subscribeScreenPresence: (callback) => subscribeToPremiereScreenPresence(
         presenceClient,
-        'liza-viktor',
+        eventSlug,
         callback,
       ),
     };
@@ -194,12 +195,16 @@ const FORCE_OPEN_CONFIRMATION = 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕ�
 
 export function AdminBunkerControl({
   eventId,
+  eventSlug,
   dependencies,
   dashboard,
   onAcceptDistribution,
   questDependencies,
 }: AdminBunkerControlProps) {
-  const deps = useMemo(() => dependencies ?? browserDependencies(), [dependencies]);
+  const deps = useMemo(
+    () => dependencies ?? browserDependencies(eventSlug),
+    [dependencies, eventSlug],
+  );
   const [state, setState] = useState<OwnerBunkerControl | null>(null);
   const [armed, setArmed] = useState(false);
   const [dangerCommand, setDangerCommand] = useState<'restart' | 'stop' | null>(null);
@@ -298,10 +303,10 @@ export function AdminBunkerControl({
 
   useEffect(() => {
     if (!deps?.subscribeRefresh) return undefined;
-    return deps.subscribeRefresh(eventId, () => {
+    return deps.subscribeRefresh(eventSlug, () => {
       void reload().catch(() => undefined);
     });
-  }, [deps, eventId, reload]);
+  }, [deps, eventSlug, reload]);
 
   useEffect(() => {
     if (state?.status !== 'active') return undefined;
@@ -366,7 +371,7 @@ export function AdminBunkerControl({
 
       let warning = '';
       try {
-        await deps.broadcastRefresh();
+        await deps.broadcastRefresh(eventSlug);
       } catch {
         warning = 'Команда выполнена. Realtime-сигнал не отправлен — ТВ подхватят состояние автоматически.';
       }
@@ -490,7 +495,7 @@ export function AdminBunkerControl({
           : entry
       )));
       try {
-        await deps.broadcastRefresh();
+        await deps.broadcastRefresh(eventSlug);
       } catch {
         setError('Статус сохранён. Realtime-сигнал не отправлен — клиенты обновятся автоматически.');
       }

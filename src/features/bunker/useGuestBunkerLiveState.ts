@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
-import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
+import {
+  broadcastBunkerRefresh,
+  subscribeToBunkerRefresh,
+  type BunkerRealtimeClient,
+} from './bunker.realtime';
 import type { BunkerRpcClient } from './bunker.service';
 import {
   submitGuestBunkerGlobalMission,
@@ -46,6 +50,7 @@ export type GuestBunkerLiveDependencies = {
     deviceKey: string,
     clientActionId: string,
   ) => Promise<GuestBunkerAbilityResult>;
+  broadcastRefresh?: () => Promise<void>;
   subscribeToRefresh?: (callback: () => void) => () => void;
 };
 
@@ -83,6 +88,7 @@ function browserDependencies(eventSlug: string): GuestBunkerLiveDependencies {
       key,
       clientActionId,
     ),
+    broadcastRefresh: () => broadcastBunkerRefresh(realtimeClient, eventSlug),
     subscribeToRefresh: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
   };
 }
@@ -177,6 +183,14 @@ export function useGuestBunkerLiveState({
     };
   }, [deps, enabled, reload]);
 
+  const convergeAfterMutation = useCallback(async () => {
+    if (!deps) return;
+    void Promise.resolve()
+      .then(() => deps.broadcastRefresh?.())
+      .catch(() => undefined);
+    await reload();
+  }, [deps, reload]);
+
   const submitMission = useCallback(async (stage: BunkerMissionStage, answer: string) => {
     if (!deps || submitting) return;
     setSubmitting(true);
@@ -188,13 +202,13 @@ export function useGuestBunkerLiveState({
           ? result.successCopy || 'Задание выполнено. Вагон синхронизирован.'
           : 'Ответ не подошёл. Попробуйте ещё раз вместе с вагоном.',
       );
-      await reload();
+      await convergeAfterMutation();
     } catch {
       setFeedback('Ответ не отправился. Попробуйте ещё раз.');
     } finally {
       setSubmitting(false);
     }
-  }, [deps, reload, submitting]);
+  }, [convergeAfterMutation, deps, submitting]);
 
   const submitFinalCode = useCallback(async (code: string) => {
     if (!deps || submitting) return;
@@ -209,13 +223,13 @@ export function useGuestBunkerLiveState({
       } else {
         setFeedback('Код не подошёл. Сверьте порядок вагонов и попробуйте снова.');
       }
-      await reload();
+      await convergeAfterMutation();
     } catch {
       setFeedback('Код не отправился. Попробуйте ещё раз.');
     } finally {
       setSubmitting(false);
     }
-  }, [deps, reload, submitting]);
+  }, [convergeAfterMutation, deps, submitting]);
 
   const submitGlobalMission = useCallback(async (
     missionState: BunkerGlobalMissionState,
@@ -233,13 +247,13 @@ export function useGuestBunkerLiveState({
       setFeedback(result.changed
         ? 'Решение вагона принято. Дождитесь остальных команд.'
         : 'Это решение вагона уже принято и сохранено.');
-      await reload();
+      await convergeAfterMutation();
     } catch {
       setFeedback('Решение не отправилось. Проверьте данные и попробуйте ещё раз.');
     } finally {
       setSubmitting(false);
     }
-  }, [deps, reload, submitting]);
+  }, [convergeAfterMutation, deps, submitting]);
 
   const useAbility = useCallback(async (): Promise<GuestBunkerAbilityResult> => {
     if (!deps || submitting) throw new Error('Bunker action is already in progress');
@@ -255,7 +269,7 @@ export function useGuestBunkerLiveState({
       const result = await deps.useAbility(deps.getDeviceKey(), abilityActionId.current);
       abilityActionId.current = null;
       setFeedback(result.resultCopy);
-      await reload();
+      await convergeAfterMutation();
       return result;
     } catch (cause) {
       setFeedback('Ответ способности не получен. Повторите отправку — заряд не пропадёт.');
@@ -263,7 +277,7 @@ export function useGuestBunkerLiveState({
     } finally {
       setSubmitting(false);
     }
-  }, [deps, reload, submitting]);
+  }, [convergeAfterMutation, deps, submitting]);
 
   return {
     state,

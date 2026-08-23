@@ -38,4 +38,16 @@ describe('quiz question image migration contract', () => {
     expect(sql).toContain('q.text = seed.question_text');
     expect(sql).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i);
   });
+
+  it('pins the security-definer seed function to an empty search path', () => {
+    const sql = readFileSync(migrationPath, 'utf8');
+    const functionSql = sql.slice(sql.indexOf('create or replace function public.owner_seed_default_quiz_questions'));
+
+    expect(functionSql).toMatch(/security definer\s+set search_path = ''/i);
+    expect(functionSql).not.toMatch(/set search_path = public/i);
+    expect(functionSql).toMatch(/from public\.events e/i);
+    expect(functionSql).toMatch(/insert into public\.questions/i);
+    expect(functionSql).toMatch(/insert into public\.quiz_state/i);
+    expect(functionSql).toMatch(/insert into public\.owner_action_log/i);
+  });
 });

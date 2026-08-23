@@ -1,10 +1,23 @@
 import { act, render, screen, within } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AdminDashboard } from '../admin.service';
 import type { OwnerBunkerQuestDependencies } from '../../bunker/useOwnerBunkerQuestState';
 import { PREMIERE_SCREEN_PRESENCE_TTL_MS } from '../../premiere/premierePresence';
-import { AdminBunkerControl, type AdminBunkerControlDependencies } from './AdminBunkerControl';
+import {
+  AdminBunkerControl as ProductionAdminBunkerControl,
+  type AdminBunkerControlDependencies,
+} from './AdminBunkerControl';
+
+type TestAdminBunkerControlProps = Omit<
+  ComponentProps<typeof ProductionAdminBunkerControl>,
+  'eventSlug'
+> & { eventSlug?: string };
+
+function AdminBunkerControl(props: TestAdminBunkerControlProps) {
+  return <ProductionAdminBunkerControl eventSlug="liza-viktor" {...props} />;
+}
 
 function dependencies(overrides: Partial<AdminBunkerControlDependencies> = {}): AdminBunkerControlDependencies {
   return {
@@ -548,6 +561,25 @@ describe('AdminBunkerControl', () => {
       await pendingRefresh;
     });
     expect(screen.getByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+  });
+
+  it('uses the explicit event slug for realtime invalidation instead of the event UUID', async () => {
+    const subscribeRefresh = vi.fn(() => vi.fn());
+    render(
+      <AdminBunkerControl
+        eventId="00000000-0000-4000-8000-000000000902"
+        eventSlug="wedding-rehearsal"
+        dependencies={dependencies({ subscribeRefresh })}
+      />,
+    );
+
+    await act(async () => { await Promise.resolve(); });
+
+    expect(subscribeRefresh).toHaveBeenCalledWith('wedding-rehearsal', expect.any(Function));
+    expect(subscribeRefresh).not.toHaveBeenCalledWith(
+      '00000000-0000-4000-8000-000000000902',
+      expect.any(Function),
+    );
   });
 
   it('shows the authoritative final countdown even when the whole game started earlier', async () => {

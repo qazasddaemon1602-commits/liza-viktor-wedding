@@ -156,7 +156,8 @@ describe('useGuestBunkerLiveState', () => {
   it('reloads after a carriage mission attempt and exposes retry feedback', async () => {
     const load = vi.fn().mockResolvedValue(emergency);
     const submitMission = vi.fn().mockResolvedValue({ status: 'incorrect', stage: 'mission_a', attemptCount: 2 });
-    const dependencies = deps({ load, submitMission });
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+    const dependencies = deps({ load, submitMission, broadcastRefresh });
     const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.state).not.toBeNull());
 
@@ -167,6 +168,7 @@ describe('useGuestBunkerLiveState', () => {
     expect(submitMission).toHaveBeenCalledWith('device-key-123', 'mission_a', 'bad');
     expect(result.current.feedback).toMatch(/не подошёл/i);
     expect(load.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('submits an authoritative global mission and reloads the wagon runtime', async () => {
@@ -179,7 +181,8 @@ describe('useGuestBunkerLiveState', () => {
       changed: true,
       submittedPayload: { itemKeys: ['water'] },
     });
-    const dependencies = deps({ load, submitGlobalMission });
+    const broadcastRefresh = vi.fn().mockRejectedValue(new Error('realtime offline'));
+    const dependencies = deps({ load, submitGlobalMission, broadcastRefresh });
     const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.state).not.toBeNull());
 
@@ -194,6 +197,7 @@ describe('useGuestBunkerLiveState', () => {
     );
     expect(result.current.feedback).toMatch(/решение вагона принято/i);
     expect(load.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('reuses one client action id when an ability response is lost and reloads after success', async () => {
@@ -213,7 +217,8 @@ describe('useGuestBunkerLiveState', () => {
         abilityUsesRemaining: 0,
       });
     const load = vi.fn().mockResolvedValue(emergency);
-    const dependencies = deps({ load, useAbility });
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+    const dependencies = deps({ load, useAbility, broadcastRefresh });
     const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.state).not.toBeNull());
 
@@ -232,11 +237,13 @@ describe('useGuestBunkerLiveState', () => {
     expect(useAbility.mock.calls[1][1]).toBe(useAbility.mock.calls[0][1]);
     expect(result.current.feedback).toMatch(/отсек разблокирован/i);
     expect(load.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('reloads after final unlock and uses a neutral wrong-code message', async () => {
     const submitFinalCode = vi.fn().mockResolvedValue({ status: 'incorrect', unlocked: false });
-    const dependencies = deps({ submitFinalCode });
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+    const dependencies = deps({ submitFinalCode, broadcastRefresh });
     const { result } = renderHook(() => useGuestBunkerLiveState({ dependencies }));
     await waitFor(() => expect(result.current.state).not.toBeNull());
 
@@ -245,5 +252,6 @@ describe('useGuestBunkerLiveState', () => {
     });
 
     expect(result.current.feedback).toMatch(/код не подошёл/i);
+    expect(broadcastRefresh).toHaveBeenCalledTimes(1);
   });
 });

@@ -347,6 +347,39 @@ test.describe.serial('authoritative Bunker layouts', () => {
     await expectProjectorMission(browser, 'M01');
   });
 
+  test('an already-open TV converges after a guest action without an owner transition', async ({ browser }) => {
+    const tvContext = await browser.newContext({ viewport: PROJECTOR_VIEWPORTS[0] });
+    const tv = await tvContext.newPage();
+    const { context: guestContext, page: guest } = await openGuestPhone(
+      browser,
+      PHONE_VIEWPORTS[1],
+      fixture.guestDeviceKey,
+    );
+    try {
+      await tv.goto('/screen');
+      const scene = tv.getByRole('region', { name: 'Бункер · экран квеста' });
+      await expect(scene).toHaveAttribute('data-mission-key', 'M01', { timeout: 15_000 });
+      const progress = scene.locator('.bunker-quest-scene__progress-heading strong');
+      await expect(progress).toHaveText('0 / 2 ГОТОВО');
+
+      await guest.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }).click();
+      const submit = guest.getByRole('button', { name: 'ПОДТВЕРДИТЬ ВЫБОР' });
+      const candidates = guest.locator('.bunker-global-action--selection input[type="checkbox"]');
+      for (let index = 0; index < await candidates.count() && await submit.isDisabled(); index += 1) {
+        await candidates.nth(index).check();
+      }
+      await expect(submit).toBeEnabled();
+      await submit.click();
+      await expect(guest.getByText(/решение вагона принято/i)).toBeVisible();
+
+      await expect(progress).toHaveText('1 / 2 ГОТОВО', { timeout: 10_000 });
+      await expect(scene).toHaveAttribute('data-mission-key', 'M01');
+    } finally {
+      await guestContext.close();
+      await tvContext.close();
+    }
+  });
+
   test('M03 stays actionable at 320x720 and 390x844 with large text and compact navigation', async ({ browser }) => {
     await completeMission(fixture, 'MISSION_01');
     await advance(fixture, 'BREAK');

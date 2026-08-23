@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(82);
+select plan(84);
 
 select has_table(
   'public', 'bunker_global_mission_progress',
@@ -538,6 +538,18 @@ select ok(
   )#>'{missionAction,requirements,transferableItems}' @> '[{"itemKey":"tools","quantity":1}]'::jsonb,
   'Mission 04 requirements expose transferable available inventory with quantity'
 );
+select ok(
+  not exists (
+    select 1
+    from jsonb_array_elements(
+      public.get_guest_bunker_runtime(
+        'global-mission-runtime', 'global-device-1'
+      )#>'{missionAction,requirements,transferableItems}'
+    ) item(value)
+    where nullif(item.value->>'lotId', '') is null
+  ),
+  'Mission 04 exposes every transferable option with a stable lot id'
+);
 
 update public.bunker_guest_profiles
 set special_ability = 'extra_message',
@@ -556,7 +568,14 @@ select lives_ok(
 select throws_ok(
   $$ select public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_04',
-    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"radio","transferToWagonId":"00000000-0000-4000-8000-000000000912"}'::jsonb
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000912'),
+      'transferLotId', (select item.id::text from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000911'
+          and item.item_key = 'radio' limit 1),
+      'transferToWagonId', '00000000-0000-4000-8000-000000000912'
+    )
   ) $$,
   '22023',
   'invalid Mission 04 inventory item',
@@ -565,7 +584,13 @@ select throws_ok(
 select throws_ok(
   $$ select public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_04',
-    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools"}'::jsonb
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000912'),
+      'transferLotId', (select item.id::text from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000911'
+          and item.item_key = 'tools' limit 1)
+    )
   ) $$,
   '22023',
   'invalid Mission 04 transfer destination',
@@ -574,16 +599,46 @@ select throws_ok(
 select throws_ok(
   $$ select public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_04',
-    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools","transferToWagonId":"00000000-0000-4000-8000-000000000913"}'::jsonb
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000912'),
+      'transferLotId', (select item.id::text from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000911'
+          and item.item_key = 'tools' limit 1),
+      'transferToWagonId', '00000000-0000-4000-8000-000000000913'
+    )
   ) $$,
   '22023',
   'invalid Mission 04 transfer destination',
   'Mission 04 rejects a transfer to a wagon outside the planned partner group'
 );
+select throws_ok(
+  $$ select public.submit_guest_bunker_global_mission(
+    'global-mission-runtime', 'global-device-1', 'MISSION_04',
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000912'),
+      'transferLotId', (select item.id::text from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000912'
+          and item.status = 'available' limit 1),
+      'transferToWagonId', '00000000-0000-4000-8000-000000000912'
+    )
+  ) $$,
+  '22023',
+  'invalid Mission 04 inventory item',
+  'Mission 04 rejects a valid lot id owned by another wagon'
+);
 select is(
   public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_04',
-    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools","transferToWagonId":"00000000-0000-4000-8000-000000000912"}'::jsonb
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000912'),
+      'transferLotId', (select item.id::text from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000911'
+          and item.item_key = 'tools' limit 1),
+      'transferToWagonId', '00000000-0000-4000-8000-000000000912'
+    )
   )->>'status',
   'completed',
   'Mission 04 validates the planned partner, exchange message and real transfer'
@@ -658,7 +713,14 @@ select ok(
 select is(
   public.submit_guest_bunker_global_mission(
     'global-mission-runtime', 'global-device-1', 'MISSION_04',
-    '{"message":"Сектор 04 доступен через Тоннель B после обмена","partnerWagonIds":["00000000-0000-4000-8000-000000000912"],"transferItemKey":"tools","transferToWagonId":"00000000-0000-4000-8000-000000000912"}'::jsonb
+    jsonb_build_object(
+      'message', 'Сектор 04 доступен через Тоннель B после обмена',
+      'partnerWagonIds', jsonb_build_array('00000000-0000-4000-8000-000000000912'),
+      'transferLotId', (select item.id::text from public.bunker_inventory_lots item
+        where item.carriage_id = '00000000-0000-4000-8000-000000000911'
+          and item.item_key = 'tools' limit 1),
+      'transferToWagonId', '00000000-0000-4000-8000-000000000912'
+    )
   )->>'changed',
   'false',
   'repeating a completed Mission 04 transfer is idempotent'

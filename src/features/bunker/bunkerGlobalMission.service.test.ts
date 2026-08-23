@@ -10,7 +10,7 @@ import {
 // @ts-expect-error A real M04 transfer is invalid without its destination wagon.
 const incompleteM04Transfer: BunkerGlobalMissionPayload = {
   message: 'Сектор 04 найден через тоннель',
-  transferItemKey: 'radio',
+  transferLotId: '00000000-0000-4000-8000-000000000942',
 };
 void incompleteM04Transfer;
 
@@ -77,7 +77,7 @@ describe('global Bunker mission service', () => {
       submittedPayload: {
         message: 'Сектор 04 найден через тоннель',
         partnerWagonIds: ['wagon-5'],
-        transferItemKey: 'radio',
+        transferLotId: '00000000-0000-4000-8000-000000000942',
         transferToWagonId: 'wagon-5',
       },
     };
@@ -93,7 +93,7 @@ describe('global Bunker mission service', () => {
       {
         message: 'Сектор 04 найден через тоннель',
         partnerWagonIds: ['wagon-5'],
-        transferItemKey: 'radio',
+        transferLotId: '00000000-0000-4000-8000-000000000942',
         transferToWagonId: 'wagon-5',
       },
     )).resolves.toEqual(data);
@@ -104,7 +104,7 @@ describe('global Bunker mission service', () => {
       p_payload: {
         message: 'Сектор 04 найден через тоннель',
         partnerWagonIds: ['wagon-5'],
-        transferItemKey: 'radio',
+        transferLotId: '00000000-0000-4000-8000-000000000942',
         transferToWagonId: 'wagon-5',
       },
     });
@@ -122,7 +122,7 @@ describe('global Bunker mission service', () => {
       'MISSION_04',
       {
         message: 'Сектор 04 найден через тоннель',
-        transferItemKey: 'radio',
+        transferLotId: '00000000-0000-4000-8000-000000000942',
       } as unknown as BunkerGlobalMissionPayload,
     )).rejects.toThrow(/transfer destination/i);
     expect(client.rpc).not.toHaveBeenCalled();

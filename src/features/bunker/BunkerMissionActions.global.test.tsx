@@ -150,6 +150,55 @@ describe('global Bunker phone mission actions', () => {
     expect(risks).toHaveTextContent(/выбран предмет: вода\. этот риск закрыт/i);
   });
 
+  it('shows authoritative M03 ability closures without spending the matching inventory lots', () => {
+    render(
+      <BunkerMissionActions
+        globalMissionState="MISSION_03"
+        globalAction={action('MISSION_03', {
+          availableItemKeys: ['water', 'medkit', 'generator', 'radio', 'tools'],
+          minItems: 1,
+          maxItems: 3,
+        })}
+        inventory={[
+          { id: 'water-1', itemKey: 'water', quantity: 1, status: 'available' },
+          { id: 'medkit-1', itemKey: 'medkit', quantity: 1, status: 'available' },
+          { id: 'generator-1', itemKey: 'generator', quantity: 1, status: 'available' },
+          { id: 'radio-1', itemKey: 'radio', quantity: 1, status: 'available' },
+          { id: 'tools-1', itemKey: 'tools', quantity: 1, status: 'available' },
+        ]}
+        wagonState={{
+          powerStatus: 'stable',
+          waterStatus: 'stable',
+          technicalDoorStatus: 'unlocked',
+          abilityModifiers: {
+            powerStabilized: true,
+            waterStabilized: true,
+            technicalDoorUnlocked: true,
+            communicationBonus: 0,
+          },
+        }}
+        onMission={noop}
+        onFinalCode={noop}
+      />,
+    );
+
+    const region = screen.getByLabelText('Действие вагона');
+    const risks = within(region).getByRole('list', { name: 'Риски вагона' });
+    for (const title of ['Вода и перегрев', 'Резервное питание', 'Механика и навигация']) {
+      const card = within(risks).getByRole('heading', { name: title }).closest('li');
+      expect(card).not.toBeNull();
+      expect(card).toHaveTextContent('ЗАКРЫТО СПОСОБНОСТЬЮ');
+      expect(within(card as HTMLElement).getByRole('checkbox')).toBeDisabled();
+    }
+    for (const title of ['Медицинская помощь', 'Связь с составом']) {
+      const card = within(risks).getByRole('heading', { name: title }).closest('li');
+      expect(card).not.toBeNull();
+      expect(card).toHaveTextContent('РИСК ОСТАЁТСЯ');
+    }
+    expect(region).toHaveTextContent(/закрыто рисков: 3 из 5/i);
+    expect(region).toHaveTextContent(/осталось рисков: 2 из 5/i);
+  });
+
   it('keeps an unmapped available item separate from the closed-risk count', async () => {
     const user = userEvent.setup();
     render(
@@ -188,8 +237,9 @@ describe('global Bunker phone mission actions', () => {
       ],
       partnerWagons: [{ id: 'wagon-id-5', number: 5, label: 'ВАГОН №5' }],
       transferableItems: [
-        { itemKey: 'water', quantity: 2 },
-        { itemKey: 'radio', quantity: 1 },
+        { lotId: '00000000-0000-4000-8000-000000000941', itemKey: 'water', quantity: 2 },
+        { lotId: '00000000-0000-4000-8000-000000000942', itemKey: 'radio', quantity: 1 },
+        { lotId: '00000000-0000-4000-8000-000000000943', itemKey: 'radio', quantity: 4 },
       ],
       messageFragment: 'СЕКТОР 04 ПРИНИМАЕТ СОСТАВ',
       minLength: 15,
@@ -213,16 +263,19 @@ describe('global Bunker phone mission actions', () => {
     expect(submit).toBeDisabled();
     await user.clear(input);
     await user.type(input, 'Сектор 04 найден');
-    await user.selectOptions(within(region).getByLabelText('Предмет для передачи'), 'radio');
+    await user.selectOptions(
+      within(region).getByLabelText('Предмет для передачи'),
+      '00000000-0000-4000-8000-000000000943',
+    );
     expect(submit).toBeDisabled();
     await user.selectOptions(within(region).getByLabelText('Кому передать предмет'), 'wagon-id-5');
     expect(within(region).getByRole('status', { name: 'Предварительная проверка обмена' }))
-      .toHaveTextContent(/рация → вагон №5/i);
+      .toHaveTextContent(/рация · 4 шт\. → вагон №5/i);
     await user.click(submit);
     expect(onGlobalMission).toHaveBeenCalledWith('MISSION_04', {
       message: 'Сектор 04 найден',
       partnerWagonIds: ['wagon-id-5'],
-      transferItemKey: 'radio',
+      transferLotId: '00000000-0000-4000-8000-000000000943',
       transferToWagonId: 'wagon-id-5',
     });
   });

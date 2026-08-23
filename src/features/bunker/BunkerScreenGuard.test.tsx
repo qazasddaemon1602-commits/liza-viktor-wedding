@@ -601,4 +601,61 @@ describe('BunkerScreenGuard', () => {
     expect(screen.queryByTestId('bunker-emergency-scene')).not.toBeInTheDocument();
     expect(screen.getByText('ОБЫЧНЫЙ ЭКРАН')).toBeInTheDocument();
   });
+
+  it('does not poll an idle projector until a realtime invalidation activates it', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn().mockResolvedValue({
+      status: 'idle',
+      serverNow: '2026-08-30T18:00:00.000Z',
+    });
+
+    render(
+      <BunkerScreenGuard dependencies={{ load }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_000);
+    });
+
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces slow active polling reads and keeps the last valid TV scene visible', async () => {
+    vi.useFakeTimers();
+    const pending = new Promise<never>(() => undefined);
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'active' as const,
+        startedAt: '2026-08-30T18:00:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 1200,
+        soundEnabled: false,
+        phase: 'mission_a' as const,
+        unlocked: false,
+        teams: [],
+        characterCounts: { active: 16, saved: 0, excluded: 0 },
+        globalGameState: 'MISSION_03' as const,
+        currentMission: { id: 'mission_03', state: 'MISSION_03' as const, plan: null },
+        serverNow: '2026-08-30T18:10:00.000Z',
+      })
+      .mockReturnValue(pending);
+
+    render(
+      <BunkerScreenGuard dependencies={{ load }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+    expect(screen.getByText('Аварийный запас')).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6_100);
+    });
+
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Аварийный запас')).toBeInTheDocument();
+  });
 });

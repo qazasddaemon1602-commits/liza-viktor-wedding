@@ -22,25 +22,33 @@ function fixture() {
 }
 
 describe('broadcastBunkerRefresh', () => {
-  it('sends only a refresh invalidation signal', async () => {
+  it('reuses the shared subscribed transport instead of creating a channel per mutation', async () => {
     const { client, send, unsubscribe } = fixture();
+    const stop = subscribeToBunkerRefresh(client, 'liza-viktor', vi.fn());
     await broadcastBunkerRefresh(client, 'liza-viktor');
+    expect(client.channel).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith({ type: 'broadcast', event: 'refresh', payload: {} });
+    expect(unsubscribe).not.toHaveBeenCalled();
+    stop();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it('does not freeze owner controls when subscription status never arrives', async () => {
+  it('creates one cached publisher transport when the sender has no local subscriber', async () => {
     const { client, channel, send, unsubscribe } = fixture();
-    channel.subscribe.mockImplementation(() => channel);
-    await expect(broadcastBunkerRefresh(client, 'liza-viktor', 20)).resolves.toBeUndefined();
-    expect(send).not.toHaveBeenCalled();
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    await expect(broadcastBunkerRefresh(client, 'liza-viktor')).resolves.toBeUndefined();
+    await expect(broadcastBunkerRefresh(client, 'liza-viktor')).resolves.toBeUndefined();
+    expect(client.channel).toHaveBeenCalledTimes(1);
+    expect(channel.subscribe).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(unsubscribe).not.toHaveBeenCalled();
   });
 
   it('treats refresh send failure as best-effort after mutation success', async () => {
     const { client, send } = fixture();
     send.mockRejectedValueOnce(new Error('offline'));
+    const stop = subscribeToBunkerRefresh(client, 'liza-viktor', vi.fn());
     await expect(broadcastBunkerRefresh(client, 'liza-viktor')).resolves.toBeUndefined();
+    stop();
   });
 });
 

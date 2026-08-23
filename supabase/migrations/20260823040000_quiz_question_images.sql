@@ -44,7 +44,7 @@ create or replace function public.owner_seed_default_quiz_questions(p_event_id u
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_owner uuid := auth.uid();

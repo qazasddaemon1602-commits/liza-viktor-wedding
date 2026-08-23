@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { PROJECTOR_AUDIO_REARM_EVENT } from '../../lib/siteAudio';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
@@ -80,8 +80,10 @@ export function BunkerScreenGuard({
   const serverOffsetRef = useRef(0);
   const latestServerMsRef = useRef(Number.NEGATIVE_INFINITY);
   const previousUnlockRef = useRef<boolean | null>(null);
+  const loadGenerationRef = useRef(0);
+  const loadInFlightRef = useRef<Promise<BunkerScreenState | null> | null>(null);
 
-  const applyServerState = (next: BunkerScreenState) => {
+  const applyServerState = useCallback((next: BunkerScreenState) => {
     const receivedAt = Date.now();
     const serverMs = Date.parse(next.serverNow);
     if (Number.isFinite(serverMs) && serverMs < latestServerMsRef.current) return;
@@ -89,7 +91,25 @@ export function BunkerScreenGuard({
     serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
     setState(next);
     setNowMs(receivedAt);
-  };
+  }, []);
+
+  const reload = useCallback((): Promise<BunkerScreenState | null> => {
+    if (!deps) return Promise.resolve(null);
+    if (loadInFlightRef.current) return loadInFlightRef.current;
+    const generation = loadGenerationRef.current;
+    let request: Promise<BunkerScreenState | null>;
+    request = deps.load()
+      .then((next) => {
+        if (loadGenerationRef.current === generation) applyServerState(next);
+        return next;
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (loadInFlightRef.current === request) loadInFlightRef.current = null;
+      });
+    loadInFlightRef.current = request;
+    return request;
+  }, [applyServerState, deps]);
 
   useEffect(() => {
     if (dependencies) {
@@ -112,25 +132,15 @@ export function BunkerScreenGuard({
 
   useEffect(() => {
     if (!deps) return;
-    let active = true;
-    const reload = () => {
-      void deps.load()
-        .then((next) => {
-          if (!active) return;
-          applyServerState(next);
-        })
-        .catch(() => {
-          // Keep last authoritative bunker state during a short network drop.
-        });
-    };
-
-    reload();
-    const unsubscribe = deps.subscribe?.(reload);
+    loadGenerationRef.current += 1;
+    void reload();
+    const unsubscribe = deps.subscribe?.(() => { void reload(); });
     return () => {
-      active = false;
+      loadGenerationRef.current += 1;
+      loadInFlightRef.current = null;
       unsubscribe?.();
     };
-  }, [deps]);
+  }, [deps, reload]);
 
   const remainingSeconds = state?.status === 'active'
     ? remainingFromState(state, nowMs, serverOffsetRef.current)
@@ -159,22 +169,10 @@ export function BunkerScreenGuard({
   }, [bunkerActive, remainingSeconds <= 0]);
 
   useEffect(() => {
-    if (!deps) return;
-    let active = true;
-    const interval = window.setInterval(() => {
-      void deps.load()
-        .then((next) => {
-          if (active) applyServerState(next);
-        })
-        .catch(() => {
-          // Keep the last valid screen state until connectivity returns.
-        });
-    }, bunkerActive ? 2_000 : 1_500);
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-    };
-  }, [deps, bunkerActive]);
+    if (!deps || !bunkerActive) return undefined;
+    const interval = window.setInterval(() => { void reload(); }, 2_000);
+    return () => window.clearInterval(interval);
+  }, [bunkerActive, deps, reload]);
 
   useEffect(() => {
     const audio = deps?.audio;

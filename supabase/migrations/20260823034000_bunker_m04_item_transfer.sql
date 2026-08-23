@@ -42,21 +42,21 @@ begin
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
+        'lotId', available.id,
         'itemKey', available.item_key,
         'quantity', available.quantity
-      ) order by available.item_key
+      ) order by available.item_key, available.acquired_at, available.id
     ),
     '[]'::jsonb
   )
   into v_transferable_items
   from (
-    select item.item_key, sum(item.quantity)::integer as quantity
+    select item.id, item.item_key, item.quantity, item.acquired_at
     from public.bunker_inventory_lots item
     where item.event_id = p_event_id
       and item.run_nonce = p_run_nonce
       and item.carriage_id = p_carriage_id
       and item.status = 'available'
-    group by item.item_key
   ) available;
 
   return jsonb_set(
@@ -98,7 +98,8 @@ declare
   v_run_nonce uuid;
   v_plan jsonb;
   v_group jsonb := '[]'::jsonb;
-  v_transfer_item_key text;
+  v_transfer_lot_text text;
+  v_transfer_lot_id uuid;
   v_transfer_to_text text;
   v_transfer_to_wagon_id uuid;
   v_source public.bunker_inventory_lots%rowtype;
@@ -120,21 +121,22 @@ begin
     return v_result;
   end if;
 
-  v_transfer_item_key := nullif(btrim(coalesce(p_payload->>'transferItemKey', '')), '');
+  v_transfer_lot_text := nullif(btrim(coalesce(p_payload->>'transferLotId', '')), '');
   v_transfer_to_text := nullif(btrim(coalesce(p_payload->>'transferToWagonId', '')), '');
 
-  if v_transfer_item_key is null then
+  if v_transfer_lot_text is null then
     if v_transfer_to_text is not null then
       raise exception 'invalid Mission 04 transfer item' using errcode = '22023';
     end if;
     return v_result;
   end if;
 
-  if v_transfer_item_key !~ '^[a-z][a-z0-9_]+$'
+  if v_transfer_lot_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
     or v_transfer_to_text is null
     or v_transfer_to_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
     raise exception 'invalid Mission 04 transfer destination' using errcode = '22023';
   end if;
+  v_transfer_lot_id := v_transfer_lot_text::uuid;
   v_transfer_to_wagon_id := v_transfer_to_text::uuid;
 
   select event.id into v_event_id
@@ -189,10 +191,8 @@ begin
   where item.event_id = v_event_id
     and item.run_nonce = v_run_nonce
     and item.carriage_id = v_carriage_id
-    and item.item_key = v_transfer_item_key
+    and item.id = v_transfer_lot_id
     and item.status = 'available'
-  order by item.acquired_at, item.id
-  limit 1
   for update;
 
   if v_source.id is null then
@@ -280,6 +280,7 @@ begin
   v_submitted_payload := coalesce(v_result->'submittedPayload', '{}'::jsonb)
     || jsonb_build_object(
       'transferItemKey', v_source.item_key,
+      'transferLotId', v_source.id,
       'transferToWagonId', v_transfer_to_wagon_id,
       'transferQuantity', v_source.quantity,
       'transferItemLabel', v_transfer_item_label,

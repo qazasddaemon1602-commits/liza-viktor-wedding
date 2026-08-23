@@ -17,8 +17,8 @@ type BunkerM04Message = {
 };
 
 export type BunkerM04MissionPayload = BunkerM04Message & (
-  | { transferItemKey?: never; transferToWagonId?: never }
-  | { transferItemKey: string; transferToWagonId: string }
+  | { transferLotId?: never; transferToWagonId?: never }
+  | { transferLotId: string; transferToWagonId: string }
 );
 
 export type BunkerGlobalMissionPayload =
@@ -83,14 +83,14 @@ export async function submitGuestBunkerGlobalMission(
   payload: BunkerGlobalMissionPayload,
 ): Promise<GuestBunkerGlobalMissionSubmission> {
   if (missionState === 'MISSION_04') {
-    const transferItem = 'transferItemKey' in payload
-      && typeof payload.transferItemKey === 'string'
-      && Boolean(payload.transferItemKey.trim());
+    const transferLot = 'transferLotId' in payload
+      && typeof payload.transferLotId === 'string'
+      && Boolean(payload.transferLotId.trim());
     const transferDestination = 'transferToWagonId' in payload
       && typeof payload.transferToWagonId === 'string'
       && Boolean(payload.transferToWagonId.trim());
-    if (transferItem !== transferDestination) {
-      throw new Error('Bunker M04 transfer item and transfer destination must be provided together');
+    if (transferLot !== transferDestination) {
+      throw new Error('Bunker M04 transfer lot and transfer destination must be provided together');
     }
   }
   const { data, error } = await client.rpc('submit_guest_bunker_global_mission', {

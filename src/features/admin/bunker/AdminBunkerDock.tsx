@@ -168,6 +168,7 @@ export function AdminBunkerDock({
       )}
       <AdminBunkerControl
         eventId={dashboard.event.id}
+        eventSlug={dashboard.event.slug}
         dependencies={deps.bunkerControl}
         dashboard={dashboard}
         onAcceptDistribution={acceptDistribution}

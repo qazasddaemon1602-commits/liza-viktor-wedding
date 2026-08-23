@@ -462,6 +462,7 @@ export function BunkerPlayerDashboard({
               globalMissionState={runtime.game.state}
               globalAction={runtime.missionAction}
               inventory={inventory}
+              wagonState={runtime.wagonState}
               submitting={missionSubmitting}
               feedback={missionFeedback}
               onGlobalMission={onGlobalMission}
