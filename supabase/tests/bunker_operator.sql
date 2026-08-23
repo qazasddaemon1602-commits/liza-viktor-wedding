@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(53);
+select plan(55);
 
 select has_table(
   'public', 'bunker_operator_messages',
@@ -669,6 +669,28 @@ select throws_ok(
   '55000',
   'operator stage is not active',
   'a new wrong-stage submission remains rejected after the deadline'
+);
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', 'liza-operator-token-1234',
+    'MISSION_04', 'm04_connection'
+  ) $$,
+  '55000',
+  'operator send window is closed',
+  'a new valid current-stage submission is rejected after the exact deadline'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from public.bunker_operator_messages message
+    where message.event_id = '00000000-0000-4000-8000-000000000802'
+      and message.run_nonce = '00000000-0000-4000-8000-000000000803'
+      and message.stage = 'MISSION_04'
+  ),
+  0,
+  'a rejected post-deadline first submission stores no operator message'
 );
 
 delete from public.bunker_mission_instances instance

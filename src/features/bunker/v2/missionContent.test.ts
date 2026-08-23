@@ -37,6 +37,13 @@ describe('Bunker V2 mission content layer', () => {
     expect(publicCopy).not.toMatch(/Лиза/i);
   });
 
+  it('announces the post-M01 archive as confirmation of the known BK-17 route', () => {
+    const content = bunkerMissionContent('M01');
+    expect(content?.host.afterCompletion).toMatch(
+      /первое архивное подтверждение маршрута к BK-17/i,
+    );
+  });
+
   it('returns undefined for missions that are not authored yet', () => {
     expect(bunkerMissionContentKeys()).toContain('M01');
     expect(bunkerMissionContent('M02')).toBeUndefined();

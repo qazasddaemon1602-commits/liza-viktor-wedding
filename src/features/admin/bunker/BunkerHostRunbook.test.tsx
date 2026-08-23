@@ -108,4 +108,12 @@ describe('BunkerHostRunbook', () => {
     expect(finalRunbook).toHaveTextContent(/довести поезд Виктора до BK-17/i);
     expect(finalRunbook).not.toHaveTextContent(/Лиза/i);
   });
+
+  it('treats the post-M01 reveal as confirmation of the already known BK-17 route', () => {
+    render(<BunkerHostRunbook mission="BREAK" plan={null} />);
+    const runbook = screen.getByRole('region', { name: 'Сценарий ведущего Бункера' });
+
+    expect(runbook).toHaveTextContent(/первое архивное подтверждение маршрута к BK-17/i);
+    expect(runbook).not.toHaveTextContent(/первая (?:зацепка|метка|отметка)|неизвестная метка/i);
+  });
 });

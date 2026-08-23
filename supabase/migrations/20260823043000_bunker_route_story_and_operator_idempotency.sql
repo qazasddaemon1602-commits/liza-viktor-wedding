@@ -249,6 +249,35 @@ create trigger zz_bunker_route_story_archive_before_write
 before insert or update of artifact_key, content on public.bunker_archive_entries
 for each row execute function public._bunker_route_story_enrich_archive();
 
+create or replace function public._apply_bunker_route_story()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.bunker_mission_instances instance
+  set definition = coalesce(instance.definition, '{}'::jsonb)
+    || public._bunker_route_story_definition(instance.mission_code)
+  where instance.mission_code in (
+    'MISSION_01', 'MISSION_02', 'MISSION_03',
+    'MISSION_04', 'MISSION_05', 'MISSION_06', 'FINAL_30'
+  )
+    and instance.definition->>'contractVersion' = '2';
+
+  update public.bunker_archive_entries archive
+  set content = public._bunker_route_story_archive_content(
+    archive.artifact_key,
+    archive.content
+  )
+  where archive.artifact_key in ('BK-17', 'UNKNOWN-BK17', 'SECTOR-04');
+end;
+$$;
+revoke all on function public._apply_bunker_route_story()
+  from public, anon, authenticated;
+
+select public._apply_bunker_route_story();
+
 create or replace function public.submit_liza_bunker_operator_phrase(
   p_event_slug text,
   p_token text,

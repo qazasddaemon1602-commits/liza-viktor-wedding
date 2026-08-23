@@ -59,4 +59,24 @@ describe('Bunker route story and operator retry migration', () => {
     expect(normalized).toContain("'title', 'неизвестный оператор'");
     expect(normalized).toContain('before insert or update of artifact_key, content');
   });
+
+  it('provides a private idempotent backfill for existing mission and archive rows', () => {
+    const applyStart = normalized.indexOf(
+      'create or replace function public._apply_bunker_route_story',
+    );
+    const applyEnd = normalized.indexOf(
+      'revoke all on function public._apply_bunker_route_story',
+      applyStart,
+    );
+    const apply = normalized.slice(applyStart, applyEnd);
+
+    expect(applyStart).toBeGreaterThan(-1);
+    expect(apply).toContain("security definer set search_path = ''");
+    expect(apply).toContain('update public.bunker_mission_instances');
+    expect(apply).toContain('update public.bunker_archive_entries');
+    expect(normalized).toContain('select public._apply_bunker_route_story()');
+    expect(normalized).toContain(
+      'revoke all on function public._apply_bunker_route_story() from public, anon, authenticated',
+    );
+  });
 });

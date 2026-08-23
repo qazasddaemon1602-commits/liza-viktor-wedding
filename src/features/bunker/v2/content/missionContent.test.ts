@@ -66,6 +66,16 @@ describe('mission content registry', () => {
   it('routes M01 through the required archive pause without inventing a captain role', () => {
     const mission = getBunkerMissionContent('MISSION_01');
     expect(mission?.host.afterCompletion).toMatch(/архивн.*пауз/i);
+    expect([
+      ...(mission?.consequences ?? []),
+      mission?.host.brief,
+      mission?.host.afterCompletion,
+    ].join(' ')).toMatch(/первое архивное подтверждение маршрута к BK-17/i);
+    expect([
+      ...(mission?.consequences ?? []),
+      mission?.host.brief,
+      mission?.host.afterCompletion,
+    ].join(' ')).not.toMatch(/первая (?:зацепка|метка|отметка)|неизвестная метка/i);
 
     const allOperationalCopy = ALL_MISSIONS.flatMap((key) => {
       const content = getBunkerMissionContent(key);
