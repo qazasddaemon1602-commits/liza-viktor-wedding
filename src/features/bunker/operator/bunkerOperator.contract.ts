@@ -80,5 +80,6 @@ export function isOperatorWindowOpen({
     && Number.isFinite(serverNowMilliseconds)
     && Number.isFinite(windowSeconds)
     && windowSeconds >= 0
+    && serverNowMilliseconds >= enteredAtMilliseconds
     && serverNowMilliseconds < enteredAtMilliseconds + windowSeconds * 1000;
 }

@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BUNKER_GLOBAL_GAME_STATES,
+  type BunkerGlobalGameState,
+} from '../bunkerSession.service';
+import {
   BUNKER_OPERATOR_PHRASES,
   getDeterministicFallback,
   getOperatorStage,
   isOperatorWindowOpen,
 } from './bunkerOperator.contract';
+
+const OPERATOR_STAGES = [
+  'MISSION_02',
+  'MISSION_04',
+  'MISSION_06',
+  'FINAL_30',
+] as const satisfies readonly BunkerGlobalGameState[];
+
+const NON_OPERATOR_STAGES = BUNKER_GLOBAL_GAME_STATES.filter(
+  (state) => !OPERATOR_STAGES.includes(state as typeof OPERATOR_STAGES[number]),
+);
 
 describe('Bunker operator transmission contract', () => {
   it.each([
@@ -16,12 +31,8 @@ describe('Bunker operator transmission contract', () => {
     expect(getOperatorStage(globalGameState)).toBe(stage);
   });
 
-  it('returns no operator stage outside the four transmission windows', () => {
-    expect(getOperatorStage('MISSION_01')).toBeNull();
-    expect(getOperatorStage('MISSION_03')).toBeNull();
-    expect(getOperatorStage('MISSION_05')).toBeNull();
-    expect(getOperatorStage('BUNKER_OPEN')).toBeNull();
-    expect(getOperatorStage('FINISHED')).toBeNull();
+  it.each(NON_OPERATOR_STAGES)('returns no operator stage for valid non-operator state %s', (state) => {
+    expect(getOperatorStage(state)).toBeNull();
   });
 
   it.each([
@@ -66,6 +77,14 @@ describe('Bunker operator transmission contract', () => {
     expect(isOperatorWindowOpen({
       enteredAt: '2026-08-23T12:00:00.000Z',
       serverNow: '2026-08-23T12:00:45.000Z',
+      windowSeconds: 45,
+    })).toBe(false);
+  });
+
+  it('keeps the operator window closed before the stage entry timestamp', () => {
+    expect(isOperatorWindowOpen({
+      enteredAt: '2026-08-23T12:00:00.000Z',
+      serverNow: '2026-08-23T11:59:59.999Z',
       windowSeconds: 45,
     })).toBe(false);
   });
