@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { siteAudio } from '../../../lib/siteAudio';
 
 const REVEAL_COPY = 'Сигнал принят. Поезд Виктора прибыл. Я ждала вас. — Лиза';
 const REVEAL_AUDIO_DELAY_MS = 1_600;
-const REVEAL_AUDIO_STORAGE_PREFIX = 'bunker.liza-reveal.played.v1:';
+const REVEAL_AUDIO_STORAGE_PREFIX = 'bunker.liza-reveal.phase.v2:';
+const replayMemory = new Set<string>();
 
 type RevealAudio = {
   playDoor: () => void;
@@ -15,36 +17,59 @@ type Props = {
   audio?: RevealAudio;
 };
 
-function replayKey(sessionKey: string): string {
-  return `${REVEAL_AUDIO_STORAGE_PREFIX}${encodeURIComponent(sessionKey)}`;
+type ReplayPhase = 'door' | 'reveal-complete';
+
+function replayKey(sessionKey: string, phase: ReplayPhase): string {
+  return `${REVEAL_AUDIO_STORAGE_PREFIX}${encodeURIComponent(sessionKey)}:${phase}`;
 }
 
-function hasPlayed(sessionKey: string): boolean {
+function hasPlayed(sessionKey: string, phase: ReplayPhase): boolean {
+  const key = replayKey(sessionKey, phase);
+  if (replayMemory.has(key)) return true;
   try {
-    return window.sessionStorage.getItem(replayKey(sessionKey)) === '1';
+    return window.sessionStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 }
 
-function markPlayed(sessionKey: string): void {
+function markPlayed(sessionKey: string, phase: ReplayPhase): void {
+  const key = replayKey(sessionKey, phase);
+  replayMemory.add(key);
   try {
-    window.sessionStorage.setItem(replayKey(sessionKey), '1');
+    window.sessionStorage.setItem(key, '1');
   } catch {
-    // Replay protection remains best-effort when browser storage is unavailable.
+    // The in-memory phase marker keeps this page lifecycle replay-safe.
   }
 }
 
 export function LizaRevealScreen({ sessionKey, soundEnabled = false, audio }: Props = {}) {
   const [imageAvailable, setImageAvailable] = useState(true);
+  const [localSoundEnabled, setLocalSoundEnabled] = useState(() => (
+    siteAudio.isEnabled() && siteAudio.getVolume() > 0
+  ));
+
+  useEffect(() => siteAudio.subscribe((settings) => {
+    setLocalSoundEnabled(settings.enabled && settings.volume > 0);
+  }), []);
+
+  const effectiveSoundEnabled = soundEnabled && localSoundEnabled;
 
   useEffect(() => {
-    if (!sessionKey || !soundEnabled || !audio || hasPlayed(sessionKey)) return undefined;
-    markPlayed(sessionKey);
-    audio.playDoor();
-    const timer = window.setTimeout(audio.playReveal, REVEAL_AUDIO_DELAY_MS);
+    if (!sessionKey || !effectiveSoundEnabled || !audio || hasPlayed(sessionKey, 'reveal-complete')) {
+      return undefined;
+    }
+    if (!hasPlayed(sessionKey, 'door')) {
+      markPlayed(sessionKey, 'door');
+      audio.playDoor();
+    }
+    const timer = window.setTimeout(() => {
+      if (hasPlayed(sessionKey, 'reveal-complete')) return;
+      markPlayed(sessionKey, 'reveal-complete');
+      audio.playReveal();
+    }, REVEAL_AUDIO_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [audio, sessionKey, soundEnabled]);
+  }, [audio, effectiveSoundEnabled, sessionKey]);
 
   return (
     <section

@@ -78,6 +78,7 @@ describe('Bunker sample audio bridge', () => {
       priority: 'scene',
     });
     audio.dispose();
+    expect(samplePlayer.stopCue).toHaveBeenCalledWith('ui.reveal');
   });
 
   it('restarts requested recorded ambience after projector audio is rearmed', async () => {

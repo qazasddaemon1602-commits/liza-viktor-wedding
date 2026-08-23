@@ -168,6 +168,7 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
       if (hasSample('bunker.alarm')) samplePlayer.stopCue('bunker.alarm');
       if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
       if (hasSample('bunker.door')) samplePlayer.stopCue('bunker.door');
+      if (hasSample('ui.reveal')) samplePlayer.stopCue('ui.reveal');
       stopActive();
       void context?.close();
       context = null;
