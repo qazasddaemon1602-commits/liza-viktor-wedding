@@ -169,6 +169,27 @@
   border-color: #bd655b;
 }
 
+.bunker-operator-panel__results-error {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(199, 168, 108, 0.5);
+  background: rgba(8, 14, 18, 0.72);
+}
+
+.bunker-operator-panel__results-error p { margin: 0; }
+
+.bunker-operator-panel__results-error button,
+.bunker-operator-panel__results-refresh {
+  min-height: 52px;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(199, 168, 108, 0.68);
+  color: #eee8db;
+  background: #17252c;
+  font: 700 0.78rem/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.1em;
+}
+
 @media (max-width: 520px) {
   .bunker-operator-shell {
     place-items: start stretch;

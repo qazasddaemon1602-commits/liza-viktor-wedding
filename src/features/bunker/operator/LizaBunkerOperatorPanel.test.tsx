@@ -5,6 +5,7 @@ import {
   type LizaBunkerOperatorPanelDependencies,
 } from './LizaBunkerOperatorPanel';
 import type { LizaBunkerOperatorState } from './bunkerOperator.service';
+import type { BunkerV2ResultsReadModel } from '../v2/results.service';
 
 const activeState: Extract<LizaBunkerOperatorState, { status: 'active' }> = {
   status: 'active', bunkerActive: true, globalGameState: 'MISSION_02', stage: 'MISSION_02',
@@ -14,6 +15,25 @@ const activeState: Extract<LizaBunkerOperatorState, { status: 'active' }> = {
     { key: 'm02_signal', body: 'Сигнал слабый, но я вас слышу. Продолжайте.' },
     { key: 'm02_fragments', body: 'Не доверяйте одному фрагменту. Сверяйте всё, что нашли.' },
   ], selectedMessage: null,
+};
+
+const completedResults: Extract<BunkerV2ResultsReadModel, { status: 'completed' }> = {
+  contractVersion: 2,
+  status: 'completed',
+  serverNow: '2026-08-23T12:02:01.000Z',
+  finishTimeSeconds: 742,
+  emergencyOpen: false,
+  characters: { active: 1, saved: 16, excluded: 3 },
+  archiveFound: 4,
+  resourcesRemaining: 7,
+  resourcesUsed: 5,
+  tradesCompleted: 2,
+  wrongAttempts: 1,
+  hintsUsed: 1,
+  skillsUsed: 4,
+  missionsCompleted: 6,
+  missionsTotal: 6,
+  coordinationScore: 91,
 };
 
 function deferred<T>() {
@@ -46,6 +66,7 @@ function deps(overrides: Partial<LizaBunkerOperatorPanelDependencies> = {}): Liz
       message: { id: 'message-1', stage: 'MISSION_02', optionKey: 'm02_signal',
         body: activeState.options[0].body, source: 'selected', publishedAt: '2026-08-23T12:00:06.000Z' },
     }),
+    loadResults: vi.fn().mockResolvedValue(completedResults),
     subscribe: vi.fn(() => vi.fn()),
     broadcast: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -55,6 +76,95 @@ function deps(overrides: Partial<LizaBunkerOperatorPanelDependencies> = {}): Liz
 afterEach(() => vi.useRealTimers());
 
 describe('LizaBunkerOperatorPanel', () => {
+  it('loads the shared privacy-safe FINISHED results only at FINISHED and renders the full epilogue', async () => {
+    let refresh: (() => void) | undefined;
+    const loadResults = vi.fn().mockResolvedValue(completedResults);
+    const finished: LizaBunkerOperatorState = {
+      status: 'finished', bunkerActive: true, globalGameState: 'FINISHED',
+      serverNow: '2026-08-23T12:02:00Z',
+    };
+    const load = vi.fn().mockResolvedValue(finished);
+    const dependencies = deps({
+      loadResults,
+      load,
+      subscribe: vi.fn((callback) => { refresh = callback; return vi.fn(); }),
+    });
+    render(
+      <LizaBunkerOperatorPanel token="secret" initialState={activeState} dependencies={dependencies} />,
+    );
+    expect(loadResults).not.toHaveBeenCalled();
+    await act(async () => { refresh?.(); await Promise.resolve(); await Promise.resolve(); });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    expect(await screen.findByRole('region', { name: 'Итоги Бункера' })).toBeInTheDocument();
+    expect(loadResults).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('91 / 100')).toBeInTheDocument();
+    expect(screen.getByText(/персонажей спасено/i)).toHaveTextContent('16');
+    expect(screen.getByText(/материалов найдено/i)).toHaveTextContent('4');
+    expect(screen.getByText(/ресурсов осталось/i)).toHaveTextContent('7');
+    expect(screen.getByText(/обменов между вагонами/i)).toHaveTextContent('2');
+    expect(screen.getByText(/Поезд Виктора прибыл к Лизе/)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Лиза и Виктор вместе после прибытия поезда' }))
+      .toHaveAttribute('src', '/images/bunker/story/couple-epilogue.webp');
+    expect(screen.queryByText(/имя|телефон|гость/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a text-safe retry when FINISHED results are missing or fail while preserving the last valid summary', async () => {
+    const retryResult = deferred<BunkerV2ResultsReadModel>();
+    const loadResults = vi.fn()
+      .mockResolvedValueOnce({
+        contractVersion: 2, status: 'not_found', serverNow: '2026-08-23T12:02:01.000Z',
+      })
+      .mockImplementationOnce(() => retryResult.promise)
+      .mockRejectedValueOnce(new Error('offline'));
+    const finished: LizaBunkerOperatorState = {
+      status: 'finished', bunkerActive: true, globalGameState: 'FINISHED',
+      serverNow: '2026-08-23T12:02:00Z',
+    };
+    const dependencies = deps({ loadResults });
+    render(<LizaBunkerOperatorPanel token="secret" initialState={finished} dependencies={dependencies} />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Итоги пока не готовы');
+    const retry = screen.getByRole('button', { name: 'ПОВТОРИТЬ ЗАГРУЗКУ ИТОГОВ' });
+    fireEvent.click(retry);
+    fireEvent.click(retry);
+    expect(loadResults).toHaveBeenCalledTimes(2);
+    await act(async () => { retryResult.resolve(completedResults); await retryResult.promise; });
+    expect(await screen.findByText('91 / 100')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'ОБНОВИТЬ ИТОГИ' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Последние загруженные итоги сохранены');
+    expect(screen.getByText('91 / 100')).toBeInTheDocument();
+    expect(loadResults).toHaveBeenCalledTimes(3);
+  });
+
+  it('coalesces FINISHED result requests and ignores a late result after a token session change', async () => {
+    const oldResult = deferred<BunkerV2ResultsReadModel>();
+    const oldDependencies = deps({ loadResults: vi.fn(() => oldResult.promise) });
+    const newResults = { ...completedResults, coordinationScore: 77 };
+    const newDependencies = deps({ loadResults: vi.fn().mockResolvedValue(newResults) });
+    const finished: LizaBunkerOperatorState = {
+      status: 'finished', bunkerActive: true, globalGameState: 'FINISHED',
+      serverNow: '2026-08-23T12:02:00Z',
+    };
+    const view = render(
+      <LizaBunkerOperatorPanel token="old-token" initialState={finished} dependencies={oldDependencies} />,
+    );
+    expect(screen.getByText('ЗАГРУЖАЕМ ИТОГИ…')).toBeInTheDocument();
+    view.rerender(
+      <LizaBunkerOperatorPanel token="new-token" initialState={finished} dependencies={newDependencies} />,
+    );
+    expect(await screen.findByText('77 / 100')).toBeInTheDocument();
+    await act(async () => {
+      oldResult.resolve(completedResults);
+      await oldResult.promise;
+    });
+    expect(screen.getByText('77 / 100')).toBeInTheDocument();
+    expect(screen.queryByText('91 / 100')).not.toBeInTheDocument();
+    expect(oldDependencies.loadResults).toHaveBeenCalledTimes(1);
+    expect(newDependencies.loadResults).toHaveBeenCalledTimes(1);
+  });
+
   it('renders the anonymous private channel with exactly two phrase options and no game controls', () => {
     render(<LizaBunkerOperatorPanel token="secret" initialState={activeState} dependencies={deps()} />);
     expect(screen.getByText('ОПЕРАТОР BK-17 · PRIVATE CHANNEL')).toBeInTheDocument();

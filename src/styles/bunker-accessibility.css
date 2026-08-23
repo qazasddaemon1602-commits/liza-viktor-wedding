@@ -147,6 +147,10 @@
   background: #0d0d0c;
 }
 
+.bunker-v2-results__body {
+  min-height: 0;
+}
+
 .bunker-v2-results__hero {
   max-width: 80rem;
 }
@@ -209,6 +213,98 @@
   line-height: 1.45;
 }
 
+@media (min-width: 761px) {
+  .bunker-v2-results {
+    height: 100dvh;
+    min-height: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    align-content: stretch;
+    gap: clamp(0.55rem, 1.4vh, 1rem);
+    padding: clamp(0.75rem, 2vh, 1.35rem) clamp(1rem, 2.5vw, 3rem);
+    overflow: hidden;
+  }
+
+  .bunker-v2-results__hero {
+    display: grid;
+    grid-template-columns: auto minmax(15rem, 1fr);
+    column-gap: clamp(1rem, 2vw, 2rem);
+    align-items: end;
+    max-width: none;
+  }
+
+  .bunker-v2-results__hero p {
+    grid-column: 1 / -1;
+    margin: 0 0 0.15rem;
+    font-size: clamp(0.65rem, 0.9vw, 0.85rem);
+  }
+
+  .bunker-v2-results__hero h1 {
+    margin: 0;
+    font-size: clamp(3rem, min(6vw, 8vh), 5.4rem);
+    line-height: 0.85;
+  }
+
+  .bunker-v2-results__hero strong {
+    align-self: center;
+    font-size: clamp(0.72rem, 1.05vw, 1rem);
+  }
+
+  .bunker-v2-results__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.48fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: clamp(0.5rem, 1.2vh, 0.85rem) clamp(0.75rem, 1.4vw, 1.4rem);
+    overflow: hidden;
+  }
+
+  .bunker-v2-results__score {
+    gap: 0.15rem;
+    margin: 0;
+  }
+
+  .bunker-v2-results__score span { font-size: clamp(0.65rem, 0.85vw, 0.8rem); }
+
+  .bunker-v2-results__score strong {
+    font-size: clamp(2.5rem, min(5vw, 7vh), 4.8rem);
+    line-height: 0.88;
+  }
+
+  .bunker-v2-results__score p { font-size: clamp(0.78rem, 1.05vw, 1rem); }
+
+  .bunker-v2-results__grid {
+    min-height: 0;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+
+  .bunker-v2-results__grid article {
+    align-content: center;
+    gap: clamp(0.15rem, 0.55vh, 0.35rem);
+    padding: clamp(0.45rem, 1.1vh, 0.9rem) clamp(0.55rem, 1.1vw, 1rem);
+    overflow: hidden;
+  }
+
+  .bunker-v2-results__grid span { font-size: clamp(0.6rem, 0.75vw, 0.74rem); }
+
+  .bunker-v2-results__grid strong { font-size: clamp(0.9rem, min(1.55vw, 2.25vh), 1.45rem); }
+
+  .bunker-v2-results__grid small,
+  .bunker-v2-results footer {
+    font-size: clamp(0.66rem, 0.8vw, 0.82rem);
+    line-height: 1.25;
+  }
+
+  .bunker-v2-results .bunker-results-epilogue {
+    grid-column: 2;
+    grid-row: 1 / -1;
+  }
+
+  .bunker-v2-results footer {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 @media (max-width: 760px) {
   .bunker-player-shell {
     padding-bottom: calc(7.25rem + env(safe-area-inset-bottom));
@@ -256,8 +352,12 @@
   }
 
   .bunker-v2-results {
+    height: auto;
+    min-height: 100dvh;
     align-content: start;
     padding: 1.25rem;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .bunker-v2-results__grid {

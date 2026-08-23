@@ -33,7 +33,7 @@ describe('FinalFiveRolePage', () => {
       load: vi.fn().mockResolvedValue({
         status: 'idle', bunkerActive: true, globalGameState: 'MISSION_03', serverNow: '2026-08-23T12:00:00Z',
       }),
-      submit: vi.fn(), subscribe: vi.fn(() => vi.fn()), broadcast: vi.fn(),
+      submit: vi.fn(), loadResults: vi.fn(), subscribe: vi.fn(() => vi.fn()), broadcast: vi.fn(),
     };
     const dependencies = deps();
     render(<FinalFiveRolePage role="liza" token="secret-token" dependencies={dependencies} operatorDependencies={operatorDependencies} />);
@@ -226,6 +226,6 @@ describe('FinalFiveRolePage', () => {
 function depsOperator(overrides: Partial<LizaBunkerOperatorPanelDependencies> = {}): LizaBunkerOperatorPanelDependencies {
   return {
     load: vi.fn().mockResolvedValue({ status: 'idle', bunkerActive: false, serverNow: '2026-08-23T12:00:00Z', globalGameState: null }),
-    submit: vi.fn(), subscribe: vi.fn(() => vi.fn()), broadcast: vi.fn(), ...overrides,
+    submit: vi.fn(), loadResults: vi.fn(), subscribe: vi.fn(() => vi.fn()), broadcast: vi.fn(), ...overrides,
   };
 }

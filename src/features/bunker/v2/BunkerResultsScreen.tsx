@@ -25,7 +25,7 @@ export function BunkerResultsScreen({ model }: { model: BunkerResultsScreenModel
         <strong>{scoreMessage(model.coordinationScore)}</strong>
       </header>
 
-      <main>
+      <main className="bunker-v2-results__body">
         <section className="bunker-v2-results__score" aria-label="Командная работа">
           <span>КОМАНДНАЯ РАБОТА</span>
           <strong>{model.coordinationScore} / 100</strong>

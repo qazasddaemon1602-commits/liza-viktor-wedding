@@ -16,6 +16,10 @@ import {
   type LizaBunkerOperatorState,
 } from '../bunker/operator/bunkerOperator.service';
 import {
+  getBunkerV2Results,
+} from '../bunker/v2/results.service';
+import type { BunkerV2RpcClient } from '../bunker/v2/command.service';
+import {
   getFinalFiveRoleState,
   submitFinalFiveAnswer,
   type FinalFiveChoice,
@@ -70,6 +74,7 @@ function browserDependencies(eventSlug: string, role: FinalFiveRole): FinalFiveR
 function browserOperatorDependencies(eventSlug: string): LizaBunkerOperatorPanelDependencies {
   const client = getSupabaseClient();
   const rpcClient = client as unknown as BunkerOperatorRpcClient;
+  const resultsClient = client as unknown as BunkerV2RpcClient;
   const realtimeClient = client as unknown as BunkerRealtimeClient;
   return {
     load: (token) => getLizaBunkerOperatorState(rpcClient, eventSlug, token),
@@ -80,6 +85,7 @@ function browserOperatorDependencies(eventSlug: string): LizaBunkerOperatorPanel
       stage,
       optionKey,
     ),
+    loadResults: () => getBunkerV2Results(resultsClient, eventSlug),
     subscribe: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
     broadcast: () => broadcastBunkerRefresh(realtimeClient, eventSlug),
   };

@@ -4,6 +4,11 @@ import type {
   LizaBunkerOperatorState,
   SubmitLizaBunkerOperatorResult,
 } from './bunkerOperator.service';
+import { BunkerResultsPlayer } from '../v2/BunkerResultsPlayer';
+import type {
+  BunkerV2ResultSummary,
+  BunkerV2ResultsReadModel,
+} from '../v2/results.service';
 
 export type LizaBunkerOperatorPanelDependencies = {
   load: (token: string) => Promise<LizaBunkerOperatorState>;
@@ -12,6 +17,7 @@ export type LizaBunkerOperatorPanelDependencies = {
     stage: BunkerOperatorStage,
     optionKey: string,
   ) => Promise<SubmitLizaBunkerOperatorResult>;
+  loadResults: () => Promise<BunkerV2ResultsReadModel | null>;
   subscribe: (callback: () => void) => () => void;
   broadcast: () => Promise<void> | void;
 };
@@ -41,6 +47,9 @@ export function LizaBunkerOperatorPanel({
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [results, setResults] = useState<BunkerV2ResultSummary | null>(null);
+  const [resultsLoading, setResultsLoading] = useState(initialState.status === 'finished');
+  const [resultsError, setResultsError] = useState('');
   const [portraitAvailable, setPortraitAvailable] = useState(true);
   const [clock, setClock] = useState(() => Date.now());
   const syncedAt = useRef(Date.now());
@@ -50,8 +59,12 @@ export function LizaBunkerOperatorPanel({
   const reloadRef = useRef<(() => void) | null>(null);
   const submitInFlight = useRef(false);
   const submitBarrier = useRef<{ stage: BunkerOperatorStage } | null>(null);
+  const resultsInFlight = useRef(false);
+  const reloadResultsRef = useRef<(() => void) | null>(null);
+  const resultsRef = useRef<BunkerV2ResultSummary | null>(null);
 
   stateRef.current = state;
+  resultsRef.current = results;
 
   const acceptState = useCallback((next: LizaBunkerOperatorState) => {
     syncedAt.current = Date.now();
@@ -77,6 +90,12 @@ export function LizaBunkerOperatorPanel({
     setConfirming(false);
     setSubmitting(false);
     setError('');
+    setResults(null);
+    resultsRef.current = null;
+    setResultsLoading(initialState.status === 'finished');
+    setResultsError('');
+    resultsInFlight.current = false;
+    reloadResultsRef.current = null;
     setClock(Date.now());
   }, [dependencies, token]);
 
@@ -168,6 +187,63 @@ export function LizaBunkerOperatorPanel({
     };
   }, [state]);
 
+  useEffect(() => {
+    if (state.status !== 'finished') {
+      resultsInFlight.current = false;
+      reloadResultsRef.current = null;
+      setResults(null);
+      setResultsLoading(false);
+      setResultsError('');
+      return;
+    }
+
+    const generation = sessionGeneration.current;
+    let active = true;
+    const isCurrentSession = () => active && sessionGeneration.current === generation;
+    const reloadResults = () => {
+      if (!isCurrentSession() || resultsInFlight.current) return;
+      resultsInFlight.current = true;
+      setResultsLoading(true);
+      setResultsError('');
+      let request: Promise<BunkerV2ResultsReadModel | null>;
+      try {
+        request = dependencies.loadResults();
+      } catch (loadError) {
+        request = Promise.reject(loadError);
+      }
+      void Promise.resolve(request)
+        .then((next) => {
+          if (!isCurrentSession()) return;
+          if (next?.status === 'completed') {
+            resultsRef.current = next;
+            setResults(next);
+            setResultsError('');
+            return;
+          }
+          setResultsError((current) => current || 'Итоги пока не готовы. Повторите загрузку через несколько секунд.');
+        })
+        .catch(() => {
+          if (!isCurrentSession()) return;
+          setResultsError(resultsRef.current
+            ? 'Связь нестабильна. Последние загруженные итоги сохранены.'
+            : 'Не удалось загрузить итоги. Проверьте связь и попробуйте ещё раз.');
+        })
+        .finally(() => {
+          if (!isCurrentSession()) return;
+          resultsInFlight.current = false;
+          setResultsLoading(false);
+        });
+    };
+
+    reloadResultsRef.current = reloadResults;
+    reloadResults();
+    return () => {
+      active = false;
+      resultsInFlight.current = false;
+      if (reloadResultsRef.current === reloadResults) reloadResultsRef.current = null;
+    };
+  }, [dependencies, state.status, token]);
+
   const secondsLeft = state.status === 'active'
     ? Math.max(0, (
       Date.parse(state.sendUntil)
@@ -241,7 +317,30 @@ export function LizaBunkerOperatorPanel({
       return (
         <>
           <h1>МАРШРУТ ЗАВЕРШЁН</h1>
-          <p>Состав прибыл. Финальная запись сохранена в архиве.</p>
+          {!results && resultsLoading && <p role="status">ЗАГРУЖАЕМ ИТОГИ…</p>}
+          {results && <BunkerResultsPlayer model={results} />}
+          {resultsError && (
+            <div className="bunker-operator-panel__results-error" role="alert">
+              <p>{resultsError}</p>
+              <button
+                type="button"
+                disabled={resultsLoading}
+                onClick={() => reloadResultsRef.current?.()}
+              >
+                {results ? 'ОБНОВИТЬ ИТОГИ' : 'ПОВТОРИТЬ ЗАГРУЗКУ ИТОГОВ'}
+              </button>
+            </div>
+          )}
+          {results && !resultsError && (
+            <button
+              className="bunker-operator-panel__results-refresh"
+              type="button"
+              disabled={resultsLoading}
+              onClick={() => reloadResultsRef.current?.()}
+            >
+              {resultsLoading ? 'ОБНОВЛЯЕМ…' : 'ОБНОВИТЬ ИТОГИ'}
+            </button>
+          )}
         </>
       );
     }

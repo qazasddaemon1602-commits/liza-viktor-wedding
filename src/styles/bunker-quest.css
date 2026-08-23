@@ -1245,6 +1245,33 @@
   font: 400 clamp(1.35rem, 2.2vw, 2.4rem)/1.2 Georgia, 'Times New Roman', serif;
 }
 
+@media (min-width: 761px) {
+  .bunker-v2-results .bunker-results-epilogue {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    gap: clamp(0.5rem, 1vh, 0.8rem);
+    align-items: stretch;
+    margin: 0;
+    padding: clamp(0.5rem, 1vh, 0.85rem);
+    overflow: hidden;
+  }
+
+  .bunker-v2-results .bunker-results-epilogue picture {
+    min-height: 0;
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  .bunker-v2-results .bunker-results-epilogue p {
+    margin-top: 0.3rem;
+    font-size: clamp(1rem, min(1.55vw, 2.6vh), 1.55rem);
+    line-height: 1.14;
+  }
+}
+
 @media (max-height: 820px) and (min-width: 800px) {
   .bunker-liza-reveal--screen { padding-block: 1rem; }
   .bunker-liza-reveal__portrait { width: min(100%, 22rem); }
