@@ -7,7 +7,7 @@ const migration = readFileSync(
   `${testRuntime.process.cwd()}/supabase/migrations/20260823034000_bunker_m04_item_transfer.sql`,
   'utf8',
 );
-const compatibilityMigrationName = '20260823034500_bunker_m04_transfer_compat.sql';
+const compatibilityMigrationName = '20260823035500_bunker_m04_transfer_compat.sql';
 let compatibilityMigration = '';
 try {
   compatibilityMigration = readFileSync(
@@ -38,17 +38,23 @@ describe('Bunker Mission 04 lot transfer migration', () => {
   });
 
   it('ships a rerunnable forward compatibility migration in rollout order', () => {
-    expect('20260823034000_bunker_m04_item_transfer.sql' < compatibilityMigrationName).toBe(true);
-    expect(compatibilityMigrationName < '20260823035000_bunker_character_ability_action.sql').toBe(true);
+    expect('20260823035000_bunker_character_ability_action.sql' < compatibilityMigrationName).toBe(true);
+    expect(compatibilityMigrationName < '20260823040000_quiz_question_images.sql').toBe(true);
     expect(compatibilityMigration).toMatch(
-      /create\s+or\s+replace\s+function\s+public\.submit_guest_bunker_global_mission/i,
+      /create\s+or\s+replace\s+function\s+public\._submit_guest_bunker_global_mission_before_ability_modifiers/i,
     );
     expect(compatibilityMigration).toMatch(
       /create\s+or\s+replace\s+function\s+public\._bunker_global_mission_action/i,
     );
+    expect(compatibilityMigration).not.toMatch(
+      /create\s+or\s+replace\s+function\s+public\.submit_guest_bunker_global_mission/i,
+    );
     expect(compatibilityMigration).not.toMatch(/alter\s+function[\s\S]+rename\s+to/i);
     expect(abilityMigration).toMatch(
       /rename\s+to\s+_submit_guest_bunker_global_mission_before_ability_modifiers/i,
+    );
+    expect(abilityMigration).toMatch(
+      /create\s+or\s+replace\s+function\s+public\.submit_guest_bunker_global_mission/i,
     );
     expect(abilityMigration).toMatch(
       /public\._submit_guest_bunker_global_mission_before_ability_modifiers\s*\(/i,

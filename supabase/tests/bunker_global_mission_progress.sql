@@ -605,13 +605,12 @@ select throws_ok(
       'transferLotId', (select item.id::text from public.bunker_inventory_lots item
         where item.carriage_id = '00000000-0000-4000-8000-000000000911'
           and item.item_key = 'tools' limit 1),
-      'transferItemKey', 'tools',
       'transferToWagonId', '00000000-0000-4000-8000-000000000913'
     )
   ) $$,
   '22023',
   'invalid Mission 04 transfer destination',
-  'Mission 04 accepts consistent dual transfer fields but rejects a nonpartner wagon'
+  'Mission 04 rejects a transfer to a wagon outside the planned partner group'
 );
 select throws_ok(
   $$ select public.submit_guest_bunker_global_mission(
@@ -655,11 +654,12 @@ select is(
       'transferLotId', (select item.id::text from public.bunker_inventory_lots item
         where item.carriage_id = '00000000-0000-4000-8000-000000000911'
           and item.item_key = 'tools' limit 1),
+      'transferItemKey', 'tools',
       'transferToWagonId', '00000000-0000-4000-8000-000000000912'
     )
   )->>'status',
   'completed',
-  'Mission 04 validates the planned partner, exchange message and real transfer'
+  'Mission 04 accepts consistent lot-id and legacy item-key fields for a real transfer'
 );
 select is(
   (select jsonb_build_object(

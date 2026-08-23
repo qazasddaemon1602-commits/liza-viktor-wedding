@@ -1,6 +1,8 @@
 -- Rolling-release compatibility for Mission 04.
 --
 -- Deploy this database migration before the frontend that sends transferLotId.
+-- Migration 035 has already installed the public ability-modifier wrapper; this
+-- migration only replaces its internal transfer implementation.
 -- New phones submit an exact lot id; already-open old tabs may temporarily
 -- submit transferItemKey. The server always derives label and quantity from the
 -- locked source lot and stores the resolved lot id in either case.
@@ -61,7 +63,7 @@ begin
 end;
 $$;
 
-create or replace function public.submit_guest_bunker_global_mission(
+create or replace function public._submit_guest_bunker_global_mission_before_ability_modifiers(
   p_event_slug text,
   p_device_key text,
   p_mission_state text,
@@ -336,7 +338,6 @@ $$;
 
 revoke all on function public._bunker_global_mission_action(uuid, uuid, uuid, text)
   from public, anon, authenticated;
-revoke all on function public.submit_guest_bunker_global_mission(text, text, text, jsonb)
-  from public, anon, authenticated;
-grant execute on function public.submit_guest_bunker_global_mission(text, text, text, jsonb)
-  to anon, authenticated;
+revoke all on function public._submit_guest_bunker_global_mission_before_ability_modifiers(
+  text, text, text, jsonb
+) from public, anon, authenticated;

@@ -85,7 +85,7 @@ The final scoped re-review identified one release-order hazard: an already-open 
 
 ### Fix and safety rule
 
-- Added the independent forward migration `20260823034500_bunker_m04_transfer_compat.sql`, ordered after the original M04 migration and before character abilities. It uses only `create or replace function`, so it does not depend on replaying or renaming an already-recorded migration.
+- Added the independent forward migration `20260823035500_bunker_m04_transfer_compat.sql`, ordered after character abilities and before quiz images. Migration 035 first renames the per-lot transfer implementation to `_submit_guest_bunker_global_mission_before_ability_modifiers` and installs the public ability wrapper; migration 0355 then replaces only that internal helper. It never replaces the public `submit_guest_bunker_global_mission` function, so rerunning 0355 preserves ability modifiers.
 - The server temporarily accepts either the new exact `transferLotId` or the legacy `transferItemKey`.
 - Exact lot ID has priority. If a payload contains both fields, the locked lot's server item key must match the legacy key or the request fails with `invalid Mission 04 transfer item mismatch`.
 - A legacy item key resolves deterministically to the earliest available matching lot for the authoritative event, run, and source wagon, ordered by `acquired_at, id`, and locks that lot before transfer.
@@ -94,7 +94,7 @@ The final scoped re-review identified one release-order hazard: an already-open 
 
 ### Required rollout order
 
-1. Deploy/apply database migrations first, through `20260823034500_bunker_m04_transfer_compat.sql` (and later migrations).
+1. Deploy/apply database migrations first in this exact order: `20260823033000` → `20260823034000` → `20260823035000` → `20260823035500` → `20260823040000`.
 2. Run `supabase test db` in the database-test workflow.
 3. Only after the DB gate is green, merge/deploy the frontend commit that sends `transferLotId`.
 4. Keep the compatibility migration during the event release window so already-open old tabs continue working. Removal, if desired later, must be a separate forward migration after old clients are no longer possible.
