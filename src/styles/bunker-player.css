@@ -960,6 +960,10 @@
     width: 100%;
   }
 
+  .bunker-player-dashboard .bunker-mission-actions > button:last-child {
+    scroll-margin-block-end: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom) + 0.75rem);
+  }
+
   .bunker-player-dashboard__nav {
     position: fixed;
     right: 0;

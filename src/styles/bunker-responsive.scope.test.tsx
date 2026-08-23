@@ -105,6 +105,17 @@ describe('Bunker responsive layout contract', () => {
     expect(largeButton).toContain('box-sizing: border-box');
   });
 
+  it('reserves fixed-navigation clearance when a mobile mission action is scrolled into view', () => {
+    const action = ruleBody(
+      playerStyle,
+      '.bunker-player-dashboard .bunker-mission-actions > button:last-child',
+    );
+
+    expect(action).toContain(
+      'scroll-margin-block-end: calc(var(--bunker-player-mobile-nav-height) + env(safe-area-inset-bottom) + 0.75rem)',
+    );
+  });
+
   it('lets M03 copy and controls reflow inside a narrow large-text card', () => {
     const content = ruleBody(playerStyle, '.bunker-m03-problem-board li > div');
     const copy = ruleBody(

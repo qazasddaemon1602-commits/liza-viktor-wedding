@@ -238,7 +238,9 @@ async function expectLargeTextNavigation(page: Page) {
 }
 
 async function expectActionClearOfFixedNavigation(page: Page, action: Locator) {
-  await action.scrollIntoViewIfNeeded();
+  await action.focus();
+  await action.evaluate((element) => element.scrollIntoView({ block: 'end', inline: 'nearest' }));
+  await expect(action).toBeFocused();
   await expectInsideViewport(page, action);
   const actionBox = await action.boundingBox();
   const navigationBox = await page.getByRole('navigation', { name: 'Разделы игры' }).boundingBox();
