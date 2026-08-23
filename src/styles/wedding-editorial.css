@@ -573,7 +573,8 @@
 @media (max-width: 900px) {
   .event-screen--idle {
     min-height: 100dvh;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
     padding: 1rem;
   }
 
