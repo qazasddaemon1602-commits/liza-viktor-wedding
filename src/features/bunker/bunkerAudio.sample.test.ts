@@ -64,6 +64,22 @@ describe('Bunker sample audio bridge', () => {
     audio.dispose();
   });
 
+  it('exposes the existing local reveal cue for the post-door sequence', () => {
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn().mockResolvedValue('played'),
+      stopCue: vi.fn(),
+    };
+    const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
+
+    audio.playReveal();
+
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.reveal', {
+      priority: 'scene',
+    });
+    audio.dispose();
+  });
+
   it('restarts requested recorded ambience after projector audio is rearmed', async () => {
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),

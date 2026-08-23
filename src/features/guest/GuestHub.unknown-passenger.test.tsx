@@ -18,7 +18,9 @@ const story = { remainingSeconds: 60, title: 'Неизвестный пасса�
 describe('GuestHub unknown passenger', () => {
   it('keeps the guest inside the Bunker and renders BK-17 as the only active story card', () => {
     render(<GuestHub guest={guest} activeCall={null} bunkerRuntime={runtime} bunkerUnknownPassenger={story} quizState={{ status: 'idle', history: [] }} onQuizVote={vi.fn()} />);
-    expect(screen.getByRole('region', { name: 'Сюжет · Неизвестный пассажир' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Сюжет · Неизвестный оператор' })).toBeInTheDocument();
+    expect(screen.getAllByText('НЕИЗВЕСТНЫЙ ОПЕРАТОР').length).toBeGreaterThan(0);
+    expect(screen.queryByText('НЕИЗВЕСТНЫЙ ПАССАЖИР')).not.toBeInTheDocument();
     expect(screen.getByText(/4719/)).toBeInTheDocument();
     expect(screen.queryByTestId('virtual-ticket')).not.toBeInTheDocument();
   });

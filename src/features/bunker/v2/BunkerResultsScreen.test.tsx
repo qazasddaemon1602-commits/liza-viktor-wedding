@@ -26,6 +26,7 @@ describe('BunkerResultsScreen', () => {
     expect(screen.getByText('91 / 100')).toBeInTheDocument();
     expect(screen.getByText(/12:22/)).toBeInTheDocument();
     expect(screen.getByText(/16 персонажей спасено/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Эпилог Лизы и Виктора')).toHaveTextContent('Поезд Виктора прибыл к Лизе. Теперь маршрут продолжается вместе.');
     expect(screen.queryByText('4719')).not.toBeInTheDocument();
     expect(screen.queryByText('LV0830')).not.toBeInTheDocument();
   });

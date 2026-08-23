@@ -36,6 +36,7 @@ import type {
 } from './bunkerGlobalMission.service';
 import { getBunkerMissionContent } from './v2/content/missionContent';
 import { BunkerOperatorTransmission } from './operator/BunkerOperatorTransmission';
+import { LizaRevealPlayer } from './operator/LizaRevealPlayer';
 import {
   useBunkerOperatorFeed,
   type BunkerOperatorFeedDependencies,
@@ -336,7 +337,8 @@ export function BunkerPlayerDashboard({
     isV2 ? (dashboard?.passengers ?? fallbackV2Passengers) : runtime.passengers,
   );
   const archive = archiveEntries(isV2 ? (dashboard?.archive ?? []) : runtime.archive);
-  const resultsStage = isV2 && (gameState === 'BUNKER_OPEN' || gameState === 'FINISHED');
+  const revealStage = isV2 && gameState === 'BUNKER_OPEN';
+  const resultsStage = isV2 && gameState === 'FINISHED';
   const hiddenTrait = 'hiddenTrait' in runtime.character && runtime.character.hiddenTraitRevealed
     ? runtime.character.hiddenTrait
     : null;
@@ -347,8 +349,10 @@ export function BunkerPlayerDashboard({
     ? dashboard.inventory
     : fallbackInventory;
   const availableItems = availableInventoryKeys(inventory);
-  const gameStateLabel = missionContent?.title.toLocaleUpperCase('ru-RU')
-    ?? bunkerStageLabel(gameState).toLocaleUpperCase('ru-RU');
+  const gameStateLabel = isV2 && gameState === 'UNKNOWN_PASSENGER'
+    ? 'НЕИЗВЕСТНЫЙ ОПЕРАТОР'
+    : missionContent?.title.toLocaleUpperCase('ru-RU')
+      ?? bunkerStageLabel(gameState).toLocaleUpperCase('ru-RU');
   const overflowSectionActive = OVERFLOW_SECTIONS.includes(section);
 
   useEffect(() => {
@@ -375,14 +379,14 @@ export function BunkerPlayerDashboard({
     });
   };
 
-  if (resultsStage) {
+  if (revealStage || resultsStage) {
     return (
       <section
         className="bunker-player-dashboard bunker-player-dashboard--results"
         aria-label="Игровой модуль Бункер"
         data-large-text={largeText ? 'true' : undefined}
       >
-        <BunkerResultsLivePlayer />
+        {revealStage ? <LizaRevealPlayer /> : <BunkerResultsLivePlayer />}
       </section>
     );
   }

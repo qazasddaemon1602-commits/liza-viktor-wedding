@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { BunkerV2ResultSummary } from './results.service';
 
 export type BunkerResultsScreenModel = Omit<BunkerV2ResultSummary, 'contractVersion' | 'status' | 'serverNow'>;
@@ -15,6 +16,7 @@ function scoreMessage(score: number): string {
 }
 
 export function BunkerResultsScreen({ model }: { model: BunkerResultsScreenModel }) {
+  const [epilogueImageAvailable, setEpilogueImageAvailable] = useState(true);
   return (
     <section className="bunker-v2-screen bunker-v2-results" aria-label="Бункер открыт · итоги игры">
       <header className="bunker-v2-results__hero">
@@ -38,6 +40,19 @@ export function BunkerResultsScreen({ model }: { model: BunkerResultsScreenModel
           <article><span>ЗАДАНИЯ</span><strong>{model.missionsCompleted} / {model.missionsTotal} этапов завершено</strong><small>Результаты предыдущих решений вошли в финал</small></article>
           <article><span>ФИНАЛ</span><strong>{model.wrongAttempts} неверных проверок</strong><small>{model.hintsUsed} уровней подсказок использовано</small></article>
         </div>
+        <section className="bunker-results-epilogue" aria-label="Эпилог Лизы и Виктора">
+          {epilogueImageAvailable && (
+            <picture>
+              <source srcSet="/images/bunker/story/couple-epilogue.avif" type="image/avif" />
+              <img
+                src="/images/bunker/story/couple-epilogue.webp"
+                alt="Лиза и Виктор вместе после прибытия поезда"
+                onError={() => setEpilogueImageAvailable(false)}
+              />
+            </picture>
+          )}
+          <div><span>ЭПИЛОГ</span><p>Поезд Виктора прибыл к Лизе. Теперь маршрут продолжается вместе.</p></div>
+        </section>
       </main>
 
       <footer>ПОЕЗД ПРИБЫЛ · ВСЕ ГОСТИ ОСТАЮТСЯ В ИГРЕ ДО ФИНАЛЬНОЙ СЦЕНЫ</footer>

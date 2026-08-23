@@ -1573,3 +1573,86 @@
     line-height: 1.65;
   }
 }
+
+.bunker-liza-reveal--player {
+  width: min(100%, 42rem);
+  margin-inline: auto;
+  padding: clamp(1rem, 4vw, 1.7rem);
+  border: 1px solid rgba(199, 168, 108, 0.46);
+  background: linear-gradient(145deg, #0d1b22, #18130f);
+}
+
+.bunker-liza-reveal--player header {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.bunker-liza-reveal--player header span,
+.bunker-liza-reveal--player header h1,
+.bunker-liza-reveal--player blockquote,
+.bunker-liza-reveal--player > p,
+.bunker-results-epilogue p {
+  margin: 0;
+}
+
+.bunker-liza-reveal--player header span,
+.bunker-results-epilogue span {
+  color: #c5a76c;
+  font: 600 0.75rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.14em;
+}
+
+.bunker-liza-reveal--player header h1 {
+  font: 400 clamp(3.2rem, 15vw, 6rem)/0.9 Georgia, 'Times New Roman', serif;
+}
+
+.bunker-liza-reveal--player .bunker-liza-reveal__portrait {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-color: rgba(199, 168, 108, 0.52);
+}
+
+.bunker-liza-reveal--player blockquote {
+  display: grid;
+  gap: 0.2rem;
+  font: 400 clamp(1.45rem, 6vw, 2.2rem)/1.2 Georgia, 'Times New Roman', serif;
+}
+
+.bunker-liza-reveal--player blockquote strong {
+  margin-top: 0.45rem;
+  color: #c5a76c;
+  font-weight: 400;
+}
+
+.bunker-liza-reveal--player > p { color: #c7c1b5; }
+
+.bunker-v2-results-player .bunker-results-epilogue {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid rgba(199, 168, 108, 0.42);
+  background: linear-gradient(130deg, #211a14, #10191d);
+}
+
+.bunker-v2-results-player .bunker-results-epilogue picture {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.bunker-v2-results-player .bunker-results-epilogue img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bunker-v2-results-player .bunker-results-epilogue p {
+  margin-top: 0.4rem;
+  color: #eee8db;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.2rem;
+  line-height: 1.42;
+}

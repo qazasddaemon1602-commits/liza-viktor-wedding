@@ -1099,3 +1099,160 @@
     font-size: clamp(4.5rem, 7vw, 7rem);
   }
 }
+
+/* BUNKER_OPEN is a story reveal; FINISHED remains the statistical protocol. */
+.bunker-liza-reveal--screen {
+  position: fixed;
+  inset: 0;
+  z-index: 230;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(1rem, 2.2vh, 2rem);
+  padding: clamp(1.25rem, 3.5vw, 4rem);
+  color: #f1eadc;
+  background:
+    radial-gradient(circle at 70% 38%, rgba(174, 126, 66, 0.2), transparent 42%),
+    linear-gradient(130deg, #07131a 0%, #0d1f29 48%, #17120d 100%);
+  overflow: hidden;
+}
+
+.bunker-liza-reveal--screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent 0 4px, rgba(255, 255, 255, 0.018) 4px 5px);
+}
+
+.bunker-liza-reveal__signal,
+.bunker-liza-reveal--screen > footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font: 600 clamp(0.72rem, 1.1vw, 1rem)/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.16em;
+}
+
+.bunker-liza-reveal__signal span {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: #b6d8e7;
+  box-shadow: 0 0 1.4rem rgba(182, 216, 231, 0.9);
+}
+
+.bunker-liza-reveal__layout {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.72fr) minmax(0, 1.28fr);
+  gap: clamp(2rem, 5vw, 6rem);
+  align-items: center;
+  width: min(92rem, 100%);
+  margin: auto;
+}
+
+.bunker-liza-reveal__portrait {
+  display: block;
+  min-height: 0;
+  width: min(100%, 32rem);
+  aspect-ratio: 3 / 4;
+  justify-self: center;
+  border: 1px solid rgba(199, 168, 108, 0.62);
+  background: #10191d;
+  overflow: hidden;
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.46);
+}
+
+.bunker-liza-reveal__portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bunker-liza-reveal__copy > p,
+.bunker-liza-reveal__copy > h1,
+.bunker-liza-reveal__copy blockquote {
+  margin: 0;
+}
+
+.bunker-liza-reveal__copy > p {
+  color: #c5a76c;
+  font: 600 clamp(0.75rem, 1.25vw, 1.1rem)/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.16em;
+}
+
+.bunker-liza-reveal__copy > h1 {
+  margin-block: clamp(0.45rem, 1vh, 0.9rem) clamp(1rem, 2.5vh, 2rem);
+  font: 400 clamp(4rem, min(10vw, 15vh), 10rem)/0.82 Georgia, 'Times New Roman', serif;
+}
+
+.bunker-liza-reveal__copy blockquote {
+  display: grid;
+  color: #f1eadc;
+  font: 400 clamp(1.8rem, min(3.5vw, 5.5vh), 4rem)/1.12 Georgia, 'Times New Roman', serif;
+}
+
+.bunker-liza-reveal__copy blockquote strong {
+  margin-top: clamp(0.75rem, 2vh, 1.5rem);
+  color: #c5a76c;
+  font-weight: 400;
+}
+
+.bunker-liza-reveal--screen > footer {
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(199, 168, 108, 0.48);
+}
+
+.bunker-v2-results .bunker-results-epilogue {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.45fr) minmax(0, 1fr);
+  gap: clamp(1rem, 2.4vw, 2rem);
+  align-items: center;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid rgba(199, 168, 108, 0.45);
+  background: linear-gradient(110deg, rgba(42, 32, 24, 0.82), rgba(17, 25, 29, 0.9));
+}
+
+.bunker-v2-results .bunker-results-epilogue picture {
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+
+.bunker-v2-results .bunker-results-epilogue img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bunker-v2-results .bunker-results-epilogue span {
+  color: #c5a76c;
+  font: 600 0.78rem/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.16em;
+}
+
+.bunker-v2-results .bunker-results-epilogue p {
+  margin: 0.55rem 0 0;
+  font: 400 clamp(1.35rem, 2.2vw, 2.4rem)/1.2 Georgia, 'Times New Roman', serif;
+}
+
+@media (max-height: 820px) and (min-width: 800px) {
+  .bunker-liza-reveal--screen { padding-block: 1rem; }
+  .bunker-liza-reveal__portrait { width: min(100%, 22rem); }
+}
+
+@media (max-width: 760px) {
+  .bunker-liza-reveal__layout,
+  .bunker-v2-results .bunker-results-epilogue {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

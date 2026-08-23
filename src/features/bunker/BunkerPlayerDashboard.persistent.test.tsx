@@ -195,4 +195,27 @@ describe('persistent Bunker V2 player dashboard', () => {
     );
     expect(screen.queryByRole('note', { name: 'Последняя передача оператора BK-17' })).not.toBeInTheDocument();
   });
+
+  it('uses BUNKER_OPEN for the phone reveal and reserves FINISHED for the result loader', () => {
+    const reveal = render(
+      <BunkerPlayerDashboard
+        runtime={{ ...runtime, state: 'BUNKER_OPEN', currentMission: null }}
+        dashboard={dashboard}
+      />,
+    );
+    expect(screen.getByRole('region', { name: 'Лиза встречает поезд' })).toHaveTextContent(
+      'Сигнал принят. Поезд Виктора прибыл. Я ждала вас. — Лиза',
+    );
+    expect(screen.queryByRole('region', { name: 'Итоги Бункера' })).not.toBeInTheDocument();
+
+    reveal.unmount();
+    render(
+      <BunkerPlayerDashboard
+        runtime={{ ...runtime, state: 'FINISHED', currentMission: null }}
+        dashboard={dashboard}
+      />,
+    );
+    expect(screen.getByRole('region', { name: 'Итоги Бункера' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Лиза встречает поезд' })).not.toBeInTheDocument();
+  });
 });

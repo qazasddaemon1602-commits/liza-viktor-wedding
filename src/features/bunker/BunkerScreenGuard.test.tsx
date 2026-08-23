@@ -168,6 +168,7 @@ describe('BunkerScreenGuard', () => {
       startAmbience: vi.fn(),
       stopAmbience: vi.fn(),
       playDoorUnlock: vi.fn(),
+      playReveal: vi.fn(),
       dispose: vi.fn(),
     };
     let refresh: (() => void) | undefined;
@@ -213,6 +214,7 @@ describe('BunkerScreenGuard', () => {
       startAmbience: vi.fn(),
       stopAmbience: vi.fn(),
       playDoorUnlock: vi.fn(),
+      playReveal: vi.fn(),
       dispose: vi.fn(),
     };
     const load = vi.fn().mockResolvedValue({
@@ -247,6 +249,7 @@ describe('BunkerScreenGuard', () => {
       startAmbience: vi.fn(),
       stopAmbience: vi.fn(),
       playDoorUnlock: vi.fn(),
+      playReveal: vi.fn(),
       dispose: vi.fn(),
     };
     let refresh: (() => void) | undefined;
@@ -395,6 +398,7 @@ describe('BunkerScreenGuard', () => {
         startAmbience: vi.fn(),
         stopAmbience: vi.fn(),
         playDoorUnlock: vi.fn(),
+        playReveal: vi.fn(),
         dispose: vi.fn(),
       },
     };
@@ -433,6 +437,7 @@ describe('BunkerScreenGuard', () => {
         startAmbience: vi.fn(),
         stopAmbience: vi.fn(),
         playDoorUnlock: vi.fn(),
+        playReveal: vi.fn(),
         dispose: vi.fn(),
       },
     };

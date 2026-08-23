@@ -9,6 +9,7 @@ export type BunkerAudioController = {
   startAmbience: () => void;
   stopAmbience: () => void;
   playDoorUnlock: () => void;
+  playReveal: () => void;
   dispose: () => void;
 };
 
@@ -144,8 +145,15 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     },
     playDoorUnlock: () => {
       if (disposed) return;
+      if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
       if (!hasSample('bunker.door')) return;
       void samplePlayer.playCue('bunker.door', { priority: 'major' });
+    },
+    playReveal: () => {
+      if (disposed) return;
+      if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
+      if (!hasSample('ui.reveal')) return;
+      void samplePlayer.playCue('ui.reveal', { priority: 'scene' });
     },
     dispose: () => {
       if (disposed) return;

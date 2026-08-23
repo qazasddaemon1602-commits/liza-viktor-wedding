@@ -31,6 +31,7 @@ import { getBunkerV2Results, type BunkerV2ResultSummary, type BunkerV2ResultsRea
 import { BunkerResultsScreen, type BunkerResultsScreenModel } from './v2/BunkerResultsScreen';
 import { getBunkerMissionContent } from './v2/content/missionContent';
 import { BunkerOperatorTransmission } from './operator/BunkerOperatorTransmission';
+import { LizaRevealScreen } from './operator/LizaRevealScreen';
 import {
   getBunkerOperatorFeed,
   useBunkerOperatorFeed,
@@ -385,13 +386,22 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     && explicitV2
     && state?.status === 'active'
     && state.globalGameState === 'FINAL_30';
+  const revealActive = bunkerActive
+    && explicitV2
+    && state?.status === 'active'
+    && state.globalGameState === 'BUNKER_OPEN';
   const resultsActive = bunkerActive
     && explicitV2
     && state?.status === 'active'
-    && (state.globalGameState === 'BUNKER_OPEN' || state.globalGameState === 'FINISHED');
+    && state.globalGameState === 'FINISHED';
   const storyView = storyModel(unknown, nowMs);
   const finalView = finalModel(final, nowMs);
   const resultsView = resultModel(results);
+  const revealAudio = useMemo(() => (
+    deps?.audio
+      ? { playDoor: deps.audio.playDoorUnlock, playReveal: deps.audio.playReveal }
+      : undefined
+  ), [deps?.audio]);
   const narrationContent = state?.status === 'active'
     ? getBunkerMissionContent(state.currentMission?.id ?? state.globalGameState)
     : undefined;
@@ -429,14 +439,14 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
-    if (!bunkerActive || state?.status !== 'active' || !state.soundEnabled) {
+    if (!bunkerActive || revealActive || resultsActive || state?.status !== 'active' || !state.soundEnabled) {
       audio.stopAmbience();
       return;
     }
     audio.startAmbience();
     void audio.arm();
     return () => audio.stopAmbience();
-  }, [deps, bunkerActive, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [deps, bunkerActive, revealActive, resultsActive, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => {
     const narration = deps?.narration;
@@ -494,6 +504,10 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
       unlock.current = null;
       return;
     }
+    if (revealActive) {
+      unlock.current = state.unlocked;
+      return;
+    }
     const finalPhase = phase === 'final' || phase === 'completed';
     const wasUnlocked = unlock.current;
     if (finalPhase && state.soundEnabled && wasUnlocked === false && state.unlocked) {
@@ -505,6 +519,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     deps,
     bunkerActive,
     phase,
+    revealActive,
     state?.status === 'active' ? state.unlocked : false,
     state?.status === 'active' ? state.soundEnabled : false,
   ]);
@@ -517,8 +532,8 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
       )}
       {storyActive && (
         storyView ? <UnknownPassengerScreen model={storyView} /> : (
-          <section className="bunker-v2-screen bunker-v2-unknown-passenger-screen" aria-label="Неизвестный пассажир · общий экран">
-            <p role="status">НЕИЗВЕСТНЫЙ ПАССАЖИР · ЗАГРУЖАЕМ ДОСЬЕ BK-17…</p>
+          <section className="bunker-v2-screen bunker-v2-unknown-passenger-screen" aria-label="Неизвестный оператор · общий экран">
+            <p role="status">НЕИЗВЕСТНЫЙ ОПЕРАТОР · ЗАГРУЖАЕМ ДОСЬЕ BK-17…</p>
           </section>
         )
       )}
@@ -528,6 +543,13 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
             <p role="status">ФИНАЛ · СИНХРОНИЗИРУЕМ ТЕРМИНАЛ…</p>
           </section>
         )
+      )}
+      {revealActive && (
+        <LizaRevealScreen
+          sessionKey={operatorSessionKey}
+          soundEnabled={state?.status === 'active' && state.soundEnabled}
+          audio={revealAudio}
+        />
       )}
       {resultsActive && (
         resultsView ? <BunkerResultsScreen model={resultsView} /> : (
@@ -542,6 +564,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
         && phase !== 'emergency'
         && !storyActive
         && !finalActive
+        && !revealActive
         && !resultsActive && (
           <BunkerQuestScene
             key={state.globalGameState ?? phase}
@@ -557,7 +580,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
             bunkerContractVersion={contractVersion ?? 2}
           />
         )}
-      {bunkerActive && (
+      {bunkerActive && !revealActive && !resultsActive && (
         <BunkerOperatorTransmission
           sessionKey={operatorSessionKey}
           variant="projector"

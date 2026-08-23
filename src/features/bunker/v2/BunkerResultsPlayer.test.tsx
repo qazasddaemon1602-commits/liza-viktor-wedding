@@ -24,6 +24,7 @@ describe('BunkerResultsPlayer', () => {
     expect(screen.getByRole('region', { name: 'Итоги Бункера' })).toHaveTextContent('БУНКЕР ОТКРЫТ');
     expect(screen.getByText('91 / 100')).toBeInTheDocument();
     expect(screen.getByText(/ваш состав справился/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Эпилог Лизы и Виктора')).toHaveTextContent('Поезд Виктора прибыл к Лизе. Теперь маршрут продолжается вместе.');
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 });

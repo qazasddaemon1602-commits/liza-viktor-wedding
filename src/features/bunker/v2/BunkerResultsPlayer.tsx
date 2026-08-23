@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { BunkerResultsScreenModel } from './BunkerResultsScreen';
 
 function duration(seconds: number): string {
@@ -6,6 +7,7 @@ function duration(seconds: number): string {
 }
 
 export function BunkerResultsPlayer({ model }: { model: BunkerResultsScreenModel }) {
+  const [epilogueImageAvailable, setEpilogueImageAvailable] = useState(true);
   return (
     <section className="bunker-v2-mission bunker-v2-results-player" aria-label="Итоги Бункера">
       <header className="bunker-v2-results-player__hero">
@@ -27,6 +29,20 @@ export function BunkerResultsPlayer({ model }: { model: BunkerResultsScreenModel
         <p><strong>{model.tradesCompleted}</strong> обменов между вагонами</p>
         <p><strong>{model.skillsUsed}</strong> способностей помогли команде</p>
       </div>
+
+      <section className="bunker-results-epilogue" aria-label="Эпилог Лизы и Виктора">
+        {epilogueImageAvailable && (
+          <picture>
+            <source srcSet="/images/bunker/story/couple-epilogue.avif" type="image/avif" />
+            <img
+              src="/images/bunker/story/couple-epilogue.webp"
+              alt="Лиза и Виктор вместе после прибытия поезда"
+              onError={() => setEpilogueImageAvailable(false)}
+            />
+          </picture>
+        )}
+        <div><span>ЭПИЛОГ</span><p>Поезд Виктора прибыл к Лизе. Теперь маршрут продолжается вместе.</p></div>
+      </section>
 
       <p className="bunker-v2-results-player__ending">Игра завершена. Оставайтесь вместе — финальная сцена показывается на общем экране.</p>
     </section>
