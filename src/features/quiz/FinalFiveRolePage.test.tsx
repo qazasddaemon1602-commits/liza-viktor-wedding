@@ -4,6 +4,7 @@ import {
   FinalFiveRolePage,
   type FinalFiveRolePageDependencies,
 } from './FinalFiveRolePage';
+import type { LizaBunkerOperatorPanelDependencies } from '../bunker/operator/LizaBunkerOperatorPanel';
 
 function deps(overrides: Partial<FinalFiveRolePageDependencies> = {}): FinalFiveRolePageDependencies {
   return {
@@ -26,6 +27,88 @@ function deps(overrides: Partial<FinalFiveRolePageDependencies> = {}): FinalFive
 }
 
 describe('FinalFiveRolePage', () => {
+  it('enters BK-17 mode for Liza only while Bunker is active', async () => {
+    const operatorDependencies: LizaBunkerOperatorPanelDependencies = {
+      load: vi.fn().mockResolvedValue({
+        status: 'idle', bunkerActive: true, globalGameState: 'MISSION_03', serverNow: '2026-08-23T12:00:00Z',
+      }),
+      submit: vi.fn(), subscribe: vi.fn(() => vi.fn()), broadcast: vi.fn(),
+    };
+    const dependencies = deps();
+    render(<FinalFiveRolePage role="liza" token="secret-token" dependencies={dependencies} operatorDependencies={operatorDependencies} />);
+    expect(await screen.findByText('ОПЕРАТОР BK-17 · PRIVATE CHANNEL')).toBeInTheDocument();
+    expect(screen.getByText('СОСТАВ В ПУТИ')).toBeInTheDocument();
+    expect(dependencies.load).not.toHaveBeenCalled();
+  });
+
+  it('preserves Final Five for Liza when Bunker is inactive and never probes it for Viktor', async () => {
+    const lizaOperator = depsOperator({
+      load: vi.fn().mockResolvedValue({ status: 'idle', bunkerActive: false, serverNow: '2026-08-23T12:00:00Z', globalGameState: null }),
+    });
+    const finalFiveDependencies = deps({ load: vi.fn().mockResolvedValue({ status: 'idle', role: 'liza' }) });
+    const { unmount } = render(<FinalFiveRolePage role="liza" token="secret-token" dependencies={finalFiveDependencies} operatorDependencies={lizaOperator} />);
+    expect(await screen.findByText('ЖДЁМ ФИНАЛЬНЫЙ РАУНД')).toBeInTheDocument();
+    expect(finalFiveDependencies.load).toHaveBeenCalledTimes(1);
+    unmount();
+
+    const viktorOperator = depsOperator();
+    render(<FinalFiveRolePage role="viktor" token="secret-token" dependencies={deps()} operatorDependencies={viktorOperator} />);
+    expect(await screen.findByText('ВИКТОР · ЛИЧНЫЙ ОТВЕТ')).toBeInTheDocument();
+    expect(viktorOperator.load).not.toHaveBeenCalled();
+  });
+
+  it('drops an active operator session when the private token changes', async () => {
+    const operatorDependencies = depsOperator({
+      load: vi.fn()
+        .mockResolvedValueOnce({
+          status: 'idle', bunkerActive: true, globalGameState: 'MISSION_03', serverNow: '2026-08-23T12:00:00Z',
+        })
+        .mockResolvedValueOnce({ status: 'invalid_access' }),
+    });
+    const view = render(<FinalFiveRolePage
+      role="liza"
+      token="valid-token"
+      dependencies={deps()}
+      operatorDependencies={operatorDependencies}
+    />);
+    expect(await screen.findByText('СОСТАВ В ПУТИ')).toBeInTheDocument();
+    view.rerender(<FinalFiveRolePage
+      role="liza"
+      token="revoked-token"
+      dependencies={deps()}
+      operatorDependencies={operatorDependencies}
+    />);
+    expect(await screen.findByText('ССЫЛКА НЕДЕЙСТВИТЕЛЬНА')).toBeInTheDocument();
+  });
+
+  it('returns to the existing Final Five UX when the active Bunker ends', async () => {
+    let latestRefresh: (() => void) | undefined;
+    const operatorDependencies = depsOperator({
+      load: vi.fn()
+        .mockResolvedValue({
+          status: 'idle', bunkerActive: false, globalGameState: null, serverNow: '2026-08-23T12:01:00Z',
+        })
+        .mockResolvedValueOnce({
+          status: 'idle', bunkerActive: true, globalGameState: 'MISSION_03', serverNow: '2026-08-23T12:00:00Z',
+        })
+        .mockResolvedValueOnce({
+          status: 'idle', bunkerActive: false, globalGameState: null, serverNow: '2026-08-23T12:01:00Z',
+        }),
+      subscribe: vi.fn((callback) => { latestRefresh = callback; return vi.fn(); }),
+    });
+    const finalFiveDependencies = deps({ load: vi.fn().mockResolvedValue({ status: 'idle', role: 'liza' }) });
+    render(<FinalFiveRolePage
+      role="liza"
+      token="secret-token"
+      dependencies={finalFiveDependencies}
+      operatorDependencies={operatorDependencies}
+    />);
+    expect(await screen.findByText('СОСТАВ В ПУТИ')).toBeInTheDocument();
+    await act(async () => { latestRefresh?.(); await Promise.resolve(); });
+    expect(await screen.findByText('ЖДЁМ ФИНАЛЬНЫЙ РАУНД')).toBeInTheDocument();
+    expect(finalFiveDependencies.load).toHaveBeenCalledTimes(1);
+  });
+
   it('shows only Liza own private live answer UI and saves her choice', async () => {
     const dependencies = deps();
     render(<FinalFiveRolePage role="liza" token="secret-token" dependencies={dependencies} />);
@@ -116,3 +199,10 @@ describe('FinalFiveRolePage', () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 });
+
+function depsOperator(overrides: Partial<LizaBunkerOperatorPanelDependencies> = {}): LizaBunkerOperatorPanelDependencies {
+  return {
+    load: vi.fn().mockResolvedValue({ status: 'idle', bunkerActive: false, serverNow: '2026-08-23T12:00:00Z', globalGameState: null }),
+    submit: vi.fn(), subscribe: vi.fn(() => vi.fn()), broadcast: vi.fn(), ...overrides,
+  };
+}

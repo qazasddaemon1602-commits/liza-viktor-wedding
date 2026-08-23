@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import {
+  broadcastBunkerRefresh,
+  subscribeToBunkerRefresh,
+  type BunkerRealtimeClient,
+} from '../bunker/bunker.realtime';
+import {
+  LizaBunkerOperatorPanel,
+  type LizaBunkerOperatorPanelDependencies,
+} from '../bunker/operator/LizaBunkerOperatorPanel';
+import {
+  getLizaBunkerOperatorState,
+  submitLizaBunkerOperatorPhrase,
+  type BunkerOperatorRpcClient,
+  type LizaBunkerOperatorState,
+} from '../bunker/operator/bunkerOperator.service';
+import {
   getFinalFiveRoleState,
   submitFinalFiveAnswer,
   type FinalFiveChoice,
@@ -27,6 +42,7 @@ type FinalFiveRolePageProps = {
   token?: string;
   eventSlug?: string;
   dependencies?: FinalFiveRolePageDependencies;
+  operatorDependencies?: LizaBunkerOperatorPanelDependencies;
 };
 
 function tokenFromLocation(): string {
@@ -51,6 +67,24 @@ function browserDependencies(eventSlug: string, role: FinalFiveRole): FinalFiveR
   };
 }
 
+function browserOperatorDependencies(eventSlug: string): LizaBunkerOperatorPanelDependencies {
+  const client = getSupabaseClient();
+  const rpcClient = client as unknown as BunkerOperatorRpcClient;
+  const realtimeClient = client as unknown as BunkerRealtimeClient;
+  return {
+    load: (token) => getLizaBunkerOperatorState(rpcClient, eventSlug, token),
+    submit: (token, stage, optionKey) => submitLizaBunkerOperatorPhrase(
+      rpcClient,
+      eventSlug,
+      token,
+      stage,
+      optionKey,
+    ),
+    subscribe: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
+    broadcast: () => broadcastBunkerRefresh(realtimeClient, eventSlug),
+  };
+}
+
 function roleLabel(role: FinalFiveRole): string {
   return role === 'liza' ? 'ЛИЗА' : 'ВИКТОР';
 }
@@ -60,19 +94,74 @@ export function FinalFiveRolePage({
   token,
   eventSlug = DEFAULT_EVENT_SLUG,
   dependencies,
+  operatorDependencies,
 }: FinalFiveRolePageProps) {
   const accessToken = useMemo(() => token ?? tokenFromLocation(), [token]);
   const deps = useMemo(
     () => dependencies ?? browserDependencies(eventSlug, role),
     [dependencies, eventSlug, role],
   );
+  const operatorDeps = useMemo(
+    () => operatorDependencies ?? (dependencies ? null : browserOperatorDependencies(eventSlug)),
+    [dependencies, eventSlug, operatorDependencies],
+  );
+  const [operatorState, setOperatorState] = useState<LizaBunkerOperatorState | null>(null);
+  const [operatorChecked, setOperatorChecked] = useState(role !== 'liza' || !operatorDeps);
   const [state, setState] = useState<FinalFiveRoleState | null>(null);
   const [loading, setLoading] = useState(Boolean(accessToken));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const operatorMode = operatorState !== null
+    && operatorState.status !== 'invalid_access'
+    && (operatorState.status !== 'idle' || operatorState.bunkerActive);
 
   useEffect(() => {
-    if (!accessToken) return;
+    setOperatorState(null);
+    setOperatorChecked(role !== 'liza' || !operatorDeps);
+  }, [accessToken, operatorDeps, role]);
+
+  useEffect(() => {
+    if (role !== 'liza' || !operatorDeps || !accessToken || operatorMode) return;
+    let active = true;
+    let inFlight = false;
+    let queued = false;
+
+    const reloadOperator = () => {
+      if (inFlight) {
+        queued = true;
+        return;
+      }
+      inFlight = true;
+      void operatorDeps.load(accessToken)
+        .then((next) => {
+          if (active) setOperatorState(next);
+        })
+        .catch(() => {
+          // Final Five remains usable while the Bunker read-model reconnects.
+        })
+        .finally(() => {
+          inFlight = false;
+          if (active) setOperatorChecked(true);
+          if (active && queued) {
+            queued = false;
+            reloadOperator();
+          }
+        });
+    };
+
+    reloadOperator();
+    const unsubscribe = operatorDeps.subscribe(reloadOperator);
+    const poll = window.setInterval(reloadOperator, 2_000);
+    return () => {
+      active = false;
+      queued = false;
+      window.clearInterval(poll);
+      unsubscribe();
+    };
+  }, [accessToken, operatorDeps, operatorMode, role]);
+
+  useEffect(() => {
+    if (!accessToken || (role === 'liza' && operatorDeps && (!operatorChecked || operatorMode))) return;
     let active = true;
 
     const reload = () => {
@@ -95,7 +184,7 @@ export function FinalFiveRolePage({
       active = false;
       unsubscribe();
     };
-  }, [accessToken, deps]);
+  }, [accessToken, deps, operatorChecked, operatorDeps, operatorMode, role]);
 
   const choose = async (choice: FinalFiveChoice) => {
     if (!accessToken || !state || state.status !== 'active' || state.phase !== 'voting' || saving) return;
@@ -122,6 +211,40 @@ export function FinalFiveRolePage({
           <p>Откройте персональную ссылку, которую прислал организатор.</p>
         </section>
       </main>
+    );
+  }
+
+  if (role === 'liza' && operatorDeps && !operatorChecked) {
+    return (
+      <main className="bunker-player-shell bunker-operator-shell">
+        <section className="bunker-operator-panel" aria-live="polite">
+          <p>BK-17 · PRIVATE CHANNEL</p>
+          <h1>ПОДКЛЮЧАЕМ КАНАЛ…</h1>
+        </section>
+      </main>
+    );
+  }
+
+  if (role === 'liza' && operatorDeps && operatorState?.status === 'invalid_access') {
+    return (
+      <main className="final-five-role-shell">
+        <section className="final-five-role-card" role="alert">
+          <p className="eyebrow">ЛИЗА · PRIVATE</p>
+          <h1>ССЫЛКА НЕДЕЙСТВИТЕЛЬНА</h1>
+          <p>Попросите организатора перевыдать персональную ссылку.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (role === 'liza' && operatorDeps && operatorState && operatorMode) {
+    return (
+      <LizaBunkerOperatorPanel
+        token={accessToken}
+        initialState={operatorState}
+        dependencies={operatorDeps}
+        onLeaveOperatorMode={setOperatorState}
+      />
     );
   }
 
