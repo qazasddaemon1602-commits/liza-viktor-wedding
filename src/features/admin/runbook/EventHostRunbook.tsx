@@ -7,11 +7,14 @@ import {
 } from './eventHostContent';
 
 const STORAGE_KEY = 'event.hostRunbook.v1';
+const MANUAL_STAGE_STORAGE_KEY = 'event.hostRunbook.manualStage.v1';
 
 type StoredRunbookProgress = {
   version: 1;
   events: Record<string, EventHostCueId[]>;
 };
+
+type StoredManualStages = Record<string, EventHostCueId>;
 
 type EventHostRunbookProps = {
   dashboard: AdminDashboard;
@@ -31,6 +34,11 @@ function normalizeCompleted(value: unknown): EventHostCueId[] {
   if (!Array.isArray(value)) return [];
   const requested = new Set(value.filter((id): id is string => typeof id === 'string'));
   return EVENT_HOST_CUES.map((cue) => cue.id).filter((id) => requested.has(id));
+}
+
+function normalizeCueId(value: unknown): EventHostCueId | null {
+  if (typeof value !== 'string') return null;
+  return EVENT_HOST_CUES.some((cue) => cue.id === value) ? value as EventHostCueId : null;
 }
 
 function readProgress(): StoredRunbookProgress {
@@ -62,6 +70,38 @@ function saveCompleted(eventId: string, completed: EventHostCueId[]) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
   } catch {
     // Host progress remains usable in memory when privacy mode or quota blocks storage.
+  }
+}
+
+function readManualStages(): StoredManualStages {
+  if (typeof window === 'undefined') return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(MANUAL_STAGE_STORAGE_KEY) ?? '{}') as unknown;
+    if (!isPlainRecord(parsed)) return {};
+    const result: StoredManualStages = {};
+    for (const [eventId, cueId] of Object.entries(parsed)) {
+      const normalized = normalizeCueId(cueId);
+      if (normalized) result[eventId] = normalized;
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function manualStageForEvent(eventId: string): EventHostCueId | null {
+  return readManualStages()[eventId] ?? null;
+}
+
+function saveManualStage(eventId: string, cueId: EventHostCueId | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    const stages = readManualStages();
+    if (cueId) stages[eventId] = cueId;
+    else delete stages[eventId];
+    window.localStorage.setItem(MANUAL_STAGE_STORAGE_KEY, JSON.stringify(stages));
+  } catch {
+    // Manual navigation still works in memory when storage is unavailable.
   }
 }
 
@@ -194,17 +234,23 @@ export function EventHostRunbook({ dashboard }: EventHostRunbookProps) {
   const [completedIds, setCompletedIds] = useState<EventHostCueId[]>(
     () => completedForEvent(dashboard.event.id),
   );
+  const [manualCueId, setManualCueId] = useState<EventHostCueId | null>(
+    () => manualStageForEvent(dashboard.event.id),
+  );
   const [timelineOpen, setTimelineOpen] = useState(false);
 
   useEffect(() => {
     setCompletedIds(completedForEvent(dashboard.event.id));
+    setManualCueId(manualStageForEvent(dashboard.event.id));
   }, [dashboard.event.id]);
 
-  const currentId = useMemo(
+  const suggestedId = useMemo(
     () => suggestEventHostCue(dashboard, completedIds),
     [completedIds, dashboard],
   );
-  const currentCue = EVENT_HOST_CUES.find((cue) => cue.id === currentId) ?? EVENT_HOST_CUES[0];
+  const currentId = manualCueId ?? suggestedId;
+  const currentIndex = Math.max(0, EVENT_HOST_CUES.findIndex((cue) => cue.id === currentId));
+  const currentCue = EVENT_HOST_CUES[currentIndex] ?? EVENT_HOST_CUES[0];
 
   const toggleCompleted = (cueId: EventHostCueId) => {
     const next = completedIds.includes(cueId)
@@ -212,6 +258,18 @@ export function EventHostRunbook({ dashboard }: EventHostRunbookProps) {
       : normalizeCompleted([...completedIds, cueId]);
     saveCompleted(dashboard.event.id, next);
     setCompletedIds(next);
+  };
+
+  const selectManualStage = (index: number) => {
+    const nextCue = EVENT_HOST_CUES[index];
+    if (!nextCue) return;
+    saveManualStage(dashboard.event.id, nextCue.id);
+    setManualCueId(nextCue.id);
+  };
+
+  const restoreAutomaticStage = () => {
+    saveManualStage(dashboard.event.id, null);
+    setManualCueId(null);
   };
 
   return (
@@ -224,8 +282,39 @@ export function EventHostRunbook({ dashboard }: EventHostRunbookProps) {
         <span>{completedIds.length} / {EVENT_HOST_CUES.length} ЭТАПОВ</span>
       </header>
       <p className="event-host-runbook__notice">
-        Это шпаргалка ведущего. Галочки хранятся только на этом устройстве и никогда не запускают игровые команды.
+        Это шпаргалка ведущего. Переключение этапа здесь не меняет серверную игру и экраны гостей — можно безопасно вернуться назад и перечитать сценарий.
       </p>
+
+      <div className="event-host-runbook__navigation" role="group" aria-label="Переключение этапа сценария">
+        <button
+          type="button"
+          className="event-host-cue__complete"
+          aria-label="ПРЕДЫДУЩИЙ ЭТАП"
+          disabled={currentIndex <= 0}
+          onClick={() => selectManualStage(currentIndex - 1)}
+        >
+          ← ПРЕДЫДУЩИЙ ЭТАП
+        </button>
+        <strong>{String(currentIndex + 1).padStart(2, '0')} / {String(EVENT_HOST_CUES.length).padStart(2, '0')}</strong>
+        <button
+          type="button"
+          className="event-host-cue__complete"
+          aria-label="СЛЕДУЮЩИЙ ЭТАП"
+          disabled={currentIndex >= EVENT_HOST_CUES.length - 1}
+          onClick={() => selectManualStage(currentIndex + 1)}
+        >
+          СЛЕДУЮЩИЙ ЭТАП →
+        </button>
+        {manualCueId && (
+          <button
+            type="button"
+            className="event-host-cue__complete"
+            onClick={restoreAutomaticStage}
+          >
+            ВЕРНУТЬ АВТОВЫБОР
+          </button>
+        )}
+      </div>
 
       <div className="event-host-runbook__current">
         <CueCard
