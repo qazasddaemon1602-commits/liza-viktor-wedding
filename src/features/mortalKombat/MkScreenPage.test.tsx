@@ -79,12 +79,15 @@ describe('MkScreenPage', () => {
   });
 
   it('shows the champion after the final result', async () => {
-    render(<MkScreenPage dependencies={dependencies(completed)} />);
+    const playTournamentGong = vi.fn();
+    render(<MkScreenPage dependencies={{ ...dependencies(completed), playTournamentGong }} />);
 
     expect(await screen.findByText('ПОСЛЕДНИЙ БОЙ ЗАВЕРШЁН')).toBeInTheDocument();
     expect(screen.getByText('ПОБЕДИТЕЛЬ')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Сергей' })).toBeInTheDocument();
     expect(screen.queryByText(/FINISH HIM/i)).not.toBeInTheDocument();
+    expect(screen.getByText('LAST BOUT · 1 / ARCHIVE 001')).toBeInTheDocument();
+    expect(playTournamentGong).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the authoritative fight visible while reconnecting and clears the status after recovery', async () => {

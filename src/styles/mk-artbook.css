@@ -578,10 +578,34 @@
 .mk-public-bracket--projector .mk-bracket-scroll {
   min-height: 0;
   align-items: stretch;
+  overflow: hidden;
 }
 
 .mk-public-bracket--projector .mk-bracket-round {
-  align-content: space-evenly;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: auto repeat(2, minmax(0, 1fr));
+  align-content: stretch;
+  gap: clamp(0.45rem, 1vw, 1rem);
+}
+
+.mk-public-bracket--projector .mk-bracket-round__heading {
+  grid-column: 1 / -1;
+}
+
+.mk-public-bracket--projector .mk-bracket-match {
+  min-height: 0;
+}
+
+.mk-bracket-fighter-name {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .mk-public-bracket--waiting > p:last-child {

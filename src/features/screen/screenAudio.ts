@@ -40,6 +40,7 @@ export type ScreenAudioController = {
   stopCarriageCall: () => void;
   playQuizVoting: () => void;
   playQuizReveal: () => void;
+  playTournamentGong: () => void;
   dispose: () => void;
 };
 
@@ -215,6 +216,17 @@ export function createScreenAudioController(
     playTone(659.25, now + 0.12, 0.2, 0.018, 'triangle');
   };
 
+  const playTournamentGong = () => {
+    if (hasSample('tournament.gong')) {
+      void samplePlayer.playCue('tournament.gong', { priority: 'major' });
+      return;
+    }
+    if (!context || context.state !== 'running' || !siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
+    const now = context.currentTime + 0.015;
+    playTone(73.42, now, 1.45, 0.05, 'triangle');
+    playTone(110, now + 0.05, 1.1, 0.035, 'sine');
+  };
+
   const stopArrival = () => {
     if (hasSample('arrival.sequence')) samplePlayer.stopCue('arrival.sequence');
     stopOscillators();
@@ -247,6 +259,7 @@ export function createScreenAudioController(
     stopCarriageCall,
     playQuizVoting,
     playQuizReveal,
+    playTournamentGong,
     dispose,
   };
 }

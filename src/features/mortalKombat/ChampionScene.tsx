@@ -1,20 +1,13 @@
-import { useEffect } from 'react';
-import { siteAudio } from '../../lib/siteAudio';
 import type { MkPlayer } from './mk.types';
 
 type ChampionSceneProps = {
   championGuestId: string;
   players: MkPlayer[];
+  completedBoutCount?: number;
 };
 
-export function ChampionScene({ championGuestId, players }: ChampionSceneProps) {
+export function ChampionScene({ championGuestId, players, completedBoutCount = 0 }: ChampionSceneProps) {
   const champion = players.find((player) => player.guestId === championGuestId)?.displayName ?? 'ПОБЕДИТЕЛЬ';
-
-  useEffect(() => {
-    siteAudio.play('impact');
-    const timer = window.setTimeout(() => siteAudio.play('success'), 240);
-    return () => window.clearTimeout(timer);
-  }, [championGuestId]);
 
   return (
     <section className="mk-screen-scene mk-champion-scene">
@@ -30,7 +23,7 @@ export function ChampionScene({ championGuestId, players }: ChampionSceneProps) 
           decoding="async"
         />
       </picture>
-      <div className="mk-champion-index" aria-hidden="true">LAST BOUT · 15 / ARCHIVE 001</div>
+      <div className="mk-champion-index" aria-hidden="true">LAST BOUT · {completedBoutCount} / ARCHIVE 001</div>
       <p className="mk-champion-finish">ПОСЛЕДНИЙ БОЙ ЗАВЕРШЁН</p>
       <span>ПОБЕДИТЕЛЬ</span>
       <h2>{champion}</h2>

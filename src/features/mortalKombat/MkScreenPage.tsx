@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
+import { createScreenAudioController } from '../screen/screenAudio';
 import { ChampionScene } from './ChampionScene';
 import { MkFightScene } from './MkFightScene';
 import { MkMilestoneScene } from './MkMilestoneScene';
@@ -7,8 +8,10 @@ import { deriveMkMilestone, type MkMilestone } from './mkMilestones';
 import { subscribeToMkRefresh, type MkRealtimeClient } from './mk.realtime';
 import { getMkTournamentDedicatedScreenState, type MkRpcClient } from './mk.service';
 import type { MkTournamentProjection } from './mk.types';
+import { countCompletedRealMkBouts, findCurrentReadyMkBout } from './mkPresentation';
 import { PublicBracket } from './PublicBracket';
 import { useMkRecovery } from './useMkRecovery';
+import { useMkChampionGong } from './useMkChampionGong';
 
 const DEFAULT_EVENT_SLUG = 'liza-viktor';
 
@@ -16,6 +19,8 @@ export type MkScreenPageDependencies = {
   load: () => Promise<MkTournamentProjection>;
   subscribeToRefresh?: (callback: () => void) => () => void;
   pollIntervalMs?: number;
+  playTournamentGong?: () => void;
+  disposeAudio?: () => void;
 };
 
 type MkScreenPageProps = {
@@ -44,9 +49,12 @@ function browserDependencies(eventSlug: string): MkScreenPageDependencies {
   const client = getSupabaseClient();
   const rpcClient = client as unknown as MkRpcClient;
   const realtimeClient = client as unknown as MkRealtimeClient;
+  const audio = createScreenAudioController();
   return {
     load: () => getMkTournamentDedicatedScreenState(rpcClient, eventSlug),
     subscribeToRefresh: (callback) => subscribeToMkRefresh(realtimeClient, eventSlug, callback),
+    playTournamentGong: audio.playTournamentGong,
+    disposeAudio: audio.dispose,
   };
 }
 
@@ -80,6 +88,10 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
     return () => window.clearTimeout(timeout);
   }, [milestone]);
 
+  useEffect(() => () => deps.disposeAudio?.(), [deps]);
+
+  useMkChampionGong({ state, topVisible: !milestone, playTournamentGong: deps.playTournamentGong });
+
   if (!state) {
     return (
       <main className="mk-screen-page">
@@ -96,14 +108,14 @@ export function MkScreenPage({ eventSlug = DEFAULT_EVENT_SLUG, dependencies }: M
     );
   }
 
-  const currentMatch = state.matches.find((match) => match.current) ?? null;
+  const currentMatch = findCurrentReadyMkBout(state.matches);
 
   return (
     <main className="mk-screen-page">
       {milestone ? (
         <MkMilestoneScene milestone={milestone} />
       ) : state.state === 'complete' && state.championGuestId ? (
-        <ChampionScene championGuestId={state.championGuestId} players={state.players} />
+        <ChampionScene championGuestId={state.championGuestId} players={state.players} completedBoutCount={countCompletedRealMkBouts(state.matches)} />
       ) : currentMatch ? (
         <MkFightScene match={currentMatch} players={state.players} />
       ) : (

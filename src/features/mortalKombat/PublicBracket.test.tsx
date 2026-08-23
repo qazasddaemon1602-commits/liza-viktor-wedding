@@ -165,25 +165,20 @@ describe('PublicBracket with byes', () => {
     expect(screen.getByText('Александра-Екатерина Константинопольская')).toBeInTheDocument();
   });
 
-  it('renders 64-slot and 32-slot rounds before the legacy tournament rounds', () => {
-    const expanded: ActiveProjection = {
+  it('shows only the deterministic round without navigation in projector mode', () => {
+    const projected: ActiveProjection = {
       ...state,
-      activeCount: 40,
       matches: [
-        match({ id: 'm64', matchKey: 'r64-1', round: 'r64' as never, position: 1, player1GuestId: 'g1', player2GuestId: 'g2', status: 'complete', winnerGuestId: 'g1' }),
-        match({ id: 'm32', matchKey: 'r32-1', round: 'r32' as never, position: 1, player1GuestId: 'g1', player2GuestId: 'g3', status: 'ready', current: true }),
-        match({ id: 'm16', matchKey: 'r16-1', round: 'r16', position: 1, player1GuestId: 'g1', player2GuestId: 'g4', status: 'ready' }),
+        match({ id: 'm16', matchKey: 'r16-1', round: 'r16', position: 1, player1GuestId: 'g1', player2GuestId: 'g2', status: 'complete', winnerGuestId: 'g1' }),
+        match({ id: 'mqf', matchKey: 'qf-1', round: 'qf', position: 1, player1GuestId: 'g1', player2GuestId: 'g3', status: 'ready' }),
       ],
     };
 
-    render(<PublicBracket state={expanded} />);
+    render(<PublicBracket state={projected} displayMode="projector" />);
 
-    const navigation = screen.getByRole('navigation', { name: 'Этапы турнира' });
-    expect(within(navigation).getAllByRole('button').map((button) => button.textContent)).toEqual([
-      '1/32 ФИНАЛА',
-      '1/16 ФИНАЛА',
-      '1/8 ФИНАЛА',
-    ]);
+    expect(screen.queryByRole('navigation', { name: 'Этапы турнира' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '1/8 ФИНАЛА' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '1/4 ФИНАЛА' })).toBeInTheDocument();
   });
 });
 

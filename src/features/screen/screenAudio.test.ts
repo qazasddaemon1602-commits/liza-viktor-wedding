@@ -161,6 +161,7 @@ describe('createScreenAudioController', () => {
     audio.playCarriageCall();
     audio.playQuizVoting();
     audio.playQuizReveal();
+    audio.playTournamentGong();
     audio.stopArrival();
     audio.stopCarriageCall();
 
@@ -168,6 +169,7 @@ describe('createScreenAudioController', () => {
     expect(samplePlayer.playCue).toHaveBeenNthCalledWith(2, 'arrival.sequence', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.confirm', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.reveal', { priority: 'scene' });
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('tournament.gong', { priority: 'major' });
     expect(samplePlayer.stopCue).not.toHaveBeenCalledWith('arrival.chime');
     expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.sequence');
     expect(context.createOscillator).not.toHaveBeenCalled();

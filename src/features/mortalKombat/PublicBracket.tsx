@@ -1,5 +1,6 @@
 import { useEffect, useState, type UIEvent } from 'react';
 import { MK_ROUNDS, MK_ROUND_LABELS, type MkRound, type MkTournamentProjection } from './mk.types';
+import { deriveMkProjectorRound } from './mkPresentation';
 
 type ActiveProjection = Extract<MkTournamentProjection, { status: 'active' }>;
 
@@ -24,6 +25,10 @@ export function PublicBracket({ state, displayMode = 'embedded' }: PublicBracket
   );
   const visibleRounds = MK_ROUNDS
     .filter((round) => realMatches.some((match) => match.round === round));
+  const projectorRound = deriveMkProjectorRound(state.matches);
+  const renderedRounds = displayMode === 'projector'
+    ? (projectorRound ? [projectorRound] : [])
+    : visibleRounds;
   const firstVisibleRound = visibleRounds[0] ?? null;
   const currentMatchRound = state.matches.find((match) => match.current)?.round ?? null;
   const authoritativeRound = currentMatchRound && visibleRounds.includes(currentMatchRound)
@@ -32,7 +37,7 @@ export function PublicBracket({ state, displayMode = 'embedded' }: PublicBracket
   const [selectedRound, setSelectedRound] = useState<MkRound | null>(
     authoritativeRound ?? firstVisibleRound,
   );
-  const activeRound = selectedRound && visibleRounds.includes(selectedRound)
+  const activeRound = displayMode === 'projector' ? projectorRound : selectedRound && visibleRounds.includes(selectedRound)
     ? selectedRound
     : authoritativeRound ?? firstVisibleRound;
 
@@ -113,7 +118,7 @@ export function PublicBracket({ state, displayMode = 'embedded' }: PublicBracket
         </div>
       </div>
 
-      <nav className="mk-round-navigation" aria-label="Этапы турнира">
+      {displayMode !== 'projector' && <nav className="mk-round-navigation" aria-label="Этапы турнира">
         {visibleRounds.map((round) => (
           <button
             type="button"
@@ -125,15 +130,15 @@ export function PublicBracket({ state, displayMode = 'embedded' }: PublicBracket
             {MK_ROUND_LABELS[round]}
           </button>
         ))}
-      </nav>
+      </nav>}
 
       <div
         className="mk-bracket-scroll"
         role="group"
         aria-label="Турнирные раунды"
-        onScroll={synchronizeRoundFromScroll}
+        onScroll={displayMode === 'embedded' ? synchronizeRoundFromScroll : undefined}
       >
-        {visibleRounds.map((round, roundIndex) => (
+        {renderedRounds.map((round, roundIndex) => (
           <section
             className="mk-bracket-round"
             id={`mk-round-${round}`}
@@ -162,14 +167,14 @@ export function PublicBracket({ state, displayMode = 'embedded' }: PublicBracket
                   </header>
                   <div className="mk-bracket-fighter">
                     <b>{playerSeed(match.player1GuestId)}</b>
-                    <strong className={match.winnerGuestId === match.player1GuestId ? 'is-winner' : ''}>
+                    <strong className={`mk-bracket-fighter-name${match.winnerGuestId === match.player1GuestId ? ' is-winner' : ''}`}>
                       {playerName(match.player1GuestId)}
                     </strong>
                   </div>
                   <i aria-hidden="true">VS</i>
                   <div className="mk-bracket-fighter">
                     <b>{playerSeed(match.player2GuestId)}</b>
-                    <strong className={match.winnerGuestId === match.player2GuestId ? 'is-winner' : ''}>
+                    <strong className={`mk-bracket-fighter-name${match.winnerGuestId === match.player2GuestId ? ' is-winner' : ''}`}>
                       {playerName(match.player2GuestId)}
                     </strong>
                   </div>

@@ -13,6 +13,8 @@ import { getMkTournamentScreenState, type MkRpcClient } from '../mortalKombat/mk
 import type { MkTournamentProjection } from '../mortalKombat/mk.types';
 import { PublicBracket } from '../mortalKombat/PublicBracket';
 import { useMkRecovery } from '../mortalKombat/useMkRecovery';
+import { countCompletedRealMkBouts, findCurrentReadyMkBout } from '../mortalKombat/mkPresentation';
+import { useMkChampionGong } from '../mortalKombat/useMkChampionGong';
 import { createPremiereAudioController } from '../premiere/premiereAudio';
 import {
   broadcastPremiereScreenPresence,
@@ -92,6 +94,7 @@ export type ScreenPageDependencies = {
   playArrivalSignal?: () => void;
   playQuizVotingSignal?: () => void;
   playQuizRevealSignal?: () => void;
+  playTournamentGong?: () => void;
   stopArrivalAudio?: () => void;
   armPremiereAudio?: () => Promise<boolean>;
   playPremiereCountdownTick?: (second: number) => void;
@@ -157,6 +160,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
     playArrivalSignal: audio.playArrival,
     playQuizVotingSignal: audio.playQuizVoting,
     playQuizRevealSignal: audio.playQuizReveal,
+    playTournamentGong: audio.playTournamentGong,
     stopArrivalAudio: audio.stopArrival,
     armPremiereAudio: premiereAudio.arm,
     playPremiereCountdownTick: premiereAudio.playCountdownTick,
@@ -692,8 +696,13 @@ export function ScreenPage({
     ? coupleAnswer
     : null;
   const currentMkMatch = mortalKombatProtected
-    ? mkState.matches.find((match) => match.current) ?? null
+    ? findCurrentReadyMkBout(mkState.matches)
     : null;
+  useMkChampionGong({
+    state: mortalKombatProtected ? mkState : null,
+    topVisible: !bunkerProtected && !premiereProtected && mortalKombatProtected,
+    playTournamentGong: deps.playTournamentGong,
+  });
   const presentedQuiz = activeQuiz && !finalFiveForCurrentQuestion && !revealedForCurrentQuestion
     ? activeQuiz
     : null;
@@ -724,7 +733,7 @@ export function ScreenPage({
         />
       ) : mortalKombatProtected ? (
         mkState.state === 'complete' && mkState.championGuestId ? (
-          <ChampionScene championGuestId={mkState.championGuestId} players={mkState.players} />
+          <ChampionScene championGuestId={mkState.championGuestId} players={mkState.players} completedBoutCount={countCompletedRealMkBouts(mkState.matches)} />
         ) : currentMkMatch ? (
           <MkFightScene match={currentMkMatch} players={mkState.players} />
         ) : (
