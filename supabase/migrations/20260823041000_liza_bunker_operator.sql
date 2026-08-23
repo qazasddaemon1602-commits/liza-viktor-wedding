@@ -46,7 +46,10 @@ declare
   v_options jsonb;
   v_message public.bunker_operator_messages%rowtype;
 begin
-  if length(coalesce(p_token, '')) < 16 then
+  -- Keep attacker-controlled hashing bounded, and reject malformed credentials
+  -- before any row lock can contend with the authoritative Bunker state.
+  if char_length(coalesce(p_token, '')) < 16
+    or char_length(coalesce(p_token, '')) > 128 then
     return jsonb_build_object('status', 'invalid_access');
   end if;
 
@@ -56,6 +59,17 @@ begin
   where event.slug = public._normalize_spaces(p_event_slug);
 
   if v_event_id is null then
+    return jsonb_build_object('status', 'invalid_access');
+  end if;
+
+  if not exists (
+    select 1
+    from public.final_five_role_access access
+    where access.event_id = v_event_id
+      and access.role = 'liza'
+      and access.revoked_at is null
+      and access.token_hash = public._final_five_token_hash(p_token)
+  ) then
     return jsonb_build_object('status', 'invalid_access');
   end if;
 
@@ -289,12 +303,30 @@ declare
   v_body text;
   v_message public.bunker_operator_messages%rowtype;
 begin
+  -- This is only a cheap rejection gate. The credential is authoritatively
+  -- revalidated and locked after bunker_state below.
+  if char_length(coalesce(p_token, '')) < 16
+    or char_length(coalesce(p_token, '')) > 128 then
+    raise exception 'invalid Liza operator access' using errcode = '42501';
+  end if;
+
   select event.id
   into v_event_id
   from public.events event
   where event.slug = public._normalize_spaces(p_event_slug);
 
-  if v_event_id is null or length(coalesce(p_token, '')) < 16 then
+  if v_event_id is null then
+    raise exception 'invalid Liza operator access' using errcode = '42501';
+  end if;
+
+  if not exists (
+    select 1
+    from public.final_five_role_access access
+    where access.event_id = v_event_id
+      and access.role = 'liza'
+      and access.revoked_at is null
+      and access.token_hash = public._final_five_token_hash(p_token)
+  ) then
     raise exception 'invalid Liza operator access' using errcode = '42501';
   end if;
 

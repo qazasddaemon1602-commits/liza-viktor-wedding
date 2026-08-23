@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(45);
+select plan(49);
 
 select has_table(
   'public', 'bunker_operator_messages',
@@ -160,25 +160,22 @@ select ok(
 select ok(
   (
     select bool_and(
-      strpos(definition, 'from public.bunker_state') > 0
+      strpos(definition, 'from public.final_five_role_access') > 0
         and strpos(definition, 'from public.final_five_role_access')
-          > strpos(definition, 'from public.bunker_state')
+          < strpos(definition, 'from public.bunker_state')
+        and strpos(
+          definition,
+          $$char_length(coalesce(p_token, '')) > 128$$
+        ) > 0
+        and strpos(
+          definition,
+          $$char_length(coalesce(p_token, '')) > 128$$
+        ) < strpos(definition, 'from public.bunker_state')
         and substring(
           definition
-          from strpos(definition, 'from public.final_five_role_access')
-        ) ~ 'for share'
-        and substring(
-          definition
-          from strpos(definition, 'from public.final_five_role_access')
-        ) ~ $$role = 'liza'$$
-        and substring(
-          definition
-          from strpos(definition, 'from public.final_five_role_access')
-        ) ~ 'revoked_at is null'
-        and substring(
-          definition
-          from strpos(definition, 'from public.final_five_role_access')
-        ) ~ '_final_five_token_hash\(p_token\)'
+          from 1
+          for strpos(definition, 'from public.bunker_state') - 1
+        ) !~ 'for share'
     )
     from (
       select lower(pg_get_functiondef(procedure_oid)) as definition
@@ -186,6 +183,47 @@ select ok(
         'public.get_liza_bunker_operator_state(text,text)'::regprocedure,
         'public.submit_liza_bunker_operator_phrase(text,text,text,text)'::regprocedure
       ]) procedure_oid
+    ) definitions
+  ),
+  'private RPCs bound token work and reject invalid credentials before locking state'
+);
+
+select ok(
+  (
+    select bool_and(
+      strpos(state_tail, 'for update') > 0
+        and strpos(state_tail, 'from public.final_five_role_access') > 0
+        and strpos(state_tail, 'from public.final_five_role_access')
+          > strpos(state_tail, 'for update')
+        and substring(
+          state_tail
+          from strpos(state_tail, 'from public.final_five_role_access')
+        ) ~ 'for share'
+        and substring(
+          state_tail
+          from strpos(state_tail, 'from public.final_five_role_access')
+        ) ~ $$role = 'liza'$$
+        and substring(
+          state_tail
+          from strpos(state_tail, 'from public.final_five_role_access')
+        ) ~ 'revoked_at is null'
+        and substring(
+          state_tail
+          from strpos(state_tail, 'from public.final_five_role_access')
+        ) ~ '_final_five_token_hash\(p_token\)'
+    )
+    from (
+      select substring(
+        definition
+        from strpos(definition, 'from public.bunker_state')
+      ) as state_tail
+      from (
+        select lower(pg_get_functiondef(procedure_oid)) as definition
+        from unnest(array[
+          'public.get_liza_bunker_operator_state(text,text)'::regprocedure,
+          'public.submit_liza_bunker_operator_phrase(text,text,text,text)'::regprocedure
+        ]) procedure_oid
+      ) function_definitions
     ) definitions
   ),
   'private RPCs lock state before locking and revalidating the matching Liza access row'
@@ -247,6 +285,17 @@ values
     null
   );
 
+create temporary table bunker_operator_invalid_baseline as
+select
+  to_jsonb(state) as state_payload,
+  (
+    select count(*)
+    from public.bunker_operator_messages message
+    where message.event_id = state.event_id
+  ) as message_count
+from public.bunker_state state
+where state.event_id = '00000000-0000-4000-8000-000000000802';
+
 select is(
   public.get_liza_bunker_operator_state(
     'bunker-operator-contract', 'invalid-operator-token'
@@ -281,6 +330,39 @@ select throws_ok(
   '42501',
   'invalid Liza operator access',
   'the Viktor token cannot submit a Liza operator phrase'
+);
+
+select is(
+  public.get_liza_bunker_operator_state(
+    'bunker-operator-contract', repeat('x', 129)
+  )->>'status',
+  'invalid_access',
+  'an over-limit token cannot read private operator state'
+);
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', repeat('x', 129),
+    'MISSION_02', 'm02_signal'
+  ) $$,
+  '42501',
+  'invalid Liza operator access',
+  'an over-limit token cannot submit an operator phrase'
+);
+
+select ok(
+  (
+    select to_jsonb(state) = baseline.state_payload
+      and (
+        select count(*)
+        from public.bunker_operator_messages message
+        where message.event_id = state.event_id
+      ) = baseline.message_count
+    from public.bunker_state state
+    cross join bunker_operator_invalid_baseline baseline
+    where state.event_id = '00000000-0000-4000-8000-000000000802'
+  ),
+  'invalid, wrong-role, and over-limit credentials do not mutate Bunker state or messages'
 );
 
 update public.final_five_role_access
