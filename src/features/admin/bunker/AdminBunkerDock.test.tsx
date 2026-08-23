@@ -105,6 +105,8 @@ describe('AdminBunkerDock dashboard scheduling', () => {
     await flushPromises();
 
     expect(screen.getByRole('heading', { name: 'БУНКЕР' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Экстренный сюжетный поворот' }))
+      .toHaveAttribute('id', 'admin-bunker-runbook');
     expect(screen.getByText('OWNER-ДАННЫЕ ПОДТВЕРЖДЕНЫ')).toBeInTheDocument();
     expect(screen.getByText('20')).toBeInTheDocument();
 

@@ -232,6 +232,8 @@ export const EVENT_HOST_CUES: EventHostCue[] = [
     ],
     next: 'После сигнала запускайте первый этап и дальше следуйте 13-пунктовому таймлайну Бункера.',
     doNotReveal: ['Не называйте заранее BK-17, Сектор 04, назначение предметов и финальный код.'],
+    moduleHref: '#admin-bunker-runbook',
+    moduleLabel: 'ПЕРЕЙТИ К ДЕТАЛЬНОМУ СЦЕНАРИЮ БУНКЕРА',
   },
   {
     id: 'bunker-missions',
@@ -257,6 +259,8 @@ export const EVENT_HOST_CUES: EventHostCue[] = [
     ],
     next: 'После раскрытия назначения BK-17 проведите проверку связи и только затем запускайте общий финальный таймер.',
     doNotReveal: ['Не выдавайте динамические фрагменты, пароль, координаты и время ворот раньше соответствующих этапов.'],
+    moduleHref: '#admin-bunker-runbook',
+    moduleLabel: 'ПЕРЕЙТИ К ДЕТАЛЬНОМУ СЦЕНАРИЮ БУНКЕРА',
   },
   {
     id: 'bunker-final',
@@ -282,6 +286,8 @@ export const EVENT_HOST_CUES: EventHostCue[] = [
     ],
     next: 'После подтверждённого BUNKER_OPEN погасите тревогу, включите тёплый свет и завершите игру.',
     doNotReveal: ['Не объявляйте победу до серверного подтверждения открытия ворот.'],
+    moduleHref: '#admin-bunker-runbook',
+    moduleLabel: 'ПЕРЕЙТИ К ДЕТАЛЬНОМУ СЦЕНАРИЮ БУНКЕРА',
   },
   {
     id: 'epilogue',

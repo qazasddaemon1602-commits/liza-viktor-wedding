@@ -81,7 +81,8 @@
 }
 
 .admin-module-anchor,
-#admin-registration-module {
+#admin-registration-module,
+#admin-bunker-runbook {
   min-width: 0;
   scroll-margin-top: 1rem;
 }
@@ -96,6 +97,8 @@
     var(--paper);
   box-shadow: 0 1.5rem 4rem rgba(39, 51, 43, 0.06);
 }
+
+.event-host-runbook .eyebrow { font-size: 0.85rem; }
 
 .event-host-runbook__heading {
   display: flex;
@@ -124,7 +127,7 @@
   padding: 0.58rem 0.72rem;
   color: var(--forest);
   background: rgba(255, 252, 246, 0.52);
-  font-size: 0.66rem;
+  font-size: 0.85rem;
   font-weight: 850;
   letter-spacing: 0.1em;
 }
@@ -134,7 +137,7 @@
   padding: 0.72rem 0.85rem;
   color: rgba(39, 51, 43, 0.72);
   background: rgba(154, 99, 72, 0.06);
-  font-size: 0.78rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -189,7 +192,7 @@
   padding: 0.68rem 0.78rem;
   color: rgba(39, 51, 43, 0.76);
   background: rgba(49, 72, 58, 0.06);
-  font-size: 0.74rem;
+  font-size: 1rem;
   line-height: 1.45;
 }
 
@@ -211,7 +214,7 @@
 
 .event-host-cue__grid h4 {
   color: var(--cinnamon);
-  font-size: 0.66rem;
+  font-size: 0.85rem;
   font-weight: 900;
   letter-spacing: 0.11em;
 }
@@ -219,7 +222,7 @@
 .event-host-cue__grid p,
 .event-host-cue__grid li {
   color: rgba(39, 51, 43, 0.82);
-  font-size: 0.78rem;
+  font-size: 1rem;
   line-height: 1.52;
 }
 
@@ -257,7 +260,7 @@
   margin-top: 0.25rem;
   border-bottom: 1px solid currentColor;
   color: var(--forest);
-  font-size: 0.64rem;
+  font-size: 0.85rem;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
@@ -269,7 +272,7 @@
   color: var(--forest);
   background: rgba(255, 252, 246, 0.72);
   cursor: pointer;
-  font-size: 0.64rem;
+  font-size: 0.85rem;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
@@ -293,7 +296,7 @@
   color: var(--forest);
   background: rgba(49, 72, 58, 0.06);
   cursor: pointer;
-  font-size: 0.68rem;
+  font-size: 0.85rem;
   font-weight: 900;
   letter-spacing: 0.11em;
   list-style: none;
@@ -322,7 +325,7 @@
   padding-top: 0.75rem;
   color: var(--cinnamon);
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 850;
   letter-spacing: 0.08em;
 }

@@ -21,33 +21,48 @@ function emptyProgress(): StoredRunbookProgress {
   return { version: 1, events: {} };
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function normalizeCompleted(value: unknown): EventHostCueId[] {
+  if (!Array.isArray(value)) return [];
+  const requested = new Set(value.filter((id): id is string => typeof id === 'string'));
+  return EVENT_HOST_CUES.map((cue) => cue.id).filter((id) => requested.has(id));
+}
+
 function readProgress(): StoredRunbookProgress {
   if (typeof window === 'undefined') return emptyProgress();
   try {
     const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null') as Partial<StoredRunbookProgress> | null;
-    if (!parsed || parsed.version !== 1 || typeof parsed.events !== 'object' || parsed.events === null) {
+    if (!parsed || parsed.version !== 1 || !isPlainRecord(parsed.events)) {
       return emptyProgress();
     }
-    return { version: 1, events: parsed.events as Record<string, EventHostCueId[]> };
+    const events: Record<string, EventHostCueId[]> = {};
+    for (const [eventId, completed] of Object.entries(parsed.events)) {
+      if (Array.isArray(completed)) events[eventId] = normalizeCompleted(completed);
+    }
+    return { version: 1, events };
   } catch {
     return emptyProgress();
   }
 }
 
 function completedForEvent(eventId: string): EventHostCueId[] {
-  const completed = readProgress().events[eventId];
-  if (!Array.isArray(completed)) return [];
-  const valid = new Set(EVENT_HOST_CUES.map((cue) => cue.id));
-  return completed.filter((id): id is EventHostCueId => valid.has(id));
+  return normalizeCompleted(readProgress().events[eventId]);
 }
 
 function saveCompleted(eventId: string, completed: EventHostCueId[]) {
   if (typeof window === 'undefined') return;
-  const progress = readProgress();
-  progress.events[eventId] = EVENT_HOST_CUES
-    .map((cue) => cue.id)
-    .filter((id) => completed.includes(id));
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  try {
+    const progress = readProgress();
+    progress.events[eventId] = normalizeCompleted(completed);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  } catch {
+    // Host progress remains usable in memory when privacy mode or quota blocks storage.
+  }
 }
 
 function cueFromActiveModule(dashboard: AdminDashboard, completed: Set<EventHostCueId>): EventHostCueId | null {
@@ -71,7 +86,12 @@ export function suggestEventHostCue(
 ): EventHostCueId {
   const completed = new Set(completedIds);
   const liveHint = cueFromActiveModule(dashboard, completed);
-  if (liveHint) return liveHint;
+  if (liveHint && !completed.has(liveHint)) return liveHint;
+  if (liveHint) {
+    const liveIndex = EVENT_HOST_CUES.findIndex((cue) => cue.id === liveHint);
+    const laterCue = EVENT_HOST_CUES.slice(liveIndex + 1).find((cue) => !completed.has(cue.id));
+    if (laterCue) return laterCue.id;
+  }
   return EVENT_HOST_CUES.find((cue) => !completed.has(cue.id))?.id ?? 'epilogue';
 }
 
@@ -187,13 +207,11 @@ export function EventHostRunbook({ dashboard }: EventHostRunbookProps) {
   const currentCue = EVENT_HOST_CUES.find((cue) => cue.id === currentId) ?? EVENT_HOST_CUES[0];
 
   const toggleCompleted = (cueId: EventHostCueId) => {
-    setCompletedIds((current) => {
-      const next = current.includes(cueId)
-        ? current.filter((id) => id !== cueId)
-        : [...current, cueId];
-      saveCompleted(dashboard.event.id, next);
-      return next;
-    });
+    const next = completedIds.includes(cueId)
+      ? completedIds.filter((id) => id !== cueId)
+      : normalizeCompleted([...completedIds, cueId]);
+    saveCompleted(dashboard.event.id, next);
+    setCompletedIds(next);
   };
 
   return (
