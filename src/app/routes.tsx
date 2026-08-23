@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminPage } from '../features/admin/AdminPage';
 import { BunkerScreenGuard } from '../features/bunker/BunkerScreenGuard';
+import { AdminWeddingLiveDock } from '../features/live/AdminWeddingLiveDock';
 import { GuestReactionSurface } from '../features/live/GuestReactionSurface';
 import { WeddingLiveProjectorLayer } from '../features/live/WeddingLiveProjectorLayer';
 import { MortalKombatPage } from '../features/mortalKombat/MortalKombatPage';
@@ -41,6 +42,10 @@ function guestLive(element: ReactNode) {
   return <GuestReactionSurface eventSlug="liza-viktor">{element}</GuestReactionSurface>;
 }
 
+function adminLive(element: ReactNode) {
+  return <AdminWeddingLiveDock eventSlug="liza-viktor">{element}</AdminWeddingLiveDock>;
+}
+
 function projector(element: ReactNode) {
   return (
     <WeddingLiveProjectorLayer eventSlug="liza-viktor">
@@ -58,7 +63,7 @@ export function AppRoutes() {
       <Route path="/couple-preanswers" element={<CouplePreanswersPage />} />
       <Route path="/liza" element={<FinalFiveRolePage role="liza" />} />
       <Route path="/viktor" element={<FinalFiveRolePage role="viktor" />} />
-      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/admin" element={adminLive(<AdminPage />)} />
       <Route path="/screen" element={projector(<ScreenPage joinUrl={currentJoinUrl()} eventSlug="liza-viktor" />)} />
       <Route path="/screen/connect" element={<Navigate to={routeRedirects['/screen/connect']} replace />} />
       <Route path="/premiere" element={<Navigate to={routeRedirects['/premiere']} replace />} />
