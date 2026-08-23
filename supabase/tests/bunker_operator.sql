@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(32);
+select plan(45);
 
 select has_table(
   'public', 'bunker_operator_messages',
@@ -157,6 +157,40 @@ select ok(
   'the dependency-safe run teardown deletes operator transmissions'
 );
 
+select ok(
+  (
+    select bool_and(
+      strpos(definition, 'from public.bunker_state') > 0
+        and strpos(definition, 'from public.final_five_role_access')
+          > strpos(definition, 'from public.bunker_state')
+        and substring(
+          definition
+          from strpos(definition, 'from public.final_five_role_access')
+        ) ~ 'for share'
+        and substring(
+          definition
+          from strpos(definition, 'from public.final_five_role_access')
+        ) ~ $$role = 'liza'$$
+        and substring(
+          definition
+          from strpos(definition, 'from public.final_five_role_access')
+        ) ~ 'revoked_at is null'
+        and substring(
+          definition
+          from strpos(definition, 'from public.final_five_role_access')
+        ) ~ '_final_five_token_hash\(p_token\)'
+    )
+    from (
+      select lower(pg_get_functiondef(procedure_oid)) as definition
+      from unnest(array[
+        'public.get_liza_bunker_operator_state(text,text)'::regprocedure,
+        'public.submit_liza_bunker_operator_phrase(text,text,text,text)'::regprocedure
+      ]) procedure_oid
+    ) definitions
+  ),
+  'private RPCs lock state before locking and revalidating the matching Liza access row'
+);
+
 insert into auth.users(id)
 values ('00000000-0000-4000-8000-000000000801');
 
@@ -249,6 +283,60 @@ select throws_ok(
   'the Viktor token cannot submit a Liza operator phrase'
 );
 
+update public.final_five_role_access
+set revoked_at = clock_timestamp()
+where event_id = '00000000-0000-4000-8000-000000000802'
+  and role = 'liza';
+
+select is(
+  public.get_liza_bunker_operator_state(
+    'bunker-operator-contract', 'liza-operator-token-1234'
+  )->>'status',
+  'invalid_access',
+  'a revoked Liza token cannot read private operator state'
+);
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', 'liza-operator-token-1234',
+    'MISSION_02', 'm02_signal'
+  ) $$,
+  '42501',
+  'invalid Liza operator access',
+  'a revoked Liza token cannot submit an operator phrase'
+);
+
+update public.final_five_role_access
+set revoked_at = null,
+    token_hash = public._final_five_token_hash('rotated-liza-token-5678')
+where event_id = '00000000-0000-4000-8000-000000000802'
+  and role = 'liza';
+
+select ok(
+  public.get_liza_bunker_operator_state(
+    'bunker-operator-contract', 'liza-operator-token-1234'
+  )->>'status' = 'invalid_access'
+    and public.get_liza_bunker_operator_state(
+      'bunker-operator-contract', 'rotated-liza-token-5678'
+    )->>'status' = 'idle',
+  'token rotation invalidates the old token and admits only the replacement'
+);
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', 'liza-operator-token-1234',
+    'MISSION_02', 'm02_signal'
+  ) $$,
+  '42501',
+  'invalid Liza operator access',
+  'a rotated-away Liza token cannot submit an operator phrase'
+);
+
+update public.final_five_role_access
+set token_hash = public._final_five_token_hash('liza-operator-token-1234')
+where event_id = '00000000-0000-4000-8000-000000000802'
+  and role = 'liza';
+
 select throws_ok(
   $$ select public.submit_liza_bunker_operator_phrase(
     'bunker-operator-contract', 'liza-operator-token-1234',
@@ -259,9 +347,91 @@ select throws_ok(
   'operator submission requires an active V2 run'
 );
 
+select is(
+  public.get_liza_bunker_operator_state(
+    'bunker-operator-contract', 'liza-operator-token-1234'
+  )->>'status',
+  'idle',
+  'private operator state remains idle while the Bunker run is inactive'
+);
+
+update public.bunker_state
+set status = 'active',
+    started_at = clock_timestamp(),
+    run_nonce = '00000000-0000-4000-8000-000000000804',
+    global_game_state = 'MISSION_02'
+where event_id = '00000000-0000-4000-8000-000000000802';
+
+select ok(
+  (
+    with response as (
+      select public.get_liza_bunker_operator_state(
+        'bunker-operator-contract', 'liza-operator-token-1234'
+      ) as body
+    )
+    select body->>'status' = 'idle'
+      and (body->>'bunkerActive')::boolean is false
+    from response
+  ),
+  'private operator state rejects a state nonce with no current run row'
+);
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', 'liza-operator-token-1234',
+    'MISSION_02', 'm02_signal'
+  ) $$,
+  '55000',
+  'active Bunker V2 run required',
+  'submission rejects a state nonce with no current run row'
+);
+
+insert into public.bunker_game_runs(
+  run_nonce, event_id, wagon_count, guest_count, plan,
+  contract_version, plan_version
+)
+values (
+  '00000000-0000-4000-8000-000000000805',
+  '00000000-0000-4000-8000-000000000802',
+  2,
+  0,
+  '{}'::jsonb,
+  1,
+  null
+);
+
+update public.bunker_state
+set run_nonce = '00000000-0000-4000-8000-000000000805'
+where event_id = '00000000-0000-4000-8000-000000000802';
+
+select ok(
+  (
+    with response as (
+      select public.get_liza_bunker_operator_state(
+        'bunker-operator-contract', 'liza-operator-token-1234'
+      ) as body
+    )
+    select body->>'status' = 'idle'
+      and (body->>'bunkerActive')::boolean is false
+    from response
+  ),
+  'private operator state rejects a legacy V1 run'
+);
+
+select throws_ok(
+  $$ select public.submit_liza_bunker_operator_phrase(
+    'bunker-operator-contract', 'liza-operator-token-1234',
+    'MISSION_02', 'm02_signal'
+  ) $$,
+  '55000',
+  'active Bunker V2 run required',
+  'submission rejects a legacy V1 run'
+);
+
 update public.bunker_state
 set status = 'active',
     started_at = clock_timestamp() - interval '5 minutes',
+    run_nonce = '00000000-0000-4000-8000-000000000803',
     global_game_state = 'MISSION_02'
 where event_id = '00000000-0000-4000-8000-000000000802';
 
@@ -392,112 +562,389 @@ select ok(
 );
 
 select ok(
-  position(
-    'liza' in lower(
-      public.get_bunker_operator_feed('bunker-operator-contract')::text
+  (
+    with feed as (
+      select public.get_bunker_operator_feed(
+        'bunker-operator-contract'
+      ) as body
     )
-  ) = 0
-    and position(
-      'liza' in lower(
-        public.get_liza_bunker_operator_state(
-          'bunker-operator-contract', 'liza-operator-token-1234'
-        )::text
-      )
-    ) = 0,
-  'operator read models do not reveal Liza identity before BUNKER_OPEN'
+    select (
+      select array_agg(key order by key)
+      from jsonb_object_keys(body) key
+    ) = array[
+      'active', 'globalGameState', 'message',
+      'revealed', 'serverNow', 'status'
+    ]
+      and (
+        select array_agg(key order by key)
+        from jsonb_object_keys(body->'message') key
+      ) = array['body', 'id', 'publishedAt', 'source', 'stage']
+      and not body ?| array[
+        'role', 'portrait', 'identity', 'token', 'tokenHash', 'token_hash'
+      ]
+      and not (body->'message') ?| array[
+        'role', 'portrait', 'identity', 'token', 'tokenHash', 'token_hash'
+      ]
+      and position('Лиза' in body::text) = 0
+      and position('лиза' in lower(body::text)) = 0
+      and position('liza' in lower(body::text)) = 0
+      and position('liza-operator-token-1234' in body::text) = 0
+      and position(
+        public._final_five_token_hash('liza-operator-token-1234')
+        in body::text
+      ) = 0
+    from feed
+  ),
+  'the public feed exposes only anonymous allow-listed fields before BUNKER_OPEN'
 );
 
-update public.bunker_state
-set global_game_state = 'MISSION_04'
-where event_id = '00000000-0000-4000-8000-000000000802';
+create temporary table operator_phrase_cases(
+  stage text not null,
+  stage_order integer not null,
+  option_order integer not null,
+  option_key text not null,
+  body text not null,
+  is_fallback boolean not null,
+  primary key(stage, option_key)
+) on commit drop;
 
-update public.bunker_operator_messages
-set published_at = clock_timestamp() - interval '2 minutes',
-    created_at = clock_timestamp() - interval '2 minutes'
-where event_id = '00000000-0000-4000-8000-000000000802'
-  and stage = 'MISSION_02';
-
-insert into public.bunker_mission_instances(
-  event_id, run_nonce, mission_code, scope_kind, scope_key,
-  status, definition, started_at
+insert into operator_phrase_cases(
+  stage, stage_order, option_order, option_key, body, is_fallback
 )
-values (
-  '00000000-0000-4000-8000-000000000802',
-  '00000000-0000-4000-8000-000000000803',
-  'MISSION_04',
-  'group',
-  'operator-test',
-  'active',
-  '{}'::jsonb,
-  clock_timestamp() - interval '46 seconds'
-);
+values
+  ('MISSION_02', 1, 1, 'm02_signal',
+    'Сигнал слабый, но я вас слышу. Продолжайте.', true),
+  ('MISSION_02', 1, 2, 'm02_fragments',
+    'Не доверяйте одному фрагменту. Сверяйте всё, что нашли.', false),
+  ('MISSION_04', 2, 1, 'm04_connection',
+    'Один вагон не дойдёт. Держите связь.', true),
+  ('MISSION_04', 2, 2, 'm04_share',
+    'Передавайте не только слова. Делитесь тем, что спасёт других.', false),
+  ('MISSION_06', 3, 1, 'm06_between',
+    'У каждого только часть маршрута. Ответ — между вами.', false),
+  ('MISSION_06', 3, 2, 'm06_every_fragment',
+    'Состав почти у цели. Ни один фрагмент не лишний.', true),
+  ('FINAL_30', 4, 1, 'final_waiting',
+    'Ворота ещё держатся. Я жду ваш сигнал.', true),
+  ('FINAL_30', 4, 2, 'final_viktor',
+    'Ещё немного. Доведите поезд Виктора до конца.', false);
 
-create temporary table operator_fallback_feed(result jsonb) on commit drop;
-insert into operator_fallback_feed(result)
-select public.get_bunker_operator_feed('bunker-operator-contract');
+create temporary table operator_catalog_results(
+  stage text primary key,
+  options jsonb not null
+) on commit drop;
 
-select ok(
-  (
-    select result->>'status' = 'active'
-      and result ? 'serverNow'
-      and result#>>'{message,stage}' = 'MISSION_04'
-      and result#>>'{message,body}' =
-        'Один вагон не дойдёт. Держите связь.'
-      and result#>>'{message,source}' = 'fallback'
-    from operator_fallback_feed
-  ),
-  'the feed deterministically publishes the approved fallback after 45 seconds'
-);
+create temporary table operator_invalid_results(
+  stage text primary key,
+  rejected boolean not null
+) on commit drop;
 
-select ok(
-  (
-    select message.published_at = instance.started_at + interval '45 seconds'
-    from public.bunker_operator_messages message
-    join public.bunker_mission_instances instance
-      on instance.event_id = message.event_id
-      and instance.run_nonce::text = message.run_nonce
-      and instance.mission_code = message.stage
+create temporary table operator_submission_results(
+  stage text not null,
+  stage_order integer not null,
+  option_order integer not null,
+  option_key text,
+  body text,
+  source text,
+  status text,
+  primary key(stage, option_order)
+) on commit drop;
+
+do $catalog_matrix$
+declare
+  v_case record;
+  v_response jsonb;
+begin
+  for v_case in
+    select phrase.*
+    from operator_phrase_cases phrase
+    order by phrase.stage_order, phrase.option_order
+  loop
+    update public.bunker_state
+    set global_game_state = v_case.stage
+    where event_id = '00000000-0000-4000-8000-000000000802';
+
+    insert into public.bunker_mission_instances(
+      event_id, run_nonce, mission_code, scope_kind, scope_key,
+      status, definition, started_at
+    ) values (
+      '00000000-0000-4000-8000-000000000802',
+      '00000000-0000-4000-8000-000000000803',
+      v_case.stage,
+      'global',
+      'operator-catalog',
+      'active',
+      '{}'::jsonb,
+      clock_timestamp() - interval '10 seconds'
+    )
+    on conflict (run_nonce, mission_code, scope_key) do update
+    set status = 'active',
+        started_at = excluded.started_at;
+
+    if v_case.option_order = 1 then
+      insert into operator_catalog_results(stage, options)
+      select v_case.stage, state->'options'
+      from (
+        select public.get_liza_bunker_operator_state(
+          'bunker-operator-contract', 'liza-operator-token-1234'
+        ) as state
+      ) response;
+
+      begin
+        perform public.submit_liza_bunker_operator_phrase(
+          'bunker-operator-contract', 'liza-operator-token-1234',
+          v_case.stage, 'invalid_' || lower(v_case.stage)
+        );
+        insert into operator_invalid_results(stage, rejected)
+        values (v_case.stage, false);
+      exception
+        when sqlstate '22023' then
+          insert into operator_invalid_results(stage, rejected)
+          values (v_case.stage, true);
+        when others then
+          insert into operator_invalid_results(stage, rejected)
+          values (v_case.stage, false);
+      end;
+    end if;
+
+    delete from public.bunker_operator_messages message
     where message.event_id = '00000000-0000-4000-8000-000000000802'
-      and message.stage = 'MISSION_04'
-  ),
-  'fallback publication is anchored to the server stage timestamp'
+      and message.run_nonce = '00000000-0000-4000-8000-000000000803'
+      and message.stage = v_case.stage;
+
+    begin
+      v_response := public.submit_liza_bunker_operator_phrase(
+        'bunker-operator-contract', 'liza-operator-token-1234',
+        v_case.stage, v_case.option_key
+      );
+      insert into operator_submission_results(
+        stage, stage_order, option_order, option_key, body, source, status
+      ) values (
+        v_case.stage,
+        v_case.stage_order,
+        v_case.option_order,
+        v_response#>>'{message,optionKey}',
+        v_response#>>'{message,body}',
+        v_response#>>'{message,source}',
+        v_response->>'status'
+      );
+    exception when others then
+      insert into operator_submission_results(
+        stage, stage_order, option_order, option_key, body, source, status
+      ) values (
+        v_case.stage,
+        v_case.stage_order,
+        v_case.option_order,
+        null,
+        sqlerrm,
+        null,
+        'error:' || sqlstate
+      );
+    end;
+  end loop;
+end;
+$catalog_matrix$;
+
+select results_eq(
+  $$
+    select result.stage, result.options
+    from operator_catalog_results result
+    join (
+      select phrase.stage, min(phrase.stage_order) as stage_order
+      from operator_phrase_cases phrase
+      group by phrase.stage
+    ) ordering using (stage)
+    order by ordering.stage_order
+  $$,
+  $$
+    select phrase.stage,
+      jsonb_agg(
+        jsonb_build_object('key', phrase.option_key, 'body', phrase.body)
+        order by phrase.option_order
+      ) as options
+    from operator_phrase_cases phrase
+    group by phrase.stage, phrase.stage_order
+    order by phrase.stage_order
+  $$,
+  'private state exposes both exact approved keys and bodies for all four stages'
 );
 
-select is(
-  public.get_bunker_operator_feed('bunker-operator-contract')#>>'{message,id}',
-  (select result#>>'{message,id}' from operator_fallback_feed),
-  'repeated feed reads return the same persisted fallback message'
-);
-
-select is(
+select ok(
   (
-    select count(*)::integer
+    select count(*) = 4 and bool_and(result.rejected)
+    from operator_invalid_results result
+  ),
+  'server catalog validation rejects an unknown option key in every stage'
+);
+
+select results_eq(
+  $$
+    select result.stage, result.option_order, result.option_key,
+      result.body, result.source, result.status
+    from operator_submission_results result
+    order by result.stage_order, result.option_order
+  $$,
+  $$
+    select phrase.stage, phrase.option_order, phrase.option_key,
+      phrase.body, 'selected'::text, 'accepted'::text
+    from operator_phrase_cases phrase
+    order by phrase.stage_order, phrase.option_order
+  $$,
+  'submission accepts and snapshots both exact catalog options for all four stages'
+);
+
+delete from public.bunker_operator_messages message
+where message.event_id = '00000000-0000-4000-8000-000000000802'
+  and message.run_nonce = '00000000-0000-4000-8000-000000000803';
+
+create temporary table operator_fallback_results(
+  stage text primary key,
+  stage_order integer not null,
+  option_key text,
+  body text,
+  source text,
+  entered_at timestamptz,
+  published_at timestamptz,
+  first_id text,
+  second_id text,
+  row_count integer,
+  private_state_valid boolean,
+  feed_server_time_present boolean
+) on commit drop;
+
+do $fallback_matrix$
+declare
+  v_case record;
+  v_entered_at timestamptz;
+  v_feed jsonb;
+  v_feed_again jsonb;
+  v_private jsonb;
+  v_option_key text;
+  v_published_at timestamptz;
+  v_row_count integer;
+begin
+  for v_case in
+    select phrase.*
+    from operator_phrase_cases phrase
+    where phrase.is_fallback
+    order by phrase.stage_order
+  loop
+    delete from public.bunker_operator_messages message
+    where message.event_id = '00000000-0000-4000-8000-000000000802'
+      and message.run_nonce = '00000000-0000-4000-8000-000000000803';
+
+    v_entered_at := clock_timestamp() - interval '46 seconds';
+
+    update public.bunker_state
+    set global_game_state = v_case.stage
+    where event_id = '00000000-0000-4000-8000-000000000802';
+
+    update public.bunker_mission_instances instance
+    set started_at = v_entered_at,
+        status = 'active'
+    where instance.event_id = '00000000-0000-4000-8000-000000000802'
+      and instance.run_nonce = '00000000-0000-4000-8000-000000000803'
+      and instance.mission_code = v_case.stage;
+
+    v_feed := public.get_bunker_operator_feed('bunker-operator-contract');
+    v_feed_again := public.get_bunker_operator_feed('bunker-operator-contract');
+    v_private := public.get_liza_bunker_operator_state(
+      'bunker-operator-contract', 'liza-operator-token-1234'
+    );
+
+    select message.option_key, message.published_at
+    into v_option_key, v_published_at
     from public.bunker_operator_messages message
     where message.event_id = '00000000-0000-4000-8000-000000000802'
       and message.run_nonce = '00000000-0000-4000-8000-000000000803'
-      and message.stage = 'MISSION_04'
-      and message.source = 'fallback'
-  ),
-  1,
-  'polling never creates duplicate fallback rows'
+      and message.stage = v_case.stage;
+
+    select count(*)::integer
+    into v_row_count
+    from public.bunker_operator_messages message
+    where message.event_id = '00000000-0000-4000-8000-000000000802'
+      and message.run_nonce = '00000000-0000-4000-8000-000000000803'
+      and message.stage = v_case.stage;
+
+    insert into operator_fallback_results(
+      stage, stage_order, option_key, body, source,
+      entered_at, published_at, first_id, second_id, row_count,
+      private_state_valid, feed_server_time_present
+    ) values (
+      v_case.stage,
+      v_case.stage_order,
+      v_option_key,
+      v_feed#>>'{message,body}',
+      v_feed#>>'{message,source}',
+      v_entered_at,
+      v_published_at,
+      v_feed#>>'{message,id}',
+      v_feed_again#>>'{message,id}',
+      v_row_count,
+      v_private->>'status' = 'active'
+        and v_private->>'stage' = v_case.stage
+        and (v_private->>'windowOpen')::boolean is false
+        and v_private#>>'{selectedMessage,source}' = 'fallback'
+        and (v_private->>'enteredAt')::timestamptz = v_entered_at
+        and (v_private->>'sendUntil')::timestamptz =
+          v_entered_at + interval '45 seconds'
+        and v_private ? 'serverNow',
+      v_feed ? 'serverNow'
+    );
+  end loop;
+end;
+$fallback_matrix$;
+
+select results_eq(
+  $$
+    select result.stage, result.option_key, result.body, result.source
+    from operator_fallback_results result
+    order by result.stage_order
+  $$,
+  $$
+    select phrase.stage, phrase.option_key, phrase.body, 'fallback'::text
+    from operator_phrase_cases phrase
+    where phrase.is_fallback
+    order by phrase.stage_order
+  $$,
+  'all four stages use the exact deterministic fallback mapping, including M06 option two'
 );
 
 select ok(
   (
-    with response as (
-      select public.get_liza_bunker_operator_state(
-        'bunker-operator-contract', 'liza-operator-token-1234'
-      ) as body
-    )
-    select body->>'status' = 'active'
-      and (body->>'windowOpen')::boolean is false
-      and body#>>'{selectedMessage,source}' = 'fallback'
-      and body ? 'enteredAt'
-      and body ? 'sendUntil'
-      and body ? 'serverNow'
-    from response
+    select count(*) = 4
+      and bool_and(
+        result.published_at = result.entered_at + interval '45 seconds'
+      )
+    from operator_fallback_results result
   ),
-  'the private state converges on the same expired-window fallback'
+  'every fallback publication is anchored to its server stage timestamp plus 45 seconds'
+);
+
+select ok(
+  (
+    select count(*) = 4
+      and bool_and(result.first_id = result.second_id)
+      and bool_and(result.row_count = 1)
+    from operator_fallback_results result
+  ),
+  'repeated polling persists one stable fallback row in every stage'
+);
+
+select ok(
+  (
+    select count(*) = 4 and bool_and(result.private_state_valid)
+    from operator_fallback_results result
+  ),
+  'private state converges on the same expired fallback for every stage'
+);
+
+select ok(
+  (
+    select count(*) = 4 and bool_and(result.feed_server_time_present)
+    from operator_fallback_results result
+  ),
+  'every fallback feed response includes authoritative server time'
 );
 
 update public.bunker_state

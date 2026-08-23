@@ -34,6 +34,7 @@ set search_path = ''
 as $$
 declare
   v_event_id uuid;
+  v_access_event_id uuid;
   v_state public.bunker_state%rowtype;
   v_contract_version integer;
   v_now timestamptz := clock_timestamp();
@@ -54,14 +55,7 @@ begin
   from public.events event
   where event.slug = public._normalize_spaces(p_event_slug);
 
-  if v_event_id is null or not exists (
-    select 1
-    from public.final_five_role_access access
-    where access.event_id = v_event_id
-      and access.role = 'liza'
-      and access.revoked_at is null
-      and access.token_hash = public._final_five_token_hash(p_token)
-  ) then
+  if v_event_id is null then
     return jsonb_build_object('status', 'invalid_access');
   end if;
 
@@ -70,6 +64,22 @@ begin
   from public.bunker_state state
   where state.event_id = v_event_id
   for update;
+
+  -- State is the common first lock for Bunker reset/commands. Lock the access
+  -- row only afterwards, so a token rotated while this call waited cannot be
+  -- accepted and reset retains the same state -> access lock order.
+  select access.event_id
+  into v_access_event_id
+  from public.final_five_role_access access
+  where access.event_id = v_event_id
+    and access.role = 'liza'
+    and access.revoked_at is null
+    and access.token_hash = public._final_five_token_hash(p_token)
+  for share;
+
+  if v_access_event_id is null then
+    return jsonb_build_object('status', 'invalid_access');
+  end if;
 
   -- Evaluate the window only after acquiring the authoritative state lock.
   v_now := clock_timestamp();
@@ -270,6 +280,7 @@ set search_path = ''
 as $$
 declare
   v_event_id uuid;
+  v_access_event_id uuid;
   v_state public.bunker_state%rowtype;
   v_contract_version integer;
   v_now timestamptz := clock_timestamp();
@@ -283,16 +294,7 @@ begin
   from public.events event
   where event.slug = public._normalize_spaces(p_event_slug);
 
-  if v_event_id is null
-    or length(coalesce(p_token, '')) < 16
-    or not exists (
-      select 1
-      from public.final_five_role_access access
-      where access.event_id = v_event_id
-        and access.role = 'liza'
-        and access.revoked_at is null
-        and access.token_hash = public._final_five_token_hash(p_token)
-    ) then
+  if v_event_id is null or length(coalesce(p_token, '')) < 16 then
     raise exception 'invalid Liza operator access' using errcode = '42501';
   end if;
 
@@ -301,6 +303,22 @@ begin
   from public.bunker_state state
   where state.event_id = v_event_id
   for update;
+
+  -- Revalidate and lock the exact credential after any state-row wait. A
+  -- concurrent revoke/rotation either completes first and fails this lookup,
+  -- or waits until this command transaction has finished.
+  select access.event_id
+  into v_access_event_id
+  from public.final_five_role_access access
+  where access.event_id = v_event_id
+    and access.role = 'liza'
+    and access.revoked_at is null
+    and access.token_hash = public._final_five_token_hash(p_token)
+  for share;
+
+  if v_access_event_id is null then
+    raise exception 'invalid Liza operator access' using errcode = '42501';
+  end if;
 
   -- A caller that waited on the run lock must not use a stale pre-lock time.
   v_now := clock_timestamp();
