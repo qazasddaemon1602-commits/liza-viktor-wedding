@@ -56,7 +56,7 @@ describe('BunkerScreenGuard legacy final compatibility', () => {
     expect(screen.queryByRole('region', { name: 'Финал · общий экран' })).not.toBeInTheDocument();
   });
 
-  it('keeps BUNKER_OPEN on the legacy completed scene instead of V2 results', async () => {
+  it('shows the Liza reveal for BUNKER_OPEN even when the current run is legacy', async () => {
     render(
       <BunkerScreenGuard dependencies={{
         load: vi.fn().mockResolvedValue(legacyState('BUNKER_OPEN')),
@@ -67,7 +67,8 @@ describe('BunkerScreenGuard legacy final compatibility', () => {
     );
     await flush();
 
-    expect(screen.getByRole('region', { name: 'Бункер · экран квеста' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Лиза встречает поезд · общий экран' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Бункер · экран квеста' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Бункер открыт · итоги игры' })).not.toBeInTheDocument();
   });
 

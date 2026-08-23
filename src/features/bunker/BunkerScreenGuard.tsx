@@ -387,7 +387,6 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     && state?.status === 'active'
     && state.globalGameState === 'FINAL_30';
   const revealActive = bunkerActive
-    && explicitV2
     && state?.status === 'active'
     && state.globalGameState === 'BUNKER_OPEN';
   const resultsActive = bunkerActive

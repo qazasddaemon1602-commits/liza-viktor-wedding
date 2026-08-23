@@ -101,7 +101,7 @@ describe('BunkerQuestScene', () => {
       .toBeInTheDocument();
   });
 
-  it('shows final access as locked/unlocked slots rather than revealing digits', () => {
+  it('shows final wagon data readiness without claiming that the Bunker is open', () => {
     render(
       <BunkerQuestScene
         state={{
@@ -114,9 +114,10 @@ describe('BunkerQuestScene', () => {
     );
 
     expect(screen.getByText('ФИНАЛЬНЫЙ ДОСТУП')).toBeInTheDocument();
-    expect(screen.getByText('4 / 5 ФРАГМЕНТОВ')).toBeInTheDocument();
-    expect(screen.getAllByText('OPEN')).toHaveLength(4);
-    expect(screen.getAllByText('LOCKED')).toHaveLength(1);
+    expect(screen.getByText('4 / 5 ВАГОНОВ ПЕРЕДАЛИ ДАННЫЕ')).toBeInTheDocument();
+    expect(screen.getAllByText('ДАННЫЕ ПОЛУЧЕНЫ')).toHaveLength(4);
+    expect(screen.getAllByText('ОЖИДАЕМ ДАННЫЕ')).toHaveLength(1);
+    expect(screen.queryByText('OPEN')).not.toBeInTheDocument();
   });
 
   it('keeps the Bunker scene at zero and distinguishes locked from unlocked arrival', () => {

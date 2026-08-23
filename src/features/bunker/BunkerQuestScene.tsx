@@ -119,7 +119,7 @@ function progressLabel(
     return `${state.teams.filter((team) => team.missionBComplete).length} / ${state.teams.length} ГОТОВО`;
   }
   if (phase === 'final' || phase === 'completed') {
-    return `${state.teams.filter((team) => team.missionBComplete).length} / ${state.teams.length} ФРАГМЕНТОВ`;
+    return `${state.teams.filter((team) => team.missionBComplete).length} / ${state.teams.length} ВАГОНОВ ПЕРЕДАЛИ ДАННЫЕ`;
   }
   return null;
 }
@@ -365,7 +365,7 @@ export function BunkerQuestScene({
                     } as CSSProperties}
                   />
                   <span>ВАГОН {String(team.carriageNumber).padStart(2, '0')}</span>
-                  <strong>{team.missionBComplete ? 'OPEN' : 'LOCKED'}</strong>
+                  <strong>{team.missionBComplete ? 'ДАННЫЕ ПОЛУЧЕНЫ' : 'ОЖИДАЕМ ДАННЫЕ'}</strong>
                 </article>
               ))}
             </div>
