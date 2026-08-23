@@ -574,8 +574,10 @@ test.describe.serial('authoritative Bunker layouts', () => {
         await expect(stepper.getByText('ШАГ 1')).toBeVisible();
         await expect(stepper.getByText('ШАГ 4')).toBeVisible();
         for (const step of await steps.all()) {
-          await step.scrollIntoViewIfNeeded();
-          await expectInsideViewport(page, step);
+          // In large-text mode a complete exchange step can be taller than the
+          // unobscured phone viewport. Preserve horizontal reflow, then prove
+          // each instruction remains independently scrollable and readable.
+          await expectHorizontallyInsideViewport(page, step);
           const status = step.locator(':scope > strong');
           const title = step.getByRole('heading', { level: 4 });
           const body = step.locator(':scope > div > p');
