@@ -6,6 +6,7 @@ import {
 } from '../bunker.realtime';
 import {
   BUNKER_OPERATOR_PHRASES,
+  getDeterministicFallback,
   type BunkerOperatorStage,
 } from './bunkerOperator.contract';
 
@@ -42,6 +43,7 @@ export type BunkerOperatorFeedDependencies = {
 
 type UseBunkerOperatorFeedOptions = {
   eventSlug: string;
+  sessionKey: string;
   enabled?: boolean;
   dependencies?: BunkerOperatorFeedDependencies | null;
 };
@@ -83,6 +85,7 @@ function parseMessage(value: unknown): BunkerOperatorMessage {
     || (value.source !== 'selected' && value.source !== 'fallback')
     || !isTimestamp(value.publishedAt)
     || !BUNKER_OPERATOR_PHRASES[value.stage].some((phrase) => phrase.body === value.body)
+    || (value.source === 'fallback' && value.body !== getDeterministicFallback(value.stage).body)
   ) fail();
   return {
     id: value.id,
@@ -170,6 +173,7 @@ function browserDependencies(eventSlug: string): BunkerOperatorFeedDependencies 
 
 export function useBunkerOperatorFeed({
   eventSlug,
+  sessionKey,
   enabled = true,
   dependencies,
 }: UseBunkerOperatorFeedOptions) {
@@ -178,15 +182,21 @@ export function useBunkerOperatorFeed({
     [dependencies, eventSlug],
   );
   const deps = dependencies === undefined ? browser : dependencies;
-  const [feed, setFeed] = useState<BunkerOperatorFeed | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(enabled && Boolean(deps));
+  const [feedState, setFeedState] = useState<{
+    sessionKey: string;
+    value: BunkerOperatorFeed | null;
+  }>(() => ({ sessionKey, value: null }));
+  const [errorState, setErrorState] = useState(() => ({ sessionKey, value: '' }));
+  const [loadingState, setLoadingState] = useState(() => ({
+    sessionKey,
+    value: enabled && Boolean(deps),
+  }));
 
   useEffect(() => {
     if (!enabled || !deps) {
-      setFeed(null);
-      setError('');
-      setLoading(false);
+      setFeedState({ sessionKey, value: null });
+      setErrorState({ sessionKey, value: '' });
+      setLoadingState({ sessionKey, value: false });
       return undefined;
     }
 
@@ -212,28 +222,36 @@ export function useBunkerOperatorFeed({
         queued = true;
         return inFlight;
       }
-      setLoading((value) => currentFeed === null ? true : value);
+      setLoadingState((previous) => ({
+        sessionKey,
+        value: currentFeed === null
+          ? true
+          : previous.sessionKey === sessionKey && previous.value,
+      }));
       const operation = deps.load()
         .then((next) => {
           if (!alive) return;
           currentFeed = next;
-          setFeed((previous) => (
-            previous?.message?.id && previous.message.id === next.message?.id
-              ? { ...next, message: previous.message }
-              : next
-          ));
-          setError('');
+          setFeedState((previous) => ({
+            sessionKey,
+            value: previous.sessionKey === sessionKey
+              && previous.value?.message?.id
+              && previous.value.message.id === next.message?.id
+              ? { ...next, message: previous.value.message }
+              : next,
+          }));
+          setErrorState({ sessionKey, value: '' });
           schedulePoll();
         })
         .catch(() => {
           if (!alive) return;
-          setError(FEED_ERROR);
+          setErrorState({ sessionKey, value: FEED_ERROR });
           schedulePoll();
         })
         .finally(() => {
           if (inFlight === operation) inFlight = null;
           if (!alive) return;
-          setLoading(false);
+          setLoadingState({ sessionKey, value: false });
           if (queued) {
             queued = false;
             void request();
@@ -243,9 +261,9 @@ export function useBunkerOperatorFeed({
       return operation;
     };
 
-    setFeed(null);
-    setError('');
-    setLoading(true);
+    setFeedState({ sessionKey, value: null });
+    setErrorState({ sessionKey, value: '' });
+    setLoadingState({ sessionKey, value: true });
     void request();
     const unsubscribe = deps.subscribe?.(() => { void request(); });
     const recover = () => { void request(); };
@@ -260,7 +278,13 @@ export function useBunkerOperatorFeed({
       window.removeEventListener('focus', recover);
       window.removeEventListener('online', recover);
     };
-  }, [deps, enabled, eventSlug]);
+  }, [deps, enabled, eventSlug, sessionKey]);
 
-  return { feed, error, loading };
+  return {
+    feed: feedState.sessionKey === sessionKey ? feedState.value : null,
+    error: errorState.sessionKey === sessionKey ? errorState.value : '',
+    loading: loadingState.sessionKey === sessionKey
+      ? loadingState.value
+      : enabled && Boolean(deps),
+  };
 }

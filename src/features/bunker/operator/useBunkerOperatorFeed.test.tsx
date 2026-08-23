@@ -59,6 +59,19 @@ describe('Bunker operator public feed contract', () => {
     await expect(getBunkerOperatorFeed({ rpc }, 'liza-viktor')).resolves.toEqual(firstFeed);
     expect(rpc).toHaveBeenCalledWith('get_bunker_operator_feed', { p_event_slug: 'liza-viktor' });
   });
+
+  it.each([
+    ['MISSION_02', 'Не доверяйте одному фрагменту. Сверяйте всё, что нашли.'],
+    ['MISSION_04', 'Передавайте не только слова. Делитесь тем, что спасёт других.'],
+    ['MISSION_06', 'У каждого только часть маршрута. Ответ — между вами.'],
+    ['FINAL_30', 'Ещё немного. Доведите поезд Виктора до конца.'],
+  ] as const)('rejects a non-fallback %s catalog phrase mislabeled as fallback', (stage, body) => {
+    expect(() => parseBunkerOperatorFeed({
+      ...firstFeed,
+      globalGameState: stage,
+      message: { ...firstFeed.message, stage, body, source: 'fallback' },
+    })).toThrow('Unexpected bunker operator feed response');
+  });
 });
 
 describe('useBunkerOperatorFeed', () => {
@@ -77,7 +90,7 @@ describe('useBunkerOperatorFeed', () => {
       pollIntervalMs: 2_000,
     };
     const { result, unmount } = renderHook(() => useBunkerOperatorFeed({
-      eventSlug: 'liza-viktor', dependencies,
+      eventSlug: 'liza-viktor', sessionKey: 'run-1', dependencies,
     }));
 
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -114,11 +127,12 @@ describe('useBunkerOperatorFeed', () => {
       subscribe: (callback: () => void) => { refresh = callback; return () => undefined; },
     };
     const { result, rerender } = renderHook(
-      ({ slug, dependencies }) => useBunkerOperatorFeed({
+      ({ slug, sessionKey, dependencies }) => useBunkerOperatorFeed({
         eventSlug: slug,
+        sessionKey,
         dependencies,
       }),
-      { initialProps: { slug: 'old-event', dependencies: oldDependencies } },
+      { initialProps: { slug: 'old-event', sessionKey: 'run-old', dependencies: oldDependencies } },
     );
 
     act(() => {
@@ -127,7 +141,7 @@ describe('useBunkerOperatorFeed', () => {
     });
     expect(oldLoad).toHaveBeenCalledTimes(1);
 
-    rerender({ slug: 'new-event', dependencies: newDependencies });
+    rerender({ slug: 'new-event', sessionKey: 'run-new', dependencies: newDependencies });
     await act(async () => { newRequest.resolve(secondFeed); });
     await waitFor(() => expect(result.current.feed?.message?.id).toBe(secondFeed.message.id));
 
@@ -151,6 +165,7 @@ describe('useBunkerOperatorFeed', () => {
     };
     const { result } = renderHook(() => useBunkerOperatorFeed({
       eventSlug: 'liza-viktor',
+      sessionKey: 'run-1',
       dependencies,
     }));
     await waitFor(() => expect(result.current.feed).not.toBeNull());
@@ -167,7 +182,7 @@ describe('useBunkerOperatorFeed', () => {
       .mockResolvedValue(firstFeed);
     const dependencies = { load, pollIntervalMs: 2_000 };
     const { result } = renderHook(() => useBunkerOperatorFeed({
-      eventSlug: 'liza-viktor', enabled: true, dependencies,
+      eventSlug: 'liza-viktor', sessionKey: 'run-1', enabled: true, dependencies,
     }));
 
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -177,5 +192,35 @@ describe('useBunkerOperatorFeed', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(2_100); });
     expect(load).toHaveBeenCalledTimes(2);
     expect(result.current.feed?.message?.id).toBe(firstFeed.message.id);
+  });
+
+  it('clears the previous run synchronously and ignores its late request while the new run is offline', async () => {
+    const lateOld = deferred<typeof secondFeed>();
+    const load = vi.fn()
+      .mockResolvedValueOnce(firstFeed)
+      .mockReturnValueOnce(lateOld.promise)
+      .mockRejectedValueOnce(new Error('new run offline'));
+    let refresh: (() => void) | undefined;
+    const dependencies = {
+      load,
+      subscribe: (callback: () => void) => { refresh = callback; return () => undefined; },
+    };
+    const { result, rerender } = renderHook(
+      ({ sessionKey }) => useBunkerOperatorFeed({
+        eventSlug: 'liza-viktor', sessionKey, dependencies,
+      }),
+      { initialProps: { sessionKey: 'run-1' } },
+    );
+    await waitFor(() => expect(result.current.feed?.message?.id).toBe(firstFeed.message.id));
+
+    act(() => { refresh?.(); });
+    expect(load).toHaveBeenCalledTimes(2);
+    rerender({ sessionKey: 'run-2' });
+    expect(result.current.feed).toBeNull();
+
+    await waitFor(() => expect(result.current.error).toBe('Не удалось обновить канал оператора.'));
+    expect(result.current.feed).toBeNull();
+    await act(async () => { lateOld.resolve(secondFeed); });
+    expect(result.current.feed).toBeNull();
   });
 });

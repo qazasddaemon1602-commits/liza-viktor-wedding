@@ -167,4 +167,32 @@ describe('persistent Bunker V2 player dashboard', () => {
       'Один вагон не дойдёт. Держите связь.',
     );
   });
+
+  it('drops the persistent phone transmission immediately when runtime.runNonce changes', async () => {
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'active' as const, active: true as const, globalGameState: 'MISSION_05', revealed: false,
+        serverNow: '2026-08-30T19:10:00.000Z',
+        message: {
+          id: 'old-phone-signal', stage: 'MISSION_04' as const, source: 'selected' as const,
+          body: 'Один вагон не дойдёт. Держите связь.',
+          publishedAt: '2026-08-30T19:09:50.000Z',
+        },
+      })
+      .mockRejectedValue(new Error('new run offline'));
+    const dependencies = { load };
+    const view = render(
+      <BunkerPlayerDashboard runtime={runtime} dashboard={dashboard} operatorFeedDependencies={dependencies} />,
+    );
+    expect(await screen.findByRole('note', { name: 'Последняя передача оператора BK-17' })).toBeInTheDocument();
+
+    view.rerender(
+      <BunkerPlayerDashboard
+        runtime={{ ...runtime, runNonce: 'run-2' }}
+        dashboard={dashboard}
+        operatorFeedDependencies={dependencies}
+      />,
+    );
+    expect(screen.queryByRole('note', { name: 'Последняя передача оператора BK-17' })).not.toBeInTheDocument();
+  });
 });

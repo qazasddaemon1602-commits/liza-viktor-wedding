@@ -3,6 +3,7 @@ import { siteAudio } from '../../../lib/siteAudio';
 import type { BunkerOperatorMessage } from './useBunkerOperatorFeed';
 
 type Props = {
+  sessionKey: string;
   variant: 'projector' | 'phone';
   message: BunkerOperatorMessage | null;
   motionPreference?: 'full' | 'reduced';
@@ -14,17 +15,17 @@ const DISPLAY_MS = 8_000;
 const VIEWED_PREFIX = 'bunker.operator.projector.viewed.v1:';
 const HEARD_PREFIX = 'bunker.operator.signal.heard.v1:';
 
-function storageHas(prefix: string, id: string): boolean {
+function storageHas(prefix: string, sessionKey: string, id: string): boolean {
   try {
-    return window.sessionStorage.getItem(`${prefix}${id}`) === '1';
+    return window.sessionStorage.getItem(`${prefix}${encodeURIComponent(sessionKey)}:${id}`) === '1';
   } catch {
     return false;
   }
 }
 
-function storageMark(prefix: string, id: string): void {
+function storageMark(prefix: string, sessionKey: string, id: string): void {
   try {
-    window.sessionStorage.setItem(`${prefix}${id}`, '1');
+    window.sessionStorage.setItem(`${prefix}${encodeURIComponent(sessionKey)}:${id}`, '1');
   } catch {
     // Replay protection is advisory when storage is unavailable.
   }
@@ -65,6 +66,7 @@ function useMotionPreference(override?: 'full' | 'reduced'): 'full' | 'reduced' 
 }
 
 export function BunkerOperatorTransmission({
+  sessionKey,
   variant,
   message,
   motionPreference,
@@ -72,39 +74,48 @@ export function BunkerOperatorTransmission({
   playSignal = defaultSignal,
 }: Props) {
   const motion = useMotionPreference(motionPreference);
-  const [visible, setVisible] = useState<BunkerOperatorMessage | null>(null);
-  const pending = useRef<BunkerOperatorMessage | null>(null);
-  const visibleRef = useRef<BunkerOperatorMessage | null>(null);
-  visibleRef.current = visible;
+  const [visibleState, setVisibleState] = useState<{
+    sessionKey: string;
+    message: BunkerOperatorMessage;
+  } | null>(null);
+  const pending = useRef<{ sessionKey: string; message: BunkerOperatorMessage } | null>(null);
+  const visible = visibleState?.sessionKey === sessionKey ? visibleState.message : null;
+
+  useEffect(() => {
+    pending.current = null;
+    setVisibleState(null);
+  }, [sessionKey]);
 
   useEffect(() => {
     if (variant !== 'projector' || !message) return;
-    if (message.id === visibleRef.current?.id || message.id === pending.current?.id) return;
-    if (storageHas(VIEWED_PREFIX, message.id)) return;
-    if (visibleRef.current) {
-      pending.current = message;
+    if (message.id === visible?.id || (
+      pending.current?.sessionKey === sessionKey && message.id === pending.current.message.id
+    )) return;
+    if (storageHas(VIEWED_PREFIX, sessionKey, message.id)) return;
+    if (visible) {
+      pending.current = { sessionKey, message };
     } else {
-      setVisible(message);
+      setVisibleState({ sessionKey, message });
     }
-  }, [message?.id, variant]);
+  }, [message?.id, sessionKey, variant, visible?.id]);
 
   useEffect(() => {
     if (variant !== 'projector' || !visible) return undefined;
-    storageMark(VIEWED_PREFIX, visible.id);
+    storageMark(VIEWED_PREFIX, sessionKey, visible.id);
     const timer = window.setTimeout(() => {
-      const next = pending.current;
+      const next = pending.current?.sessionKey === sessionKey ? pending.current : null;
       pending.current = null;
-      setVisible(next);
+      setVisibleState(next);
     }, DISPLAY_MS);
     return () => window.clearTimeout(timer);
-  }, [variant, visible?.id]);
+  }, [sessionKey, variant, visible?.id]);
 
   const audibleMessage = variant === 'projector' ? visible : message;
   useEffect(() => {
-    if (!audibleMessage || storageHas(HEARD_PREFIX, audibleMessage.id)) return;
-    storageMark(HEARD_PREFIX, audibleMessage.id);
+    if (!audibleMessage || storageHas(HEARD_PREFIX, sessionKey, audibleMessage.id)) return;
+    storageMark(HEARD_PREFIX, sessionKey, audibleMessage.id);
     if (soundEnabled ?? localSoundEnabled()) playSignal();
-  }, [audibleMessage?.id, playSignal, soundEnabled]);
+  }, [audibleMessage?.id, playSignal, sessionKey, soundEnabled]);
 
   if (variant === 'phone') {
     if (!message) return null;

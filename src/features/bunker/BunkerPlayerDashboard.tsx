@@ -295,8 +295,12 @@ export function BunkerPlayerDashboard({
     ? { id: dashboard?.wagon.id ?? activeId, ...(dashboard?.wagon ?? runtime.viewer.wagon) }
     : runtime.wagon;
   const gameState = isV2 ? runtime.state : runtime.game.state;
+  const operatorSessionKey = isV2
+    ? `${eventSlug}:${runtime.runNonce}`
+    : `${eventSlug}:legacy`;
   const operatorFeed = useBunkerOperatorFeed({
     eventSlug,
+    sessionKey: operatorSessionKey,
     enabled: isV2,
     dependencies: isV2
       ? operatorFeedDependencies ?? (import.meta.env.MODE === 'test' ? null : undefined)
@@ -391,6 +395,7 @@ export function BunkerPlayerDashboard({
     >
       {isV2 && (
         <BunkerOperatorTransmission
+          sessionKey={operatorSessionKey}
           variant="phone"
           message={operatorFeed.feed?.message ?? null}
         />

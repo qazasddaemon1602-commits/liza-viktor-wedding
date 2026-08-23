@@ -546,4 +546,65 @@ describe('BunkerScreenGuard', () => {
     );
     expect(screen.queryByText('Лиза')).not.toBeInTheDocument();
   });
+
+  it('clears the old projector transmission when a new run starts without an idle snapshot', async () => {
+    const listeners: Array<() => void> = [];
+    const base = {
+      contractVersion: 2 as const,
+      status: 'active' as const,
+      durationSeconds: 1800,
+      remainingSeconds: 900,
+      soundEnabled: false,
+      phase: 'mission_b' as const,
+      unlocked: false,
+      teams: [],
+      characterCounts: { active: 15, saved: 0, excluded: 0 },
+      globalGameState: 'MISSION_04' as const,
+      currentMission: { id: 'mission-04', state: 'MISSION_04' as const, plan: null },
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        ...base,
+        startedAt: '2026-08-30T18:00:00.000Z',
+        serverNow: '2026-08-30T18:15:00.000Z',
+      })
+      .mockResolvedValue({
+        ...base,
+        startedAt: '2026-08-30T19:00:00.000Z',
+        serverNow: '2026-08-30T19:00:01.000Z',
+      });
+    const loadOperatorFeed = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'active' as const, active: true as const, globalGameState: 'MISSION_04', revealed: false,
+        serverNow: '2026-08-30T18:15:00.000Z',
+        message: {
+          id: 'old-run-signal', stage: 'MISSION_04' as const, source: 'selected' as const,
+          body: 'Один вагон не дойдёт. Держите связь.',
+          publishedAt: '2026-08-30T18:14:59.000Z',
+        },
+      })
+      .mockRejectedValue(new Error('new run offline'));
+
+    render(
+      <BunkerScreenGuard dependencies={{
+        load,
+        loadOperatorFeed,
+        subscribe: (callback) => { listeners.push(callback); return () => undefined; },
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+    expect(screen.getByRole('status', { name: 'Входящая передача оператора BK-17' })).toHaveTextContent(
+      'Один вагон не дойдёт. Держите связь.',
+    );
+
+    await act(async () => {
+      listeners.forEach((listener) => listener());
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('status', { name: 'Входящая передача оператора BK-17' })).not.toBeInTheDocument();
+  });
 });

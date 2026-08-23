@@ -29,7 +29,7 @@ describe('BunkerOperatorTransmission projector', () => {
     vi.useFakeTimers();
     const playSignal = vi.fn();
     const { rerender } = render(
-      <BunkerOperatorTransmission variant="projector" message={selected} soundEnabled playSignal={playSignal} />,
+      <BunkerOperatorTransmission sessionKey="run-1" variant="projector" message={selected} soundEnabled playSignal={playSignal} />,
     );
 
     expect(screen.getByRole('status')).toHaveTextContent('ВХОДЯЩИЙ СИГНАЛ · ОПЕРАТОР BK-17');
@@ -37,7 +37,7 @@ describe('BunkerOperatorTransmission projector', () => {
     expect(playSignal).toHaveBeenCalledTimes(1);
 
     rerender(
-      <BunkerOperatorTransmission variant="projector" message={fallback} soundEnabled playSignal={playSignal} />,
+      <BunkerOperatorTransmission sessionKey="run-1" variant="projector" message={fallback} soundEnabled playSignal={playSignal} />,
     );
     expect(screen.getByRole('status')).toHaveTextContent(selected.body);
 
@@ -52,7 +52,7 @@ describe('BunkerOperatorTransmission projector', () => {
   it('does not replay a viewed id after remount and keeps the same duration without decorative motion', () => {
     vi.useFakeTimers();
     const first = render(
-      <BunkerOperatorTransmission variant="projector" message={selected} motionPreference="reduced" />,
+      <BunkerOperatorTransmission sessionKey="run-1" variant="projector" message={selected} motionPreference="reduced" />,
     );
     const region = screen.getByRole('status');
     expect(region).toHaveAttribute('data-motion', 'reduced');
@@ -64,29 +64,54 @@ describe('BunkerOperatorTransmission projector', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     first.unmount();
 
-    render(<BunkerOperatorTransmission variant="projector" message={selected} />);
+    render(<BunkerOperatorTransmission sessionKey="run-1" variant="projector" message={selected} />);
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('plays no signal when global sound is disabled', () => {
     const playSignal = vi.fn();
     render(
-      <BunkerOperatorTransmission variant="projector" message={selected} soundEnabled={false} playSignal={playSignal} />,
+      <BunkerOperatorTransmission sessionKey="run-1" variant="projector" message={selected} soundEnabled={false} playSignal={playSignal} />,
     );
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(playSignal).not.toHaveBeenCalled();
+  });
+
+  it('clears current and queued transmissions on a run change and scopes sound replay to the new run', () => {
+    vi.useFakeTimers();
+    const playSignal = vi.fn();
+    const { rerender } = render(
+      <BunkerOperatorTransmission sessionKey="run-1" variant="projector" message={selected} soundEnabled playSignal={playSignal} />,
+    );
+    rerender(
+      <BunkerOperatorTransmission sessionKey="run-1" variant="projector" message={fallback} soundEnabled playSignal={playSignal} />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(selected.body);
+
+    rerender(
+      <BunkerOperatorTransmission sessionKey="run-2" variant="projector" message={null} soundEnabled playSignal={playSignal} />,
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(8_000); });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    rerender(
+      <BunkerOperatorTransmission sessionKey="run-2" variant="projector" message={selected} soundEnabled playSignal={playSignal} />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(selected.body);
+    expect(playSignal).toHaveBeenCalledTimes(2);
   });
 });
 
 describe('BunkerOperatorTransmission phone', () => {
   it('keeps the latest transmission visible and labels a deterministic fallback honestly', () => {
-    const { rerender } = render(<BunkerOperatorTransmission variant="phone" message={fallback} />);
+    const { rerender } = render(<BunkerOperatorTransmission sessionKey="run-1" variant="phone" message={fallback} />);
     expect(screen.getByRole('note', { name: 'Последняя передача оператора BK-17' })).toHaveTextContent(
       'РЕЗЕРВНЫЙ СИГНАЛ',
     );
     expect(screen.getByRole('note')).toHaveTextContent(fallback.body);
 
-    rerender(<BunkerOperatorTransmission variant="phone" message={selected} />);
+    rerender(<BunkerOperatorTransmission sessionKey="run-1" variant="phone" message={selected} />);
     expect(screen.getByRole('note')).toHaveTextContent('ПЕРЕДАНО ОПЕРАТОРОМ');
     expect(screen.getByRole('note')).toHaveTextContent(selected.body);
   });

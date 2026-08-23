@@ -358,6 +358,9 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     ? stateRemaining(state, nowMs, offset.current)
     : 0;
   const bunkerActive = state?.status === 'active';
+  const operatorSessionKey = state?.status === 'active'
+    ? `${eventSlug}:${state.startedAt}`
+    : `${eventSlug}:inactive`;
   const operatorFeedDependencies = useMemo<BunkerOperatorFeedDependencies | null>(() => (
     deps?.loadOperatorFeed
       ? { load: deps.loadOperatorFeed, subscribe: deps.subscribe }
@@ -365,6 +368,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   ), [deps]);
   const operatorFeed = useBunkerOperatorFeed({
     eventSlug,
+    sessionKey: operatorSessionKey,
     enabled: Boolean(bunkerActive && operatorFeedDependencies),
     dependencies: operatorFeedDependencies,
   });
@@ -555,6 +559,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
         )}
       {bunkerActive && (
         <BunkerOperatorTransmission
+          sessionKey={operatorSessionKey}
           variant="projector"
           message={operatorFeed.feed?.message ?? null}
           motionPreference={motion}
