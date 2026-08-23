@@ -105,6 +105,20 @@ describe('Bunker responsive layout contract', () => {
     expect(largeButton).toContain('box-sizing: border-box');
   });
 
+  it('lets M03 copy and controls reflow inside a narrow large-text card', () => {
+    const content = ruleBody(playerStyle, '.bunker-m03-problem-board li > div');
+    const copy = ruleBody(
+      playerStyle,
+      '.bunker-m03-problem-board p,\n.bunker-m03-problem-board h4,\n.bunker-m03-problem-board span,\n.bunker-m03-problem-board strong',
+    );
+    const control = ruleBody(playerStyle, '.bunker-m03-problem-board__control');
+
+    expect(content).toContain('min-width: 0');
+    expect(copy).toContain('min-width: 0');
+    expect(copy).toContain('overflow-wrap: anywhere');
+    expect(control).toContain('min-width: 0');
+  });
+
   it('keeps guest quest controls at least 48px tall after the final mobile cascade', () => {
     render(<div className="guest-bunker-options"><button type="button">Ответить</button></div>);
     expect(getComputedStyle(screen.getByRole('button', { name: 'Ответить' })).minHeight).toBe('48px');
