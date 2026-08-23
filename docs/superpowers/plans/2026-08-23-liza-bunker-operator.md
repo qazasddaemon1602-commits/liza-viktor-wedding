@@ -171,7 +171,8 @@
 - Every component uses `<picture>` with AVIF first and WebP fallback, fixed aspect ratio, `object-fit: cover`, meaningful Russian alt text and no remote URLs.
 
 - [ ] Use built-in ImageGen in image-edit mode on each supplied local photograph; preserve recognizable identity, pose and facial proportions.
-- [ ] Apply one coherent graphite/blue archive grade, restrained cream/brass light, subtle grain and clean event-safe framing; add no text, logos or extra people.
+- [ ] Apply the approved fairytale-railway wardrobe: Liza as a graphite-blue headset dispatcher before reveal, Viktor in a restrained midnight-blue conductor/engineer-inspired suit, Liza in an ivory/champagne modern-princess gown and thin diadem at reveal, and both looks united in the couple epilogue.
+- [ ] Keep the styling editorial rather than literal cosplay: no hat, oversized crown, logos, badges, pasted locomotive or fantasy castle; retain the coherent graphite/blue archive grade, cream/brass light and subtle grain.
 - [ ] Inspect all four full-resolution outputs and regenerate any asset with identity drift, malformed hands/glasses or unusable crop.
 - [ ] Export responsive AVIF and WebP files into `public/images/bunker/story/` without changing the supplied originals.
 - [ ] Add an asset contract checking eight files, non-zero dimensions, valid formats and minimum long-edge resolution.
