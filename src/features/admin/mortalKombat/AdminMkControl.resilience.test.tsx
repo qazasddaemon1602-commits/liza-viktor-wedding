@@ -60,6 +60,7 @@ function deps(overrides: Partial<AdminMkControlDependencies> = {}): AdminMkContr
     swap: vi.fn().mockResolvedValue(undefined),
     remove: vi.fn().mockResolvedValue(undefined),
     promote: vi.fn().mockResolvedValue(undefined),
+    reset: vi.fn().mockResolvedValue(undefined),
     finalize: vi.fn().mockResolvedValue(undefined),
     setCurrent: vi.fn().mockResolvedValue(undefined),
     showBracket: vi.fn().mockResolvedValue(undefined),

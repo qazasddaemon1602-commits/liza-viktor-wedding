@@ -1,4 +1,5 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
+import { SceneTransition } from '../screen/SceneTransition';
 import {
   normalizeRegistration,
   validateRegistration,
@@ -35,6 +36,8 @@ type RegistrationPageProps = {
   onRegister: (draft: RegistrationDraft, confirmDuplicate?: boolean) => Promise<RegistrationSubmitResult>;
   initialGuest?: RegisteredGuest | null;
   revealDelayMs?: number;
+  ticketHoldMs?: number;
+  onTicketReady?: (guest: RegisteredGuest) => void;
 };
 
 function isDuplicateWarning(result: RegistrationSubmitResult): result is DuplicateWarning {
@@ -45,6 +48,8 @@ export function RegistrationPage({
   onRegister,
   initialGuest = null,
   revealDelayMs = 900,
+  ticketHoldMs = 2400,
+  onTicketReady,
 }: RegistrationPageProps) {
   const [draft, setDraft] = useState<RegistrationDraft>(initialDraft);
   const [errors, setErrors] = useState<RegistrationErrors>({});
@@ -55,6 +60,16 @@ export function RegistrationPage({
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
   const [pendingDraft, setPendingDraft] = useState<RegistrationDraft | null>(null);
   const [submitError, setSubmitError] = useState('');
+  const [handoffGuest, setHandoffGuest] = useState<RegisteredGuest | null>(null);
+
+  useEffect(() => {
+    if (status !== 'ticket' || !handoffGuest || !onTicketReady) return;
+    const timer = window.setTimeout(() => {
+      onTicketReady(handoffGuest);
+      setHandoffGuest(null);
+    }, ticketHoldMs);
+    return () => window.clearTimeout(timer);
+  }, [handoffGuest, onTicketReady, status, ticketHoldMs]);
 
   const update = (field: keyof RegistrationDraft, value: string) => {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -64,6 +79,7 @@ export function RegistrationPage({
 
   const revealTicket = (guest: RegisteredGuest) => {
     setRegisteredGuest(guest);
+    setHandoffGuest(guest);
     setDuplicateWarning(null);
     setPendingDraft(null);
     if (revealDelayMs <= 0) {
@@ -123,25 +139,29 @@ export function RegistrationPage({
 
   if (status === 'ticket' && registeredGuest) {
     return (
-      <main className="registration-shell registration-ticket-surface registration-shell--ticket">
-        <section className="registration-success" aria-live="polite">
-          <p className="eyebrow">ДОБРО ПОЖАЛОВАТЬ В СОСТАВ</p>
-          <VirtualTicket guest={registeredGuest} />
-          <p className="registration-hint">Сохраните этот экран — билет останется доступен в вашем профиле весь вечер.</p>
-        </section>
-      </main>
+      <SceneTransition sceneKey={`ticket-${registeredGuest.id}`} label="МАРШРУТ НАЗНАЧЕН" tone="sage">
+        <main className="registration-shell registration-ticket-surface registration-shell--ticket">
+          <section className="registration-success" aria-live="polite">
+            <p className="eyebrow">ДОБРО ПОЖАЛОВАТЬ В СОСТАВ</p>
+            <VirtualTicket guest={registeredGuest} />
+            <p className="registration-hint">Сохраните этот экран — билет останется доступен в вашем профиле весь вечер.</p>
+          </section>
+        </main>
+      </SceneTransition>
     );
   }
 
   if (status === 'routing') {
     return (
-      <main className="registration-shell registration-ticket-surface">
-        <section className="registration-routing" aria-live="polite">
-          <p className="eyebrow">РЕГИСТРАЦИЯ ЗАВЕРШЕНА</p>
-          <h1>ФОРМИРУЕМ МАРШРУТ…</h1>
-          <div className="registration-route-line" aria-hidden="true"><span /></div>
-        </section>
-      </main>
+      <SceneTransition sceneKey="registration-routing" label="ПОСАДКА ПОДТВЕРЖДЕНА" tone="sage">
+        <main className="registration-shell registration-ticket-surface">
+          <section className="registration-routing" aria-live="polite">
+            <p className="eyebrow">РЕГИСТРАЦИЯ ЗАВЕРШЕНА</p>
+            <h1>ФОРМИРУЕМ МАРШРУТ…</h1>
+            <div className="registration-route-line" aria-hidden="true"><span /></div>
+          </section>
+        </main>
+      </SceneTransition>
     );
   }
 

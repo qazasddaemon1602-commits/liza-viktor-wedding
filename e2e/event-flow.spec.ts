@@ -106,7 +106,7 @@ test('guest registration updates owner and queues the train moment on an idle pr
 
   await expect(owner.getByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeVisible();
   await expect(projector.getByTestId('train-arrival-scene')).toBeVisible();
-  await expect(projector.getByTestId('arrival-locomotive')).toBeVisible();
+  await expect(projector.getByTestId('arrival-train-plate')).toBeVisible();
   await expect(projector.getByText('Анна Смирнова')).toBeVisible();
 
   await ownerContext.close();
@@ -124,7 +124,7 @@ test('composition lock keeps registration open for a late guest', async ({ brows
 
   await registerGuest(firstGuest, 'Первый', 'Гость');
   await loginOwner(owner);
-  await owner.getByRole('button', { name: 'ЗАФИКСИРОВАТЬ СОСТАВ' }).click();
+  await owner.getByRole('button', { name: 'ПРИНЯТЬ РАСПРЕДЕЛЕНИЕ' }).click();
   await expect(owner.getByText('СОСТАВ ЗАФИКСИРОВАН')).toBeVisible();
   await expect(owner.getByText('РЕГИСТРАЦИЯ ОТКРЫТА')).toBeVisible();
 
@@ -267,6 +267,7 @@ test('bunker takes over two projectors, stays synchronized, and drops ordinary e
   await expect(screenB.getByTestId('train-arrival-scene')).toHaveCount(0);
 
   await owner.getByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' }).click();
+  await owner.getByRole('button', { name: 'ПОДТВЕРДИТЬ ОСТАНОВКУ' }).click();
   await expect(screenA.getByTestId('bunker-emergency-scene')).toHaveCount(0);
   await expect(screenB.getByTestId('bunker-emergency-scene')).toHaveCount(0);
   await expect(screenA.getByRole('heading', { name: 'ПОЛУЧИТЕ СВОЙ БИЛЕТ' })).toBeVisible();
@@ -314,6 +315,7 @@ test('bunker unmounts an active premiere and restores authoritative premiere sta
   await expect(projector.locator('video.premiere-player')).toHaveCount(0);
 
   await owner.getByRole('button', { name: 'ОСТАНОВИТЬ БУНКЕР' }).click();
+  await owner.getByRole('button', { name: 'ПОДТВЕРДИТЬ ОСТАНОВКУ' }).click();
   await expect(projector.getByTestId('bunker-emergency-scene')).toHaveCount(0);
   await expect(projector.locator('video.premiere-player')).toHaveCount(1, { timeout: 10_000 });
 

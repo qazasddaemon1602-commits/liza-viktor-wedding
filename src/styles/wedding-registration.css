@@ -204,7 +204,8 @@
 
 .registration-ticket-surface .registration-submit,
 .registration-ticket-surface .registration-secondary {
-  min-height: 44px;
+  min-height: 48px;
+  font-size: 1rem;
 }
 
 .registration-ticket-surface .registration-submit {

@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import bunkerPlayerCss from '../../../styles/bunker-player.css?raw';
-import bunkerAccessibilityCss from '../../../styles/bunker-accessibility.css?raw';
+// @ts-expect-error Vitest runs this release guard in Node; the browser app omits Node types.
+import { readFileSync } from 'node:fs';
+
+const testRuntime = globalThis as typeof globalThis & {
+  process: { cwd: () => string };
+};
+
+const readStyle = (fileName: string) => readFileSync(
+  `${testRuntime.process.cwd()}/src/styles/${fileName}`,
+  'utf8',
+);
 
 function cssText(): string {
-  return [bunkerPlayerCss, bunkerAccessibilityCss].join('\n');
+  return [readStyle('bunker-player.css'), readStyle('bunker-accessibility.css')].join('\n');
 }
 
 describe('Bunker mobile accessibility release guard', () => {

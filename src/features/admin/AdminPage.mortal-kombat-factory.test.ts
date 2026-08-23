@@ -23,7 +23,8 @@ describe('createAdminPageDependencies MK wiring', () => {
         },
         error: null,
       })
-      .mockResolvedValueOnce({ data: { status: 'recorded', matchId: 'm1', winnerGuestId: 'g1', affectedMatches: [] }, error: null });
+      .mockResolvedValueOnce({ data: { status: 'recorded', matchId: 'm1', winnerGuestId: 'g1', affectedMatches: [] }, error: null })
+      .mockResolvedValueOnce({ data: { status: 'reset', registrationsRemoved: 16, matchesRemoved: 15 }, error: null });
 
     const channel = {
       send: vi.fn().mockResolvedValue('ok'),
@@ -41,6 +42,7 @@ describe('createAdminPageDependencies MK wiring', () => {
 
     await expect(deps.mortalKombat!.load('event-1')).resolves.toMatchObject({ status: 'owner', state: 'active' });
     await expect(deps.mortalKombat!.recordWinner('m1', 'g1', false)).resolves.toMatchObject({ status: 'recorded' });
+    await deps.mortalKombat!.reset('event-1', 'СБРОСИТЬ ТУРНИР');
     await deps.mortalKombat!.broadcastRefresh();
 
     expect(mocked.rpc).toHaveBeenNthCalledWith(1, 'owner_get_mk_control', { p_event_id: 'event-1' });
@@ -48,6 +50,10 @@ describe('createAdminPageDependencies MK wiring', () => {
       p_match_id: 'm1',
       p_winner_guest_id: 'g1',
       clear_completed_downstream: false,
+    });
+    expect(mocked.rpc).toHaveBeenNthCalledWith(3, 'owner_reset_mk_tournament', {
+      p_event_id: 'event-1',
+      p_confirmation: 'СБРОСИТЬ ТУРНИР',
     });
     expect(mocked.channel).toHaveBeenCalledWith('mk:liza-viktor');
     expect(channel.send).toHaveBeenCalledWith({ type: 'broadcast', event: 'refresh', payload: {} });

@@ -5,6 +5,7 @@ import {
   openMkRegistration,
   randomizeMkSeeds,
   recordMkWinner,
+  resetMkTournament,
   setCurrentMkMatch,
   setMkMainScreen,
   showMkBracket,
@@ -129,6 +130,17 @@ describe('owner MK service', () => {
     expect(client.rpc).toHaveBeenNthCalledWith(2, 'owner_set_mk_main_screen', {
       p_event_id: 'event-1',
       p_enabled: false,
+    });
+  });
+
+  it('resets only the tournament runtime through the dedicated confirmed owner RPC', async () => {
+    const client = clientWith({ status: 'reset', registrationsRemoved: 9, matchesRemoved: 15 });
+
+    await resetMkTournament(client, 'event-1', 'СБРОСИТЬ ТУРНИР');
+
+    expect(client.rpc).toHaveBeenCalledWith('owner_reset_mk_tournament', {
+      p_event_id: 'event-1',
+      p_confirmation: 'СБРОСИТЬ ТУРНИР',
     });
   });
 });

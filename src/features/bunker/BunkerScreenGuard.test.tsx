@@ -47,8 +47,8 @@ describe('BunkerScreenGuard', () => {
     );
     await flushLoadedState();
 
-    expect(screen.getByText('ЛИЧНЫЕ ТЕРМИНАЛЫ АКТИВНЫ')).toBeInTheDocument();
-    expect(screen.getByText('СВЕРЬТЕ ПЕРВЫЕ ДАННЫЕ ВНУТРИ ВАГОНА')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'МИССИЯ 01' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Бункер · экран квеста' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Задание 1 · общий экран' })).not.toBeInTheDocument();
   });
 
@@ -130,7 +130,7 @@ describe('BunkerScreenGuard', () => {
     expect(screen.getByText('Вагоны принимают решение по открытым частям досье.')).toBeInTheDocument();
     expect(screen.getByText('1 / 2 ГОТОВО')).toBeInTheDocument();
     expect(screen.queryByText('2 / 2 ГОТОВО')).not.toBeInTheDocument();
-    expect(screen.getByText('03:59')).toBeInTheDocument();
+    expect(screen.getByLabelText('До конца задания').getAttribute('datetime')).toMatch(/^PT(?:239|240)S$/);
   });
 
   it('selects the restored projector scene from authoritative globalGameState', async () => {

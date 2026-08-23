@@ -23,6 +23,7 @@ import {
   randomizeMkSeeds,
   recordMkWinner,
   removeMkPlayer,
+  resetMkTournament,
   setCurrentMkMatch,
   setMkMainScreen,
   swapMkSeeds,
@@ -106,6 +107,10 @@ import type { AdminCouplePreanswersPanelDependencies } from './quiz/AdminCoupleP
 import type { AdminFinalFivePanelDependencies } from './quiz/AdminFinalFivePanel';
 import type { AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
 import { isOwnerSessionExpired } from './ownerSession';
+import {
+  AdminBunkerDock,
+  type AdminBunkerDockDependencies,
+} from './bunker/AdminBunkerDock';
 
 const EVENT_SLUG = 'liza-viktor';
 const OWNER_EMAIL = 'qazasddaemon1602@gmail.com';
@@ -139,6 +144,7 @@ export type AdminPageDependencies = {
   quiz?: AdminQuizPanelDependencies;
   finalFive?: AdminFinalFivePanelDependencies;
   mortalKombat?: AdminMkControlDependencies;
+  bunkerDock?: AdminBunkerDockDependencies;
 };
 
 function errorCode(error: unknown): string | undefined {
@@ -331,6 +337,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       swap: (registrationA, registrationB) => swapMkSeeds(mkRpcClient, registrationA, registrationB),
       remove: (registrationId) => removeMkPlayer(mkRpcClient, registrationId),
       promote: (registrationId) => promoteMkWaitlist(mkRpcClient, registrationId),
+      reset: (eventId, confirmation) => resetMkTournament(mkRpcClient, eventId, confirmation),
       finalize: (eventId) => finalizeMkDraw(mkRpcClient, eventId),
       setCurrent: (matchId) => setCurrentMkMatch(mkRpcClient, matchId),
       setMainScreen: (eventId, enabled) => setMkMainScreen(mkRpcClient, eventId, enabled),
@@ -342,6 +349,14 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       ),
       undo: (matchId, clearDownstream) => undoMkResult(mkRpcClient, matchId, clearDownstream),
       broadcastRefresh: () => broadcastMkRefresh(mkRealtimeClient, EVENT_SLUG),
+    },
+    bunkerDock: {
+      loadDashboard,
+      applyDistribution: (eventId, carriageCount) => applyCarriageDistributionRpc(
+        client,
+        eventId,
+        carriageCount,
+      ),
     },
   };
 }
@@ -470,6 +485,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
             onSessionExpired: expireOwnerSession,
           }}
         />
+        {deps.bunkerDock && <AdminBunkerDock dependencies={deps.bunkerDock} />}
       </>
     );
   }

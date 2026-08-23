@@ -25,6 +25,7 @@ import { AdminFinalFivePanel, type AdminFinalFivePanelDependencies } from './qui
 import { AdminQuizPanel, type AdminQuizPanelDependencies } from './quiz/AdminQuizPanel';
 import { isOwnerSessionExpired } from './ownerSession';
 import { AdminMobileNavigation } from './AdminMobileNavigation';
+import { EventHostRunbook } from './runbook/EventHostRunbook';
 
 export type AdminShellDependencies = {
   load: () => Promise<AdminDashboard>;
@@ -322,6 +323,8 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
         </div>
       )}
 
+      <EventHostRunbook dashboard={dashboard} />
+
       <div id="admin-now" className="admin-section-anchor">
         <AdminRehearsalPanel
           eventId={dashboard.event.id}
@@ -375,7 +378,9 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
       )}
 
       {dependencies.finalFive && (
-        <AdminFinalFivePanel eventId={dashboard.event.id} dependencies={dependencies.finalFive} />
+        <div id="admin-final-five-module" className="admin-module-anchor">
+          <AdminFinalFivePanel eventId={dashboard.event.id} dependencies={dependencies.finalFive} />
+        </div>
       )}
 
       {dependencies.mortalKombat && (

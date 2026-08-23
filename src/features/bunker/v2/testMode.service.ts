@@ -155,7 +155,7 @@ export function simulateTestStage(client: TestModeRpcClient, eventId: string) {
   return call(client, 'owner_bunker_v2_test_simulate_current', { p_event_id: eventId });
 }
 
-export function setTestInventory(
+export async function setTestInventory(
   client: TestModeRpcClient,
   eventId: string,
   wagon: number,
@@ -177,7 +177,7 @@ export function setTestInventory(
   });
 }
 
-export function setTestWagonState(
+export async function setTestWagonState(
   client: TestModeRpcClient,
   eventId: string,
   wagon: number,

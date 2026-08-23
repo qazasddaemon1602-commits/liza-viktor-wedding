@@ -519,6 +519,71 @@
   gap: 0.75rem;
 }
 
+.mk-public-bracket--projector {
+  min-height: 100vh;
+  min-height: 100dvh;
+  border: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  padding: clamp(2rem, 3.2vw, 4.5rem);
+}
+
+.mk-public-bracket--projector.mk-public-bracket--waiting {
+  position: relative;
+  isolation: isolate;
+  align-content: center;
+  justify-items: start;
+  padding-inline: clamp(3rem, 8vw, 10rem);
+  background: var(--mk-black);
+}
+
+.mk-projector-board-art,
+.mk-projector-waiting-art {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+
+.mk-projector-board-art::after,
+.mk-projector-waiting-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(10, 10, 9, 0.98) 0%, rgba(10, 10, 9, 0.78) 48%, rgba(10, 10, 9, 0.3) 100%);
+}
+
+.mk-projector-board-art img,
+.mk-projector-waiting-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.68) brightness(0.64);
+}
+
+.mk-projector-count {
+  color: var(--mk-ivory);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 5rem);
+  font-weight: 400;
+}
+
+.mk-projector-next {
+  color: var(--mk-gold-bright) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.75rem, 1vw, 1.1rem);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.mk-public-bracket--projector .mk-bracket-scroll {
+  min-height: 0;
+  align-items: stretch;
+}
+
+.mk-public-bracket--projector .mk-bracket-round {
+  align-content: space-evenly;
+}
+
 .mk-public-bracket--waiting > p:last-child {
   color: var(--mk-muted);
 }
@@ -537,10 +602,26 @@
 }
 
 .mk-screen-waiting {
+  position: relative;
+  isolation: isolate;
   display: grid;
   place-content: center;
   gap: 1rem;
   text-align: center;
+}
+
+.mk-projector-waiting-copy {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+}
+
+.mk-projector-waiting-copy > p:last-child {
+  color: var(--mk-gold-bright);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.7rem, 1vw, 1rem);
+  font-weight: 800;
+  letter-spacing: 0.14em;
 }
 
 .mk-fight-scene {

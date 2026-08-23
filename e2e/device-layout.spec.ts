@@ -32,7 +32,7 @@ test('owner admin is usable on a 390px phone without horizontal overflow', async
   await loginOwner(page);
   await expect(page.getByRole('heading', { name: 'РЕПЕТИЦИЯ' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'ОТКРЫТЬ ТВ' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /ЗАФИКСИРОВАТЬ СОСТАВ|СОСТАВ ЗАФИКСИРОВАН/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'ПРИНЯТЬ РАСПРЕДЕЛЕНИЕ' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 
   await context.close();

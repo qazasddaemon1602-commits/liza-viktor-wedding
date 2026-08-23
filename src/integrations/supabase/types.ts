@@ -59,6 +59,141 @@ export type Database = {
           },
         ]
       }
+      bunker_global_mission_progress: {
+        Row: {
+          carriage_id: string
+          completed_at: string
+          completed_by_guest_id: string | null
+          created_at: string
+          event_id: string
+          forced_by_owner: boolean
+          id: string
+          mission_state: string
+          run_nonce: string
+          submitted_payload: Json
+          updated_at: string
+        }
+        Insert: {
+          carriage_id: string
+          completed_at?: string
+          completed_by_guest_id?: string | null
+          created_at?: string
+          event_id: string
+          forced_by_owner?: boolean
+          id?: string
+          mission_state: string
+          run_nonce: string
+          submitted_payload?: Json
+          updated_at?: string
+        }
+        Update: {
+          carriage_id?: string
+          completed_at?: string
+          completed_by_guest_id?: string | null
+          created_at?: string
+          event_id?: string
+          forced_by_owner?: boolean
+          id?: string
+          mission_state?: string
+          run_nonce?: string
+          submitted_payload?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bunker_global_mission_progress_carriage_id_fkey"
+            columns: ["carriage_id"]
+            isOneToOne: false
+            referencedRelation: "carriages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bunker_global_mission_progress_completed_by_guest_id_fkey"
+            columns: ["completed_by_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bunker_global_mission_progress_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bunker_game_runs: {
+        Row: {
+          created_at: string
+          event_id: string
+          guest_count: number
+          plan: Json
+          run_nonce: string
+          wagon_count: number
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          guest_count: number
+          plan: Json
+          run_nonce: string
+          wagon_count: number
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          guest_count?: number
+          plan?: Json
+          run_nonce?: string
+          wagon_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bunker_game_runs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bunker_game_events: {
+        Row: {
+          actor_type: string
+          carriage_id: string | null
+          created_at: string
+          event_id: string
+          event_type: string
+          guest_id: string | null
+          id: number
+          payload: Json
+          run_nonce: string
+        }
+        Insert: {
+          actor_type?: string
+          carriage_id?: string | null
+          created_at?: string
+          event_id: string
+          event_type: string
+          guest_id?: string | null
+          id?: number
+          payload?: Json
+          run_nonce: string
+        }
+        Update: {
+          actor_type?: string
+          carriage_id?: string | null
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          guest_id?: string | null
+          id?: number
+          payload?: Json
+          run_nonce?: string
+        }
+        Relationships: []
+      }
       bunker_guest_profiles: {
         Row: {
           baggage: string
@@ -1362,6 +1497,10 @@ export type Database = {
         Args: { p_carriage_id: string; p_event_id: string; p_stage: string }
         Returns: Json
       }
+      owner_force_complete_bunker_global_mission: {
+        Args: { p_carriage_id: string; p_event_id: string; p_mission_state: string }
+        Returns: Json
+      }
       owner_get_bunker_control: { Args: { p_event_id: string }; Returns: Json }
       owner_get_bunker_quest: { Args: { p_event_id: string }; Returns: Json }
       owner_get_couple_preanswer_status: {
@@ -1424,6 +1563,10 @@ export type Database = {
       }
       owner_remove_mk_player: {
         Args: { p_registration_id: string }
+        Returns: Json
+      }
+      owner_reset_mk_tournament: {
+        Args: { p_confirmation: string; p_event_id: string }
         Returns: Json
       }
       owner_replace_mk_player: {
@@ -1571,6 +1714,15 @@ export type Database = {
       }
       submit_guest_bunker_final_code: {
         Args: { p_code: string; p_device_key: string; p_event_slug: string }
+        Returns: Json
+      }
+      submit_guest_bunker_global_mission: {
+        Args: {
+          p_device_key: string
+          p_event_slug: string
+          p_mission_state: string
+          p_payload: Json
+        }
         Returns: Json
       }
       submit_guest_bunker_mission: {

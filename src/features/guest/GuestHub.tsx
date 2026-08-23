@@ -1,7 +1,12 @@
 import type { BunkerMissionStage, GuestBunkerQuestState } from '../bunker/bunkerQuest.types';
+import type {
+  BunkerGlobalMissionPayload,
+  BunkerGlobalMissionState,
+} from '../bunker/bunkerGlobalMission.service';
 import { BunkerPlayerDashboard } from '../bunker/BunkerPlayerDashboard';
 import {
   isLegacyActiveGuestBunkerRuntime,
+  type GuestBunkerAbilityResult,
   type GuestBunkerReadRuntime,
 } from '../bunker/bunkerRuntime.service';
 import type { BunkerV2DashboardReadModel } from '../bunker/v2/dashboard.service';
@@ -63,6 +68,11 @@ type Props = {
   onCastBunkerMissionSixVote?: (vote: 'A' | 'B' | 'C') => Promise<void> | void;
   onUseBunkerMissionSixAbility?: () => Promise<void> | void;
   onRequestBunkerFinalAccess?: (values: FinalValues) => Promise<void> | void;
+  onBunkerGlobalMission?: (
+    missionState: BunkerGlobalMissionState,
+    payload: BunkerGlobalMissionPayload,
+  ) => Promise<void> | void;
+  onBunkerAbility?: () => Promise<GuestBunkerAbilityResult>;
   quizState: GuestQuizState | null;
   quizError?: string;
   quizSubmitting?: QuizChoice | null;
@@ -128,6 +138,8 @@ export function GuestHub({
   onCastBunkerMissionSixVote,
   onUseBunkerMissionSixAbility,
   onRequestBunkerFinalAccess,
+  onBunkerGlobalMission = () => undefined,
+  onBunkerAbility,
   quizState,
   quizError = '',
   quizSubmitting = null,
@@ -171,6 +183,13 @@ export function GuestHub({
           onCastMissionSixVote={onCastBunkerMissionSixVote}
           onUseMissionSixAbility={onUseBunkerMissionSixAbility}
           onRequestFinalAccess={onRequestBunkerFinalAccess}
+          questState={bunkerState}
+          missionFeedback={bunkerFeedback || bunkerError}
+          missionSubmitting={bunkerSubmitting}
+          onMission={onBunkerMission}
+          onFinalCode={onBunkerFinalCode}
+          onGlobalMission={onBunkerGlobalMission}
+          onAbility={onBunkerAbility}
         />
       </main>
     );

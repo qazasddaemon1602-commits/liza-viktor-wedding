@@ -509,11 +509,11 @@ export function AdminBunkerDock({
           </time>
         </div>
       )}
-
       {contractReady ? (
         <AdminBunkerControl
           key={controlRevision}
           eventId={dashboard.event.id}
+          eventSlug={dashboard.event.slug}
           dependencies={deps.bunkerControl}
           dashboard={dashboard}
           onAcceptDistribution={acceptDistribution}

@@ -123,6 +123,65 @@
   background: var(--bunker-admin-panel);
 }
 
+.admin-bunker-final-recovery {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid rgba(139, 61, 54, 0.72);
+  background: #291e1c;
+}
+
+.admin-bunker-final-recovery h4 {
+  margin: 0.2rem 0 0;
+  color: var(--bunker-admin-paper);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 400;
+}
+
+.admin-bunker-final-recovery > label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--bunker-admin-paper);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-bunker-final-recovery textarea,
+.admin-bunker-final-recovery input {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid rgba(236, 230, 216, 0.28);
+  padding: 0.7rem 0.8rem;
+  color: var(--bunker-admin-paper);
+  background: #111312;
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-bunker-final-recovery small {
+  color: var(--bunker-admin-muted);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-bunker-final-recovery code {
+  color: var(--bunker-admin-paper);
+  overflow-wrap: anywhere;
+}
+
+.admin-bunker-final-recovery textarea:focus,
+.admin-bunker-final-recovery input:focus {
+  border-color: rgba(236, 230, 216, 0.72);
+  outline: 2px solid rgba(139, 61, 54, 0.5);
+  outline-offset: 2px;
+}
+
 .admin-bunker-wagons > header,
 .admin-bunker-tv > header,
 .admin-bunker-danger > div:first-child {
@@ -182,11 +241,11 @@
 }
 
 .admin-bunker-quest .admin-bunker-stage-primary {
-  min-height: 44px;
+  min-height: 48px;
   border-color: #ece8de;
   color: #111210;
   background: #ece8de;
-  font-size: 12px;
+  font-size: 1rem;
   box-shadow: inset 0 -3px 0 rgba(21, 23, 22, 0.24);
 }
 
@@ -319,6 +378,50 @@
   font-weight: 800;
 }
 
+.admin-bunker-stage__progress {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid var(--bunker-admin-paper);
+  background: rgba(236, 230, 216, 0.06);
+}
+
+.admin-bunker-stage__progress strong {
+  color: var(--bunker-admin-paper);
+  font-size: 1.15rem;
+}
+
+.admin-bunker-stage__progress span {
+  color: var(--bunker-admin-muted);
+  font-size: 0.9rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.admin-bunker-stage__recovery {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed rgba(236, 230, 216, 0.35);
+}
+
+.admin-bunker-stage__recovery > strong {
+  color: var(--bunker-admin-paper);
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+}
+
+.admin-bunker-stage__recovery > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.55rem;
+}
+
+.admin-bunker-stage__recovery button {
+  min-height: 48px;
+  white-space: normal;
+}
+
 .admin-bunker-sound {
   min-height: 3rem;
   padding: 0 0.8rem;
@@ -360,6 +463,139 @@
   gap: 0.55rem;
 }
 
+.admin-bunker-runbook {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--bunker-admin-rule);
+  background: #111312;
+}
+
+.admin-bunker-runbook > header {
+  max-width: 58rem;
+}
+
+.admin-bunker-control .admin-bunker-runbook .eyebrow {
+  font-size: 1rem;
+}
+
+.admin-bunker-runbook > header h3 {
+  margin: 0.25rem 0 0.65rem;
+  color: var(--bunker-admin-paper);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 5vw, 3.8rem);
+  font-weight: 400;
+  line-height: 0.96;
+}
+
+.admin-bunker-runbook > header > p:last-child,
+.admin-bunker-runbook__waiting {
+  margin: 0;
+  color: var(--bunker-admin-muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.admin-bunker-runbook__timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 1px;
+  background: var(--bunker-admin-rule);
+  list-style: none;
+}
+
+.admin-bunker-runbook__timeline li {
+  min-width: 0;
+  display: grid;
+  align-content: space-between;
+  gap: 0.75rem;
+  min-height: 6.5rem;
+  padding: 0.85rem;
+  background: var(--bunker-admin-bg);
+}
+
+.admin-bunker-runbook__timeline li[aria-current='step'] {
+  color: var(--bunker-admin-bg);
+  background: var(--bunker-admin-paper);
+}
+
+.admin-bunker-runbook__timeline span,
+.admin-bunker-runbook__summary span {
+  color: var(--bunker-admin-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.admin-bunker-runbook__timeline li[aria-current='step'] span {
+  color: rgba(21, 23, 22, 0.62);
+}
+
+.admin-bunker-runbook__timeline strong {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.admin-bunker-runbook__script {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--bunker-admin-rule);
+}
+
+.admin-bunker-runbook__script > * {
+  min-width: 0;
+  padding: clamp(1rem, 2.2vw, 1.35rem);
+  background: var(--bunker-admin-panel);
+}
+
+.admin-bunker-runbook__summary,
+.admin-bunker-runbook__plan,
+.admin-bunker-runbook__after {
+  grid-column: 1 / -1;
+}
+
+.admin-bunker-runbook__summary h4 {
+  margin: 0.45rem 0;
+  color: var(--bunker-admin-paper);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.7rem, 5vw, 3rem);
+  font-weight: 400;
+}
+
+.admin-bunker-runbook__script article h4 {
+  margin: 0 0 0.75rem;
+  color: var(--bunker-admin-paper);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.admin-bunker-runbook__script p,
+.admin-bunker-runbook__script ul {
+  margin: 0.55rem 0 0;
+  color: var(--bunker-admin-paper);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.admin-bunker-runbook__script ul {
+  padding-left: 1.2rem;
+}
+
+.admin-bunker-runbook__after {
+  border-left: 3px solid #c69b61;
+}
+
+.admin-bunker-runbook__guard {
+  border-left: 3px solid #a7554e;
+  color: #f2d5cf;
+  background: #261b19;
+  font-size: 1rem;
+}
+
 @media (max-width: 760px) {
   .admin-bunker-dispatcher-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -367,6 +603,10 @@
 
   .admin-bunker-distribution-controls {
     grid-template-columns: 1fr;
+  }
+
+  .admin-bunker-runbook__script {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

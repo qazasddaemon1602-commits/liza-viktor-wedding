@@ -11,8 +11,63 @@ import {
   parseBunkerV2GuestRuntime,
   type BunkerV2GuestRuntime,
 } from './v2/contracts';
+import {
+  isBunkerGlobalMissionState,
+  type BunkerGlobalMissionState,
+} from './bunkerGlobalMission.service';
 
 export type { BunkerCurrentMission } from './bunkerSession.service';
+
+export type GuestBunkerGlobalMissionAction = {
+  missionState: BunkerGlobalMissionState;
+  completed: boolean;
+  completedAt: string | null;
+  submittedPayload: Record<string, unknown> | null;
+  requirements: Record<string, unknown>;
+};
+
+export type GuestBunkerInventoryItem = {
+  id: string;
+  itemKey: string;
+  quantity: number;
+  status: 'available' | 'used' | 'transferred' | 'lost';
+  acquiredAt?: string;
+  usedAt?: string | null;
+  transferredTo?: string | null;
+  sourceLotId?: string | null;
+};
+
+export type GuestBunkerAbilityEffectKind =
+  | 'power_stable'
+  | 'technical_door_unlocked'
+  | 'water_stable'
+  | 'communication_boost'
+  | 'route_hint'
+  | 'sector_hint'
+  | 'mission_clue';
+
+export type GuestBunkerAbilityAction = {
+  applicable: boolean;
+  code: 'ability_available' | 'ability_not_applicable';
+  missionState: BunkerGlobalGameState;
+  effectKind: GuestBunkerAbilityEffectKind | null;
+  effectLabel: string;
+  effectDescription: string;
+};
+
+export type GuestBunkerAbilityResult = {
+  status: 'used';
+  changed: boolean;
+  idempotent: boolean;
+  clientActionId: string;
+  missionState: BunkerGlobalGameState;
+  abilityKey: string;
+  effectKind: GuestBunkerAbilityEffectKind;
+  effectLabel: string;
+  effectDescription: string;
+  resultCopy: string;
+  abilityUsesRemaining: number;
+};
 
 type IdleRuntime = { status: 'idle' | 'not_found' | 'guest_not_found'; serverNow: string };
 
@@ -29,18 +84,30 @@ export type ActiveGuestBunkerRuntime = {
     profession: string; health: string; visibleSkill: string; hiddenTrait: string | null;
     hiddenTraitRevealed: boolean; specialAbility: string; abilityDescription: string;
     abilityUsesRemaining: number; status: 'active' | 'saved' | 'excluded';
+    abilityAction?: GuestBunkerAbilityAction;
   };
   passengers: unknown[];
-  inventory: unknown[];
+  inventory: GuestBunkerInventoryItem[];
   archive: unknown[];
   wagonState: Record<string, unknown>;
   currentMission: BunkerCurrentMission | null;
+  missionAction?: GuestBunkerGlobalMissionAction | null;
 };
 
 export type GuestBunkerRuntime = IdleRuntime | ActiveGuestBunkerRuntime;
 export type GuestBunkerReadRuntime = GuestBunkerRuntime | BunkerV2GuestRuntime;
 
 const GAME_STATES = new Set<BunkerGlobalGameState>(BUNKER_GLOBAL_GAME_STATES);
+const ABILITY_EFFECT_KINDS = new Set<GuestBunkerAbilityEffectKind>([
+  'power_stable',
+  'technical_door_unlocked',
+  'water_stable',
+  'communication_boost',
+  'route_hint',
+  'sector_hint',
+  'mission_clue',
+]);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function object(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -72,6 +139,93 @@ function timestamp(value: unknown, nullable = false): string | null {
     throw new Error('Unexpected Bunker timestamp');
   }
   return value;
+}
+
+function missionAction(
+  value: unknown,
+  authoritativeState: BunkerGlobalGameState,
+): GuestBunkerGlobalMissionAction | null {
+  if (value === null || value === undefined) return null;
+  const action = object(value, 'mission action');
+  if (!isBunkerGlobalMissionState(action.missionState)
+    || action.missionState !== authoritativeState
+    || typeof action.completed !== 'boolean'
+    || (action.completedAt !== null
+      && (typeof action.completedAt !== 'string'
+        || !Number.isFinite(Date.parse(action.completedAt))))
+    || (action.completed && action.completedAt === null)
+    || (!action.completed && action.completedAt !== null)
+    || (action.submittedPayload !== null
+      && (typeof action.submittedPayload !== 'object'
+        || Array.isArray(action.submittedPayload)))
+    || typeof action.requirements !== 'object'
+    || action.requirements === null
+    || Array.isArray(action.requirements)) {
+    throw new Error('Unexpected Bunker mission action');
+  }
+  return action as GuestBunkerGlobalMissionAction;
+}
+
+function abilityAction(
+  value: unknown,
+  authoritativeState: BunkerGlobalGameState,
+): GuestBunkerAbilityAction | undefined {
+  if (value === undefined) return undefined;
+  const action = object(value, 'ability action');
+  const applicable = action.applicable;
+  const code = action.code;
+  const effectKind = action.effectKind;
+  if (typeof applicable !== 'boolean'
+    || (code !== 'ability_available' && code !== 'ability_not_applicable')
+    || action.missionState !== authoritativeState
+    || (applicable && (code !== 'ability_available'
+      || typeof effectKind !== 'string'
+      || !ABILITY_EFFECT_KINDS.has(effectKind as GuestBunkerAbilityEffectKind)))
+    || (!applicable && (code !== 'ability_not_applicable' || effectKind !== null))) {
+    throw new Error('Unexpected Bunker ability action');
+  }
+  return {
+    applicable,
+    code,
+    missionState: authoritativeState,
+    effectKind: effectKind as GuestBunkerAbilityEffectKind | null,
+    effectLabel: text(action.effectLabel, 'ability action label'),
+    effectDescription: text(action.effectDescription, 'ability action description'),
+  };
+}
+
+function positiveInteger(value: unknown, label: string): number {
+  const parsed = integer(value, label);
+  if (parsed < 1) throw new Error(`Unexpected Bunker ${label}`);
+  return parsed;
+}
+
+function inventoryItem(value: unknown): GuestBunkerInventoryItem {
+  const item = object(value, 'inventory item');
+  const status = item.status;
+  const usedAt = timestamp(item.usedAt, true);
+  const transferredTo = item.transferredTo;
+  const sourceLotId = item.sourceLotId;
+  if (status !== 'available' && status !== 'used' && status !== 'transferred' && status !== 'lost') {
+    throw new Error('Unexpected Bunker inventory item status');
+  }
+  if ((status === 'used') !== (usedAt !== null)
+    || (status === 'transferred') !== (typeof transferredTo === 'string' && Boolean(transferredTo.trim()))
+    || (status !== 'transferred' && transferredTo !== null)
+    || (sourceLotId !== undefined && sourceLotId !== null
+      && (typeof sourceLotId !== 'string' || !sourceLotId.trim()))) {
+    throw new Error('Unexpected Bunker inventory item state');
+  }
+  return {
+    id: text(item.id, 'inventory item id'),
+    itemKey: text(item.itemKey, 'inventory item key'),
+    quantity: positiveInteger(item.quantity, 'inventory item quantity'),
+    status,
+    acquiredAt: timestamp(item.acquiredAt) as string,
+    usedAt,
+    transferredTo: transferredTo as string | null,
+    ...(sourceLotId === undefined ? {} : { sourceLotId: sourceLotId as string | null }),
+  };
 }
 
 export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
@@ -130,15 +284,17 @@ export function parseGuestBunkerRuntime(data: unknown): GuestBunkerRuntime {
       abilityDescription: text(character.abilityDescription, 'ability description'),
       abilityUsesRemaining: integer(character.abilityUsesRemaining, 'ability uses'),
       status: characterStatus,
+      abilityAction: abilityAction(character.abilityAction, game.state as BunkerGlobalGameState),
     },
     passengers: root.passengers,
-    inventory: root.inventory,
+    inventory: root.inventory.map(inventoryItem),
     archive: root.archive,
     wagonState: object(root.wagonState, 'wagon state'),
     currentMission: parseBunkerCurrentMission(
       root.currentMission,
       game.state as BunkerGlobalGameState,
     ),
+    missionAction: missionAction(root.missionAction, game.state as BunkerGlobalGameState),
   };
 }
 
@@ -188,4 +344,48 @@ export async function getGuestBunkerRuntime(
   });
   if (error) throwRpc(error);
   return parseGuestBunkerReadRuntime(data);
+}
+
+export function parseGuestBunkerAbilityResult(data: unknown): GuestBunkerAbilityResult {
+  const result = object(data, 'ability result');
+  if (result.status !== 'used'
+    || typeof result.changed !== 'boolean'
+    || typeof result.idempotent !== 'boolean'
+    || result.changed === result.idempotent
+    || typeof result.clientActionId !== 'string'
+    || !UUID.test(result.clientActionId)
+    || !GAME_STATES.has(result.missionState as BunkerGlobalGameState)
+    || typeof result.effectKind !== 'string'
+    || !ABILITY_EFFECT_KINDS.has(result.effectKind as GuestBunkerAbilityEffectKind)) {
+    throw new Error('Unexpected Bunker ability result');
+  }
+  return {
+    status: 'used',
+    changed: result.changed,
+    idempotent: result.idempotent,
+    clientActionId: result.clientActionId,
+    missionState: result.missionState as BunkerGlobalGameState,
+    abilityKey: text(result.abilityKey, 'ability result key'),
+    effectKind: result.effectKind as GuestBunkerAbilityEffectKind,
+    effectLabel: text(result.effectLabel, 'ability result label'),
+    effectDescription: text(result.effectDescription, 'ability result description'),
+    resultCopy: text(result.resultCopy, 'ability result copy'),
+    abilityUsesRemaining: integer(result.abilityUsesRemaining, 'ability result uses'),
+  };
+}
+
+export async function useGuestBunkerAbility(
+  client: BunkerRpcClient,
+  eventSlug: string,
+  deviceKey: string,
+  clientActionId: string,
+): Promise<GuestBunkerAbilityResult> {
+  if (!UUID.test(clientActionId)) throw new Error('Invalid Bunker ability action id');
+  const { data, error } = await client.rpc('use_guest_bunker_ability', {
+    p_event_slug: eventSlug,
+    p_device_key: deviceKey,
+    p_client_action_id: clientActionId,
+  });
+  if (error) throwRpc(error);
+  return parseGuestBunkerAbilityResult(data);
 }

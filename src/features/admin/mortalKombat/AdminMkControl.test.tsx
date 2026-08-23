@@ -42,6 +42,7 @@ function dependencies(overrides: Partial<AdminMkControlDependencies> = {}): Admi
     swap: vi.fn().mockResolvedValue(undefined),
     remove: vi.fn().mockResolvedValue(undefined),
     promote: vi.fn().mockResolvedValue(undefined),
+    reset: vi.fn().mockResolvedValue(undefined),
     finalize: vi.fn().mockResolvedValue(undefined),
     setCurrent: vi.fn().mockResolvedValue(undefined),
     showBracket: vi.fn().mockResolvedValue(undefined),
@@ -64,7 +65,7 @@ describe('AdminMkControl', () => {
     expect(screen.queryByText(/MORTAL KOMBAT|FATALITY/i)).not.toBeInTheDocument();
   });
 
-  it('randomizes the draw and starts the bracket on the shared projector', async () => {
+  it('requires a separate confirmation before rerandomizing the pre-start draw', async () => {
     const user = userEvent.setup();
     const randomize = vi.fn().mockResolvedValue(undefined);
     const finalize = vi.fn().mockResolvedValue(undefined);
@@ -80,7 +81,10 @@ describe('AdminMkControl', () => {
     );
 
     await screen.findByText('16 / 40');
-    await user.click(screen.getByRole('button', { name: 'ПЕРЕМЕШАТЬ 16 ИГРОКОВ' }));
+    await user.click(screen.getByRole('button', { name: 'ПЕРЕЖЕРЕБИТЬ ТУРНИР' }));
+    expect(randomize).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ПЕРЕЖЕРЕБЬЁВКУ' }));
     expect(randomize).toHaveBeenCalledWith('event-1');
     expect(broadcastRefresh).toHaveBeenCalled();
 
@@ -160,6 +164,198 @@ describe('AdminMkControl', () => {
     await user.click(screen.getByRole('button', { name: 'ВЕРНУТЬ ГЛАВНЫЙ ЭКРАН' }));
     expect(setMainScreen).toHaveBeenLastCalledWith('event-1', false);
   });
+
+  it('keeps the bracket selection committed when the shared projector is occupied', async () => {
+    const user = userEvent.setup();
+    const activeState: MkOwnerControl = { ...ready, state: 'active', waitlistCount: 0 };
+    const load = vi.fn()
+      .mockResolvedValueOnce(activeState)
+      .mockResolvedValueOnce(activeState);
+    const showBracket = vi.fn().mockResolvedValue(undefined);
+    const setMainScreen = vi.fn().mockRejectedValue(new Error('Bunker emergency owns the shared projector'));
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ load, showBracket, setMainScreen, broadcastRefresh })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ВЫВЕСТИ СЕТКУ НА ЭКРАНЫ' }));
+
+    expect(showBracket).toHaveBeenCalledWith('event-1');
+    expect(broadcastRefresh).toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Сетка выбрана. Общий экран занят Бункером. Турнир можно открыть на отдельном экране.',
+    );
+  });
+
+  it('keeps the current fight committed when the shared projector is occupied', async () => {
+    const user = userEvent.setup();
+    const fightState: MkOwnerControl = {
+      ...ready,
+      state: 'active',
+      waitlistCount: 0,
+      matches: [{
+        id: 'm1',
+        matchKey: 'final-1',
+        round: 'final',
+        position: 1,
+        player1GuestId: 'g1',
+        player2GuestId: 'g2',
+        winnerGuestId: null,
+        status: 'ready',
+        current: false,
+      }],
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce(fightState)
+      .mockResolvedValueOnce(fightState);
+    const setCurrent = vi.fn().mockResolvedValue(undefined);
+    const setMainScreen = vi.fn().mockRejectedValue(new Error('Premiere owns the shared projector'));
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ load, setCurrent, setMainScreen, broadcastRefresh })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ВЫВЕСТИ БОЙ' }));
+
+    expect(setCurrent).toHaveBeenCalledWith('m1');
+    expect(broadcastRefresh).toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Бой выбран. Общий экран занят премьерой. Турнир можно открыть на отдельном экране.',
+    );
+  });
+
+  it('requires the exact phrase before resetting only the tournament runtime after start', async () => {
+    const user = userEvent.setup();
+    const activeState: MkOwnerControl = {
+      ...ready,
+      state: 'active',
+      waitlistCount: 0,
+    };
+    const reset = vi.fn().mockResolvedValue(undefined);
+    const load = vi.fn()
+      .mockResolvedValueOnce(activeState)
+      .mockResolvedValueOnce({ ...activeState, state: 'registration', activeCount: 0, registrations: [], matches: [] });
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ load, reset })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'СБРОСИТЬ ТУРНИР' }));
+    expect(reset).not.toHaveBeenCalled();
+    expect(screen.getByText(/Регистрации гостей свадьбы и ответы пары сохранятся/i)).toBeInTheDocument();
+
+    const confirmation = screen.getByRole('textbox', { name: 'Введите СБРОСИТЬ ТУРНИР' });
+    const submit = screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ СБРОС ТУРНИРА' });
+    expect(submit).toBeDisabled();
+
+    await user.type(confirmation, 'СБРОСИТЬ ТУРНИР');
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+
+    expect(reset).toHaveBeenCalledWith('event-1', 'СБРОСИТЬ ТУРНИР');
+  });
+
+  it('shows the actionable server reason when tournament launch is rejected', async () => {
+    const user = userEvent.setup();
+    const finalize = vi.fn().mockRejectedValue(new Error('between 2 and 40 active players required'));
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ finalize })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 16 ИГРОКОВ' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Для запуска нужно от 2 до 40 участников.');
+  });
+
+  it('keeps a finalized tournament started when the shared projector is occupied', async () => {
+    const user = userEvent.setup();
+    const activeState: MkOwnerControl = { ...ready, state: 'active', matches: [] };
+    const load = vi.fn()
+      .mockResolvedValueOnce(ready)
+      .mockResolvedValueOnce(activeState);
+    const finalize = vi.fn().mockResolvedValue(undefined);
+    const setMainScreen = vi.fn().mockRejectedValue(new Error('Bunker emergency owns the shared projector'));
+    const broadcastRefresh = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ load, finalize, setMainScreen, broadcastRefresh })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 16 ИГРОКОВ' }));
+
+    expect(finalize).toHaveBeenCalledWith('event-1');
+    expect(broadcastRefresh).toHaveBeenCalled();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Турнир запущен. Общий экран занят Бункером. Турнир можно открыть на отдельном экране.',
+    );
+    expect(screen.getByRole('button', { name: 'СБРОСИТЬ ТУРНИР' })).toBeInTheDocument();
+  });
+
+  it('does not report a committed reroll as failed when realtime broadcast is offline', async () => {
+    const user = userEvent.setup();
+    const randomize = vi.fn().mockResolvedValue(undefined);
+    const broadcastRefresh = vi.fn().mockRejectedValue(new Error('realtime offline'));
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ randomize, broadcastRefresh })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ПЕРЕЖЕРЕБИТЬ ТУРНИР' }));
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ПЕРЕЖЕРЕБЬЁВКУ' }));
+
+    expect(randomize).toHaveBeenCalledWith('event-1');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Изменение сохранено, но автообновление экранов недоступно.',
+    );
+  });
+
+  it('does not report a committed command as failed when the follow-up reload fails', async () => {
+    const user = userEvent.setup();
+    const randomize = vi.fn().mockResolvedValue(undefined);
+    const load = vi.fn()
+      .mockResolvedValueOnce(ready)
+      .mockRejectedValueOnce(new Error('load offline'));
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ randomize, load })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ПЕРЕЖЕРЕБИТЬ ТУРНИР' }));
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ПЕРЕЖЕРЕБЬЁВКУ' }));
+
+    expect(randomize).toHaveBeenCalledWith('event-1');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Изменение сохранено, но состояние пульта не обновилось. Обновите страницу.',
+    );
+  });
 });
 
 describe('AdminMkControl with fewer than sixteen players', () => {
@@ -184,7 +380,7 @@ describe('AdminMkControl with fewer than sixteen players', () => {
 
     expect(await screen.findByText('9 / 40')).toBeInTheDocument();
     expect(screen.getAllByText('ДО 40 ИГРОКОВ · OWNER CONTROL').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'ПЕРЕМЕШАТЬ 9 ИГРОКОВ' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'ПЕРЕЖЕРЕБИТЬ ТУРНИР' })).toBeEnabled();
 
     const launch = screen.getByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 9 ИГРОКОВ' });
     expect(launch).toBeEnabled();
@@ -252,6 +448,27 @@ describe('AdminMkControl with fewer than sixteen players', () => {
 
     expect(await screen.findByRole('button', { name: `ЗАПУСТИТЬ ТУРНИР · ${count} ИГРОКОВ` })).toBeEnabled();
     expect(screen.getByText(`${count} / 40`)).toBeInTheDocument();
+  });
+
+  it('requires a reroll when seeds do not form the exact sequence from one to the active count', async () => {
+    const gap: MkOwnerControl = {
+      ...nine,
+      activeCount: 3,
+      registrations: nine.registrations.slice(0, 3).map((registration, index) => ({
+        ...registration,
+        seed: [1, 2, 4][index],
+      })),
+    };
+
+    render(
+      <AdminMkControl
+        eventId="event-1"
+        dependencies={dependencies({ load: vi.fn().mockResolvedValue(gap) })}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'ЗАПУСТИТЬ ТУРНИР · 3 ИГРОКОВ' })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('СОСТАВ ИЗМЕНИЛСЯ');
   });
 });
 

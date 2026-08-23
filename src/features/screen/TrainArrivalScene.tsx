@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties } from 'react';
+import { SceneTransition } from './SceneTransition';
 
 export type GuestRegistrationScreenEvent = {
   id: string;
@@ -50,6 +51,8 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
       data-testid="train-arrival-scene"
       style={accentStyle}
     >
+      <SceneTransition sceneKey={event.id} label="ПАССАЖИР ПРИНЯТ" tone="sage" />
+      <div className="train-arrival__wash" aria-hidden="true" />
       <picture className="generated-artwork-picture">
         <source
           type="image/avif"

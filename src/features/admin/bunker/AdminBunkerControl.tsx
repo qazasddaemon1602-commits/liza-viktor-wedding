@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '../../../lib/supabase';
 import {
   loadOwnerDashboard,
@@ -12,9 +12,11 @@ import {
 } from '../../carriages/carriageAllocator';
 import {
   broadcastBunkerRefresh,
+  subscribeToBunkerRefresh,
   type BunkerRealtimeClient,
 } from '../../bunker/bunker.realtime';
 import {
+  forceOpenBunker,
   getOwnerBunkerControl,
   setBunkerSound,
   startBunker,
@@ -67,6 +69,13 @@ import {
   type TransitionedOwnerBunkerV2,
 } from '../../bunker/v2/ownerControl.service';
 import type { BunkerV2GlobalState } from '../../bunker/v2/contracts';
+import { BunkerHostRunbook } from './BunkerHostRunbook';
+import {
+  forceCompleteBunkerGlobalMission,
+  isBunkerGlobalMissionState,
+  type BunkerGlobalMissionState,
+  type GuestBunkerGlobalMissionSubmission,
+} from '../../bunker/bunkerGlobalMission.service';
 
 export type AdminBunkerControlDependencies = {
   load: (eventId: string) => Promise<OwnerBunkerControl>;
@@ -81,6 +90,16 @@ export type AdminBunkerControlDependencies = {
     eventId: string,
     nextState: BunkerV2GlobalState,
   ) => Promise<TransitionedOwnerBunkerV2>;
+  forceCompleteMission?: (
+    eventId: string,
+    carriageId: string,
+    missionState: BunkerGlobalMissionState,
+  ) => Promise<GuestBunkerGlobalMissionSubmission>;
+  forceOpen?: (
+    eventId: string,
+    reason: string,
+    confirmation: string,
+  ) => Promise<unknown>;
   loadCharacters?: (eventId: string) => Promise<OwnerBunkerCharacters>;
   setCharacterStatus?: (
     eventId: string,
@@ -91,12 +110,14 @@ export type AdminBunkerControlDependencies = {
   readProjectorStarted?: (eventId: string) => Promise<boolean>;
   stop: (eventId: string) => Promise<unknown>;
   setSound: (eventId: string, enabled: boolean) => Promise<unknown>;
-  broadcastRefresh: () => Promise<void>;
+  broadcastRefresh: (eventSlug: string) => Promise<void>;
+  subscribeRefresh?: (eventSlug: string, callback: () => void) => () => void;
   subscribeScreenPresence?: (callback: (presence: PremiereScreenPresence) => void) => () => void;
 };
 
 type AdminBunkerControlProps = {
   eventId: string;
+  eventSlug?: string;
   dependencies?: AdminBunkerControlDependencies;
   dashboard?: AdminDashboard;
   onAcceptDistribution?: (carriageCount: SupportedCarriageCount) => Promise<void> | void;
@@ -108,7 +129,7 @@ type AdminBunkerControlProps = {
 
 const SUPPORTED_WAGON_COUNTS: SupportedCarriageCount[] = [2, 3, 4, 5];
 
-function browserDependencies(): AdminBunkerControlDependencies | null {
+function browserDependencies(eventSlug: string): AdminBunkerControlDependencies | null {
   try {
     const client = getSupabaseClient();
     const rpcClient = client as unknown as BunkerRpcClient;
@@ -126,6 +147,18 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
         eventId,
         nextState,
       ),
+      forceCompleteMission: (eventId, carriageId, missionState) => forceCompleteBunkerGlobalMission(
+        rpcClient,
+        eventId,
+        carriageId,
+        missionState,
+      ),
+      forceOpen: (eventId, reason, confirmation) => forceOpenBunker(
+        rpcClient,
+        eventId,
+        reason,
+        confirmation,
+      ),
       loadCharacters: (eventId) => getOwnerBunkerCharacters(rpcClient, eventId),
       setCharacterStatus: (eventId, guestId, status) => (
         setOwnerBunkerCharacterStatus(rpcClient, eventId, guestId, status)
@@ -140,10 +173,15 @@ function browserDependencies(): AdminBunkerControlDependencies | null {
       },
       stop: (eventId) => stopBunker(rpcClient, eventId),
       setSound: (eventId, enabled) => setBunkerSound(rpcClient, eventId, enabled),
-      broadcastRefresh: () => broadcastBunkerRefresh(realtimeClient, 'liza-viktor'),
+      broadcastRefresh: (eventSlug) => broadcastBunkerRefresh(realtimeClient, eventSlug),
+      subscribeRefresh: (eventSlug, callback) => subscribeToBunkerRefresh(
+        realtimeClient,
+        eventSlug,
+        callback,
+      ),
       subscribeScreenPresence: (callback) => subscribeToPremiereScreenPresence(
         presenceClient,
-        'liza-viktor',
+        eventSlug,
         callback,
       ),
     };
@@ -158,19 +196,19 @@ function formatTimer(seconds: number): string {
 }
 
 const GLOBAL_STATE_LABELS: Record<BunkerGlobalGameState, string> = {
-  LOBBY: 'ПОДГОТОВКА ИГРЫ',
-  CHARACTERS_READY: 'ПЕРСОНАЖИ ГОТОВЫ',
-  MISSION_01: 'ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР',
-  BREAK: 'ПЕРЕРЫВ',
-  MISSION_02: 'ЗАДАНИЕ 2 · ЧЁРНЫЙ ЯЩИК',
-  MISSION_03: 'ЗАДАНИЕ 3 · АВАРИЙНЫЙ ЗАПАС',
-  MISSION_04: 'ЗАДАНИЕ 4 · МЕЖВАГОННАЯ СВЯЗЬ',
-  MISSION_05: 'ЗАДАНИЕ 5 · ОДИН ШАНС',
-  MISSION_06: 'ЗАДАНИЕ 6 · ОБЩИЙ ПРОТОКОЛ',
-  STORY_BUNKER: 'ИСТОРИЯ БУНКЕРА',
-  UNKNOWN_PASSENGER: 'НЕИЗВЕСТНЫЙ ПАССАЖИР',
-  BREAK_BEFORE_FINAL: 'ПЕРЕРЫВ ПЕРЕД ФИНАЛОМ',
-  FINAL_30: 'ФИНАЛ · 30 МИНУТ',
+  LOBBY: 'ПРОЛОГ · ПОДГОТОВКА',
+  CHARACTERS_READY: 'ПРОЛОГ · ПЕРСОНАЖИ ГОТОВЫ',
+  MISSION_01: 'ЛИШНИЙ ПАССАЖИР',
+  BREAK: 'АРХИВНАЯ ПАУЗА · BK-17',
+  MISSION_02: 'ЧЁРНЫЙ ЯЩИК',
+  MISSION_03: 'АВАРИЙНЫЙ ЗАПАС',
+  MISSION_04: 'МЕЖВАГОННАЯ СВЯЗЬ',
+  MISSION_05: 'ОДИН ШАНС',
+  MISSION_06: 'ОБЩИЙ ПРОТОКОЛ',
+  STORY_BUNKER: 'РАСКРЫТИЕ · ИСТОРИЯ БУНКЕРА',
+  UNKNOWN_PASSENGER: 'НЕИЗВЕСТНЫЙ ПАССАЖИР · ДОСЬЕ BK-17',
+  BREAK_BEFORE_FINAL: 'ПЕРЕД ФИНАЛОМ · ПРОВЕРКА ГОТОВНОСТИ',
+  FINAL_30: 'БУНКЕР · ОБЩИЙ ТАЙМЕР 30:00',
   BUNKER_OPEN: 'БУНКЕР ОТКРЫТ',
   FINISHED: 'ИГРА ЗАВЕРШЕНА',
 };
@@ -219,9 +257,11 @@ class BunkerCommandFailure extends Error {
     super(`${stage}: ${detail}`);
   }
 }
+const FORCE_OPEN_CONFIRMATION = 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО';
 
 export function AdminBunkerControl({
   eventId,
+  eventSlug = 'liza-viktor',
   dependencies,
   dashboard,
   onAcceptDistribution,
@@ -230,17 +270,25 @@ export function AdminBunkerControl({
   onMissionOneOverride,
   bunkerContractVersion = 1,
 }: AdminBunkerControlProps) {
-  const deps = useMemo(() => dependencies ?? browserDependencies(), [dependencies]);
+  const deps = useMemo(
+    () => dependencies ?? browserDependencies(eventSlug),
+    [dependencies, eventSlug],
+  );
   const [state, setState] = useState<OwnerBunkerControl | null>(null);
   const [projectorStarted, setProjectorStarted] = useState(false);
   const [armed, setArmed] = useState(false);
   const [dangerCommand, setDangerCommand] = useState<'restart' | 'stop' | null>(null);
+  const [pendingGlobalState, setPendingGlobalState] = useState<BunkerGlobalGameState | BunkerV2GlobalState | null>(null);
+  const [pendingForceWagon, setPendingForceWagon] = useState<{ id: string; label: string } | null>(null);
+  const [forceOpenReason, setForceOpenReason] = useState('');
+  const [forceOpenConfirmation, setForceOpenConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [distributionBusy, setDistributionBusy] = useState(false);
   const recommendedWagonCount = recommendCarriageCount(dashboard?.guests.length ?? 0);
   const [selectedWagonCount, setSelectedWagonCount] = useState<SupportedCarriageCount>(recommendedWagonCount);
   const [manuallySelected, setManuallySelected] = useState(false);
   const [error, setError] = useState('');
+  const [refreshError, setRefreshError] = useState('');
   const [characters, setCharacters] = useState<OwnerBunkerCharacter[]>([]);
   const [characterBusy, setCharacterBusy] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -251,9 +299,17 @@ export function AdminBunkerControl({
   const emergencyStarted = bunkerContractVersion === 2
     ? projectorStarted
     : state?.status === 'active';
+  const reloadGenerationRef = useRef(0);
+  const reloadInFlightRef = useRef<{
+    generation: number;
+    promise: Promise<OwnerBunkerControl | null>;
+  } | null>(null);
   const quest = useOwnerBunkerQuestState(eventId, {
     dependencies: questDependencies,
-    enabled: emergencyStarted && (!dependencies || Boolean(questDependencies)),
+    enabled: bunkerContractVersion === 1
+      && state?.status === 'active'
+      && state.globalGameState === undefined
+      && (!dependencies || Boolean(questDependencies)),
   });
 
   useEffect(() => {
@@ -277,49 +333,71 @@ export function AdminBunkerControl({
     return () => window.clearInterval(interval);
   }, [deps]);
 
-  const storeState = (next: OwnerBunkerControl) => {
+  const storeState = useCallback((next: OwnerBunkerControl) => {
     const receivedAt = Date.now();
     const serverMs = Date.parse(next.serverNow);
     serverOffsetRef.current = Number.isFinite(serverMs) ? serverMs - receivedAt : 0;
     setNowMs(receivedAt);
     setState(next);
-  };
+    setRefreshError('');
+  }, []);
 
-  const reload = async () => {
-    if (!deps) return;
-    const [next, nextProjectorStarted] = await Promise.all([
-      deps.load(eventId),
-      bunkerContractVersion === 2 && deps.readProjectorStarted
-        ? deps.readProjectorStarted(eventId)
-        : Promise.resolve(undefined),
-    ]);
-    storeState(next);
-    if (nextProjectorStarted !== undefined) setProjectorStarted(nextProjectorStarted);
-    return next;
-  };
+  const reload = useCallback((generation = reloadGenerationRef.current) => {
+    if (!deps) return Promise.resolve(null);
+    const current = reloadInFlightRef.current;
+    if (current?.generation === generation) return current.promise;
 
-  useEffect(() => {
-    if (!deps) return;
-    let active = true;
-    void Promise.all([
+    let request: Promise<OwnerBunkerControl | null>;
+    request = Promise.all([
       deps.load(eventId),
       bunkerContractVersion === 2 && deps.readProjectorStarted
         ? deps.readProjectorStarted(eventId)
         : Promise.resolve(undefined),
     ])
       .then(([next, nextProjectorStarted]) => {
-        if (active) {
+        if (reloadGenerationRef.current === generation) {
           storeState(next);
           if (nextProjectorStarted !== undefined) setProjectorStarted(nextProjectorStarted);
         }
+        return next;
       })
-      .catch(() => {
-        if (active) setError('Не удалось проверить статус Бункера.');
+      .catch((loadError: unknown) => {
+        if (reloadGenerationRef.current === generation) {
+          setRefreshError('Не удалось обновить статус Бункера. Показываем последние полученные данные.');
+        }
+        throw loadError;
+      })
+      .finally(() => {
+        if (reloadInFlightRef.current?.promise === request) reloadInFlightRef.current = null;
       });
+    reloadInFlightRef.current = { generation, promise: request };
+    return request;
+  }, [bunkerContractVersion, deps, eventId, storeState]);
+
+  useEffect(() => {
+    if (!deps) return;
+    const generation = ++reloadGenerationRef.current;
+    void reload(generation).catch(() => undefined);
     return () => {
-      active = false;
+      reloadGenerationRef.current += 1;
+      reloadInFlightRef.current = null;
     };
-  }, [bunkerContractVersion, deps, eventId]);
+  }, [deps, reload]);
+
+  useEffect(() => {
+    if (!deps?.subscribeRefresh) return undefined;
+    return deps.subscribeRefresh(eventSlug, () => {
+      void reload().catch(() => undefined);
+    });
+  }, [deps, eventSlug, reload]);
+
+  useEffect(() => {
+    if (!emergencyStarted) return undefined;
+    const interval = window.setInterval(() => {
+      void reload().catch(() => undefined);
+    }, 2_000);
+    return () => window.clearInterval(interval);
+  }, [emergencyStarted, reload]);
 
   useEffect(() => {
     if (!emergencyStarted) return;
@@ -352,8 +430,11 @@ export function AdminBunkerControl({
     ? Math.max(
         0,
         Math.ceil(
-          state.durationSeconds
-          - (nowMs + serverOffsetRef.current - Date.parse(state.startedAt)) / 1000,
+          state.remainingSeconds
+          - Math.max(
+            0,
+            (nowMs + serverOffsetRef.current - Date.parse(state.serverNow)) / 1000,
+          ),
         ),
       )
     : 0;
@@ -392,7 +473,7 @@ export function AdminBunkerControl({
 
       let warning = '';
       try {
-        await deps.broadcastRefresh();
+        await deps.broadcastRefresh(eventSlug);
       } catch {
         warning = 'Команда выполнена. Сигнал обновления не отправлен — ТВ подхватят состояние автоматически.';
       }
@@ -520,6 +601,9 @@ export function AdminBunkerControl({
           targetState as BunkerGlobalGameState,
         )
       : undefined;
+  const missionProgress = state?.status === 'active' ? state.missionProgress : null;
+  const missionTransitionBlocked = missionProgress?.complete === false;
+  const finalOpeningLocked = globalState === 'FINAL_30' && state?.unlocked !== true;
 
   const confirmDangerCommand = async () => {
     if (dangerCommand === 'restart') {
@@ -529,6 +613,36 @@ export function AdminBunkerControl({
       if (stopped) setProjectorStarted(false);
     }
     setDangerCommand(null);
+  };
+
+  const confirmGlobalTransition = async () => {
+    if (!pendingGlobalState || !advanceGlobalState) return;
+    await run(() => advanceGlobalState(eventId, pendingGlobalState));
+    setPendingGlobalState(null);
+  };
+
+  const confirmForceWagon = async () => {
+    if (!pendingForceWagon
+      || !deps.forceCompleteMission
+      || !isBunkerGlobalMissionState(globalState)) return;
+    await run(() => deps.forceCompleteMission!(eventId, pendingForceWagon.id, globalState));
+    setPendingForceWagon(null);
+  };
+
+  const forceOpenReady = forceOpenReason.trim().length >= 12
+    && forceOpenConfirmation === FORCE_OPEN_CONFIRMATION;
+
+  const confirmForceOpen = async () => {
+    if (!deps.forceOpen || !forceOpenReady) return;
+    const succeeded = await run(() => deps.forceOpen!(
+      eventId,
+      forceOpenReason.trim(),
+      forceOpenConfirmation,
+    ));
+    if (succeeded) {
+      setForceOpenReason('');
+      setForceOpenConfirmation('');
+    }
   };
 
   const updateCharacterStatus = async (
@@ -546,7 +660,7 @@ export function AdminBunkerControl({
           : entry
       )));
       try {
-        await deps.broadcastRefresh();
+        await deps.broadcastRefresh(eventSlug);
       } catch {
         setError('Статус сохранён. Сигнал обновления не отправлен — клиенты обновятся автоматически.');
       }
@@ -586,7 +700,7 @@ export function AdminBunkerControl({
         <article>
           <span>ТЕКУЩИЙ ЭТАП</span>
           <strong>{currentStage}</strong>
-          <small>{quest.state?.status === 'active' ? 'СИНХРОНИЗИРОВАНО' : state?.status === 'active' ? 'ОЖИДАЕМ ОТВЕТ' : 'БУНКЕР НЕ ЗАПУЩЕН'}</small>
+          <small>{globalState ? 'АВТОРИТЕТНЫЙ СЕРВЕРНЫЙ СЮЖЕТ' : quest.state?.status === 'active' ? 'УСТАРЕВШИЙ РЕЖИМ СОВМЕСТИМОСТИ' : state?.status === 'active' ? 'ОЖИДАЕМ ОТВЕТ СЕРВЕРА' : 'БУНКЕР НЕ ЗАПУЩЕН'}</small>
         </article>
       </div>
 
@@ -684,7 +798,13 @@ export function AdminBunkerControl({
 
       <section className="admin-bunker-stage" aria-label="Текущий этап Бункера">
         <span>ТЕКУЩИЙ ЭТАП · {currentStage}</span>
-        <p>Все ТВ переключатся на «ЭКСТРЕННОЕ СООБЩЕНИЕ», маршрут изменится на Бункер и запустится общий таймер 30:00.</p>
+        <p>
+          {state?.status === 'active'
+            ? globalState
+              ? 'Телефоны и ТВ синхронизированы. Следуйте серверному сюжету и сценарию ведущего ниже.'
+              : 'Работает режим совместимости со старым квестом. Не запускайте параллельно новый серверный сюжет.'
+            : 'После запуска ТВ покажут первое экстренное сообщение, а команды получат пролог на телефонах.'}
+        </p>
 
       {emergencyStarted ? (
         null
@@ -727,17 +847,98 @@ export function AdminBunkerControl({
               ? 'Текущее задание синхронизировано со всеми телефонами и ТВ.'
               : 'Между заданиями все телефоны и ТВ остаются синхронизированы.'}
           </p>
+          {missionProgress && (
+            <p className="admin-bunker-stage__progress" role="status">
+              <strong>{missionProgress.completedWagons} / {missionProgress.totalWagons} ВАГОНА ГОТОВЫ</strong>
+              <span>{missionProgress.complete ? 'МОЖНО ПЕРЕХОДИТЬ ДАЛЬШЕ' : 'ДОЖДИТЕСЬ ОСТАЛЬНЫХ ВАГОНОВ'}</span>
+            </p>
+          )}
+          {missionProgress?.complete === false
+            && deps.forceCompleteMission
+            && activeWagons.length > 0 && (
+            <div className="admin-bunker-stage__recovery">
+              <strong>ВОССТАНОВЛЕНИЕ ПРИ СЛОМАННОМ ТЕЛЕФОНЕ</strong>
+              <p>Используйте только после устного подтверждения решения конкретного вагона.</p>
+              <div>
+                {activeWagons.map((wagon) => (
+                  <button
+                    key={wagon.id}
+                    type="button"
+                    className="registration-secondary"
+                    disabled={busy}
+                    onClick={() => setPendingForceWagon({ id: wagon.id, label: wagon.label })}
+                  >
+                    ПОМЕТИТЬ ГОТОВЫМ · {wagon.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {pendingForceWagon && (
+            <div className="admin-bunker-confirm" role="alert">
+              <strong>ПРИНУДИТЕЛЬНО ЗАВЕРШИТЬ ЭТАП?</strong>
+              <p>{pendingForceWagon.label}: система отметит миссию готовой без отправки с телефона.</p>
+              <div>
+                <button type="button" className="admin-bunker-launch" disabled={busy} onClick={() => void confirmForceWagon()}>
+                  ПОДТВЕРДИТЬ ГОТОВНОСТЬ ВАГОНА
+                </button>
+                <button type="button" className="registration-secondary" disabled={busy} onClick={() => setPendingForceWagon(null)}>
+                  ОТМЕНА
+                </button>
+              </div>
+            </div>
+          )}
           {nextGlobalState && advanceGlobalState && (
-            <button
-              type="button"
-              className="admin-bunker-stage-primary"
-              disabled={busy}
-              onClick={() => void run(() => advanceGlobalState(eventId, nextGlobalState.state))}
-            >
-              {nextGlobalState.label}
-            </button>
+            <>
+              <button
+                type="button"
+                className="admin-bunker-stage-primary"
+                disabled={busy || missionTransitionBlocked || finalOpeningLocked}
+                onClick={() => setPendingGlobalState(nextGlobalState.state)}
+              >
+                {nextGlobalState.label}
+              </button>
+              {finalOpeningLocked && (
+                <p className="admin-bunker-stage__unlock-note" role="status">
+                  Штатное открытие станет доступно после правильного финального кода.
+                </p>
+              )}
+            </>
+          )}
+          {nextGlobalState && pendingGlobalState === nextGlobalState.state && (
+            <div className="admin-bunker-confirm" role="alert">
+              <strong>ПЕРЕКЛЮЧИТЬ ВСЕ ТЕЛЕФОНЫ И ТВ?</strong>
+              <p>
+                Следующий этап: {GLOBAL_STATE_LABELS[nextGlobalState.state]}. Убедитесь, что прочитали сценарий и все вагоны закончили текущую задачу.
+              </p>
+              <div>
+                <button
+                  type="button"
+                  className="admin-bunker-launch"
+                  disabled={busy}
+                  onClick={() => void confirmGlobalTransition()}
+                >
+                  ПОДТВЕРДИТЬ ПЕРЕХОД
+                </button>
+                <button
+                  type="button"
+                  className="registration-secondary"
+                  disabled={busy}
+                  onClick={() => setPendingGlobalState(null)}
+                >
+                  ОТМЕНА
+                </button>
+              </div>
+            </div>
           )}
         </section>
+      )}
+
+      {state?.status === 'active' && (
+        <BunkerHostRunbook
+          mission={state.currentMission?.id ?? globalState}
+          plan={state.currentMission?.plan}
+        />
       )}
 
       {state && (
@@ -754,6 +955,7 @@ export function AdminBunkerControl({
 
       {emergencyStarted
         && bunkerContractVersion === 1
+        && !globalState
         && quest.state?.status === 'active' && (
         <BunkerQuestOwnerPanel
           state={quest.state}
@@ -820,6 +1022,57 @@ export function AdminBunkerControl({
             <h3 id="admin-bunker-danger-title">ОПАСНЫЕ КОМАНДЫ</h3>
           </div>
           <p>Эти действия немедленно меняют состояние всех экранов. Каждое требует отдельного подтверждения.</p>
+          {globalState === 'FINAL_30' && finalOpeningLocked && deps.forceOpen && (
+            <section
+              className="admin-bunker-final-recovery"
+              aria-labelledby="admin-bunker-final-recovery-title"
+            >
+              <div>
+                <p className="eyebrow">ТОЛЬКО ПРИ ТЕХНИЧЕСКОМ СБОЕ</p>
+                <h4 id="admin-bunker-final-recovery-title">Аварийное открытие Бункера</h4>
+              </div>
+              <p id="admin-bunker-final-recovery-help">
+                Обходит только финальный код. Причина и owner сохраняются в журнале действий.
+              </p>
+              <label htmlFor="admin-bunker-final-recovery-reason">
+                <span>Причина аварийного открытия</span>
+                <textarea
+                  id="admin-bunker-final-recovery-reason"
+                  value={forceOpenReason}
+                  minLength={12}
+                  rows={2}
+                  aria-describedby="admin-bunker-final-recovery-help admin-bunker-final-recovery-count"
+                  onChange={(event) => setForceOpenReason(event.target.value)}
+                />
+              </label>
+              <small id="admin-bunker-final-recovery-count">
+                {forceOpenReason.trim().length} / минимум 12 символов
+              </small>
+              <label htmlFor="admin-bunker-final-recovery-confirmation">
+                <span>Контрольная фраза</span>
+                <input
+                  id="admin-bunker-final-recovery-confirmation"
+                  value={forceOpenConfirmation}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={FORCE_OPEN_CONFIRMATION}
+                  aria-describedby="admin-bunker-final-recovery-phrase"
+                  onChange={(event) => setForceOpenConfirmation(event.target.value)}
+                />
+              </label>
+              <small id="admin-bunker-final-recovery-phrase">
+                Введите без кавычек: <code>{FORCE_OPEN_CONFIRMATION}</code>
+              </small>
+              <button
+                type="button"
+                className="admin-bunker-stop"
+                disabled={busy || !forceOpenReady}
+                onClick={() => void confirmForceOpen()}
+              >
+                ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО
+              </button>
+            </section>
+          )}
           <div className="admin-bunker-control__actions">
             <button
               type="button"
@@ -863,6 +1116,7 @@ export function AdminBunkerControl({
 
       {quest.error && <p className="admin-bunker-error" role="alert">{quest.error}</p>}
       {quest.warning && <p className="admin-bunker-error" role="status">{quest.warning}</p>}
+      {refreshError && <p className="admin-bunker-error" role="alert">{refreshError}</p>}
       {error && <p className="admin-bunker-error" role="alert">{error}</p>}
     </section>
   );

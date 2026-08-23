@@ -103,6 +103,9 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], label: s
 function parsePassenger(value: unknown): BunkerV2DashboardPassenger {
   const input = record(value, 'passenger');
   const revealed = boolean(input.hiddenTraitRevealed, 'hidden trait visibility');
+  if (!revealed && 'hiddenTrait' in input) {
+    throw new Error('Unexpected Bunker dashboard hidden trait');
+  }
   const keys = revealed
     ? ['guestId','realName','profession','visibleSkill','characterStatus','hiddenTraitRevealed','hiddenTrait'] as const
     : ['guestId','realName','profession','visibleSkill','characterStatus','hiddenTraitRevealed'] as const;
@@ -117,7 +120,6 @@ function parsePassenger(value: unknown): BunkerV2DashboardPassenger {
   if (revealed) {
     return { ...base, hiddenTraitRevealed: true, hiddenTrait: text(passenger.hiddenTrait, 'hidden trait') };
   }
-  if ('hiddenTrait' in input) throw new Error('Unexpected Bunker dashboard hidden trait');
   return { ...base, hiddenTraitRevealed: false };
 }
 
@@ -148,12 +150,6 @@ function parseRouteBonus(value: unknown, routeChoice: 'A' | 'B' | null): number 
     throw new Error('Unexpected Bunker dashboard wagon state route bonus');
   }
   if (routeChoice === null && bonus !== 0) {
-    throw new Error('Unexpected Bunker dashboard wagon state route bonus');
-  }
-  if (routeChoice === 'B' && bonus !== -5) {
-    throw new Error('Unexpected Bunker dashboard wagon state route bonus');
-  }
-  if (routeChoice === 'A' && ![0, 4, 7].includes(bonus)) {
     throw new Error('Unexpected Bunker dashboard wagon state route bonus');
   }
   return bonus;

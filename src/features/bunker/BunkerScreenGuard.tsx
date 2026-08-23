@@ -1,8 +1,13 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { PROJECTOR_AUDIO_REARM_EVENT } from '../../lib/siteAudio';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
 import { BunkerQuestScene, phaseForGlobalGameState } from './BunkerQuestScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
+import {
+  bunkerNarrationSession,
+  type BunkerNarrationSessionController,
+} from './bunkerNarration';
 import { setBunkerPresentationProtected } from './bunkerProtection';
 import { subscribeToBunkerRefresh, type BunkerRealtimeClient } from './bunker.realtime';
 import { getBunkerScreenState, type BunkerRpcClient, type BunkerScreenState } from './bunker.service';
@@ -24,6 +29,7 @@ import { getFinalScreenReadModel, type FinalScreenReadModel } from './v2/final.s
 import { FinalScreen, type FinalScreenModel } from './v2/FinalScreen';
 import { getBunkerV2Results, type BunkerV2ResultSummary, type BunkerV2ResultsReadModel } from './v2/results.service';
 import { BunkerResultsScreen, type BunkerResultsScreenModel } from './v2/BunkerResultsScreen';
+import { getBunkerMissionContent } from './v2/content/missionContent';
 
 export type BunkerScreenGuardDependencies = {
   load: () => Promise<BunkerScreenState>;
@@ -38,6 +44,7 @@ export type BunkerScreenGuardDependencies = {
   loadResults?: () => Promise<BunkerV2ResultsReadModel>;
   subscribe?: (callback: () => void) => () => void;
   audio?: BunkerAudioController;
+  narration?: BunkerNarrationSessionController;
 };
 
 type Props = { eventSlug?: string; dependencies?: BunkerScreenGuardDependencies; children: ReactNode };
@@ -61,6 +68,7 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
       loadResults: () => getBunkerV2Results(rpc, eventSlug),
       subscribe: (callback) => subscribeToBunkerRefresh(realtime, eventSlug, callback),
       audio: createBunkerAudioController(),
+      narration: bunkerNarrationSession,
     };
   } catch {
     return null;
@@ -213,8 +221,10 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   const offset = useRef(0);
   const latest = useRef(Number.NEGATIVE_INFINITY);
   const unlock = useRef<boolean | null>(null);
+  const loadGeneration = useRef(0);
+  const loadInFlight = useRef<Promise<BunkerScreenState | null> | null>(null);
 
-  const applyState = (next: BunkerScreenState) => {
+  const applyState = useCallback((next: BunkerScreenState) => {
     const received = Date.now();
     const server = Date.parse(next.serverNow);
     if (Number.isFinite(server) && server < latest.current) return false;
@@ -223,7 +233,25 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     setState(next);
     setNowMs(received);
     return true;
-  };
+  }, []);
+
+  const reloadMain = useCallback((): Promise<BunkerScreenState | null> => {
+    if (!deps) return Promise.resolve(null);
+    if (loadInFlight.current) return loadInFlight.current;
+    const generation = loadGeneration.current;
+    let request: Promise<BunkerScreenState | null>;
+    request = deps.load()
+      .then((next) => {
+        if (loadGeneration.current === generation) applyState(next);
+        return next;
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (loadInFlight.current === request) loadInFlight.current = null;
+      });
+    loadInFlight.current = request;
+    return request;
+  }, [applyState, deps]);
 
   useEffect(() => {
     if (dependencies) {
@@ -251,6 +279,12 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
       set(null);
       return;
     }
+    // An authoritative V2 projection may briefly be idle while the owner RPC
+    // advances the mission.  Keep the projector on the protected V2 loading
+    // scene instead of falling back to the legacy dossier during that race.
+    if (next.contractVersion === 2) {
+      setContractVersion(2);
+    }
     if (next.status === 'active' || next.status === 'completed') {
       setContractVersion(2);
       set({ model: next, receivedAt: Date.now() });
@@ -261,7 +295,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
 
   const refresh = () => {
     if (!deps) return;
-    void deps.load().then(applyState).catch(() => {});
+    void reloadMain();
     void Promise.resolve(deps.loadMissionOne?.() ?? null)
       .then((value) => applyProjection(value, setOne)).catch(() => {});
     void Promise.resolve(deps.loadMissionTwo?.() ?? null)
@@ -300,11 +334,13 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     window.addEventListener('focus', reload);
     window.addEventListener('online', reload);
     return () => {
+      loadGeneration.current += 1;
+      loadInFlight.current = null;
       unsubscribe?.();
       window.removeEventListener('focus', reload);
       window.removeEventListener('online', reload);
     };
-  }, [deps]);
+  }, [deps, reloadMain]);
 
   const remainingSeconds = state?.status === 'active'
     ? stateRemaining(state, nowMs, offset.current)
@@ -330,6 +366,10 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   const storyView = storyModel(unknown, nowMs);
   const finalView = finalModel(final, nowMs);
   const resultsView = resultModel(results);
+  const narrationContent = state?.status === 'active'
+    ? getBunkerMissionContent(state.currentMission?.id ?? state.globalGameState)
+    : undefined;
+  const narrationRunIdentity = state?.status === 'active' ? state.startedAt : null;
 
   useEffect(() => {
     setBunkerPresentationProtected(bunkerActive);
@@ -371,6 +411,56 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     void audio.arm();
     return () => audio.stopAmbience();
   }, [deps, bunkerActive, state?.status === 'active' ? state.soundEnabled : false]);
+
+  useEffect(() => {
+    const narration = deps?.narration;
+    if (!narration) return;
+    narration.setRun(narrationRunIdentity);
+    return () => narration.setRun(null);
+  }, [deps?.narration, narrationRunIdentity]);
+
+  useEffect(() => {
+    const narration = deps?.narration;
+    const audio = deps?.audio;
+    if (!narration) return;
+    if (!bunkerActive || state?.status !== 'active' || !narrationContent) {
+      narration.setMission(null);
+      return;
+    }
+
+    narration.setMission({
+      id: state.currentMission?.id ?? narrationContent.key,
+      text: narrationContent.intro.narration,
+    });
+    narration.setArmed(false);
+    let active = true;
+    const armNarration = () => {
+      if (!audio || !state.soundEnabled) {
+        narration.setArmed(false);
+        return;
+      }
+      void audio.arm()
+        .then((armed) => { if (active) narration.setArmed(armed); })
+        .catch(() => { if (active) narration.setArmed(false); });
+    };
+
+    armNarration();
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, armNarration);
+    return () => {
+      active = false;
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, armNarration);
+      narration.setMission(null);
+      narration.stop();
+    };
+  }, [
+    deps,
+    bunkerActive,
+    narrationRunIdentity,
+    narrationContent?.key,
+    narrationContent?.intro.narration,
+    state?.status === 'active' ? state.currentMission?.id : null,
+    state?.status === 'active' ? state.soundEnabled : false,
+  ]);
 
   useEffect(() => {
     const audio = deps?.audio;
@@ -438,7 +528,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
             missionFour={missionFourModel(four, nowMs)}
             missionFive={missionFiveModel(five, nowMs)}
             missionSix={missionSixModel(six, nowMs)}
-            bunkerContractVersion={contractVersion ?? undefined}
+            bunkerContractVersion={contractVersion ?? 2}
           />
         )}
     </>

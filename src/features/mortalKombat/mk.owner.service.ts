@@ -192,6 +192,17 @@ export async function finalizeMkDraw(client: MkOwnerRpcClient, eventId: string):
   await ownerCommand(client, 'owner_finalize_mk_draw', { p_event_id: eventId });
 }
 
+export async function resetMkTournament(
+  client: MkOwnerRpcClient,
+  eventId: string,
+  confirmation: string,
+): Promise<void> {
+  await ownerCommand(client, 'owner_reset_mk_tournament', {
+    p_event_id: eventId,
+    p_confirmation: confirmation,
+  });
+}
+
 export async function setCurrentMkMatch(client: MkOwnerRpcClient, matchId: string): Promise<void> {
   await ownerCommand(client, 'owner_set_current_mk_match', { p_match_id: matchId });
 }

@@ -159,11 +159,15 @@ describe('createScreenAudioController', () => {
     await expect(audio.arm()).resolves.toBe(true);
     audio.playArrival();
     audio.playCarriageCall();
+    audio.playQuizVoting();
+    audio.playQuizReveal();
     audio.stopArrival();
     audio.stopCarriageCall();
 
     expect(samplePlayer.playCue).toHaveBeenNthCalledWith(1, 'arrival.sequence', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenNthCalledWith(2, 'arrival.sequence', { priority: 'scene' });
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.confirm', { priority: 'scene' });
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.reveal', { priority: 'scene' });
     expect(samplePlayer.stopCue).not.toHaveBeenCalledWith('arrival.chime');
     expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.sequence');
     expect(context.createOscillator).not.toHaveBeenCalled();

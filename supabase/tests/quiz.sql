@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(31);
+select plan(34);
 
 select has_table('public', 'questions', 'questions table exists');
 select has_table('public', 'quiz_votes', 'quiz votes table exists');
@@ -73,6 +73,66 @@ select ok(
 );
 select ok(has_function_privilege('anon', 'public.get_quiz_screen_state(text)', 'EXECUTE'), 'anonymous projector can read only the current quiz presentation state');
 select ok(has_function_privilege('authenticated', 'public.get_quiz_screen_state(text)', 'EXECUTE'), 'authenticated projector can read the current quiz presentation state');
+
+insert into auth.users(id)
+values ('00000000-0000-4000-8000-000000000091');
+
+insert into public.events(id, slug, name, owner_user_id)
+values (
+  '00000000-0000-4000-8000-000000000092',
+  'quiz-image-seed-contract',
+  'Quiz image seed contract',
+  '00000000-0000-4000-8000-000000000091'
+);
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-4000-8000-000000000091',
+  true
+);
+
+do $seed_quiz_images$
+begin
+  perform public.owner_seed_default_quiz_questions(
+    '00000000-0000-4000-8000-000000000092'
+  );
+end
+$seed_quiz_images$;
+
+select is(
+  (
+    select count(*)
+    from public.questions
+    where event_id = '00000000-0000-4000-8000-000000000092'
+      and question_type = 'standard'
+      and image_path like '/images/quiz/q__.webp'
+  ),
+  30::bigint,
+  'default seeding gives every standard question a project-local quiz image'
+);
+
+select is(
+  (
+    select count(distinct image_path)
+    from public.questions
+    where event_id = '00000000-0000-4000-8000-000000000092'
+      and question_type = 'standard'
+  ),
+  30::bigint,
+  'default seeding gives every standard question a distinct image'
+);
+
+select is(
+  (
+    select image_path
+    from public.questions
+    where event_id = '00000000-0000-4000-8000-000000000092'
+      and question_type = 'standard'
+      and sort_order = 2
+  ),
+  '/images/quiz/q02.webp'::text,
+  'the second seeded question keeps the q02 crop without forced upscaling'
+);
 
 select * from finish();
 rollback;

@@ -1,11 +1,14 @@
+import { useEffect } from 'react';
 import { QuizPhaseTimer } from '../quiz/QuizPhaseTimer';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
+import { SceneTransition } from './SceneTransition';
 
 type ActiveQuizScreenState = Extract<QuizScreenState, { status: 'active' }>;
 
 type QuizScreenSceneProps = {
   state: ActiveQuizScreenState;
   expectedGuestCount?: number;
+  onSignal?: (phase: ActiveQuizScreenState['phase']) => void;
 };
 
 function percentage(value: number, total: number): number {
@@ -13,10 +16,22 @@ function percentage(value: number, total: number): number {
   return Math.round((value / total) * 100);
 }
 
+export function toAvifQuizImagePath(imagePath: string): string | null {
+  const suffixIndex = imagePath.search(/[?#]/);
+  const pathname = suffixIndex === -1 ? imagePath : imagePath.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? '' : imagePath.slice(suffixIndex);
+  if (!pathname.toLowerCase().endsWith('.webp')) return null;
+  return `${pathname.slice(0, -'.webp'.length)}.avif${suffix}`;
+}
+
 export function QuizScreenScene({
   state,
   expectedGuestCount = 40,
+  onSignal,
 }: QuizScreenSceneProps) {
+  useEffect(() => {
+    onSignal?.(state.phase);
+  }, [onSignal, state.phase, state.question.id]);
   const answeredLabel = `${state.answeredCount} / ${expectedGuestCount} ОТВЕТИЛИ`;
   const lizaPercent = state.phase === 'results'
     ? percentage(state.results.liza, state.results.total)
@@ -24,31 +39,29 @@ export function QuizScreenScene({
   const viktorPercent = state.phase === 'results'
     ? percentage(state.results.viktor, state.results.total)
     : null;
+  const avifImagePath = state.question.imagePath
+    ? toAvifQuizImagePath(state.question.imagePath)
+    : null;
 
   return (
-    <section className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`} aria-live="polite">
+    <SceneTransition
+      sceneKey={`${state.question.id}-${state.phase}`}
+      label={state.phase === 'voting' ? 'НОВЫЙ ВОПРОС' : 'РЕЗУЛЬТАТЫ'}
+      tone={state.phase === 'voting' ? 'sage' : 'wine'}
+    >
+      <section className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`} aria-live="polite">
       <div
         className="quiz-screen-frame"
         data-testid="quiz-editorial-spread"
         data-phase={state.phase}
       >
-        <picture
+        <div
           className="quiz-screen-transition-curtain generated-artwork-picture"
           data-testid="quiz-transition-curtain"
           aria-hidden="true"
         >
-          <source
-            type="image/avif"
-            srcSet="/images/ticket/paper-texture-512.avif 512w, /images/ticket/paper-texture-1024.avif 1024w"
-            sizes="100vw"
-          />
-          <source
-            type="image/webp"
-            srcSet="/images/ticket/paper-texture-512.webp 512w, /images/ticket/paper-texture-1024.webp 1024w"
-            sizes="100vw"
-          />
-          <img src="/images/ticket/paper-texture.png" alt="" />
-        </picture>
+          <img src="/images/ticket/paper-texture-1024.webp" alt="" />
+        </div>
         <div className="quiz-screen-editorial-meta" aria-hidden="true">
           <span>WEDDING EDITION · LV</span>
           <span>30 AUG 2026</span>
@@ -76,12 +89,17 @@ export function QuizScreenScene({
           </div>
           {state.question.imagePath && (
             <div className="quiz-screen-image-frame">
-              <img
-                className="quiz-screen-question-image"
-                src={state.question.imagePath}
-                alt=""
-                role="presentation"
-              />
+              <picture>
+                {avifImagePath && (
+                  <source srcSet={avifImagePath} type="image/avif" />
+                )}
+                <img
+                  className="quiz-screen-question-image"
+                  src={state.question.imagePath}
+                  alt=""
+                  role="presentation"
+                />
+              </picture>
               <span aria-hidden="true">ARCHIVE / L×V</span>
             </div>
           )}
@@ -115,7 +133,8 @@ export function QuizScreenScene({
           <span>L × V</span>
         </div>
       </div>
-    </section>
+      </section>
+    </SceneTransition>
   );
 }
 

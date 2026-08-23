@@ -1,10 +1,23 @@
 import { act, render, screen, within } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AdminDashboard } from '../admin.service';
 import type { OwnerBunkerQuestDependencies } from '../../bunker/useOwnerBunkerQuestState';
 import { PREMIERE_SCREEN_PRESENCE_TTL_MS } from '../../premiere/premierePresence';
-import { AdminBunkerControl, type AdminBunkerControlDependencies } from './AdminBunkerControl';
+import {
+  AdminBunkerControl as ProductionAdminBunkerControl,
+  type AdminBunkerControlDependencies,
+} from './AdminBunkerControl';
+
+type TestAdminBunkerControlProps = Omit<
+  ComponentProps<typeof ProductionAdminBunkerControl>,
+  'eventSlug'
+> & { eventSlug?: string };
+
+function AdminBunkerControl(props: TestAdminBunkerControlProps) {
+  return <ProductionAdminBunkerControl eventSlug="liza-viktor" {...props} />;
+}
 
 function dependencies(overrides: Partial<AdminBunkerControlDependencies> = {}): AdminBunkerControlDependencies {
   return {
@@ -174,8 +187,7 @@ describe('AdminBunkerControl', () => {
       />,
     );
 
-    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'ОТКРЫТЬ ЗАДАНИЕ B' })).toHaveClass('admin-bunker-stage-primary');
+    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · ЛИШНИЙ ПАССАЖИР')).toBeInTheDocument();
 
     act(() => {
       emitPresence?.({ screenId: 'tv-hall', videoReady: true, audioArmed: false });
@@ -324,7 +336,7 @@ describe('AdminBunkerControl', () => {
       />,
     );
 
-    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · ПЕРЕРЫВ')).toBeInTheDocument();
+    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · АРХИВНАЯ ПАУЗА · BK-17')).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /статус ·/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'АКТИВЕН' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'СПАСЁН' })).not.toBeInTheDocument();
@@ -367,11 +379,15 @@ describe('AdminBunkerControl', () => {
 
     render(<AdminBunkerControl eventId="event-1" dependencies={deps} />);
 
-    expect((await screen.findAllByText('ПЕРСОНАЖИ ГОТОВЫ')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('heading', { name: 'ПРОЛОГ · ПЕРСОНАЖИ ГОТОВЫ' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'НАЧАТЬ ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР' }));
 
+    expect(advance).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/переключить все телефоны и тв/i);
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ПЕРЕХОД' }));
+
     expect(advance).toHaveBeenCalledWith('event-1', 'MISSION_01');
-    expect((await screen.findAllByText('ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('heading', { name: 'ЛИШНИЙ ПАССАЖИР' })).toBeInTheDocument();
   });
 
   it('uses only V2 prepare and transition commands through MISSION_01 for an authoritative V2 run', async () => {
@@ -430,6 +446,7 @@ describe('AdminBunkerControl', () => {
     await user.click(await screen.findByRole('button', { name: 'ПОДГОТОВИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ' }));
     await user.click(screen.getByRole('button', { name: 'ЗАПУСТИТЬ ЭКСТРЕННОЕ СООБЩЕНИЕ · 30:00' }));
     await user.click(await screen.findByRole('button', { name: 'НАЧАТЬ ЗАДАНИЕ 1 · ЛИШНИЙ ПАССАЖИР' }));
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ПЕРЕХОД' }));
 
     expect(prepareV2).toHaveBeenCalledWith('event-1');
     expect(transitionV2).toHaveBeenNthCalledWith(1, 'event-1', 'CHARACTERS_READY');
@@ -437,6 +454,442 @@ describe('AdminBunkerControl', () => {
     expect(prepare).not.toHaveBeenCalled();
     expect(distribute).not.toHaveBeenCalled();
     expect(advance).not.toHaveBeenCalled();
+  });
+
+  it('shows authoritative wagon readiness and blocks an early mission transition', async () => {
+    const advance = vi.fn();
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          advance,
+          load: vi.fn().mockResolvedValue({
+            status: 'active',
+            startedAt: '2026-08-30T12:00:00.000Z',
+            durationSeconds: 1800,
+            remainingSeconds: 1500,
+            soundEnabled: true,
+            globalGameState: 'MISSION_03',
+            currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+            missionProgress: {
+              missionState: 'MISSION_03',
+              completedWagons: 1,
+              totalWagons: 2,
+              complete: false,
+            },
+            serverNow: '2026-08-30T12:05:00.000Z',
+          }),
+        })}
+      />,
+    );
+
+    expect(await screen.findByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'НАЧАТЬ ЗАДАНИЕ 4 · МЕЖВАГОННАЯ СВЯЗЬ' })).toBeDisabled();
+    expect(advance).not.toHaveBeenCalled();
+  });
+
+  it('refreshes authoritative wagon readiness when a guest realtime signal arrives', async () => {
+    let emitRefresh: (() => void) | undefined;
+    const active = {
+      status: 'active' as const,
+      startedAt: '2026-08-30T12:00:00.000Z',
+      durationSeconds: 1800,
+      remainingSeconds: 1500,
+      soundEnabled: true,
+      globalGameState: 'MISSION_03' as const,
+      currentMission: { id: 'mission_03', state: 'MISSION_03' as const, plan: null },
+      serverNow: '2026-08-30T12:05:00.000Z',
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        ...active,
+        missionProgress: {
+          missionState: 'MISSION_03' as const,
+          completedWagons: 0,
+          totalWagons: 2,
+          complete: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        ...active,
+        missionProgress: {
+          missionState: 'MISSION_03' as const,
+          completedWagons: 1,
+          totalWagons: 2,
+          complete: false,
+        },
+      });
+    const advance = vi.fn();
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          advance,
+          load,
+          subscribeRefresh: (_eventId, callback) => {
+            emitRefresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    expect(await screen.findByText('0 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+    act(() => emitRefresh?.());
+
+    expect(await screen.findByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(advance).not.toHaveBeenCalled();
+  });
+
+  it('polls active owner state every two seconds and stops polling once the run is idle', async () => {
+    vi.useFakeTimers();
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+        remainingSeconds: 1500, soundEnabled: true, serverNow: '2026-08-30T12:05:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        status: 'idle', durationSeconds: 1800, soundEnabled: true,
+        serverNow: '2026-08-30T12:05:02.000Z',
+      });
+
+    render(<AdminBunkerControl eventId="event-1" dependencies={dependencies({ load })} />);
+    await act(async () => { await Promise.resolve(); });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1_999);
+      await Promise.resolve();
+    });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      vi.advanceTimersByTime(4_000);
+      await Promise.resolve();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the last valid owner state when a background refresh fails', async () => {
+    let emitRefresh: (() => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        status: 'active', startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+        remainingSeconds: 1500, soundEnabled: true,
+        globalGameState: 'MISSION_03',
+        currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+        missionProgress: {
+          missionState: 'MISSION_03', completedWagons: 1, totalWagons: 2, complete: false,
+        },
+        serverNow: '2026-08-30T12:05:00.000Z',
+      })
+      .mockRejectedValueOnce(new Error('offline'));
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          load,
+          subscribeRefresh: (_eventId, callback) => {
+            emitRefresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+    expect(await screen.findByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+
+    await act(async () => {
+      emitRefresh?.();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(/не удалось обновить статус бункера/i);
+  });
+
+  it('deduplicates overlapping realtime owner reloads', async () => {
+    let emitRefresh: (() => void) | undefined;
+    let resolveRefresh: ((value: Awaited<ReturnType<AdminBunkerControlDependencies['load']>>) => void) | undefined;
+    const pendingRefresh = new Promise<Awaited<ReturnType<AdminBunkerControlDependencies['load']>>>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const active = {
+      status: 'active' as const,
+      startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+      remainingSeconds: 1500, soundEnabled: true,
+      globalGameState: 'MISSION_03' as const,
+      currentMission: { id: 'mission_03', state: 'MISSION_03' as const, plan: null },
+      missionProgress: {
+        missionState: 'MISSION_03' as const, completedWagons: 0, totalWagons: 2, complete: false,
+      },
+      serverNow: '2026-08-30T12:05:00.000Z',
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce(active)
+      .mockReturnValueOnce(pendingRefresh);
+
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          load,
+          subscribeRefresh: (_eventId, callback) => {
+            emitRefresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+    expect(await screen.findByText('0 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+
+    act(() => {
+      emitRefresh?.();
+      emitRefresh?.();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveRefresh?.({
+        ...active,
+        missionProgress: { ...active.missionProgress, completedWagons: 1 },
+      });
+      await pendingRefresh;
+    });
+    expect(screen.getByText('1 / 2 ВАГОНА ГОТОВЫ')).toBeInTheDocument();
+  });
+
+  it('uses the explicit event slug for realtime invalidation instead of the event UUID', async () => {
+    const subscribeRefresh = vi.fn(() => vi.fn());
+    render(
+      <AdminBunkerControl
+        eventId="00000000-0000-4000-8000-000000000902"
+        eventSlug="wedding-rehearsal"
+        dependencies={dependencies({ subscribeRefresh })}
+      />,
+    );
+
+    await act(async () => { await Promise.resolve(); });
+
+    expect(subscribeRefresh).toHaveBeenCalledWith('wedding-rehearsal', expect.any(Function));
+    expect(subscribeRefresh).not.toHaveBeenCalledWith(
+      '00000000-0000-4000-8000-000000000902',
+      expect.any(Function),
+    );
+  });
+
+  it('shows the authoritative final countdown even when the whole game started earlier', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-30T20:00:00.000Z'));
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          load: vi.fn().mockResolvedValue({
+            status: 'active',
+            startedAt: '2026-08-30T18:00:00.000Z',
+            durationSeconds: 1800,
+            remainingSeconds: 1800,
+            soundEnabled: true,
+            globalGameState: 'FINAL_30',
+            currentMission: null,
+            serverNow: '2026-08-30T20:00:00.000Z',
+          }),
+        })}
+      />,
+    );
+
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByText('30:00')).toBeInTheDocument();
+  });
+
+  it('disables the normal Bunker opening until the final code unlocks the server state', async () => {
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          advance: vi.fn(),
+          load: vi.fn().mockResolvedValue({
+            status: 'active',
+            startedAt: '2026-08-30T19:30:00.000Z',
+            durationSeconds: 1800,
+            remainingSeconds: 1200,
+            soundEnabled: true,
+            globalGameState: 'FINAL_30',
+            currentMission: null,
+            unlocked: false,
+            serverNow: '2026-08-30T19:40:00.000Z',
+          }),
+        })}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'ОТКРЫТЬ БУНКЕР' })).toBeDisabled();
+    expect(screen.getByText(/штатное открытие станет доступно после правильного финального кода/i)).toBeInTheDocument();
+  });
+
+  it('enables normal opening and hides recovery after the final code unlocks the server state', async () => {
+    const taskDependencies = Object.assign(dependencies({
+      advance: vi.fn(),
+      load: vi.fn().mockResolvedValue({
+        status: 'active',
+        startedAt: '2026-08-30T19:30:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 1200,
+        soundEnabled: true,
+        globalGameState: 'FINAL_30',
+        currentMission: null,
+        unlocked: true,
+        serverNow: '2026-08-30T19:40:00.000Z',
+      }),
+    }), { forceOpen: vi.fn() });
+
+    render(<AdminBunkerControl eventId="event-1" dependencies={taskDependencies} />);
+
+    expect(await screen.findByRole('button', { name: 'ОТКРЫТЬ БУНКЕР' })).toBeEnabled();
+    expect(screen.queryByRole('region', { name: 'Аварийное открытие Бункера' })).not.toBeInTheDocument();
+  });
+
+  it('requires a recovery reason and exact phrase before the owner can force the Bunker open', async () => {
+    const user = userEvent.setup();
+    const forceOpen = vi.fn().mockResolvedValue({
+      status: 'transitioned', globalGameState: 'BUNKER_OPEN', changed: true, forced: true,
+    });
+    const taskDependencies = Object.assign(dependencies({
+      advance: vi.fn(),
+      load: vi.fn().mockResolvedValue({
+        status: 'active',
+        startedAt: '2026-08-30T19:30:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 1200,
+        soundEnabled: true,
+        globalGameState: 'FINAL_30',
+        currentMission: null,
+        unlocked: false,
+        serverNow: '2026-08-30T19:40:00.000Z',
+      }),
+    }), { forceOpen });
+
+    render(<AdminBunkerControl eventId="event-1" dependencies={taskDependencies} />);
+
+    const recovery = await screen.findByRole('region', { name: 'Аварийное открытие Бункера' });
+    const submit = within(recovery).getByRole('button', { name: 'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО' });
+    expect(submit).toBeDisabled();
+
+    await user.type(within(recovery).getByRole('textbox', { name: 'Причина аварийного открытия' }), 'Сбой');
+    await user.type(
+      within(recovery).getByRole('textbox', { name: 'Контрольная фраза' }),
+      'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    );
+    expect(submit).toBeDisabled();
+
+    await user.clear(within(recovery).getByRole('textbox', { name: 'Причина аварийного открытия' }));
+    await user.type(
+      within(recovery).getByRole('textbox', { name: 'Причина аварийного открытия' }),
+      'Финальный телефон не отвечает',
+    );
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+
+    expect(forceOpen).toHaveBeenCalledWith(
+      'event-1',
+      'Финальный телефон не отвечает',
+      'ОТКРЫТЬ БУНКЕР ПРИНУДИТЕЛЬНО',
+    );
+  });
+
+  it('lets the owner recover one confirmed wagon through a separate force confirmation', async () => {
+    const user = userEvent.setup();
+    const forceCompleteMission = vi.fn().mockResolvedValue({
+      status: 'completed', missionState: 'MISSION_03', carriageId: 'carriage-1',
+      completedAt: '2026-08-30T12:06:00.000Z', changed: true, submittedPayload: { forced: true },
+    });
+    const active = {
+      status: 'active' as const,
+      startedAt: '2026-08-30T12:00:00.000Z', durationSeconds: 1800,
+      remainingSeconds: 1500, soundEnabled: true,
+      globalGameState: 'MISSION_03' as const,
+      currentMission: { id: 'mission_03', state: 'MISSION_03' as const, plan: null },
+      missionProgress: { missionState: 'MISSION_03' as const, completedWagons: 1, totalWagons: 2, complete: false },
+      serverNow: '2026-08-30T12:05:00.000Z',
+    };
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dashboard={dashboard(2)}
+        dependencies={dependencies({
+          load: vi.fn().mockResolvedValue(active),
+          advance: vi.fn(),
+          forceCompleteMission,
+        })}
+      />,
+    );
+
+    await user.click(await screen.findByRole('button', { name: 'ПОМЕТИТЬ ГОТОВЫМ · ВАГОН №1' }));
+    expect(forceCompleteMission).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ГОТОВНОСТЬ ВАГОНА' }));
+    expect(forceCompleteMission).toHaveBeenCalledWith('event-1', 'carriage-1', 'MISSION_03');
+  });
+
+  it('shows the host script for the authoritative current mission', async () => {
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          load: vi.fn().mockResolvedValue({
+            status: 'active',
+            startedAt: '2026-08-30T12:00:00.000Z',
+            durationSeconds: 1800,
+            remainingSeconds: 1500,
+            soundEnabled: true,
+            runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+            globalGameState: 'MISSION_03',
+            currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+            serverNow: '2026-08-30T12:05:00.000Z',
+          }),
+        })}
+      />,
+    );
+
+    const runbook = await screen.findByRole('region', { name: 'Сценарий ведущего Бункера' });
+    expect(within(runbook).getByRole('heading', { name: 'Аварийный запас' })).toBeInTheDocument();
+    expect(within(runbook).getByRole('heading', { name: 'СЕЙЧАС ПРОЧИТАТЬ' })).toBeInTheDocument();
+    expect(within(runbook).getByText(/закрыть все проблемы нельзя/i)).toBeInTheDocument();
+  });
+
+  it('prioritizes authoritative runtime and does not render the independent legacy quest panel', async () => {
+    const legacy = questDependencies();
+    render(
+      <AdminBunkerControl
+        eventId="event-1"
+        dependencies={dependencies({
+          load: vi.fn().mockResolvedValue({
+            status: 'active',
+            startedAt: '2026-08-30T12:00:00.000Z',
+            durationSeconds: 1800,
+            remainingSeconds: 1500,
+            soundEnabled: true,
+            runNonce: '4d66c744-3e97-4b63-846b-51a8213b047f',
+            globalGameState: 'MISSION_03',
+            currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+            serverNow: '2026-08-30T12:05:00.000Z',
+          }),
+        })}
+        questDependencies={legacy}
+      />,
+    );
+
+    expect(await screen.findByText('ТЕКУЩИЙ ЭТАП · АВАРИЙНЫЙ ЗАПАС')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ОТКРЫТЬ ЗАДАНИЕ B' })).not.toBeInTheDocument();
+    expect(legacy.load).not.toHaveBeenCalled();
   });
 
   it('prepares the run and distributes characters before the first emergency start', async () => {
