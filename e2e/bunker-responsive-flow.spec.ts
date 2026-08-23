@@ -216,6 +216,7 @@ async function expectLargeTextNavigation(page: Page) {
   const visibleButtons = navigation.locator('button:visible');
   await expect(visibleButtons).toHaveCount(5);
   for (const button of await visibleButtons.all()) {
+    await expectInsideViewport(page, button);
     const box = await button.boundingBox();
     const fontSize = await button.evaluate(
       (element) => Number.parseFloat(getComputedStyle(element).fontSize),
@@ -390,9 +391,27 @@ test.describe.serial('authoritative Bunker layouts', () => {
         for (const card of await boardCards.all()) {
           await card.scrollIntoViewIfNeeded();
           await expectInsideViewport(page, card);
-          await expectReadableInViewport(page, card.getByRole('heading', { level: 4 }));
+          const status = card.locator(':scope > div > p');
+          const title = card.getByRole('heading', { level: 4 });
+          const risk = card.locator(':scope > div > span');
+          const help = card.locator(':scope > div > strong');
+          const control = card.locator('label.bunker-m03-problem-board__control');
+          const controlCopy = control.locator(':scope > span');
+          const checkbox = control.getByRole('checkbox');
+          for (const copy of [status, title, risk, help, controlCopy]) {
+            await expectReadableInViewport(page, copy);
+            await expectInsideContainer(copy, card);
+          }
+          await control.scrollIntoViewIfNeeded();
+          await expectInsideViewport(page, control);
+          await expectInsideContainer(control, card);
+          await expectInsideViewport(page, checkbox);
+          const checkboxBox = await checkbox.boundingBox();
+          expect(checkboxBox).not.toBeNull();
+          expect(checkboxBox!.width).toBeGreaterThanOrEqual(22);
+          expect(checkboxBox!.height).toBeGreaterThanOrEqual(22);
         }
-        const availableRisk = page.getByRole('checkbox', { name: /Применить:/ }).first();
+        const availableRisk = page.getByRole('checkbox', { name: 'Применить: Вода' });
         await expect(availableRisk).toBeVisible();
         await availableRisk.check();
         await expect(page.getByLabel('Предварительный итог').getByText(/Закрыто рисков: 1 из 5/)).toBeVisible();
@@ -445,11 +464,51 @@ test.describe.serial('authoritative Bunker layouts', () => {
         for (const step of await steps.all()) {
           await step.scrollIntoViewIfNeeded();
           await expectInsideViewport(page, step);
-          await expectReadableInViewport(page, step.getByRole('heading', { level: 4 }));
+          const status = step.locator(':scope > strong');
+          const title = step.getByRole('heading', { level: 4 });
+          const body = step.locator(':scope > div > p');
+          for (const copy of [status, title, body]) {
+            await expectReadableInViewport(page, copy);
+            await expectInsideContainer(copy, step);
+          }
         }
-        await page.getByLabel('Сообщение партнёрам').fill(
+
+        const exchangeStep = steps.nth(2);
+        const submissionStep = steps.nth(3);
+        const itemLabel = exchangeStep.getByText('Предмет для передачи', { exact: true });
+        const itemSelect = exchangeStep.getByLabel('Предмет для передачи');
+        await expectReadableInViewport(page, itemLabel);
+        await expectReadableInViewport(page, itemSelect);
+        await expectInsideContainer(itemLabel, exchangeStep);
+        await expectInsideContainer(itemSelect, exchangeStep);
+        await itemSelect.selectOption({ index: 1 });
+
+        const partnerLabel = exchangeStep.getByText('Кому передать предмет', { exact: true });
+        const partnerSelect = exchangeStep.getByLabel('Кому передать предмет');
+        await expectReadableInViewport(page, partnerLabel);
+        await expectReadableInViewport(page, partnerSelect);
+        await expectInsideContainer(partnerLabel, exchangeStep);
+        await expectInsideContainer(partnerSelect, exchangeStep);
+        await partnerSelect.selectOption({ index: 1 });
+
+        const messageLabel = submissionStep.getByText('Сообщение партнёрам', { exact: true });
+        const messageInput = submissionStep.getByLabel('Сообщение партнёрам');
+        await expectReadableInViewport(page, messageLabel);
+        await expectReadableInViewport(page, messageInput);
+        await expectInsideContainer(messageLabel, submissionStep);
+        await expectInsideContainer(messageInput, submissionStep);
+        await messageInput.fill(
           'Сектор 04: тоннель и маршрут проверены, общий канал связи восстановлен.',
         );
+        const preview = submissionStep.getByLabel('Предварительная проверка обмена');
+        await preview.scrollIntoViewIfNeeded();
+        await expectInsideViewport(page, preview);
+        await expectInsideContainer(preview, submissionStep);
+        await expectReadableInViewport(page, preview.getByRole('heading', { level: 5 }));
+        for (const previewLine of await preview.locator('p').all()) {
+          await expectReadableInViewport(page, previewLine);
+          await expectInsideContainer(previewLine, preview);
+        }
         const submit = page.getByRole('button', { name: 'ОТПРАВИТЬ СООБЩЕНИЕ' });
         await expect(submit).toBeEnabled();
         await expectReadableInViewport(page, submit);
