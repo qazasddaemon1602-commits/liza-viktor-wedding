@@ -27,6 +27,12 @@
   --bunker-player-mobile-nav-height: 5.25rem;
 }
 
+@media (max-width: 760px) {
+  .bunker-player-shell:has(.bunker-player-dashboard[data-large-text="true"]) {
+    --bunker-player-mobile-nav-height: 5.25rem;
+  }
+}
+
 .bunker-player-dashboard__header {
   min-width: 0;
   display: grid;
@@ -272,12 +278,30 @@
   color: var(--bunker-player-muted);
 }
 
-.bunker-player-dashboard[data-large-text="true"] button,
-.bunker-player-dashboard[data-large-text="true"] input:not([type="checkbox"]):not([type="radio"]),
+.bunker-player-dashboard[data-large-text="true"] button {
+  min-height: 52px;
+  font-size: var(--bunker-player-body-size);
+}
+
+.bunker-player-dashboard[data-large-text="true"] input:not([type="checkbox"]):not([type="radio"]) {
+  min-height: 52px;
+  font-size: var(--bunker-player-body-size);
+}
+
 .bunker-player-dashboard[data-large-text="true"] select,
 .bunker-player-dashboard[data-large-text="true"] textarea {
   min-height: 52px;
-  font-size: 1.125rem;
+  font-size: var(--bunker-player-body-size);
+}
+
+.bunker-player-dashboard[data-large-text="true"] .bunker-mission-actions label:has(input[type="checkbox"]) {
+  min-height: 52px;
+  font-size: var(--bunker-player-body-size);
+}
+
+.bunker-player-dashboard[data-large-text="true"] .bunker-mission-actions label:has(input[type="radio"]) {
+  min-height: 52px;
+  font-size: var(--bunker-player-body-size);
 }
 
 .bunker-player-character__ability > strong {
@@ -432,7 +456,7 @@
 .bunker-mission-actions label > span {
   color: var(--bunker-player-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.06em;
 }
 
@@ -503,7 +527,11 @@
   min-height: 48px;
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--bunker-player-rule);
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
+}
+
+.bunker-global-action__choices label {
+  font-size: var(--bunker-player-body-size);
 }
 
 .bunker-m03-problem-board {
@@ -558,23 +586,24 @@
 
 .bunker-m03-problem-board p {
   color: var(--bunker-player-muted);
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
 }
 
 .bunker-m03-problem-board h4,
 .bunker-m03-preview h4 {
-  font-size: 1.1rem;
+  font-size: var(--bunker-player-body-size);
   line-height: 1.15;
 }
 
 .bunker-m03-problem-board span {
   color: var(--bunker-player-ivory);
+  font-size: var(--bunker-player-body-size);
   line-height: 1.45;
 }
 
 .bunker-m03-problem-board strong {
   color: var(--bunker-player-muted);
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   line-height: 1.4;
 }
 
@@ -585,13 +614,13 @@
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--bunker-player-rule);
   color: var(--bunker-player-ivory);
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
 }
 
 .bunker-m03-problem-board__control > span {
   color: inherit;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.04em;
 }
 
@@ -629,7 +658,7 @@
   padding: 0 0.35rem;
   color: var(--bunker-player-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.06em;
 }
 
@@ -662,7 +691,7 @@
 .bunker-m03-additional-items__choices label > span > small {
   color: var(--bunker-player-muted);
   font-family: inherit;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: normal;
 }
 
@@ -689,7 +718,7 @@
   border: 1px solid var(--bunker-player-muted);
   color: var(--bunker-player-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.07em;
   text-align: center;
 }
@@ -709,7 +738,7 @@
 .bunker-m04-stepper h4,
 .bunker-m04-stepper h5 {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1.05rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.05em;
   line-height: 1.3;
 }
@@ -740,7 +769,7 @@
 .bunker-global-action__routes legend {
   margin-bottom: 0.75rem;
   color: var(--bunker-player-muted);
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
 }
 
 .bunker-global-action__fragment,
@@ -762,13 +791,13 @@
   padding: 0.85rem 1rem;
   border: 1px solid var(--bunker-player-rule);
   background: var(--bunker-player-graphite);
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   line-height: 1.5;
 }
 
 .bunker-global-action__clues strong {
   color: var(--bunker-player-muted);
-  font-size: 0.9rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.08em;
 }
 
@@ -801,7 +830,7 @@
 .bunker-player-mission-meta dt {
   color: var(--bunker-player-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -831,7 +860,7 @@
   margin: 0;
   color: var(--bunker-player-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
@@ -852,6 +881,10 @@
   color: var(--bunker-player-ivory);
   font-size: clamp(1rem, 3.3vw, 1.3rem);
   line-height: 1.45;
+}
+
+.bunker-player-dashboard[data-large-text="true"] .bunker-mission-briefing__header strong {
+  font-size: var(--bunker-player-body-size);
 }
 
 .bunker-mission-briefing article {
@@ -888,7 +921,7 @@
 
 .bunker-mission-briefing li[data-item-key] strong {
   color: var(--bunker-player-ivory);
-  font-size: 1rem;
+  font-size: var(--bunker-player-body-size);
 }
 
 .bunker-mission-briefing li[data-item-key] span {

@@ -42,7 +42,7 @@ describe('BunkerPlayerDashboard', () => {
     window.localStorage.removeItem('bunker.largeText.v1');
   });
 
-  it('keeps an overflow section selected while the compact navigation menu closes', async () => {
+  it('returns focus to the active overflow disclosure after choosing a compact section', async () => {
     const user = userEvent.setup();
     const originalMatchMedia = window.matchMedia;
     Object.defineProperty(window, 'matchMedia', {
@@ -57,15 +57,22 @@ describe('BunkerPlayerDashboard', () => {
     try {
       render(<BunkerPlayerDashboard runtime={runtime} />);
       const overflow = screen.getByRole('group', { name: 'Дополнительные разделы' });
-      await user.click(screen.getByRole('button', { name: 'ЕЩЁ' }));
+      const disclosure = screen.getByRole('button', { name: 'ЕЩЁ' });
+      await user.click(disclosure);
       const archive = within(overflow).getByRole('button', { name: 'АРХИВ' });
       await user.click(archive);
-      expect(archive).toHaveAttribute('aria-pressed', 'true');
+      expect(disclosure).toHaveAttribute('aria-pressed', 'true');
+      expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      expect(disclosure).toHaveTextContent('ЕЩЁ · АРХИВ');
+      expect(disclosure).toHaveFocus();
       expect(screen.getByRole('heading', { name: 'АРХИВ ВАГОНА' })).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'ЕЩЁ' }));
-      expect(archive).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByRole('heading', { name: 'АРХИВ ВАГОНА' })).toBeInTheDocument();
+      const primary = screen.getByRole('button', { name: 'МОЙ ВАГОН' });
+      await user.click(primary);
+      expect(primary).toHaveFocus();
+      expect(disclosure).toHaveAttribute('aria-pressed', 'false');
+      expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByRole('heading', { name: 'ВАГОН №2' })).toBeInTheDocument();
     } finally {
       Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
     }

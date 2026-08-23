@@ -209,6 +209,8 @@ export function BunkerPlayerDashboard({
   const [section, setSection] = useState<Section>('МОЙ ВАГОН');
   const [largeText, setLargeText] = useState(readLargeTextPreference);
   const [overflowOpen, setOverflowOpen] = useState(false);
+  const [restoreOverflowFocus, setRestoreOverflowFocus] = useState(false);
+  const overflowToggleRef = useRef<HTMLButtonElement>(null);
   const compactNavigation = useCompactNavigation();
   const inventory = rows(runtime.inventory);
   const passengers = rows(runtime.passengers);
@@ -219,10 +221,18 @@ export function BunkerPlayerDashboard({
   const isGlobalMission = isBunkerGlobalMissionState(runtime.game.state);
   const gameStateLabel = missionContent?.title.toLocaleUpperCase('ru-RU')
     ?? (runtime.game.bunkerRevealed ? 'БУНКЕР ОТКРЫТ' : 'ПРОТОКОЛ АКТИВЕН');
+  const overflowSectionActive = OVERFLOW_SECTIONS.includes(section);
+
+  useEffect(() => {
+    if (!restoreOverflowFocus) return;
+    overflowToggleRef.current?.focus();
+    setRestoreOverflowFocus(false);
+  }, [restoreOverflowFocus]);
 
   const chooseSection = (nextSection: Section) => {
     setSection(nextSection);
-    if (OVERFLOW_SECTIONS.includes(nextSection)) setOverflowOpen(true);
+    setOverflowOpen(false);
+    setRestoreOverflowFocus(OVERFLOW_SECTIONS.includes(nextSection));
   };
 
   const toggleLargeText = () => {
@@ -317,12 +327,14 @@ export function BunkerPlayerDashboard({
         ))}
         <div className="bunker-player-dashboard__nav-overflow" role="group" aria-label="Дополнительные разделы">
           <button
+            ref={overflowToggleRef}
             className="bunker-player-dashboard__nav-overflow-toggle"
             type="button"
             aria-expanded={compactNavigation ? overflowOpen : true}
+            aria-pressed={overflowSectionActive}
             onClick={() => setOverflowOpen((current) => !current)}
           >
-            ЕЩЁ
+            {overflowSectionActive ? `ЕЩЁ · ${section}` : 'ЕЩЁ'}
           </button>
           <div
             className="bunker-player-dashboard__nav-overflow-content"

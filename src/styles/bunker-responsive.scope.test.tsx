@@ -85,6 +85,11 @@ describe('Bunker responsive layout contract', () => {
     expect(getComputedStyle(screen.getByRole('button', { name: 'Архив' })).minHeight).toBe('48px');
   });
 
+  it('extends shell clearance when the dashboard enables large text', () => {
+    const largeShell = ruleBody(playerStyle, '.bunker-player-shell:has(.bunker-player-dashboard[data-large-text="true"])');
+    expect(largeShell).toContain('--bunker-player-mobile-nav-height: 5.25rem');
+  });
+
   it('keeps guest quest controls at least 48px tall after the final mobile cascade', () => {
     render(<div className="guest-bunker-options"><button type="button">Ответить</button></div>);
     expect(getComputedStyle(screen.getByRole('button', { name: 'Ответить' })).minHeight).toBe('48px');
@@ -128,7 +133,7 @@ describe('Bunker responsive layout contract', () => {
       /\.bunker-player-dashboard__index,[^{]*\.bunker-player-dashboard__primary-action\s*\{[^}]*font-size:\s*(?:1rem|16px)/,
     );
     expect(playerStyle).toMatch(
-      /\.bunker-mission-briefing__header p,[^{]*\.bunker-mission-briefing article h3\s*\{[^}]*font-size:\s*(?:1rem|16px)/,
+      /\.bunker-mission-briefing__header p,[^{]*\.bunker-mission-briefing article h3\s*\{[^}]*font-size:\s*var\(--bunker-player-body-size\)/,
     );
     expect(questStyle).toMatch(
       /\.bunker-quest-scene__header p,[^{]*\.bunker-quest-scene footer\s*\{[^}]*font:\s*600\s+clamp\(16px,/,

@@ -5,11 +5,29 @@ import { describe, expect, it } from 'vitest';
 const testRuntime = globalThis as typeof globalThis & { process: { cwd: () => string } };
 const css = readFileSync(`${testRuntime.process.cwd()}/src/styles/bunker-player.css`, 'utf8');
 
+function ruleBody(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const matches = [...css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))];
+  expect(matches, `missing CSS rule for ${selector}`).not.toHaveLength(0);
+  return matches.at(-1)?.[1] ?? '';
+}
+
 describe('Bunker phone mission action sizing', () => {
   it('provides an 18px body token and 52px targets in large-text mode', () => {
-    expect(css).toMatch(/\.bunker-player-dashboard\[data-large-text="true"\]\s*\{[^}]*--bunker-player-body-size:\s*1\.125rem/);
-    expect(css).toMatch(/\.bunker-player-dashboard\[data-large-text="true"\][\s\S]*?\.bunker-player-dashboard__nav button[\s\S]*?min-height:\s*52px/);
-    expect(css).toMatch(/\.bunker-player-dashboard\[data-large-text="true"\][\s\S]*?\.bunker-player-dashboard__large-text-toggle[\s\S]*?min-height:\s*52px/);
+    expect(ruleBody('.bunker-player-dashboard[data-large-text="true"]')).toContain('--bunker-player-body-size: 1.125rem');
+    expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] button')).toContain('min-height: 52px');
+    expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] .bunker-mission-actions label:has(input[type="checkbox"])')).toContain('min-height: 52px');
+    expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] .bunker-mission-actions label:has(input[type="radio"])')).toContain('min-height: 52px');
+  });
+
+  it('routes mission instructions, choices and problem guidance through the body-size token', () => {
+    expect(ruleBody('.bunker-mission-actions label > span')).toContain('font-size: var(--bunker-player-body-size)');
+    expect(ruleBody('.bunker-global-action__choices label')).toContain('font-size: var(--bunker-player-body-size)');
+    expect(ruleBody('.bunker-m03-problem-board p')).toContain('font-size: var(--bunker-player-body-size)');
+    expect(ruleBody('.bunker-m03-problem-board span')).toContain('font-size: var(--bunker-player-body-size)');
+    expect(ruleBody('.bunker-m03-problem-board strong')).toContain('font-size: var(--bunker-player-body-size)');
+    expect(ruleBody('.bunker-m03-problem-board__control > span')).toContain('font-size: var(--bunker-player-body-size)');
+    expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] .bunker-mission-briefing__header strong')).toContain('font-size: var(--bunker-player-body-size)');
   });
 
   it('keeps mission inputs and buttons at least 48px tall', () => {
@@ -31,6 +49,6 @@ describe('Bunker phone mission action sizing', () => {
   });
 
   it('keeps additional-item guidance readable in the normal phone mode', () => {
-    expect(css).toMatch(/\.bunker-m03-additional-items__choices label > span > small\s*\{[^}]*font-size:\s*1rem/);
+    expect(ruleBody('.bunker-m03-additional-items__choices label > span > small')).toContain('font-size: var(--bunker-player-body-size)');
   });
 });
