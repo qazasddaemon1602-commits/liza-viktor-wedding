@@ -15,15 +15,27 @@ function seatDensity(guestCount: number): 'standard' | 'dense' | 'packed' {
   return 'standard';
 }
 
+function visualSeatCapacity(guestCount: number): number {
+  if (guestCount >= 40) return 40;
+  const withBreathingRoom = guestCount + 2;
+  const nearestEven = Math.ceil(withBreathingRoom / 2) * 2;
+  return Math.max(8, Math.min(40, nearestEven));
+}
+
 function CarriagePlan({ carriage }: { carriage: RegistrationCarriageMapCarriage }) {
-  const seatColumns = Math.max(4, Math.ceil(carriage.guests.length / 2));
+  const seatCapacity = visualSeatCapacity(carriage.guests.length);
+  const seatColumns = seatCapacity / 2;
+  const emptySeatIndexes = Array.from(
+    { length: seatCapacity - carriage.guests.length },
+    (_, index) => carriage.guests.length + index + 1,
+  );
 
   return (
     <article
       className="carriage-map__carriage"
       role="group"
       aria-label={carriage.label}
-      data-seat-density={seatDensity(carriage.guests.length)}
+      data-seat-density={seatDensity(seatCapacity)}
       style={{
         '--carriage-map-accent': carriage.accentHex,
         '--seat-columns': seatColumns,
@@ -50,6 +62,7 @@ function CarriagePlan({ carriage }: { carriage: RegistrationCarriageMapCarriage 
               <span
                 key={guest.id}
                 className="carriage-map__seat carriage-map__seat--occupied"
+                role="img"
                 data-seat-index={guest.seatIndex}
                 aria-label={`Гость ${guest.initials}, место ${guest.seatIndex}, вагон ${carriage.number}`}
                 style={{
@@ -61,6 +74,19 @@ function CarriagePlan({ carriage }: { carriage: RegistrationCarriageMapCarriage 
               </span>
             );
           })}
+
+          {emptySeatIndexes.map((seatIndex) => (
+            <span
+              key={`empty-${seatIndex}`}
+              className="carriage-map__seat carriage-map__seat--empty"
+              data-testid="empty-seat"
+              aria-hidden="true"
+              style={{
+                '--seat-column': Math.ceil(seatIndex / 2),
+                '--seat-row': seatIndex % 2 === 1 ? 1 : 3,
+              } as CSSProperties}
+            />
+          ))}
 
           {carriage.guests.length === 0 && (
             <span className="carriage-map__vacant">СВОБОДНО</span>

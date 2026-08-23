@@ -842,13 +842,22 @@
   place-items: center;
   border: 1px solid var(--carriage-map-accent);
   border-radius: 50%;
-  color: #fffaf0;
-  background: var(--carriage-map-accent);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(0.58rem, 0.78vw, 0.9rem);
   font-weight: 700;
   line-height: 1;
   box-shadow: 0 0.2rem 0.55rem rgba(23, 59, 93, 0.14);
+}
+
+.carriage-map__seat--occupied {
+  color: #fffaf0;
+  background: var(--carriage-map-accent);
+}
+
+.carriage-map__seat--empty {
+  border-color: color-mix(in srgb, var(--carriage-map-accent) 34%, transparent);
+  background: transparent;
+  box-shadow: none;
 }
 
 .carriage-map__carriage[data-seat-density="dense"] .carriage-map__seats {
@@ -866,6 +875,8 @@
 }
 
 .carriage-map__vacant {
+  position: relative;
+  z-index: 2;
   grid-column: 1 / -1;
   grid-row: 1 / -1;
   align-self: center;
@@ -873,6 +884,7 @@
   font-size: clamp(0.48rem, 0.62vw, 0.7rem);
   font-weight: 850;
   letter-spacing: 0.18em;
+  background: rgba(255, 253, 248, 0.82);
 }
 
 .carriage-map__empty {

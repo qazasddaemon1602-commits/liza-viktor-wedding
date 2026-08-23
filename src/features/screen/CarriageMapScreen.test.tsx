@@ -42,17 +42,30 @@ describe('CarriageMapScreen', () => {
       'aria-label',
       'Гость АП, место 1, вагон 1',
     );
+    expect(within(wagon).getByRole('img', {
+      name: 'Гость АП, место 1, вагон 1',
+    })).toBeInTheDocument();
     expect(within(wagon).getByText('ВК')).toHaveAttribute('data-seat-index', '2');
     expect(within(wagon).getByText('АП')).toHaveStyle({ '--seat-column': '1', '--seat-row': '1' });
     expect(within(wagon).getByText('ВК')).toHaveStyle({ '--seat-column': '1', '--seat-row': '3' });
   });
 
-  it('labels an empty wagon without inventing assigned seats', () => {
+  it('draws eight visual-only empty seats in an empty wagon', () => {
     render(<CarriageMapScreen map={makeMap(2)} />);
 
     const emptyWagon = screen.getByRole('group', { name: 'ВАГОН №2' });
     expect(within(emptyWagon).getByText('СВОБОДНО')).toBeInTheDocument();
     expect(within(emptyWagon).queryByLabelText(/Гость/)).not.toBeInTheDocument();
+    expect(within(emptyWagon).getAllByTestId('empty-seat')).toHaveLength(8);
+    expect(within(emptyWagon).getAllByTestId('empty-seat')[0]).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('adds a deterministic pair of visual-only empty seats after partial occupancy', () => {
+    render(<CarriageMapScreen map={makeMap(2)} />);
+
+    const wagon = screen.getByRole('group', { name: 'ВАГОН №1' });
+    expect(within(wagon).getAllByRole('img', { name: /Гость/ })).toHaveLength(2);
+    expect(within(wagon).getAllByTestId('empty-seat')).toHaveLength(6);
   });
 
   it('shows registration progress and unassigned guests', () => {
@@ -77,6 +90,7 @@ describe('CarriageMapScreen', () => {
     const wagon = screen.getByRole('group', { name: 'ВАГОН №1' });
     expect(wagon).toHaveAttribute('data-seat-density', 'packed');
     expect(within(wagon).getAllByLabelText(/Гость/)).toHaveLength(40);
+    expect(within(wagon).queryAllByTestId('empty-seat')).toHaveLength(0);
     expect(within(wagon).getByLabelText('Гость АЕ, место 6, вагон 1')).toHaveAttribute(
       'data-seat-index',
       '6',

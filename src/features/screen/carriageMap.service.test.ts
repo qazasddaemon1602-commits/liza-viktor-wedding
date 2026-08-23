@@ -38,6 +38,10 @@ describe('parseRegistrationCarriageMap', () => {
   it.each([
     { ...payload(), status: 'loading' },
     { ...payload(), serverNow: 'not-a-date' },
+    { ...payload(), serverNow: '0' },
+    { ...payload(), serverNow: '1' },
+    { ...payload(), serverNow: '2026' },
+    { ...payload(), serverNow: '2026-08-30' },
     { ...payload(), expectedGuestCount: -1 },
     { ...payload(), registeredGuestCount: 1.5 },
     { ...payload(), unassignedCount: -1 },
@@ -101,6 +105,22 @@ describe('parseRegistrationCarriageMap', () => {
     response.carriages[0].guests[1] = { id: 'guest-2', initials: 'ВК', seatIndex: 3 };
     expect(parseRegistrationCarriageMap(response)).toBeNull();
   });
+
+  it('rejects duplicate guest IDs, carriage IDs and carriage numbers', () => {
+    const duplicateGuests = payload();
+    duplicateGuests.registeredGuestCount = 2;
+    duplicateGuests.carriages[0].guests = [{ id: 'guest-1', initials: 'АП', seatIndex: 1 }];
+    duplicateGuests.carriages[1].guests = [{ id: 'guest-1', initials: 'ВК', seatIndex: 1 }];
+    expect(parseRegistrationCarriageMap(duplicateGuests)).toBeNull();
+
+    const duplicateCarriageId = payload();
+    duplicateCarriageId.carriages[1].id = duplicateCarriageId.carriages[0].id;
+    expect(parseRegistrationCarriageMap(duplicateCarriageId)).toBeNull();
+
+    const duplicateCarriageNumber = payload();
+    duplicateCarriageNumber.carriages[1].number = duplicateCarriageNumber.carriages[0].number;
+    expect(parseRegistrationCarriageMap(duplicateCarriageNumber)).toBeNull();
+  });
 });
 
 describe('getRegistrationCarriageMap', () => {
@@ -121,5 +141,16 @@ describe('getRegistrationCarriageMap', () => {
     await expect(getRegistrationCarriageMap({
       rpc: vi.fn().mockResolvedValue({ data: { status: 'registration' }, error: null }),
     }, 'liza-viktor')).rejects.toThrow('Unexpected carriage map response');
+  });
+
+  it('preserves thrown RPC errors and supplies a safe fallback for message-less errors', async () => {
+    const thrown = new Error('network down');
+    await expect(getRegistrationCarriageMap({
+      rpc: vi.fn().mockRejectedValue(thrown),
+    }, 'liza-viktor')).rejects.toBe(thrown);
+
+    await expect(getRegistrationCarriageMap({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: {} }),
+    }, 'liza-viktor')).rejects.toThrow('Carriage map request failed');
   });
 });

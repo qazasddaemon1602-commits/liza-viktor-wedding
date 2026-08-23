@@ -45,6 +45,7 @@ const CARRIAGE_KEYS = ['id', 'number', 'label', 'accentHex', 'visualMark', 'gues
 const GUEST_KEYS = ['id', 'initials', 'seatIndex'] as const;
 const SAFE_INITIALS = /^\p{L}{1,2}$/u;
 const SAFE_ACCENT = /^#[0-9a-f]{6}$/i;
+const ISO_TIMESTAMP_WITH_TIMEZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -132,6 +133,7 @@ export function parseRegistrationCarriageMap(value: unknown): RegistrationCarria
     || !isNonNegativeInteger(value.unassignedCount)
     || value.unassignedCount > value.registeredGuestCount
     || !isSafeString(value.serverNow, 64)
+    || !ISO_TIMESTAMP_WITH_TIMEZONE.test(value.serverNow)
     || !Number.isFinite(Date.parse(value.serverNow))
     || !Array.isArray(value.carriages)
   ) {
