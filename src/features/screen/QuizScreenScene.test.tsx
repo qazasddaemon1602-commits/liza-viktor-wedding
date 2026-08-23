@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { QuizScreenScene, toAvifQuizImagePath } from './QuizScreenScene';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 
@@ -16,21 +16,16 @@ const votingState: Extract<QuizScreenState, { status: 'active'; phase: 'voting' 
 };
 
 describe('QuizScreenScene', () => {
-  it('uses the shared transition language and signals only the presented phase', () => {
-    const onSignal = vi.fn();
-
+  it('uses the shared transition language for each presented phase', () => {
     const { rerender } = render(
-      <QuizScreenScene state={votingState} expectedGuestCount={40} onSignal={onSignal} />,
+      <QuizScreenScene state={votingState} expectedGuestCount={40} />,
     );
 
     expect(screen.getByTestId('scene-transition')).toHaveAttribute(
       'data-scene-key',
       'question-1-voting',
     );
-    expect(onSignal).toHaveBeenCalledWith('voting');
-
-    rerender(<QuizScreenScene state={votingState} expectedGuestCount={40} onSignal={onSignal} />);
-    expect(onSignal).toHaveBeenCalledTimes(1);
+    rerender(<QuizScreenScene state={votingState} expectedGuestCount={40} />);
 
     rerender(
       <QuizScreenScene
@@ -40,10 +35,12 @@ describe('QuizScreenScene', () => {
           results: { liza: 18, viktor: 12, total: 30 },
         }}
         expectedGuestCount={40}
-        onSignal={onSignal}
       />,
     );
-    expect(onSignal).toHaveBeenLastCalledWith('results');
+    expect(screen.getByTestId('scene-transition')).toHaveAttribute(
+      'data-scene-key',
+      'question-1-results',
+    );
   });
 
   it('shows a live question and participation count without percentages before reveal', () => {

@@ -42,6 +42,7 @@ import {
   type QuizScreenRpcClient,
   type QuizScreenState,
 } from '../quiz/quizScreen.service';
+import { quizPresentationKey } from '../quiz/quizPresentation';
 import {
   subscribeToQuizRefresh,
   type QuizRealtimeClient,
@@ -303,6 +304,7 @@ export function ScreenPage({
   const autoAudioAttemptedRef = useRef(false);
   const arrivalReadyRef = useRef(!deps.prepareArrival);
   const arrivalPreparationRef = useRef<Promise<boolean> | null>(null);
+  const lastPresentedQuizKeyRef = useRef<string | null>(null);
   const carriageMapRefreshRef = useRef<() => void>(() => undefined);
 
   const soundEnabled = audioSettings.enabled && audioSettings.volume > 0;
@@ -676,12 +678,6 @@ export function ScreenPage({
     deps.playPremiereCountdownTick?.(second);
   }, [deps]);
 
-  const playQuizSignal = useCallback((phase: 'voting' | 'results') => {
-    if (presentationProtectedRef.current) return;
-    if (phase === 'voting') deps.playQuizVotingSignal?.();
-    else deps.playQuizRevealSignal?.();
-  }, [deps]);
-
   const activeQuiz = quizState?.status === 'active' ? quizState : null;
   const finalFiveForCurrentQuestion = activeQuiz?.phase === 'results'
     && finalFive.status === 'revealed'
@@ -696,6 +692,23 @@ export function ScreenPage({
   const currentMkMatch = mortalKombatProtected
     ? mkState.matches.find((match) => match.current) ?? null
     : null;
+  const presentedQuiz = activeQuiz && !finalFiveForCurrentQuestion && !revealedForCurrentQuestion
+    ? activeQuiz
+    : null;
+
+  useEffect(() => {
+    lastPresentedQuizKeyRef.current = null;
+  }, [eventSlug]);
+
+  useEffect(() => {
+    if (!presentedQuiz || presentationProtected || activeEvent) return;
+    const key = quizPresentationKey(presentedQuiz.question.id, presentedQuiz.phase);
+    if (lastPresentedQuizKeyRef.current === key) return;
+
+    lastPresentedQuizKeyRef.current = key;
+    if (presentedQuiz.phase === 'voting') deps.playQuizVotingSignal?.();
+    else deps.playQuizRevealSignal?.();
+  }, [activeEvent, deps, eventSlug, presentedQuiz, presentationProtected]);
 
   return (
     <div className={`screen-page${premiereProtected ? ' screen-page--premiere' : ''}${mortalKombatProtected ? ' screen-page--mk' : ''}`}>
@@ -715,6 +728,10 @@ export function ScreenPage({
         ) : (
           <PublicBracket state={mkState} displayMode="projector" />
         )
+      ) : activeEvent?.kind === 'guest_registered' ? (
+        <TrainArrivalScene event={activeEvent} onSignal={playSignal} />
+      ) : activeEvent?.kind === 'carriage_call' ? (
+        <CarriageCallScene event={activeEvent} />
       ) : activeQuiz ? (
         finalFiveForCurrentQuestion ? (
           <FinalFiveRevealScene state={finalFiveForCurrentQuestion} />
@@ -728,7 +745,6 @@ export function ScreenPage({
           <QuizScreenScene
             state={activeQuiz}
             expectedGuestCount={expectedGuestCount}
-            onSignal={playQuizSignal}
           />
         )
       ) : carriageMap?.status === 'complete' ? (
@@ -746,16 +762,6 @@ export function ScreenPage({
         </div>
       )}
 
-      {!presentationProtected && activeEvent?.kind === 'guest_registered' && (
-        <TrainArrivalScene
-          event={activeEvent}
-          onSignal={playSignal}
-        />
-      )}
-
-      {!presentationProtected && activeEvent?.kind === 'carriage_call' && (
-        <CarriageCallScene event={activeEvent} />
-      )}
     </div>
   );
 }

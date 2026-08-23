@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { QuizPhaseTimer } from '../quiz/QuizPhaseTimer';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 import { SceneTransition } from './SceneTransition';
@@ -8,7 +7,6 @@ type ActiveQuizScreenState = Extract<QuizScreenState, { status: 'active' }>;
 type QuizScreenSceneProps = {
   state: ActiveQuizScreenState;
   expectedGuestCount?: number;
-  onSignal?: (phase: ActiveQuizScreenState['phase']) => void;
 };
 
 function percentage(value: number, total: number): number {
@@ -27,11 +25,7 @@ export function toAvifQuizImagePath(imagePath: string): string | null {
 export function QuizScreenScene({
   state,
   expectedGuestCount = 40,
-  onSignal,
 }: QuizScreenSceneProps) {
-  useEffect(() => {
-    onSignal?.(state.phase);
-  }, [onSignal, state.phase, state.question.id]);
   const answeredLabel = `${state.answeredCount} / ${expectedGuestCount} ОТВЕТИЛИ`;
   const lizaPercent = state.phase === 'results'
     ? percentage(state.results.liza, state.results.total)
@@ -49,7 +43,11 @@ export function QuizScreenScene({
       label={state.phase === 'voting' ? 'НОВЫЙ ВОПРОС' : 'РЕЗУЛЬТАТЫ'}
       tone={state.phase === 'voting' ? 'sage' : 'wine'}
     >
-      <section className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`} aria-live="polite">
+      <section
+        className={`quiz-screen-scene quiz-screen-scene-${state.phase} quiz-screen-scene--editorial`}
+        data-testid="quiz-screen-scene"
+        aria-live="polite"
+      >
       <div
         className="quiz-screen-frame"
         data-testid="quiz-editorial-spread"

@@ -45,6 +45,13 @@ const arrival: ScreenPresentationEvent = {
   },
 };
 
+async function flushPromises() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 describe('ScreenPage live quiz base scene', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -144,5 +151,165 @@ describe('ScreenPage live quiz base scene', () => {
     expect(screen.queryByRole('heading', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Кто в доме главный?' })).toBeInTheDocument();
     expect(screen.queryByTestId('registration-qr')).not.toBeInTheDocument();
+  });
+
+  it('only presents and cues the latest quiz phase after a guest announcement finishes', async () => {
+    let pushScreenEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    let refreshQuiz: (() => void) | undefined;
+    const playQuizVotingSignal = vi.fn();
+    const playQuizRevealSignal = vi.fn();
+    const dependencies: ScreenPageDependencies = {
+      subscribe: (callback) => {
+        pushScreenEvent = callback;
+        return vi.fn();
+      },
+      loadQuiz: vi.fn()
+        .mockResolvedValueOnce(voting)
+        .mockResolvedValueOnce(results),
+      subscribeToQuizRefresh: (callback) => {
+        refreshQuiz = callback;
+        return vi.fn();
+      },
+      playArrivalSignal: vi.fn(),
+      playQuizVotingSignal,
+      playQuizRevealSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        sceneDurationMs={1000}
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('quiz-screen-scene')).toBeInTheDocument();
+
+    act(() => pushScreenEvent?.(arrival));
+    expect(screen.queryByTestId('quiz-screen-scene')).not.toBeInTheDocument();
+
+    await act(async () => {
+      refreshQuiz?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(playQuizRevealSignal).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByTestId('quiz-screen-scene')).toBeInTheDocument();
+    expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(playQuizRevealSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not replay an unchanged quiz after it returns from an announcement', async () => {
+    let pushScreenEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    const playQuizVotingSignal = vi.fn();
+    const dependencies: ScreenPageDependencies = {
+      subscribe: (callback) => {
+        pushScreenEvent = callback;
+        return vi.fn();
+      },
+      loadQuiz: vi.fn().mockResolvedValue(voting),
+      subscribeToQuizRefresh: () => vi.fn(),
+      playArrivalSignal: vi.fn(),
+      playQuizVotingSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        sceneDurationMs={1000}
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    act(() => pushScreenEvent?.(arrival));
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByTestId('quiz-screen-scene')).toBeInTheDocument();
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the projector on idle when a quiz closes during an announcement', async () => {
+    let pushScreenEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    let refreshQuiz: (() => void) | undefined;
+    const playQuizVotingSignal = vi.fn();
+    const dependencies: ScreenPageDependencies = {
+      subscribe: (callback) => {
+        pushScreenEvent = callback;
+        return vi.fn();
+      },
+      loadQuiz: vi.fn()
+        .mockResolvedValueOnce(voting)
+        .mockResolvedValueOnce({ status: 'idle' } satisfies QuizScreenState),
+      subscribeToQuizRefresh: (callback) => {
+        refreshQuiz = callback;
+        return vi.fn();
+      },
+      playArrivalSignal: vi.fn(),
+      playQuizVotingSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        sceneDurationMs={1000}
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    act(() => pushScreenEvent?.(arrival));
+    await act(async () => {
+      refreshQuiz?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByTestId('registration-qr')).toBeInTheDocument();
+    expect(screen.queryByTestId('quiz-screen-scene')).not.toBeInTheDocument();
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-presents the same quiz identity when the event changes', async () => {
+    const playQuizVotingSignal = vi.fn();
+    const dependencies: ScreenPageDependencies = {
+      subscribe: () => vi.fn(),
+      loadQuiz: vi.fn().mockResolvedValue(voting),
+      subscribeToQuizRefresh: () => vi.fn(),
+      playQuizVotingSignal,
+    };
+
+    const { rerender } = render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    rerender(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="another-event"
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(2);
   });
 });
