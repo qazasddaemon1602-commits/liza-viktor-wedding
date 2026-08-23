@@ -143,6 +143,7 @@ export function BunkerScreenGuard({
   const narrationContent = state?.status === 'active'
     ? getBunkerMissionContent(state.currentMission?.id ?? state.globalGameState)
     : undefined;
+  const narrationRunIdentity = state?.status === 'active' ? state.startedAt : null;
 
   useEffect(() => {
     setBunkerPresentationProtected(bunkerActive);
@@ -211,6 +212,13 @@ export function BunkerScreenGuard({
 
   useEffect(() => {
     const narration = deps?.narration;
+    if (!narration) return;
+    narration.setRun(narrationRunIdentity);
+    return () => narration.setRun(null);
+  }, [deps?.narration, narrationRunIdentity]);
+
+  useEffect(() => {
+    const narration = deps?.narration;
     const audio = deps?.audio;
     if (!narration) return;
     if (
@@ -254,6 +262,7 @@ export function BunkerScreenGuard({
   }, [
     deps,
     bunkerActive,
+    narrationRunIdentity,
     narrationContent?.key,
     narrationContent?.intro.narration,
     state?.status === 'active' ? state.currentMission?.id : null,

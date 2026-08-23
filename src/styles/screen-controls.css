@@ -84,7 +84,7 @@
 
 .screen-audio-control__narration,
 .screen-audio-control__replay {
-  min-height: 1.75rem;
+  min-height: 2.5rem;
   border: 0;
   border-radius: 999px;
   color: rgba(243, 236, 223, 0.82);
@@ -93,8 +93,8 @@
 }
 
 .screen-audio-control__narration {
-  padding: 0 0.48rem;
-  font-size: 0.56rem;
+  padding: 0 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.11em;
 }
@@ -105,9 +105,9 @@
 }
 
 .screen-audio-control__replay {
-  width: 1.75rem;
+  width: 2.5rem;
   padding: 0;
-  font-size: 1rem;
+  font-size: 1.2rem;
 }
 
 .screen-audio-control__narration:hover,

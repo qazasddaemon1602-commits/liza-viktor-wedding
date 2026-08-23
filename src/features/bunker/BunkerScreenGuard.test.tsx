@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PROJECTOR_AUDIO_REARM_EVENT } from '../../lib/siteAudio';
 import { BunkerScreenGuard, type BunkerScreenGuardDependencies } from './BunkerScreenGuard';
 
 afterEach(() => {
@@ -14,6 +15,155 @@ async function flushLoadedState() {
 }
 
 describe('BunkerScreenGuard', () => {
+  it('uses the mission narration source only after audio arms, retries from projector rearm, and clears it on unmount', async () => {
+    let refresh: (() => void) | undefined;
+    const audio = {
+      arm: vi.fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(false)
+        .mockResolvedValue(true),
+      startAlarm: vi.fn(),
+      stopAlarm: vi.fn(),
+      startAmbience: vi.fn(),
+      stopAmbience: vi.fn(),
+      playDoorUnlock: vi.fn(),
+      dispose: vi.fn(),
+    };
+    const narration = {
+      setRun: vi.fn(),
+      setMission: vi.fn(),
+      setArmed: vi.fn(),
+      stop: vi.fn(),
+    };
+    const base = {
+      status: 'active' as const,
+      startedAt: '2026-08-30T18:00:00.000Z',
+      durationSeconds: 1800,
+      remainingSeconds: 900,
+      soundEnabled: true,
+      phase: 'mission_a' as const,
+      unlocked: false,
+      teams: [],
+      characterCounts: { active: 16, saved: 0, excluded: 0 },
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        ...base,
+        globalGameState: 'MISSION_03',
+        currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+        serverNow: '2026-08-30T18:15:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        ...base,
+        globalGameState: 'MISSION_04',
+        currentMission: { id: 'mission_04', state: 'MISSION_04', plan: null },
+        serverNow: '2026-08-30T18:15:01.000Z',
+      });
+    const view = render(
+      <BunkerScreenGuard dependencies={{
+        load,
+        subscribe: (callback) => {
+          refresh = callback;
+          return () => undefined;
+        },
+        audio,
+        narration,
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    expect(narration.setRun).toHaveBeenCalledWith('2026-08-30T18:00:00.000Z');
+    expect(narration.setMission).toHaveBeenCalledWith({
+      id: 'mission_03',
+      text: 'Аварийный отсек открыт. Запас ограничен. Оцените угрозы, примените предметы и оставьте только те риски, с которыми готовы ехать дальше.',
+    });
+    expect(narration.setArmed).not.toHaveBeenCalledWith(true);
+
+    await act(async () => {
+      window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(narration.setArmed).toHaveBeenCalledWith(true);
+
+    narration.stop.mockClear();
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(narration.stop).toHaveBeenCalled();
+    expect(narration.setMission).toHaveBeenCalledWith({
+      id: 'mission_04',
+      text: 'Основная связь потеряна. Созданы временные каналы для групп из двух или трёх вагонов. Передайте недостающие части сообщения и договоритесь о взаимной помощи.',
+    });
+
+    view.unmount();
+    expect(narration.setRun).toHaveBeenLastCalledWith(null);
+    expect(narration.setMission).toHaveBeenLastCalledWith(null);
+    expect(narration.stop).toHaveBeenCalled();
+  });
+
+  it('changes narration run identity when rehearsal is reset and the same mission starts again', async () => {
+    let refresh: (() => void) | undefined;
+    const narration = {
+      setRun: vi.fn(),
+      setMission: vi.fn(),
+      setArmed: vi.fn(),
+      stop: vi.fn(),
+    };
+    const base = {
+      status: 'active' as const,
+      durationSeconds: 1800,
+      remainingSeconds: 900,
+      soundEnabled: false,
+      phase: 'mission_a' as const,
+      unlocked: false,
+      teams: [],
+      characterCounts: { active: 16, saved: 0, excluded: 0 },
+      globalGameState: 'MISSION_03' as const,
+      currentMission: { id: 'mission_03', state: 'MISSION_03' as const, plan: null },
+    };
+    const load = vi.fn()
+      .mockResolvedValueOnce({
+        ...base,
+        startedAt: '2026-08-30T18:00:00.000Z',
+        serverNow: '2026-08-30T18:15:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        ...base,
+        startedAt: '2026-08-30T19:00:00.000Z',
+        serverNow: '2026-08-30T19:00:01.000Z',
+      });
+
+    render(
+      <BunkerScreenGuard dependencies={{
+        load,
+        subscribe: (callback) => {
+          refresh = callback;
+          return () => undefined;
+        },
+        narration,
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(narration.setRun).toHaveBeenCalledWith('2026-08-30T18:00:00.000Z');
+    expect(narration.setRun).toHaveBeenCalledWith('2026-08-30T19:00:00.000Z');
+    expect(
+      narration.setMission.mock.calls.filter(([mission]) => mission?.id === 'mission_03'),
+    ).toHaveLength(2);
+  });
+
   it.each([
     ['MISSION_03', 'mission_03', 'MISSION_04', 'mission_04'],
     ['MISSION_05', 'mission_05', 'MISSION_06', 'mission_06'],

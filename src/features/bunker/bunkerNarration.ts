@@ -1,4 +1,5 @@
 import { BUNKER_NARRATION_PROFILE } from '../../lib/audioManifest';
+import { siteAudio } from '../../lib/siteAudio';
 
 export type BunkerNarrationSynth = {
   speak: (utterance: SpeechSynthesisUtterance) => void;
@@ -10,11 +11,13 @@ export type BunkerNarrationController = {
   replay: () => boolean;
   stop: () => void;
   setEnabled: (enabled: boolean) => void;
+  reset: () => void;
 };
 
 type BunkerNarrationOptions = {
   synth: BunkerNarrationSynth;
   getVoices: () => readonly SpeechSynthesisVoice[];
+  getVolume?: () => number;
 };
 
 export type BunkerNarrationMission = {
@@ -30,6 +33,7 @@ export type BunkerNarrationState = {
 };
 
 export type BunkerNarrationSessionController = {
+  setRun: (runIdentity: string | null) => void;
   setMission: (mission: BunkerNarrationMission | null) => void;
   setArmed: (armed: boolean) => void;
   stop: () => void;
@@ -61,14 +65,13 @@ function preferredRussianVoice(
 export function createBunkerNarrationController({
   synth,
   getVoices,
+  getVolume = () => BUNKER_NARRATION_PROFILE.volume,
 }: BunkerNarrationOptions): BunkerNarrationController {
   let enabled = true;
   let current: BunkerNarrationMission | null = null;
-  let lastAttemptedMissionId: string | null = null;
+  const spokenMissionIds = new Set<string>();
 
   const performSpeech = (mission: BunkerNarrationMission, force: boolean): boolean => {
-    if (!enabled || (!force && lastAttemptedMissionId === mission.id)) return false;
-
     if (current && current.id !== mission.id) {
       try {
         synth.cancel();
@@ -77,16 +80,17 @@ export function createBunkerNarrationController({
       }
     }
     current = mission;
-    lastAttemptedMissionId = mission.id;
+    if (!enabled || (!force && spokenMissionIds.has(mission.id))) return false;
 
     try {
       const utterance = createUtterance(mission.text);
       utterance.lang = BUNKER_NARRATION_PROFILE.lang;
       utterance.rate = BUNKER_NARRATION_PROFILE.rate;
       utterance.pitch = BUNKER_NARRATION_PROFILE.pitch;
-      utterance.volume = BUNKER_NARRATION_PROFILE.volume;
+      utterance.volume = Math.min(1, Math.max(0, getVolume()));
       utterance.voice = preferredRussianVoice(getVoices());
       synth.speak(utterance);
+      spokenMissionIds.add(mission.id);
       return true;
     } catch {
       return false;
@@ -121,6 +125,15 @@ export function createBunkerNarrationController({
         }
       }
     },
+    reset: () => {
+      try {
+        synth.cancel();
+      } catch {
+        // Reset must remain safe when the native voice service is missing.
+      }
+      current = null;
+      spokenMissionIds.clear();
+    },
   };
 }
 
@@ -135,8 +148,10 @@ const browserSynth: BunkerNarrationSynth = {
 const bunkerNarration = createBunkerNarrationController({
   synth: browserSynth,
   getVoices: () => window.speechSynthesis?.getVoices() ?? [],
+  getVolume: () => siteAudio.getVolume(),
 });
 
+let activeRunIdentity: string | null = null;
 let activeMission: BunkerNarrationMission | null = null;
 let narrationState: BunkerNarrationState = {
   active: false,
@@ -162,6 +177,19 @@ export function subscribeToBunkerNarrationState(
   return () => listeners.delete(listener);
 }
 
+export function setBunkerNarrationRun(runIdentity: string | null): void {
+  if (runIdentity !== null && activeRunIdentity === runIdentity) return;
+  activeRunIdentity = runIdentity;
+  activeMission = null;
+  bunkerNarration.reset();
+  publish({
+    ...narrationState,
+    active: false,
+    armed: false,
+    missionId: null,
+  });
+}
+
 export function setActiveBunkerNarrationMission(
   mission: BunkerNarrationMission | null,
 ): void {
@@ -178,7 +206,7 @@ export function setActiveBunkerNarrationMission(
 
 export function setBunkerNarrationArmed(armed: boolean): void {
   publish({ ...narrationState, armed: activeMission !== null && armed });
-  if (activeMission && armed && narrationState.enabled) {
+  if (activeMission && armed) {
     bunkerNarration.speak(activeMission.id, activeMission.text);
   }
 }
@@ -187,7 +215,7 @@ export function setBunkerNarrationEnabled(enabled: boolean): void {
   bunkerNarration.setEnabled(enabled);
   publish({ ...narrationState, enabled });
   if (enabled && activeMission && narrationState.armed) {
-    bunkerNarration.speak(activeMission.id, activeMission.text);
+    bunkerNarration.replay();
   }
 }
 
@@ -201,6 +229,7 @@ export function stopBunkerNarration(): void {
 }
 
 export const bunkerNarrationSession: BunkerNarrationSessionController = {
+  setRun: setBunkerNarrationRun,
   setMission: setActiveBunkerNarrationMission,
   setArmed: setBunkerNarrationArmed,
   stop: stopBunkerNarration,
