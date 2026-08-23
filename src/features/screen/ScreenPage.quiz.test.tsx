@@ -114,6 +114,43 @@ describe('ScreenPage live quiz base scene', () => {
     expect(screen.queryByRole('heading', { name: 'Кто в доме главный?' })).not.toBeInTheDocument();
   });
 
+  it('does not replay a top-visible voting phase when its payload refreshes', async () => {
+    let refreshQuiz: (() => void) | undefined;
+    const playQuizVotingSignal = vi.fn();
+    const dependencies: ScreenPageDependencies = {
+      subscribe: () => vi.fn(),
+      loadQuiz: vi.fn()
+        .mockResolvedValueOnce(voting)
+        .mockResolvedValueOnce({ ...voting, answeredCount: 18 }),
+      subscribeToQuizRefresh: (callback) => {
+        refreshQuiz = callback;
+        return vi.fn();
+      },
+      playQuizVotingSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    expect(screen.getByTestId('quiz-screen-scene')).toBeInTheDocument();
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      refreshQuiz?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('18 / 40 ОТВЕТИЛИ')).toBeInTheDocument();
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
+  });
+
   it('temporarily overlays guest announcements and returns to the quiz instead of the QR screen', async () => {
     let pushScreenEvent: ((event: ScreenPresentationEvent) => void) | undefined;
     const dependencies: ScreenPageDependencies = {

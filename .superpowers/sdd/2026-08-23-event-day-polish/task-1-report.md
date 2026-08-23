@@ -50,3 +50,30 @@ Results:
 ## Concerns
 
 None. The build retains the pre-existing Vite large-chunk advisory.
+
+## Round 1 review fix
+
+### Changed files
+
+- `src/features/screen/ScreenPage.quiz.test.tsx` — added top-visible repeated voting payload coverage: a refreshed payload with the same `questionId:phase` updates the answer count without replaying the voting cue.
+- `.superpowers/sdd/2026-08-23-event-day-polish/task-1-report.md` — appended this review evidence.
+
+### RED
+
+Command:
+
+```text
+npm test -- --run src/features/screen/ScreenPage.quiz.test.tsx
+```
+
+Observed RED with the key-deduplication guard deliberately mutated for the test: 2 of 7 tests failed, including the new top-visible refresh test with `expected ... 1 times, but got 2 times` for `playQuizVotingSignal`. The existing unchanged hidden-return regression failed for the same expected reason.
+
+### GREEN
+
+Command:
+
+```text
+npm test -- --run src/features/quiz/quizPresentation.test.ts src/features/screen/ScreenPage.quiz.test.tsx src/features/screen/QuizScreenScene.test.tsx src/features/screen/ScreenPage.premiere.test.tsx src/features/screen/ScreenPage.mortal-kombat.test.tsx src/features/screen/ScreenPage.bunker-protection.test.tsx
+```
+
+Result: 6 test files and 24 tests passed. The `HTMLMediaElement.load()` notices are the existing jsdom environment notices from premiere coverage.
