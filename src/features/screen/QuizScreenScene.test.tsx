@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { QuizScreenScene, toAvifQuizImagePath } from './QuizScreenScene';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 
+const answeredText = (count: number) => `${count} / ${40} ОТВЕТИЛИ`;
+
 const votingState: Extract<QuizScreenState, { status: 'active'; phase: 'voting' }> = {
   status: 'active',
   phase: 'voting',
@@ -48,7 +50,7 @@ describe('QuizScreenScene', () => {
 
     expect(screen.getByText('ЛИЗА ИЛИ ВИКТОР?')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Кто в доме главный?' })).toBeInTheDocument();
-    expect(screen.getByText('17 / 40 ОТВЕТИЛИ')).toBeInTheDocument();
+    expect(screen.getByText(answeredText(17))).toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
@@ -67,7 +69,7 @@ describe('QuizScreenScene', () => {
     expect(screen.getByText('60%')).toBeInTheDocument();
     expect(screen.getByText('ВИКТОР')).toBeInTheDocument();
     expect(screen.getByText('40%')).toBeInTheDocument();
-    expect(screen.getByText('30 / 40 ОТВЕТИЛИ')).toBeInTheDocument();
+    expect(screen.getByText(answeredText(30))).toBeInTheDocument();
   });
 
   it('renders the optional thematic image with AVIF preference and WebP fallback', () => {
@@ -114,7 +116,7 @@ describe('QuizScreenScene', () => {
     expect(screen.getByText('WEDDING EDITION · LV')).toBeInTheDocument();
     expect(screen.getByTestId('quiz-editorial-spread')).toHaveAttribute('data-phase', 'voting');
     expect(screen.queryByTestId('quiz-transition-curtain')).not.toBeInTheDocument();
-    expect(screen.getByText('17 / 40 ОТВЕТИЛИ')).not.toHaveAttribute('aria-live');
+    expect(screen.getByText(answeredText(17))).not.toHaveAttribute('aria-live');
   });
 });
 

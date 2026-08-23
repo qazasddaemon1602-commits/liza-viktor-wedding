@@ -19,7 +19,7 @@ describe('createAdminPageDependencies MK wiring', () => {
       .mockResolvedValueOnce({
         data: {
           status: 'owner', tournamentId: 't1', state: 'active', activeCount: 16,
-          waitlistCount: 0, maxPlayers: 40, registrations: [], matches: [], championGuestId: null,
+          waitlistCount: 0, maxPlayers: 16, registrations: [], matches: [], championGuestId: null,
         },
         error: null,
       })

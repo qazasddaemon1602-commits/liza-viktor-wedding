@@ -4,6 +4,8 @@ import { ScreenPage, type ScreenPageDependencies } from './ScreenPage';
 import type { QuizScreenState } from '../quiz/quizScreen.service';
 import type { ScreenPresentationEvent } from './screenEvents.realtime';
 
+const answeredText = (count: number) => `${count} / ${40} ОТВЕТИЛИ`;
+
 const voting: QuizScreenState = {
   status: 'active',
   phase: 'voting',
@@ -89,7 +91,7 @@ describe('ScreenPage live quiz base scene', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'Кто в доме главный?' })).toBeInTheDocument();
-    expect(screen.getByText('17 / 40 ОТВЕТИЛИ')).toBeInTheDocument();
+    expect(screen.getByText(answeredText(17))).toBeInTheDocument();
     expect(screen.queryByTestId('registration-qr')).not.toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
     expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
@@ -147,7 +149,7 @@ describe('ScreenPage live quiz base scene', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText('18 / 40 ОТВЕТИЛИ')).toBeInTheDocument();
+    expect(screen.getByText(answeredText(18))).toBeInTheDocument();
     expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
   });
 

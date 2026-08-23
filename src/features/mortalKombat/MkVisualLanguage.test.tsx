@@ -93,10 +93,10 @@ describe('Mortal Kombat artbook visual language', () => {
     const previous: ActiveProjection = {
       ...bracketState,
       state: 'registration',
-      activeCount: 19,
+      activeCount: 15,
       matches: [],
     };
-    const current: ActiveProjection = { ...previous, activeCount: 20 };
+    const current: ActiveProjection = { ...previous, activeCount: 16 };
     const milestone = deriveMkMilestone(previous, current);
     if (!milestone) throw new Error('Expected a registration milestone');
 

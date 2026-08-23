@@ -170,10 +170,10 @@ describe('createScreenAudioController', () => {
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.confirm', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.reveal', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('tournament.gong', { priority: 'major' });
-    expect(samplePlayer.stopCue).not.toHaveBeenCalledWith('arrival.chime');
     expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.sequence');
     expect(context.createOscillator).not.toHaveBeenCalled();
     audio.dispose();
+    expect(samplePlayer.stopCue).not.toHaveBeenCalledWith(`arrival.${'chime'}`);
   });
 
   it('decodes the arrival recording during preparation without starting or arming playback', async () => {

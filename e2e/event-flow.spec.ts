@@ -106,7 +106,7 @@ test('guest registration updates owner and queues the train moment on an idle pr
 
   await expect(owner.getByRole('heading', { name: 'Анна Смирнова', level: 3 })).toBeVisible();
   await expect(projector.getByTestId('train-arrival-scene')).toBeVisible();
-  await expect(projector.getByTestId('arrival-train-plate')).toBeVisible();
+  await expect(projector.getByTestId('arrival-convoy')).toBeVisible();
   await expect(projector.getByText('Анна Смирнова')).toBeVisible();
 
   await ownerContext.close();
@@ -136,6 +136,68 @@ test('composition lock keeps registration open for a late guest', async ({ brows
   await ownerContext.close();
   await firstGuestContext.close();
   await lateGuestContext.close();
+});
+
+test('six arrivals keep one ceremony, then show a privacy-safe boarding summary', async ({ browser }) => {
+  const screenContext = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+  const projector = await screenContext.newPage();
+  await projector.goto('/screen');
+
+  const guests = await Promise.all(
+    Array.from({ length: 6 }, async (_, index) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await registerGuest(page, `Пассажир${index + 1}`, 'Потока');
+      return context;
+    }),
+  );
+
+  await expect(projector.getByTestId('arrival-convoy')).toBeVisible();
+  await expect(projector.getByText('СОСТАВ ПОПОЛНЕН · +5')).toBeVisible({ timeout: 20_000 });
+  await expect(projector.locator('.boarding-summary-scene')).toBeVisible();
+  await expect(projector.locator('body')).not.toContainText('Пассажир2 Потока');
+  await expect(projector.locator('body')).not.toContainText('Пассажир6 Потока');
+
+  const mapMetrics = await projector.evaluate(() => ({
+    viewportHeight: window.innerHeight,
+    documentHeight: document.documentElement.scrollHeight,
+  }));
+  expect(mapMetrics.documentHeight).toBeLessThanOrEqual(mapMetrics.viewportHeight + 1);
+
+  await Promise.all(guests.map((context) => context.close()));
+  await screenContext.close();
+});
+
+test('reassignment converges while the guest ticket is refreshing', async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const owner = await ownerContext.newPage();
+  const guest = await guestContext.newPage();
+
+  await registerGuest(guest, 'Марина', 'Пересадка');
+  await loginOwner(owner);
+  const carriage = owner.getByLabel('Вагон Марина Пересадка');
+  const nextCarriage = await carriage.locator('option').nth(1).getAttribute('value');
+  if (!nextCarriage) throw new Error('Expected a second carriage for reassignment rehearsal');
+  const nextCarriageLabel = await carriage.locator('option').nth(1).textContent();
+  await carriage.selectOption(nextCarriage);
+  await expect(owner.getByRole('status')).toContainText('Марина Пересадка: назначен');
+
+  await guest.goto('/join');
+  await expect(guest.getByText(nextCarriageLabel ?? '')).toBeVisible({ timeout: 10_000 });
+
+  await ownerContext.close();
+  await guestContext.close();
+});
+
+test('reduced-motion ticket handoff skips the route interstitial', async ({ browser }) => {
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const guest = await context.newPage();
+
+  await registerGuest(guest, 'Тихий', 'Пассажир');
+  await expect(guest.getByText('ФОРМИРУЕМ МАРШРУТ…')).toHaveCount(0);
+
+  await context.close();
 });
 
 test('registration during premiere countdown never interrupts the protected projector scene', async ({ browser }) => {

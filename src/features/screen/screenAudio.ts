@@ -242,7 +242,6 @@ export function createScreenAudioController(
       window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
     }
     stopOscillators();
-    if (hasSample('arrival.chime')) samplePlayer.stopCue('arrival.chime');
     if (hasSample('arrival.sequence')) samplePlayer.stopCue('arrival.sequence');
     const current = context;
     context = null;

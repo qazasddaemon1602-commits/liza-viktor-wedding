@@ -193,14 +193,6 @@ rendered.push(await render('ui/impact.wav', 1.05, (b) => {
   addEcho(b, [[0.13, 0.16, -0.35], [0.27, 0.08, 0.4]]);
 }, 0.92));
 
-rendered.push(await render('arrival/chime.wav', 2.8, (b) => {
-  [[0, 523.25], [0.52, 659.25], [1.04, 783.99]].forEach(([start, frequency], index) => {
-    addTone(b, { start, duration: 1.35, frequency, gain: 0.26, attack: 0.01, release: 0.86, pan: (index - 1) * 0.22 });
-    addTone(b, { start, duration: 0.9, frequency: frequency * 2.01, gain: 0.08, attack: 0.005, release: 0.9, pan: (1 - index) * 0.18 });
-  });
-  addEcho(b, [[0.2, 0.22, -0.45], [0.39, 0.13, 0.42], [0.67, 0.07, -0.2]]);
-}, 0.78));
-
 rendered.push(await render('terminal/key.wav', 0.12, (b) => {
   addNoise(b, { duration: 0.08, gain: 0.38, attack: 0.001, release: 0.94, lowpass: 9_000, highpass: 1_800, seed: 121 });
   addTone(b, { duration: 0.1, frequency: 1_450, endFrequency: 720, gain: 0.18, attack: 0.001, release: 0.9 });

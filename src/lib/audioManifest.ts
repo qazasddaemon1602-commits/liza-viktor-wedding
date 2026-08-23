@@ -117,11 +117,6 @@ export const AUDIO_MANIFEST = {
     maxAgeSeconds: 1,
     fallback: { frequency: 58, durationSeconds: 0.28, gain: 0.034, oscillatorType: 'triangle' },
   }),
-  'arrival.chime': localCue('arrival.chime', 'scene', {
-    gain: 0.5,
-    maxAgeSeconds: 3,
-    fallback: { frequency: 659.25, durationSeconds: 0.2, gain: 0.017 },
-  }),
   'arrival.sequence': recordedCue('arrival.sequence', 'scene', {
     license: 'CC BY 3.0 Unported (individual OpenSFX samples)',
     status: 'verified',

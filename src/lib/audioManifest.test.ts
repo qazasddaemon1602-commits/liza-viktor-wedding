@@ -54,4 +54,9 @@ describe('audio manifest', () => {
       );
     }
   });
+
+  it('keeps the arrival ceremony on its single recorded sequence cue', () => {
+    expect(audioCueIds).toContain('arrival.sequence');
+    expect(audioCueIds).not.toContain(`arrival.${'chime'}` as never);
+  });
 });
