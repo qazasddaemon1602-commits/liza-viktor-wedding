@@ -504,7 +504,9 @@ export function AdminPage({ dependencies }: AdminPageProps) {
             onSessionExpired: expireOwnerSession,
           }}
         />
-        {deps.bunkerDock && <AdminBunkerDock dependencies={deps.bunkerDock} />}
+        {dependencies
+          ? deps.bunkerDock && <AdminBunkerDock dependencies={deps.bunkerDock} />
+          : <AdminBunkerDock />}
       </>
     );
   }
