@@ -1514,6 +1514,10 @@ export type Database = {
         Args: { p_device_key: string; p_event_slug: string }
         Returns: Json
       }
+      get_registration_carriage_map: {
+        Args: { p_event_slug: string }
+        Returns: Json
+      }
       get_revealed_couple_answer: {
         Args: { p_event_slug: string }
         Returns: Json
