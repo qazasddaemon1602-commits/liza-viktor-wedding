@@ -40,6 +40,14 @@ beforeEach(() => {
 });
 
 describe('EventHostRunbook', () => {
+  it('keeps the bunker finale on the reveal screen before the host restores warm light', () => {
+    const finale = EVENT_HOST_CUES.find((cue) => cue.id === 'bunker-final');
+
+    expect(finale?.next).toBe(
+      'После подтверждённого BUNKER_OPEN приглушите свет, скажите одну реплику и дождитесь полного раскрытия на ТВ; только затем включайте тёплый свет и ведите аплодисменты.',
+    );
+  });
+
   it('covers the whole event with actionable operator fields instead of a second game state', () => {
     expect(EVENT_HOST_CUES.map((cue) => cue.id)).toEqual([
       'arrival',
@@ -166,7 +174,7 @@ describe('EventHostRunbook', () => {
         read: 'Объект BK-17 найден. Гермоворота закроются через тридцать минут.',
         improvise: 'На отметках 15, 10 и 5 минут называйте только оставшееся время и число незакрытых частей.',
         technical: 'Запустите FINAL_30 одной командой. Не открывайте Бункер нормально, пока сервер не подтвердил unlock.',
-        next: 'После подтверждённого BUNKER_OPEN погасите тревогу, включите тёплый свет и завершите игру.',
+        next: 'После подтверждённого BUNKER_OPEN приглушите свет, скажите одну реплику и дождитесь полного раскрытия на ТВ; только затем включайте тёплый свет и ведите аплодисменты.',
         guarded: true, moduleHref: '#admin-bunker-runbook',
       },
       {

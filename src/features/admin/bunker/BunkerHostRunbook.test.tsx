@@ -116,4 +116,20 @@ describe('BunkerHostRunbook', () => {
     expect(runbook).toHaveTextContent(/первое архивное подтверждение маршрута к BK-17/i);
     expect(runbook).not.toHaveTextContent(/первая (?:зацепка|метка|отметка)|неизвестная метка/i);
   });
+
+  it('hands the BUNKER_OPEN reveal to Liza before the host restores the room', () => {
+    render(<BunkerHostRunbook mission="BUNKER_OPEN" plan={null} />);
+
+    const runbook = screen.getByRole('region', { name: 'Сценарий ведущего Бункера' });
+    const nowRead = within(runbook).getByRole('heading', { name: 'СЕЙЧАС ПРОЧИТАТЬ' }).closest('article')!;
+    const afterCompletion = within(runbook).getByRole('heading', { name: 'ПОСЛЕ ЗАВЕРШЕНИЯ' }).closest('article')!;
+
+    expect(nowRead).toHaveTextContent('Последний сигнал принят. Пожалуйста, смотрите на экран.');
+    expect(nowRead).not.toHaveTextContent('Лиза');
+    expect(runbook).toHaveTextContent('До реплики приглушите свет в зале.');
+    expect(runbook).toHaveTextContent(/не говорите поверх звука двери и голоса Лизы/i);
+    expect(runbook).toHaveTextContent('Сигнал принят. Поезд Виктора прибыл. Я ждала вас. — Лиза');
+    expect(afterCompletion).toHaveTextContent('Источник BK-17 раскрыт. Лиза ждала именно этот состав. Маршрут Виктора завершён.');
+    expect(afterCompletion).toHaveTextContent('включите тёплый свет и ведите аплодисменты');
+  });
 });
