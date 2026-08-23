@@ -16,6 +16,8 @@
 - Preserve the last valid projection on later failures.
 - Prevent overlapping loads and clean up timers/subscriptions.
 
+### Task 1: Recover the dedicated phone arena
+
 - [ ] RED: add a fake-timer test where the initial load rejects, a bounded recovery tick reloads, and the page reaches the active signup state without remounting.
 - [ ] RED: add a manual `ПОВТОРИТЬ` test that recovers immediately from the full-page error.
 - [ ] RED: add tests for missed-realtime polling from idle to active, in-flight deduplication, timer/subscription cleanup and last-valid-state preservation on a later failure.
