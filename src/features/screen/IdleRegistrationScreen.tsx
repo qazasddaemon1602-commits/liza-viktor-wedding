@@ -1,10 +1,62 @@
+import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { CarriageMapScreen } from './CarriageMapScreen';
+import type { RegistrationCarriageMap } from './carriageMap.service';
 
 type IdleRegistrationScreenProps = {
   joinUrl: string;
+  carriageMap?: RegistrationCarriageMap | null;
 };
 
-export function IdleRegistrationScreen({ joinUrl }: IdleRegistrationScreenProps) {
+export function IdleRegistrationScreen({
+  joinUrl,
+  carriageMap = null,
+}: IdleRegistrationScreenProps) {
+  const canPreviewMap = carriageMap?.status === 'registration';
+  const [showMap, setShowMap] = useState(false);
+
+  useEffect(() => {
+    if (!canPreviewMap) setShowMap(false);
+  }, [canPreviewMap]);
+
+  useEffect(() => {
+    if (!canPreviewMap) return;
+    const toggleMap = (event: KeyboardEvent) => {
+      if (
+        event.key.toLowerCase() !== 'm'
+        || event.repeat
+        || event.altKey
+        || event.ctrlKey
+        || event.metaKey
+      ) return;
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+        return;
+      }
+      setShowMap((current) => !current);
+    };
+    window.addEventListener('keydown', toggleMap);
+    return () => window.removeEventListener('keydown', toggleMap);
+  }, [canPreviewMap]);
+
+  if (showMap && canPreviewMap) {
+    return (
+      <main className="event-screen event-screen--idle event-screen--map-preview wedding-editorial-surface">
+        <div className="event-screen__ambient event-screen__ambient--left" />
+        <div className="event-screen__ambient event-screen__ambient--right" />
+        <section className="idle-carriage-map-preview">
+          <div className="idle-carriage-map-preview__toolbar">
+            <button type="button" onClick={() => setShowMap(false)}>
+              ВЕРНУТЬ QR
+            </button>
+            <span aria-hidden="true">КЛАВИША M</span>
+          </div>
+          <CarriageMapScreen map={carriageMap} variant="compact" />
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="event-screen event-screen--idle wedding-editorial-surface">
       <div className="event-screen__ambient event-screen__ambient--left" />
@@ -151,6 +203,16 @@ export function IdleRegistrationScreen({ joinUrl }: IdleRegistrationScreenProps)
 
           <p className="idle-screen__scan-label">НАВЕДИТЕ КАМЕРУ → ПОЛУЧИТЕ БИЛЕТ</p>
           <p className="idle-screen__join-url">{joinUrl}</p>
+
+          {canPreviewMap && (
+            <button
+              type="button"
+              className="idle-screen__map-toggle"
+              onClick={() => setShowMap(true)}
+            >
+              ОТКРЫТЬ КАРТУ СОСТАВА
+            </button>
+          )}
 
           <div className="idle-ticket__stub-meta" aria-hidden="true">
             <span>DATE</span><strong>30 AUG 2026</strong>

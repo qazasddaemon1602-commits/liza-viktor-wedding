@@ -465,6 +465,63 @@
   text-align: center;
 }
 
+.idle-screen__map-toggle,
+.idle-carriage-map-preview__toolbar button {
+  min-height: 2.8rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(23, 59, 93, 0.54);
+  color: var(--idle-ink);
+  background: rgba(244, 234, 216, 0.58);
+  font: inherit;
+  font-size: clamp(0.52rem, 0.62vw, 0.7rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+}
+
+.idle-screen__map-toggle {
+  width: 100%;
+}
+
+.idle-screen__map-toggle:hover,
+.idle-screen__map-toggle:focus-visible,
+.idle-carriage-map-preview__toolbar button:hover,
+.idle-carriage-map-preview__toolbar button:focus-visible {
+  color: var(--idle-paper);
+  background: var(--idle-ink);
+  outline: none;
+}
+
+.event-screen--map-preview {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.idle-carriage-map-preview {
+  position: relative;
+  z-index: 3;
+  width: min(94vw, 112rem);
+  min-height: min(88vh, 56rem);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 2px solid var(--idle-ink);
+  color: var(--idle-ink);
+  background: rgba(244, 234, 216, 0.96);
+  box-shadow: 0 2.8rem 8rem rgba(23, 59, 93, 0.17);
+  overflow: hidden;
+}
+
+.idle-carriage-map-preview__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: clamp(0.7rem, 1.2vw, 1rem) clamp(1rem, 2vw, 2rem) 0;
+  color: rgba(23, 59, 93, 0.58);
+  font-size: clamp(0.48rem, 0.56vw, 0.64rem);
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
 .idle-ticket__stub-meta {
   width: 100%;
   display: grid;
@@ -944,6 +1001,11 @@
 
   .carriage-map__carriage {
     min-height: 10rem;
+  }
+
+  .idle-carriage-map-preview {
+    width: min(100%, 42rem);
+    min-height: calc(100dvh - 2rem);
   }
 }
 

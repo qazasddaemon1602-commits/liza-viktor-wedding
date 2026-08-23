@@ -47,6 +47,12 @@ import {
   type QuizRealtimeClient,
 } from '../quiz/quiz.realtime';
 import { CarriageCallScene } from './CarriageCallScene';
+import { CarriageMapScreen } from './CarriageMapScreen';
+import {
+  getRegistrationCarriageMap,
+  type CarriageMapRpcClient,
+  type RegistrationCarriageMap,
+} from './carriageMap.service';
 import { hasConnectionFailures, updateConnectionHealth, type ConnectionSource } from './connectionHealth';
 import { CoupleAnswerRevealScene } from './CoupleAnswerRevealScene';
 import { FinalFiveRevealScene } from './FinalFiveRevealScene';
@@ -68,6 +74,7 @@ export type ScreenPageDependencies = {
   loadFinalFive?: () => Promise<RevealedFinalFive>;
   loadPremiere?: () => Promise<PremiereScreenState>;
   loadMortalKombat?: () => Promise<MkTournamentProjection>;
+  loadCarriageMap?: () => Promise<RegistrationCarriageMap>;
   subscribeToQuizRefresh?: (callback: () => void) => () => void;
   subscribeToPremiereRefresh?: (callback: () => void) => () => void;
   subscribeToMkRefresh?: (callback: () => void) => () => void;
@@ -106,6 +113,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
   const premiereRpcClient = client as unknown as PremiereRpcClient;
   const premiereRealtimeClient = client as unknown as PremiereRealtimeClient;
   const premierePresenceClient = client as unknown as PremierePresenceRealtimeClient;
+  const carriageMapRpcClient = client as unknown as CarriageMapRpcClient;
   const audio = createScreenAudioController();
   const premiereAudio = createPremiereAudioController();
   return {
@@ -115,6 +123,7 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
     loadFinalFive: () => getRevealedFinalFive(finalFiveRpcClient, eventSlug),
     loadPremiere: () => getPremiereScreenState(premiereRpcClient, eventSlug),
     loadMortalKombat: () => getMkTournamentScreenState(mkRpcClient, eventSlug),
+    loadCarriageMap: () => getRegistrationCarriageMap(carriageMapRpcClient, eventSlug),
     subscribeToQuizRefresh: (callback) => subscribeToQuizRefresh(
       quizRealtimeClient,
       eventSlug,
@@ -277,6 +286,7 @@ export function ScreenPage({
   const [finalFive, setFinalFive] = useState<RevealedFinalFive>({ status: 'hidden' });
   const [premiereState, setPremiereState] = useState<PremiereScreenState | null>(null);
   const [mkState, setMkState] = useState<MkTournamentProjection | null>(null);
+  const [carriageMap, setCarriageMap] = useState<RegistrationCarriageMap | null>(null);
   const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
   const [audioSettings, setAudioSettings] = useState(() => siteAudio.getSettings());
   const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
@@ -293,6 +303,7 @@ export function ScreenPage({
   const autoAudioAttemptedRef = useRef(false);
   const arrivalReadyRef = useRef(!deps.prepareArrival);
   const arrivalPreparationRef = useRef<Promise<boolean> | null>(null);
+  const carriageMapRefreshRef = useRef<() => void>(() => undefined);
 
   const soundEnabled = audioSettings.enabled && audioSettings.volume > 0;
   const premiereProtected = isPremiereProtected(premiereState);
@@ -398,6 +409,7 @@ export function ScreenPage({
     const handleOnline = () => {
       markConnection('browser', true);
       setReconnectEpoch((current) => current + 1);
+      carriageMapRefreshRef.current();
     };
 
     window.addEventListener('offline', handleOffline);
@@ -408,7 +420,57 @@ export function ScreenPage({
     };
   }, [markConnection]);
 
+  useEffect(() => {
+    const loadCarriageMap = deps.loadCarriageMap;
+    if (!loadCarriageMap) {
+      setCarriageMap(null);
+      carriageMapRefreshRef.current = () => undefined;
+      return;
+    }
+
+    let active = true;
+    let inFlight = false;
+    let refreshQueued = false;
+
+    const reload = () => {
+      if (!active) return;
+      if (inFlight) {
+        refreshQueued = true;
+        return;
+      }
+
+      inFlight = true;
+      void loadCarriageMap()
+        .then((next) => {
+          if (active) setCarriageMap(next);
+        })
+        .catch(() => {
+          // Keep the last valid map during a temporary network failure.
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!active || !refreshQueued) return;
+          refreshQueued = false;
+          reload();
+        });
+    };
+
+    carriageMapRefreshRef.current = reload;
+    reload();
+    const interval = window.setInterval(reload, 2_000);
+
+    return () => {
+      active = false;
+      refreshQueued = false;
+      window.clearInterval(interval);
+      if (carriageMapRefreshRef.current === reload) {
+        carriageMapRefreshRef.current = () => undefined;
+      }
+    };
+  }, [deps]);
+
   useEffect(() => deps.subscribe((event) => {
+    if (event.kind === 'guest_registered') carriageMapRefreshRef.current();
     if (presentationProtectedRef.current) return;
     if (seenIds.current.has(event.id)) return;
     seenIds.current.add(event.id);
@@ -669,8 +731,13 @@ export function ScreenPage({
             onSignal={playQuizSignal}
           />
         )
+      ) : carriageMap?.status === 'complete' ? (
+        <CarriageMapScreen map={carriageMap} variant="full" />
       ) : (
-        <IdleRegistrationScreen joinUrl={joinUrl} />
+        <IdleRegistrationScreen
+          joinUrl={joinUrl}
+          carriageMap={carriageMap?.status === 'registration' ? carriageMap : null}
+        />
       )}
 
       {connectionDegraded && (
