@@ -57,32 +57,36 @@ export function MortalKombatPage({
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
   const stateRef = useRef<MkTournamentProjection | null>(null);
-  const reloadRef = useRef<() => void>(() => undefined);
+  const errorRef = useRef('');
+  const reloadRef = useRef<(afterInFlight?: boolean) => Promise<void>>(() => Promise.resolve());
 
   useEffect(() => {
     let active = true;
-    let loading = false;
     let reloadTimer: number | undefined;
+    let inFlight: Promise<void> | null = null;
 
     const scheduleReload = () => {
       if (!active) return;
-      const delay = !stateRef.current || !isActiveTournament(stateRef.current)
+      const delay = errorRef.current || !stateRef.current || !isActiveTournament(stateRef.current)
         ? 2_000
         : 10_000;
       reloadTimer = window.setTimeout(reload, delay);
     };
 
-    const reload = () => {
-      if (loading) return;
+    const reload = (afterInFlight = false): Promise<void> => {
+      if (inFlight) {
+        return afterInFlight ? inFlight.then(() => reload()) : inFlight;
+      }
       if (reloadTimer !== undefined) {
         window.clearTimeout(reloadTimer);
         reloadTimer = undefined;
       }
-      loading = true;
-      void deps.load()
+      inFlight = Promise.resolve()
+        .then(() => deps.load())
         .then((next) => {
           if (!active) return;
           stateRef.current = next;
+          errorRef.current = '';
           setState(next);
           setError('');
         })
@@ -91,14 +95,16 @@ export function MortalKombatPage({
           const code = typeof loadError === 'object' && loadError !== null && 'code' in loadError
             ? String((loadError as { code?: unknown }).code ?? '')
             : '';
-          setError(code === '42501'
+          errorRef.current = code === '42501'
             ? 'Сначала зарегистрируйтесь гостем по QR-коду.'
-            : 'Не удалось загрузить турнир. Проверьте связь.');
+            : 'Не удалось загрузить турнир. Проверьте связь.';
+          setError(errorRef.current);
         })
         .finally(() => {
-          loading = false;
+          inFlight = null;
           scheduleReload();
         });
+      return inFlight;
     };
 
     reloadRef.current = reload;
@@ -106,7 +112,7 @@ export function MortalKombatPage({
     const unsubscribe = deps.subscribeToRefresh?.(reload);
     return () => {
       active = false;
-      reloadRef.current = () => undefined;
+      reloadRef.current = () => Promise.resolve();
       if (reloadTimer !== undefined) window.clearTimeout(reloadTimer);
       unsubscribe?.();
     };
@@ -115,10 +121,11 @@ export function MortalKombatPage({
   const join = async () => {
     if (joining) return;
     setJoining(true);
+    errorRef.current = '';
     setError('');
     try {
       await deps.join();
-      setState(await deps.load());
+      await reloadRef.current(true);
     } catch (joinError) {
       const code = typeof joinError === 'object' && joinError !== null && 'code' in joinError
         ? String((joinError as { code?: unknown }).code ?? '')
@@ -129,6 +136,12 @@ export function MortalKombatPage({
     } finally {
       setJoining(false);
     }
+  };
+
+  const retry = () => {
+    errorRef.current = '';
+    setError('');
+    void reloadRef.current();
   };
 
   if (!state && !error) {
@@ -152,10 +165,7 @@ export function MortalKombatPage({
           <button
             className="mk-primary-button"
             type="button"
-            onClick={() => {
-              setError('');
-              reloadRef.current();
-            }}
+            onClick={retry}
           >
             ПОВТОРИТЬ
           </button>
@@ -172,6 +182,12 @@ export function MortalKombatPage({
           <p className="eyebrow">СВАДЕБНЫЙ ТУРНИРНЫЙ АРХИВ</p>
           <h1>РЕГИСТРАЦИЯ ЕЩЁ НЕ ОТКРЫТА</h1>
           <p>Как только админ откроет набор бойцов, здесь появится кнопка участия.</p>
+          {error && (
+            <>
+              <p className="mk-error" role="alert">{error}</p>
+              <button className="mk-primary-button" type="button" onClick={retry}>ПОВТОРИТЬ</button>
+            </>
+          )}
         </section>
       </main>
     );

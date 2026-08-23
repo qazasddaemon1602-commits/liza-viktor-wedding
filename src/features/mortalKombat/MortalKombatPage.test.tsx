@@ -226,6 +226,73 @@ describe('MortalKombatPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить турнир. Проверьте связь.');
   });
 
+  it('keeps idle content actionable after a later tournament load error', async () => {
+    let refresh: (() => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce({ status: 'idle' } satisfies MkTournamentProjection)
+      .mockRejectedValueOnce(new Error('network unavailable'));
+
+    render(
+      <MortalKombatPage
+        dependencies={dependencies({
+          load,
+          subscribeToRefresh: (callback) => {
+            refresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    await settle();
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('heading', { name: 'РЕГИСТРАЦИЯ ЕЩЁ НЕ ОТКРЫТА' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Не удалось загрузить турнир. Проверьте связь.');
+    expect(screen.getByRole('button', { name: 'ПОВТОРИТЬ' })).toBeInTheDocument();
+  });
+
+  it('returns to a two-second recovery cadence after an active load error', async () => {
+    vi.useFakeTimers();
+    let refresh: (() => void) | undefined;
+    const load = vi.fn()
+      .mockResolvedValueOnce(openState)
+      .mockRejectedValueOnce(new Error('network unavailable'))
+      .mockResolvedValueOnce(joinedState);
+
+    render(
+      <MortalKombatPage
+        dependencies={dependencies({
+          load,
+          subscribeToRefresh: (callback) => {
+            refresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    await settle();
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_999);
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(load).toHaveBeenCalledTimes(3);
+    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
+  });
+
   it('uses the 40-player tournament limit instead of a stale event-wide guest count', async () => {
     const limitedState: ActiveProjection = {
       ...openState,
@@ -265,6 +332,60 @@ describe('MortalKombatPage', () => {
     expect(await screen.findByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'ВЕРНУТЬСЯ К БИЛЕТУ' })).toHaveAttribute('href', '/join');
+  });
+
+  it('queues join reconciliation behind an in-flight tournament reload', async () => {
+    const user = userEvent.setup();
+    const inFlightReload = deferred<MkTournamentProjection>();
+    const joinedReload = deferred<MkTournamentProjection>();
+    const load = vi.fn()
+      .mockResolvedValueOnce(openState)
+      .mockReturnValueOnce(inFlightReload.promise)
+      .mockReturnValueOnce(joinedReload.promise);
+    const join = vi.fn().mockResolvedValue({
+      status: 'joined',
+      registrationStatus: 'active',
+      activeCount: 10,
+      maxPlayers: 40,
+      waitlistPosition: null,
+    });
+    let refresh: (() => void) | undefined;
+
+    render(
+      <MortalKombatPage
+        dependencies={dependencies({
+          load,
+          join,
+          subscribeToRefresh: (callback) => {
+            refresh = callback;
+            return vi.fn();
+          },
+        })}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' })).toBeInTheDocument();
+    refresh?.();
+    await user.click(screen.getByRole('button', { name: 'УЧАСТВОВАТЬ В БИТВЕ' }));
+    await settle();
+
+    expect(load).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      inFlightReload.resolve(openState);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(load).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      joinedReload.resolve(joinedState);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('ВЫ В ТУРНИРЕ · 10 / 40')).toBeInTheDocument();
   });
 
   it('shows the return-to-ticket link for waitlisted guests', async () => {
