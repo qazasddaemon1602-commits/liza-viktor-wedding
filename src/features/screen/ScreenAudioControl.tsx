@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { requestProjectorAudioRearm, siteAudio } from '../../lib/siteAudio';
+import {
+  getBunkerNarrationState,
+  replayBunkerNarration,
+  setBunkerNarrationArmed,
+  setBunkerNarrationEnabled,
+  stopBunkerNarration,
+  subscribeToBunkerNarrationState,
+} from '../bunker/bunkerNarration';
 import { PREMIERE_MEDIA_AUTOPLAY_MUTED_EVENT } from '../premiere/mediaPlayback';
 
 const LAST_VOLUME_KEY = 'love-story-live:sound-last-volume';
@@ -48,11 +56,20 @@ export function ScreenAudioControl() {
   const { pathname } = useLocation();
   const [settings, setSettings] = useState(() => siteAudio.getSettings());
   const [premiereAutoplayMuted, setPremiereAutoplayMuted] = useState(false);
+  const [narration, setNarration] = useState(getBunkerNarrationState);
   const visible = pathname === '/screen' || pathname === '/mortal-kombat/screen';
   const userMuted = !settings.enabled || settings.volume <= 0;
   const muted = userMuted || premiereAutoplayMuted;
 
-  useEffect(() => siteAudio.subscribe(setSettings), []);
+  useEffect(() => siteAudio.subscribe((next) => {
+    setSettings(next);
+    if (!next.enabled || next.volume <= 0) {
+      stopBunkerNarration();
+      setBunkerNarrationArmed(false);
+    }
+  }), []);
+
+  useEffect(() => subscribeToBunkerNarrationState(setNarration), []);
 
   useEffect(() => {
     const updatePremiereMediaMute = (event: Event) => {
@@ -82,6 +99,7 @@ export function ScreenAudioControl() {
 
     if (!userMuted) {
       siteAudio.setEnabled(false);
+      stopBunkerNarration();
       return;
     }
 
@@ -95,6 +113,7 @@ export function ScreenAudioControl() {
     if (next <= 0) {
       siteAudio.setVolume(0);
       siteAudio.setEnabled(false);
+      stopBunkerNarration();
       return;
     }
 
@@ -129,6 +148,33 @@ export function ScreenAudioControl() {
         aria-valuetext={`${Math.round(settings.volume * 100)}%`}
         onChange={(event) => changeVolume(Number(event.target.value))}
       />
+      {narration.active && narration.armed && (
+        <>
+          <span className="screen-audio-control__divider" aria-hidden="true" />
+          <button
+            type="button"
+            className="screen-audio-control__narration"
+            data-audio-disabled
+            aria-label={narration.enabled ? 'Отключить озвучку' : 'Включить озвучку'}
+            title={narration.enabled ? 'Отключить озвучку вступления' : 'Включить озвучку вступления'}
+            aria-pressed={narration.enabled}
+            onClick={() => setBunkerNarrationEnabled(!narration.enabled)}
+          >
+            ГОЛОС
+          </button>
+          <button
+            type="button"
+            className="screen-audio-control__replay"
+            data-audio-disabled
+            aria-label="Повторить вступление"
+            title="Повторить озвучку вступления"
+            disabled={!narration.enabled}
+            onClick={() => replayBunkerNarration()}
+          >
+            ↻
+          </button>
+        </>
+      )}
     </div>
   );
 }

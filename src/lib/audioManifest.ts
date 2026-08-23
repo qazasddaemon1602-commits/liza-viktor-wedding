@@ -1,5 +1,12 @@
 export type AudioPriority = 'ui' | 'scene' | 'major';
 
+export const BUNKER_NARRATION_PROFILE = Object.freeze({
+  lang: 'ru-RU',
+  rate: 0.92,
+  pitch: 0.96,
+  volume: 1,
+});
+
 export type AudioAttribution = {
   license: string;
   status: 'pending' | 'verified';

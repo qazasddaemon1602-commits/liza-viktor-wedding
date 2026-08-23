@@ -14,6 +14,62 @@ async function flushLoadedState() {
 }
 
 describe('BunkerScreenGuard', () => {
+  it.each([
+    ['MISSION_03', 'mission_03', 'MISSION_04', 'mission_04'],
+    ['MISSION_05', 'mission_05', 'MISSION_06', 'mission_06'],
+  ] as const)(
+    'remounts the artistic intro when the server advances from %s/%s to %s/%s inside one visual phase',
+    async (firstState, firstMission, nextState, nextMission) => {
+      let refresh: (() => void) | undefined;
+      const base = {
+        status: 'active' as const,
+        startedAt: '2026-08-30T18:00:00.000Z',
+        durationSeconds: 1800,
+        remainingSeconds: 900,
+        soundEnabled: false,
+        phase: 'mission_a' as const,
+        unlocked: false,
+        teams: [],
+        characterCounts: { active: 16, saved: 0, excluded: 0 },
+      };
+      const load = vi.fn()
+        .mockResolvedValueOnce({
+          ...base,
+          globalGameState: firstState,
+          currentMission: { id: firstMission, state: firstState, plan: null },
+          serverNow: '2026-08-30T18:15:00.000Z',
+        })
+        .mockResolvedValueOnce({
+          ...base,
+          globalGameState: nextState,
+          currentMission: { id: nextMission, state: nextState, plan: null },
+          serverNow: '2026-08-30T18:15:01.000Z',
+        });
+
+      render(
+        <BunkerScreenGuard dependencies={{
+          load,
+          subscribe: (callback) => {
+            refresh = callback;
+            return () => undefined;
+          },
+        }}>
+          <div>ОБЫЧНЫЙ ЭКРАН</div>
+        </BunkerScreenGuard>,
+      );
+      await flushLoadedState();
+      const firstScene = screen.getByLabelText('Бункер · экран квеста');
+
+      await act(async () => {
+        refresh?.();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(screen.getByLabelText('Бункер · экран квеста')).not.toBe(firstScene);
+    },
+  );
+
   it('selects the restored projector scene from authoritative globalGameState', async () => {
     render(
       <BunkerScreenGuard dependencies={{

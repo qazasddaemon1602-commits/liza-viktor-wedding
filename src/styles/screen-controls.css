@@ -76,6 +76,59 @@
   outline-offset: 2px;
 }
 
+.screen-audio-control__divider {
+  width: 1px;
+  height: 1.35rem;
+  background: rgba(243, 236, 223, 0.2);
+}
+
+.screen-audio-control__narration,
+.screen-audio-control__replay {
+  min-height: 1.75rem;
+  border: 0;
+  border-radius: 999px;
+  color: rgba(243, 236, 223, 0.82);
+  background: transparent;
+  cursor: pointer;
+}
+
+.screen-audio-control__narration {
+  padding: 0 0.48rem;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+}
+
+.screen-audio-control__narration[aria-pressed="true"] {
+  color: #fffaf0;
+  background: rgba(243, 236, 223, 0.1);
+}
+
+.screen-audio-control__replay {
+  width: 1.75rem;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.screen-audio-control__narration:hover,
+.screen-audio-control__narration:focus-visible,
+.screen-audio-control__replay:hover,
+.screen-audio-control__replay:focus-visible {
+  color: #fffaf0;
+  background: rgba(243, 236, 223, 0.09);
+  outline: none;
+}
+
+.screen-audio-control__narration:focus-visible,
+.screen-audio-control__replay:focus-visible {
+  box-shadow: 0 0 0 2px rgba(243, 236, 223, 0.35);
+}
+
+.screen-audio-control__replay:disabled {
+  opacity: 0.34;
+  cursor: default;
+}
+
 .screen-connection-indicator {
   position: fixed;
   z-index: 90;

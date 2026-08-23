@@ -1,8 +1,13 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { PROJECTOR_AUDIO_REARM_EVENT } from '../../lib/siteAudio';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
 import { BunkerQuestScene, phaseForGlobalGameState } from './BunkerQuestScene';
 import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
+import {
+  bunkerNarrationSession,
+  type BunkerNarrationSessionController,
+} from './bunkerNarration';
 import { setBunkerPresentationProtected } from './bunkerProtection';
 import {
   subscribeToBunkerRefresh,
@@ -13,11 +18,13 @@ import {
   type BunkerRpcClient,
   type BunkerScreenState,
 } from './bunker.service';
+import { getBunkerMissionContent } from './v2/content/missionContent';
 
 export type BunkerScreenGuardDependencies = {
   load: () => Promise<BunkerScreenState>;
   subscribe?: (callback: () => void) => () => void;
   audio?: BunkerAudioController;
+  narration?: BunkerNarrationSessionController;
 };
 
 type BunkerScreenGuardProps = {
@@ -35,6 +42,7 @@ function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies |
       load: () => getBunkerScreenState(rpcClient, eventSlug),
       subscribe: (callback) => subscribeToBunkerRefresh(realtimeClient, eventSlug, callback),
       audio: createBunkerAudioController(),
+      narration: bunkerNarrationSession,
     };
   } catch {
     return null;
@@ -132,6 +140,9 @@ export function BunkerScreenGuard({
     ? phaseForGlobalGameState(state.globalGameState, state.phase ?? 'emergency')
     : null;
   const emergencyPhase = bunkerActive && activePhase === 'emergency';
+  const narrationContent = state?.status === 'active'
+    ? getBunkerMissionContent(state.currentMission?.id ?? state.globalGameState)
+    : undefined;
 
   useEffect(() => {
     setBunkerPresentationProtected(bunkerActive);
@@ -199,6 +210,57 @@ export function BunkerScreenGuard({
   }, [deps, bunkerActive, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => {
+    const narration = deps?.narration;
+    const audio = deps?.audio;
+    if (!narration) return;
+    if (
+      !bunkerActive
+      || state?.status !== 'active'
+      || !narrationContent
+    ) {
+      narration.setMission(null);
+      return;
+    }
+
+    narration.setMission({
+      id: state.currentMission?.id ?? narrationContent.key,
+      text: narrationContent.intro.narration,
+    });
+    narration.setArmed(false);
+    let active = true;
+
+    const armNarration = () => {
+      if (!audio || !state.soundEnabled) {
+        narration.setArmed(false);
+        return;
+      }
+      void audio.arm()
+        .then((armed) => {
+          if (active) narration.setArmed(armed);
+        })
+        .catch(() => {
+          if (active) narration.setArmed(false);
+        });
+    };
+
+    armNarration();
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, armNarration);
+    return () => {
+      active = false;
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, armNarration);
+      narration.setMission(null);
+      narration.stop();
+    };
+  }, [
+    deps,
+    bunkerActive,
+    narrationContent?.key,
+    narrationContent?.intro.narration,
+    state?.status === 'active' ? state.currentMission?.id : null,
+    state?.status === 'active' ? state.soundEnabled : false,
+  ]);
+
+  useEffect(() => {
     const audio = deps?.audio;
     if (!bunkerActive || state?.status !== 'active') {
       previousUnlockRef.current = null;
@@ -230,7 +292,7 @@ export function BunkerScreenGuard({
       )}
       {bunkerActive && state?.status === 'active' && activePhase !== 'emergency' && (
         <BunkerQuestScene
-          key={activePhase}
+          key={`${state.globalGameState}:${state.currentMission?.id ?? ''}`}
           state={state}
           remainingSeconds={remainingSeconds}
           motionPreference={motionPreference}
