@@ -156,8 +156,8 @@
 - Create: `public/images/bunker/story/liza-operator.webp`
 - Create: `public/images/bunker/story/viktor-route.avif`
 - Create: `public/images/bunker/story/viktor-route.webp`
-- Create: `public/images/bunker/story/viktor-chief.avif`
-- Create: `public/images/bunker/story/viktor-chief.webp`
+- Create: `public/images/bunker/story/train-chief.avif`
+- Create: `public/images/bunker/story/train-chief.webp`
 - Create: `public/images/bunker/story/liza-reveal.avif`
 - Create: `public/images/bunker/story/liza-reveal.webp`
 - Create: `public/images/bunker/story/couple-epilogue.avif`
@@ -168,18 +168,18 @@
 **Interfaces:**
 - Operator portrait source: supplied serious Liza photograph.
 - Viktor route source: supplied Viktor-at-computer photograph transformed so the entire computer/office becomes a realistic locomotive driver's cab; the seated-chair photograph is reserve-only.
-- Viktor chief source: supplied finished burgundy-uniform corridor portrait, optimized without regenerating the face and used as an arrival/route-transition insert rather than replacing the driver-cab frame.
+- Train chief source: supplied finished burgundy-uniform corridor portrait of Ilya Nagavkin in his existing administrator/host role, optimized without regenerating the face and used with the public label `ИЛЬЯ НАГАВКИН · НАЧАЛЬНИК ПОЕЗДА · ВЕДУЩИЙ`; it does not replace Viktor's driver-cab frame or create new authorization mechanics.
 - Reveal source: supplied smiling Liza photograph.
 - Epilogue source: supplied couple photograph.
 - Every component uses `<picture>` with AVIF first and WebP fallback, fixed aspect ratio, `object-fit: cover`, meaningful Russian alt text and no remote URLs.
 
-- [ ] Use built-in ImageGen in image-edit mode on the four photographic sources that need transformation; preserve recognizable identity, pose and facial proportions. Keep the supplied finished Viktor-chief image intact apart from crop, grade and encoding.
+- [ ] Use built-in ImageGen in image-edit mode on the four photographic sources that need transformation; preserve recognizable identity, pose and facial proportions. Keep the supplied finished train-chief image intact apart from crop, grade and encoding.
 - [ ] Apply the approved fairytale-railway wardrobe: Liza as a graphite-blue headset dispatcher before reveal, Viktor in a restrained midnight-blue conductor/engineer-inspired suit, Liza in an ivory/champagne modern-princess gown and thin diadem at reveal, and both looks united in the couple epilogue.
 - [ ] Keep the styling editorial rather than literal cosplay: no hat, oversized crown, logos, badges, pasted locomotive or fantasy castle; retain the coherent graphite/blue archive grade, cream/brass light and subtle grain.
 - [ ] Inspect all four full-resolution outputs and regenerate any asset with identity drift, malformed hands/glasses or unusable crop.
 - [ ] Export responsive AVIF and WebP files into `public/images/bunker/story/` without changing the supplied originals.
 - [ ] Add an asset contract checking ten files, non-zero dimensions, valid formats and minimum long-edge resolution.
-- [ ] Wire the anonymous portrait with name-hidden treatment, Viktor driver-cab route insert, Viktor-chief arrival/transition insert, Liza reveal and couple epilogue to their approved stages.
+- [ ] Wire the anonymous portrait with name-hidden treatment, Viktor driver-cab route insert, unnamed train-chief arrival/transition insert, Liza reveal and couple epilogue to their approved stages.
 - [ ] Run the asset contract and affected component tests.
 - [ ] Commit `feat: add cinematic Liza and Viktor bunker story media`.
 
