@@ -23,6 +23,14 @@ const PROJECTOR_VIEWPORTS = [
   { width: 1920, height: 1080 },
 ] as const;
 
+const PROJECTOR_MISSION_TITLES = {
+  M01: 'Лишний пассажир',
+  M03: 'Аварийный запас',
+  M04: 'Межвагонная связь',
+  M06: 'Общий протокол',
+  FINAL: 'Бункер 30:00',
+} as const;
+
 type BunkerMissionState =
   | 'MISSION_01'
   | 'MISSION_02'
@@ -182,6 +190,42 @@ async function expectInsideViewport(page: Page, locator: Locator) {
   expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height + 1);
 }
 
+async function expectInsideContainer(locator: Locator, container: Locator) {
+  const box = await locator.boundingBox();
+  const containerBox = await container.boundingBox();
+  expect(box).not.toBeNull();
+  expect(containerBox).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(containerBox!.x - 1);
+  expect(box!.y).toBeGreaterThanOrEqual(containerBox!.y - 1);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(containerBox!.x + containerBox!.width + 1);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(containerBox!.y + containerBox!.height + 1);
+}
+
+async function expectReadableInViewport(page: Page, locator: Locator, minimumPx = 18) {
+  await locator.scrollIntoViewIfNeeded();
+  await expectInsideViewport(page, locator);
+  const fontSize = await locator.evaluate(
+    (element) => Number.parseFloat(getComputedStyle(element).fontSize),
+  );
+  expect(fontSize).toBeGreaterThanOrEqual(minimumPx);
+}
+
+async function expectLargeTextNavigation(page: Page) {
+  const navigation = page.getByRole('navigation', { name: 'Разделы игры' });
+  await expectInsideViewport(page, navigation);
+  const visibleButtons = navigation.locator('button:visible');
+  await expect(visibleButtons).toHaveCount(5);
+  for (const button of await visibleButtons.all()) {
+    const box = await button.boundingBox();
+    const fontSize = await button.evaluate(
+      (element) => Number.parseFloat(getComputedStyle(element).fontSize),
+    );
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThanOrEqual(52);
+    expect(fontSize).toBeGreaterThanOrEqual(18);
+  }
+}
+
 async function expectActionClearOfFixedNavigation(page: Page, action: Locator) {
   await action.scrollIntoViewIfNeeded();
   await expectInsideViewport(page, action);
@@ -216,6 +260,7 @@ async function openGuestPhone(
 async function expectProjectorMission(
   browser: Browser,
   missionKey: 'M01' | 'M03' | 'M04' | 'M06' | 'FINAL',
+  options: { unlocked?: boolean } = {},
 ) {
   for (const viewport of PROJECTOR_VIEWPORTS) {
     const context = await browser.newContext({ viewport });
@@ -226,8 +271,55 @@ async function expectProjectorMission(
       await expect(scene).toHaveAttribute('data-mission-key', missionKey, { timeout: 15_000 });
       await expectInsideViewport(page, scene);
       await expectInsideViewport(page, scene.locator('.bunker-quest-scene__header'));
-      await expectInsideViewport(page, scene.locator('.bunker-quest-scene__body'));
-      await expectInsideViewport(page, scene.locator('.bunker-quest-scene__story'));
+      const body = scene.locator('.bunker-quest-scene__body');
+      const story = scene.locator('.bunker-quest-scene__story');
+      await expectInsideViewport(page, body);
+      await expectInsideViewport(page, story);
+      await expect(story.getByRole('heading', { level: 2 })).toHaveText(
+        PROJECTOR_MISSION_TITLES[missionKey],
+      );
+      for (const storyChild of [
+        story.getByRole('heading', { level: 2 }),
+        story.locator('strong'),
+        story.locator('p'),
+      ]) {
+        await expectInsideViewport(page, storyChild);
+        await expectInsideContainer(storyChild, story);
+      }
+
+      if (missionKey === 'FINAL') {
+        const finalPanel = scene.locator('.bunker-quest-scene__final');
+        await expectInsideViewport(page, finalPanel);
+        await expectInsideContainer(finalPanel, body);
+        await expectInsideViewport(page, finalPanel.locator('.bunker-quest-scene__progress-heading'));
+        const slots = finalPanel.locator('.bunker-quest-scene__slots');
+        await expectInsideViewport(page, slots);
+        for (const card of await slots.locator(':scope > article').all()) {
+          await expectInsideViewport(page, card);
+          await expectInsideContainer(card, finalPanel);
+        }
+        if (options.unlocked) {
+          const unlock = finalPanel.locator('.bunker-quest-scene__unlock-state');
+          await expect(unlock.locator('strong')).toHaveText('ДОСТУП ПОЛУЧЕН');
+          await expect(unlock.locator('span')).toHaveText('ОЖИДАЕМ ПРИБЫТИЕ');
+          await expectInsideViewport(page, unlock);
+          await expectInsideContainer(unlock, finalPanel);
+        } else {
+          await expect(finalPanel.locator('.bunker-quest-scene__unlock-state')).toHaveCount(0);
+        }
+      } else {
+        const missionPanel = scene.locator('.bunker-quest-scene__mission');
+        await expectInsideViewport(page, missionPanel);
+        await expectInsideContainer(missionPanel, body);
+        await expectInsideViewport(page, missionPanel.locator('.bunker-quest-scene__progress-heading'));
+        await expectInsideViewport(page, missionPanel.locator('.bunker-quest-scene__character-counts'));
+        const cards = missionPanel.locator('.bunker-quest-scene__teams > article');
+        await expect(cards).toHaveCount(2);
+        for (const card of await cards.all()) {
+          await expectInsideViewport(page, card);
+          await expectInsideContainer(card, missionPanel);
+        }
+      }
       await expectInsideViewport(page, scene.locator('footer'));
       await expectNoHorizontalOverflow(page);
     } finally {
@@ -278,15 +370,7 @@ test.describe.serial('authoritative Bunker layouts', () => {
 
         await largeText.click();
         await expect(dashboardRoot).toHaveAttribute('data-large-text', 'true');
-        const bodyFontSize = await page.locator('.bunker-player-dashboard__content p').first().evaluate(
-          (element) => Number.parseFloat(getComputedStyle(element).fontSize),
-        );
-        expect(bodyFontSize).toBeGreaterThanOrEqual(18);
-        for (const button of await navigation.getByRole('button').all()) {
-          const box = await button.boundingBox();
-          expect(box).not.toBeNull();
-          expect(box!.height).toBeGreaterThanOrEqual(52);
-        }
+        await expectLargeTextNavigation(page);
 
         const overflow = navigation.getByRole('button', { name: 'ЕЩЁ', exact: true });
         await overflow.click();
@@ -299,14 +383,24 @@ test.describe.serial('authoritative Bunker layouts', () => {
         await page.reload();
         await expect(dashboardRoot).toHaveAttribute('data-large-text', 'true', { timeout: 15_000 });
         await page.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }).click();
-        await expect(page.getByRole('list', { name: 'Риски вагона' }).locator(':scope > li')).toHaveCount(5);
+        const missionCopy = page.locator('.bunker-mission-briefing__header strong');
+        await expectReadableInViewport(page, missionCopy);
+        const boardCards = page.getByRole('list', { name: 'Риски вагона' }).locator(':scope > li');
+        await expect(boardCards).toHaveCount(5);
+        for (const card of await boardCards.all()) {
+          await card.scrollIntoViewIfNeeded();
+          await expectInsideViewport(page, card);
+          await expectReadableInViewport(page, card.getByRole('heading', { level: 4 }));
+        }
         const availableRisk = page.getByRole('checkbox', { name: /Применить:/ }).first();
         await expect(availableRisk).toBeVisible();
         await availableRisk.check();
         await expect(page.getByLabel('Предварительный итог').getByText(/Закрыто рисков: 1 из 5/)).toBeVisible();
         const submit = page.getByRole('button', { name: 'ПРИМЕНИТЬ ЗАПАС' });
         await expect(submit).toBeEnabled();
+        await expectReadableInViewport(page, submit);
         await expectActionClearOfFixedNavigation(page, submit);
+        await expectLargeTextNavigation(page);
         await expectNoHorizontalOverflow(page);
       } finally {
         await context.close();
@@ -338,17 +432,29 @@ test.describe.serial('authoritative Bunker layouts', () => {
     for (const viewport of PHONE_VIEWPORTS) {
       const { context, page } = await openGuestPhone(browser, viewport, fixture.guestDeviceKey);
       try {
+        const dashboardRoot = page.getByRole('region', { name: 'Игровой модуль Бункер' });
+        await page.getByRole('button', { name: 'КРУПНЫЙ ТЕКСТ' }).click();
+        await expect(dashboardRoot).toHaveAttribute('data-large-text', 'true');
         await page.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }).click();
+        await expectReadableInViewport(page, page.locator('.bunker-mission-briefing__header strong'));
         const stepper = page.getByRole('list', { name: 'Порядок межвагонного обмена' });
-        await expect(stepper.locator(':scope > li')).toHaveCount(4);
+        const steps = stepper.locator(':scope > li');
+        await expect(steps).toHaveCount(4);
         await expect(stepper.getByText('ШАГ 1')).toBeVisible();
         await expect(stepper.getByText('ШАГ 4')).toBeVisible();
+        for (const step of await steps.all()) {
+          await step.scrollIntoViewIfNeeded();
+          await expectInsideViewport(page, step);
+          await expectReadableInViewport(page, step.getByRole('heading', { level: 4 }));
+        }
         await page.getByLabel('Сообщение партнёрам').fill(
           'Сектор 04: тоннель и маршрут проверены, общий канал связи восстановлен.',
         );
         const submit = page.getByRole('button', { name: 'ОТПРАВИТЬ СООБЩЕНИЕ' });
         await expect(submit).toBeEnabled();
+        await expectReadableInViewport(page, submit);
         await expectActionClearOfFixedNavigation(page, submit);
+        await expectLargeTextNavigation(page);
         await expectNoHorizontalOverflow(page);
       } finally {
         await context.close();
@@ -374,13 +480,6 @@ test.describe.serial('authoritative Bunker layouts', () => {
       p_reason: 'Проверка финального экрана E2E',
       p_confirmation: FORCE_OPEN_CONFIRMATION,
     });
-    const context = await browser.newContext({ viewport: PROJECTOR_VIEWPORTS[1] });
-    const page = await context.newPage();
-    await page.goto('/screen');
-    const scene = page.getByRole('region', { name: 'Бункер · экран квеста' });
-    await expect(scene).toHaveAttribute('data-phase', 'completed', { timeout: 15_000 });
-    await expect(scene.locator('.bunker-quest-scene__unlock-state strong')).toHaveText('ДОСТУП ПОЛУЧЕН');
-    await expectInsideViewport(page, scene);
-    await context.close();
+    await expectProjectorMission(browser, 'FINAL', { unlocked: true });
   });
 });

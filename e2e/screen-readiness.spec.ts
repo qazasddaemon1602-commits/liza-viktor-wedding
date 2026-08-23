@@ -67,6 +67,7 @@ test('an open projector appears as advisory telemetry and exposes compact audio 
 });
 
 test('an authoritative quiz question renders a decoded project-local image on the projector', async ({ browser }) => {
+  test.setTimeout(180_000);
   const owner = await ownerClient();
   const id = await eventId(owner);
   await callOwnerRpc(owner, 'owner_reset_event_test_data', {
@@ -78,47 +79,70 @@ test('an authoritative quiz question renders a decoded project-local image on th
   const control = await callOwnerRpc(owner, 'owner_get_quiz_control', { p_event_id: id });
   const questions = (control as { questions?: unknown[] } | null)?.questions;
   if (!Array.isArray(questions)) throw new Error('Quiz questions are missing from owner control');
-  const illustrated = questions.find((entry) => (
+  const standardQuestions = questions.filter((entry): entry is {
+    id: string;
+    imagePath: string;
+    questionType: 'standard';
+    sortOrder: number;
+  } => (
     typeof entry === 'object'
     && entry !== null
     && 'questionType' in entry
     && entry.questionType === 'standard'
     && 'imagePath' in entry
     && typeof entry.imagePath === 'string'
-    && entry.imagePath.startsWith('/images/quiz/')
     && 'id' in entry
     && typeof entry.id === 'string'
-  )) as { id: string; imagePath: string } | undefined;
-  if (!illustrated) throw new Error('No illustrated standard quiz question is available');
-
-  await callOwnerRpc(owner, 'owner_activate_quiz_question', {
-    p_event_id: id,
-    p_question_id: illustrated.id,
-  });
+    && 'sortOrder' in entry
+    && typeof entry.sortOrder === 'number'
+  )).sort((left, right) => left.sortOrder - right.sortOrder);
+  expect(standardQuestions).toHaveLength(30);
+  for (const [index, question] of standardQuestions.entries()) {
+    expect(question.sortOrder).toBe(index + 1);
+    expect(question.imagePath).toBe(`/images/quiz/q${String(index + 1).padStart(2, '0')}.webp`);
+  }
 
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const projector = await context.newPage();
+  let roundActive = false;
   try {
     await projector.goto('/screen');
-    const image = projector.locator('.quiz-screen-question-image');
-    await expect(image).toBeVisible({ timeout: 15_000 });
-    await expect(image).toHaveAttribute('src', illustrated.imagePath);
-    await expect.poll(
-      () => image.evaluate((element: HTMLImageElement) => ({
-        complete: element.complete,
+    for (const question of standardQuestions) {
+      await callOwnerRpc(owner, 'owner_activate_quiz_question', {
+        p_event_id: id,
+        p_question_id: question.id,
+      });
+      roundActive = true;
+      await projector.reload({ waitUntil: 'domcontentloaded' });
+
+      const image = projector.locator('.quiz-screen-question-image');
+      await expect(image).toBeVisible({ timeout: 15_000 });
+      await expect(image).toHaveAttribute('src', question.imagePath);
+      const avifPath = question.imagePath.replace(/\.webp$/, '.avif');
+      await expect(projector.locator('.quiz-screen-image-frame source')).toHaveAttribute('srcset', avifPath);
+      await expect.poll(
+        () => image.evaluate((element: HTMLImageElement) => ({
+          complete: element.complete,
+          naturalWidth: element.naturalWidth,
+          naturalHeight: element.naturalHeight,
+        })),
+        { timeout: 15_000 },
+      ).toMatchObject({ complete: true });
+      const decoded = await image.evaluate((element: HTMLImageElement) => ({
         naturalWidth: element.naturalWidth,
         naturalHeight: element.naturalHeight,
-      })),
-      { timeout: 15_000 },
-    ).toMatchObject({ complete: true });
-    const decoded = await image.evaluate((element: HTMLImageElement) => ({
-      naturalWidth: element.naturalWidth,
-      naturalHeight: element.naturalHeight,
-    }));
-    expect(decoded.naturalWidth).toBeGreaterThan(0);
-    expect(decoded.naturalHeight).toBeGreaterThan(0);
+      }));
+      expect(decoded.naturalWidth).toBeGreaterThan(0);
+      expect(decoded.naturalHeight).toBeGreaterThan(0);
+
+      await callOwnerRpc(owner, 'owner_close_quiz_round', { p_event_id: id });
+      roundActive = false;
+    }
   } finally {
     await context.close();
+    if (roundActive) {
+      await callOwnerRpc(owner, 'owner_close_quiz_round', { p_event_id: id });
+    }
     await callOwnerRpc(owner, 'owner_return_quiz_to_main_screen', { p_event_id: id });
     await owner.auth.signOut();
   }
