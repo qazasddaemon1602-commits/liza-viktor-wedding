@@ -65,6 +65,37 @@ describe('ScreenPage bunker protection', () => {
     expect(screen.queryByText('Поздний Гость')).not.toBeInTheDocument();
   });
 
+  it('defers protected arrival map invalidations and refreshes exactly once on exit without catch-up', async () => {
+    let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    const loadCarriageMap = vi.fn().mockResolvedValue({
+      status: 'registration', expectedGuestCount: 40, registeredGuestCount: 0,
+      unassignedCount: 0, serverNow: '2026-08-30T12:00:00.000Z', carriages: [],
+    });
+    render(<ScreenPage joinUrl="https://wedding.example/join" dependencies={{
+      subscribe: (callback) => { pushEvent = callback; return vi.fn(); },
+      loadCarriageMap,
+    }} />);
+    await act(async () => { await Promise.resolve(); });
+    expect(loadCarriageMap).toHaveBeenCalledTimes(1);
+
+    act(() => setBunkerPresentationProtected(true));
+    act(() => {
+      pushEvent?.({ id: 'protected-1', kind: 'guest_registered', createdAt: '2026-08-30T18:00:01.000Z', payload: {
+        displayName: 'Иван Петров', carriage: { id: 'c1', number: 1, label: 'ВАГОН №1', accentHex: '#31483A', visualMark: '01' },
+      } });
+      pushEvent?.({ id: 'protected-2', kind: 'guest_registered', createdAt: '2026-08-30T18:00:02.000Z', payload: {
+        displayName: 'Анна Смирнова', carriage: { id: 'c2', number: 2, label: 'ВАГОН №2', accentHex: '#78806A', visualMark: '02' },
+      } });
+    });
+    expect(loadCarriageMap).toHaveBeenCalledTimes(1);
+
+    act(() => setBunkerPresentationProtected(false));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(loadCarriageMap).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Иван Петров')).not.toBeInTheDocument();
+    expect(screen.queryByText('Анна Смирнова')).not.toBeInTheDocument();
+  });
+
   it('unmounts protected premiere media during bunker and refetches authoritative state after stop', async () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);

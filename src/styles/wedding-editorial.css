@@ -1015,6 +1015,23 @@
   font-size: clamp(1.8rem, 3.4vw, 3.8rem);
 }
 
+.carriage-map--summary {
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.carriage-map--summary .carriage-map__grid {
+  height: 100%;
+  gap: clamp(0.45rem, 1vw, 0.9rem);
+}
+
+.carriage-map--summary .carriage-map__carriage {
+  padding: clamp(0.32rem, 0.55vw, 0.52rem);
+}
+
 @media (max-aspect-ratio: 4 / 3), (max-width: 900px) {
   .carriage-map--full {
     min-height: 100dvh;

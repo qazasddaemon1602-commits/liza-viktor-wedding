@@ -978,6 +978,38 @@
   }
 }
 
+.boarding-summary-scene {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(0.8rem, 2vh, 1.5rem);
+  padding: clamp(1rem, 2.5vw, 2.5rem);
+  overflow: hidden;
+  color: var(--wedding-ink, #173b5d);
+  background: var(--wedding-paper, #f4ead8);
+}
+
+.boarding-summary-scene__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 3px double currentColor;
+}
+
+.boarding-summary-scene__header p {
+  font-size: clamp(0.62rem, 0.9vw, 0.88rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.boarding-summary-scene__header h1 {
+  margin: 0 0 0.25rem;
+  font: 700 clamp(1.8rem, 4vw, 4.8rem) / 0.95 Georgia, "Times New Roman", serif;
+  text-align: right;
+  text-wrap: balance;
+}
+
 /* Full-width registration pass. Copy is mounted to the four real wagon panels. */
 .train-arrival--convoy {
   display: block;

@@ -6,7 +6,7 @@ import type {
 
 type CarriageMapScreenProps = {
   map: RegistrationCarriageMap;
-  variant?: 'compact' | 'full';
+  variant?: 'compact' | 'full' | 'summary';
 };
 
 function seatDensity(guestCount: number): 'standard' | 'dense' | 'packed' {
@@ -105,7 +105,7 @@ export function CarriageMapScreen({ map, variant = 'full' }: CarriageMapScreenPr
       aria-label="Карта вагонов"
       data-variant={variant}
     >
-      <header className="carriage-map__header">
+      {variant !== 'summary' && <header className="carriage-map__header">
         <div>
           <p className="carriage-map__eyebrow">ПОЕЗД ВИКТОРА · ПОСАДОЧНАЯ ВЕДОМОСТЬ</p>
           <h2>КАРТА СОСТАВА</h2>
@@ -114,7 +114,7 @@ export function CarriageMapScreen({ map, variant = 'full' }: CarriageMapScreenPr
           ЗАРЕГИСТРИРОВАНО {map.registeredGuestCount} ИЗ {map.expectedGuestCount}
         </p>
         {variant === 'full' && trainChiefImageAvailable && (
-          <figure className="carriage-map__train-chief">
+          <figure className="carriage-map__train-chief" data-testid="carriage-map-host">
             <picture>
               <source srcSet="/images/bunker/story/train-chief.avif" type="image/avif" />
               <img
@@ -130,7 +130,7 @@ export function CarriageMapScreen({ map, variant = 'full' }: CarriageMapScreenPr
             <figcaption>ИЛЬЯ НАГАВКИН · НАЧАЛЬНИК ПОЕЗДА · ВЕДУЩИЙ</figcaption>
           </figure>
         )}
-      </header>
+      </header>}
 
       {map.carriages.length > 0 ? (
         <div
@@ -147,13 +147,13 @@ export function CarriageMapScreen({ map, variant = 'full' }: CarriageMapScreenPr
         </div>
       )}
 
-      <footer className="carriage-map__footer">
+      {variant !== 'summary' && <footer className="carriage-map__footer">
         <span>ЛИЗА × ВИКТОР · 30 АВГУСТА 2026</span>
         {map.unassignedCount > 0 && (
           <strong>ОЖИДАЮТ НАЗНАЧЕНИЯ: {map.unassignedCount}</strong>
         )}
         <span>TYUMEN · SPECIAL SERVICE</span>
-      </footer>
+      </footer>}
     </section>
   );
 }

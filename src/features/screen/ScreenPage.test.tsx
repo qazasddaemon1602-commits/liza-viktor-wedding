@@ -125,6 +125,32 @@ describe('ScreenPage', () => {
     expect(screen.queryByRole('heading', { name: 'Анна Смирнова' })).not.toBeInTheDocument();
   });
 
+  it('coalesces a burst behind the active arrival into one privacy-safe eight-second summary', async () => {
+    let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    const dependencies: ScreenPageDependencies = {
+      subscribe: (callback) => { pushEvent = callback; return vi.fn(); },
+      playArrivalSignal: vi.fn(),
+    };
+    render(<ScreenPage joinUrl="https://wedding.example/join" dependencies={dependencies} />);
+
+    act(() => {
+      pushEvent?.(anna);
+      pushEvent?.(ivan);
+      pushEvent?.({ ...anna, id: 'event-olga', payload: { ...anna.payload, displayName: 'Ольга Волкова' } });
+    });
+    expect(screen.getByRole('heading', { name: 'Анна Смирнова' })).toBeInTheDocument();
+
+    await act(async () => vi.advanceTimersByTime(14_000));
+    expect(screen.getByText('СОСТАВ ПОПОЛНЕН · +2')).toBeInTheDocument();
+    expect(screen.queryByText('Иван Петров')).not.toBeInTheDocument();
+    expect(screen.queryByText('Ольга Волкова')).not.toBeInTheDocument();
+
+    await act(async () => vi.advanceTimersByTime(7_999));
+    expect(screen.getByText('СОСТАВ ПОПОЛНЕН · +2')).toBeInTheDocument();
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.queryByText('СОСТАВ ПОПОЛНЕН · +2')).not.toBeInTheDocument();
+  });
+
   it('waits for decoded audio and both train images before mounting the timed arrival scene', async () => {
     let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
     let resolvePreparation: ((ready: boolean) => void) | undefined;

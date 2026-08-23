@@ -39,7 +39,7 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
   } as CSSProperties;
   const eventDate = formatEventDate(event.createdAt);
   const wagonCopy = [
-    'ПРИБЫЛ НОВЫЙ ИГРОК',
+    'ПРИБЫЛ НОВЫЙ ПАССАЖИР',
     event.payload.displayName,
     event.payload.carriage.label,
     `ПОСАДКА · ${eventDate}`,
@@ -107,7 +107,7 @@ export function TrainArrivalScene({ event, onSignal }: TrainArrivalSceneProps) {
       <div className="sr-only" role="status" aria-live="assertive" aria-atomic="true">
         <h2>{event.payload.displayName}</h2>
         <p>
-          Прибыл новый игрок. {event.payload.displayName}. Назначен {event.payload.carriage.label}.
+          Прибыл новый пассажир. {event.payload.displayName}. Назначен {event.payload.carriage.label}.
         </p>
       </div>
     </section>

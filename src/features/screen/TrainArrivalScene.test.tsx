@@ -57,7 +57,7 @@ describe('TrainArrivalScene', () => {
     );
     expect(screen.getByTestId('arrival-train-smoke')).toHaveAttribute('data-motion', 'rig-parallax');
     expect(screen.getAllByTestId(/arrival-wagon-copy-/)).toHaveLength(4);
-    expect(screen.getByTestId('arrival-wagon-copy-1')).toHaveTextContent('ПРИБЫЛ НОВЫЙ ИГРОК');
+    expect(screen.getByTestId('arrival-wagon-copy-1')).toHaveTextContent('ПРИБЫЛ НОВЫЙ ПАССАЖИР');
     expect(screen.getByTestId('arrival-wagon-copy-2')).toHaveTextContent('Анна Смирнова');
     expect(screen.getByTestId('arrival-wagon-copy-3')).toHaveTextContent('ВАГОН №4');
     expect(screen.getByTestId('arrival-wagon-copy-4')).toHaveTextContent('ПОСАДКА · 30.08.2026');
@@ -72,7 +72,7 @@ describe('TrainArrivalScene', () => {
     expect(screen.getByTestId('arrival-convoy')).toHaveAttribute('aria-hidden', 'true');
     expect(screen.getByRole('status')).toHaveClass('sr-only');
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Прибыл новый игрок. Анна Смирнова. Назначен ВАГОН №4.',
+      'Прибыл новый пассажир. Анна Смирнова. Назначен ВАГОН №4.',
     );
     expect(screen.queryByTestId('arrival-platform-ticket')).not.toBeInTheDocument();
   });

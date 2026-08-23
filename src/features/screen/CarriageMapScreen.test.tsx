@@ -131,4 +131,12 @@ describe('CarriageMapScreen', () => {
     expect(screen.queryByRole('img', { name: /Илья Нагавкин/ })).not.toBeInTheDocument();
     expect(screen.queryByText('ИЛЬЯ НАГАВКИН · НАЧАЛЬНИК ПОЕЗДА · ВЕДУЩИЙ')).not.toBeInTheDocument();
   });
+
+  it('uses a headerless, portrait-free summary variant', () => {
+    render(<CarriageMapScreen map={makeMap(2)} variant="summary" />);
+    expect(screen.getByLabelText('Карта вагонов')).toHaveAttribute('data-variant', 'summary');
+    expect(screen.queryByText('КАРТА СОСТАВА')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /Илья Нагавкин/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('group', { name: /ВАГОН №/ })).toHaveLength(2);
+  });
 });

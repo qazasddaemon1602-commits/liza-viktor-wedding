@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { getOrCreateDeviceKey } from '../../lib/deviceIdentity';
 import { getSupabaseClient } from '../../lib/supabase';
 import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
@@ -48,6 +48,11 @@ import {
   type QuizRealtimeClient,
 } from '../quiz/quiz.realtime';
 import { CarriageCallScene } from './CarriageCallScene';
+import { BoardingSummaryScene } from './BoardingSummaryScene';
+import {
+  announcementQueueReducer,
+  createAnnouncementQueueState,
+} from './arrivalAnnouncementQueue';
 import { CarriageMapScreen } from './CarriageMapScreen';
 import {
   getRegistrationCarriageMap,
@@ -280,8 +285,12 @@ export function ScreenPage({
     ?? (sceneDurationMs === 14_000 ? 12_000 : sceneDurationMs);
   const [resolvedScreenId] = useState(() => screenId?.trim() || `screen-${getOrCreateDeviceKey()}`);
   const hasAudioArm = Boolean(deps.armArrivalAudio || deps.armPremiereAudio);
-  const [queue, setQueue] = useState<ScreenPresentationEvent[]>([]);
-  const [activeEvent, setActiveEvent] = useState<ScreenPresentationEvent | null>(null);
+  const [announcementQueue, dispatchAnnouncement] = useReducer(
+    announcementQueueReducer,
+    eventSlug,
+    createAnnouncementQueueState,
+  );
+  const [preparedArrivalId, setPreparedArrivalId] = useState<string | null>(null);
   const [quizState, setQuizState] = useState<QuizScreenState | null>(null);
   const [coupleAnswer, setCoupleAnswer] = useState<RevealedCoupleAnswer>({ status: 'hidden' });
   const [finalFive, setFinalFive] = useState<RevealedFinalFive>({ status: 'hidden' });
@@ -298,8 +307,9 @@ export function ScreenPage({
   );
   const [reconnectEpoch, setReconnectEpoch] = useState(0);
   const [bunkerProtected, setBunkerProtected] = useState(getBunkerPresentationProtected);
-  const seenIds = useRef(new Set<string>());
   const presentationProtectedRef = useRef(false);
+  const wasPresentationProtectedRef = useRef(false);
+  const protectedMapDirtyRef = useRef(false);
   const premiereClockOffsetRef = useRef(0);
   const autoAudioAttemptedRef = useRef(false);
   const arrivalReadyRef = useRef(!deps.prepareArrival);
@@ -311,6 +321,11 @@ export function ScreenPage({
   const premiereProtected = isPremiereProtected(premiereState);
   const mortalKombatProtected = isMortalKombatProtected(mkState);
   const presentationProtected = premiereProtected || mortalKombatProtected || bunkerProtected;
+  const activePresentation = announcementQueue.active?.presentation ?? null;
+  const activePresentationId = activePresentation?.eventIds[0] ?? null;
+  const visiblePresentation = activePresentation?.kind === 'arrival' && deps.prepareArrival
+    ? (preparedArrivalId === activePresentationId ? activePresentation : null)
+    : activePresentation;
   const currentPremiereMediaUrl = premiereMediaUrl(premiereState);
   const connectionDegraded = hasConnectionFailures(connectionFailures);
   presentationProtectedRef.current = presentationProtected;
@@ -394,8 +409,6 @@ export function ScreenPage({
     if (active) {
       presentationProtectedRef.current = true;
       deps.stopArrivalAudio?.();
-      setQueue([]);
-      setActiveEvent(null);
       setQuizState(null);
       setCoupleAnswer({ status: 'hidden' });
       setFinalFive({ status: 'hidden' });
@@ -472,11 +485,11 @@ export function ScreenPage({
   }, [deps]);
 
   useEffect(() => deps.subscribe((event) => {
-    if (event.kind === 'guest_registered') carriageMapRefreshRef.current();
-    if (presentationProtectedRef.current) return;
-    if (seenIds.current.has(event.id)) return;
-    seenIds.current.add(event.id);
-    setQueue((current) => [...current, event]);
+    if (event.kind === 'guest_registered') {
+      if (presentationProtectedRef.current) protectedMapDirtyRef.current = true;
+      else carriageMapRefreshRef.current();
+    }
+    dispatchAnnouncement({ type: 'receive', event });
   }), [deps]);
 
   useEffect(() => {
@@ -628,11 +641,22 @@ export function ScreenPage({
   }, [premiereState?.status, premiereState?.status === 'countdown' ? premiereState.startAt : null]);
 
   useEffect(() => {
-    if (!presentationProtected) return;
-    if (activeEvent?.kind === 'guest_registered') deps.stopArrivalAudio?.();
-    setQueue([]);
-    setActiveEvent(null);
-  }, [activeEvent, deps, presentationProtected]);
+    dispatchAnnouncement({ type: 'set_protected', protected: presentationProtected });
+    if (presentationProtected) {
+      if (activePresentation?.kind === 'arrival') deps.stopArrivalAudio?.();
+    } else if (wasPresentationProtectedRef.current) {
+      protectedMapDirtyRef.current = false;
+      carriageMapRefreshRef.current();
+    }
+    wasPresentationProtectedRef.current = presentationProtected;
+  }, [activePresentation?.kind, deps, presentationProtected]);
+
+  useEffect(() => {
+    dispatchAnnouncement({ type: 'reset_session', sessionKey: eventSlug });
+    if (presentationProtectedRef.current) {
+      dispatchAnnouncement({ type: 'set_protected', protected: true });
+    }
+  }, [eventSlug]);
 
   useEffect(() => () => {
     deps.disposeAudio?.();
@@ -640,35 +664,31 @@ export function ScreenPage({
   }, [deps]);
 
   useEffect(() => {
-    if (presentationProtected || activeEvent || queue.length === 0) return;
-    const [next, ...rest] = queue;
-    if (next.kind !== 'guest_registered' || !deps.prepareArrival) {
-      setQueue(rest);
-      setActiveEvent(next);
+    if (activePresentation?.kind !== 'arrival' || !deps.prepareArrival) {
+      setPreparedArrivalId(null);
       return;
     }
-
     let cancelled = false;
     void ensureArrivalPrepared().then(() => {
-      if (cancelled || presentationProtectedRef.current) return;
-      setQueue(rest);
-      setActiveEvent(next);
+      if (!cancelled && !presentationProtectedRef.current) {
+        setPreparedArrivalId(activePresentation.event.id);
+      }
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeEvent, deps.prepareArrival, ensureArrivalPrepared, presentationProtected, queue]);
+    return () => { cancelled = true; };
+  }, [activePresentation, deps.prepareArrival, ensureArrivalPrepared]);
 
   useEffect(() => {
-    if (!activeEvent || presentationProtected) return;
-    const durationMs = activeEvent.kind === 'carriage_call'
-      ? resolvedCarriageCallDurationMs
-      : sceneDurationMs;
+    if (!visiblePresentation || presentationProtected) return;
+    const durationMs = visiblePresentation.kind === 'boarding_summary'
+      ? 8_000
+      : visiblePresentation.kind === 'carriage_call'
+        ? resolvedCarriageCallDurationMs
+        : sceneDurationMs;
     const timer = window.setTimeout(() => {
-      setActiveEvent(null);
+      dispatchAnnouncement({ type: 'complete' });
     }, durationMs);
     return () => window.clearTimeout(timer);
-  }, [activeEvent, presentationProtected, resolvedCarriageCallDurationMs, sceneDurationMs]);
+  }, [presentationProtected, resolvedCarriageCallDurationMs, sceneDurationMs, visiblePresentation]);
 
   const playSignal = useCallback(() => {
     if (!presentationProtectedRef.current) deps.playArrivalSignal?.();
@@ -701,14 +721,14 @@ export function ScreenPage({
   }, [eventSlug]);
 
   useEffect(() => {
-    if (!presentedQuiz || presentationProtected || activeEvent) return;
+    if (!presentedQuiz || presentationProtected || activePresentation) return;
     const key = quizPresentationKey(presentedQuiz.question.id, presentedQuiz.phase);
     if (lastPresentedQuizKeyRef.current === key) return;
 
     lastPresentedQuizKeyRef.current = key;
     if (presentedQuiz.phase === 'voting') deps.playQuizVotingSignal?.();
     else deps.playQuizRevealSignal?.();
-  }, [activeEvent, deps, eventSlug, presentedQuiz, presentationProtected]);
+  }, [activePresentation, deps, eventSlug, presentedQuiz, presentationProtected]);
 
   return (
     <div className={`screen-page${premiereProtected ? ' screen-page--premiere' : ''}${mortalKombatProtected ? ' screen-page--mk' : ''}`}>
@@ -728,10 +748,12 @@ export function ScreenPage({
         ) : (
           <PublicBracket state={mkState} displayMode="projector" />
         )
-      ) : activeEvent?.kind === 'guest_registered' ? (
-        <TrainArrivalScene event={activeEvent} onSignal={playSignal} />
-      ) : activeEvent?.kind === 'carriage_call' ? (
-        <CarriageCallScene event={activeEvent} />
+      ) : visiblePresentation?.kind === 'arrival' ? (
+        <TrainArrivalScene event={visiblePresentation.event} onSignal={playSignal} />
+      ) : visiblePresentation?.kind === 'boarding_summary' ? (
+        <BoardingSummaryScene summary={visiblePresentation} map={carriageMap} />
+      ) : visiblePresentation?.kind === 'carriage_call' ? (
+        <CarriageCallScene event={visiblePresentation.event} />
       ) : activeQuiz ? (
         finalFiveForCurrentQuestion ? (
           <FinalFiveRevealScene state={finalFiveForCurrentQuestion} />
