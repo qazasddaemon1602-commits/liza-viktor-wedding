@@ -5,6 +5,11 @@ import {
   subscribeToCapsuleShowcase,
   type CapsuleShowcaseScreenEvent,
 } from './messageCapsule.service';
+import { TrainRadioOverlay } from './TrainRadioOverlay';
+import {
+  subscribeToTrainRadio,
+  type RadioTransmissionScreenEvent,
+} from './trainRadio.service';
 import {
   reactionEmoji,
   subscribeToGuestReactions,
@@ -25,6 +30,7 @@ type Props = {
   children: ReactNode;
   subscribe?: (callback: (event: GuestReactionScreenEvent) => void) => () => void;
   subscribeCapsule?: (callback: (event: CapsuleShowcaseScreenEvent) => void) => () => void;
+  subscribeRadio?: (callback: (event: RadioTransmissionScreenEvent) => void) => () => void;
   ttlMs?: number;
 };
 
@@ -42,13 +48,22 @@ function browserCapsuleSubscribe(eventSlug: string) {
   );
 }
 
+function browserRadioSubscribe(eventSlug: string) {
+  const client = getSupabaseClient() as unknown as WeddingLiveRealtimeClient;
+  return (callback: (event: RadioTransmissionScreenEvent) => void) => (
+    subscribeToTrainRadio(client, eventSlug, callback)
+  );
+}
+
 const noCapsuleSubscribe = () => () => undefined;
+const noRadioSubscribe = () => () => undefined;
 
 export function WeddingLiveProjectorLayer({
   eventSlug = 'liza-viktor',
   children,
   subscribe,
   subscribeCapsule,
+  subscribeRadio,
   ttlMs = 2800,
 }: Props) {
   const resolvedSubscribe = useMemo(
@@ -59,8 +74,13 @@ export function WeddingLiveProjectorLayer({
     () => subscribeCapsule ?? (subscribe ? noCapsuleSubscribe : browserCapsuleSubscribe(eventSlug)),
     [eventSlug, subscribe, subscribeCapsule],
   );
+  const resolvedRadioSubscribe = useMemo(
+    () => subscribeRadio ?? (subscribe ? noRadioSubscribe : browserRadioSubscribe(eventSlug)),
+    [eventSlug, subscribe, subscribeRadio],
+  );
   const [bursts, setBursts] = useState<ReactionBurst[]>([]);
   const [capsule, setCapsule] = useState<CapsuleShowcaseScreenEvent | null>(null);
+  const [radio, setRadio] = useState<RadioTransmissionScreenEvent | null>(null);
 
   useEffect(() => resolvedSubscribe((event) => {
     const now = Date.now();
@@ -90,6 +110,7 @@ export function WeddingLiveProjectorLayer({
   }), [resolvedSubscribe, ttlMs]);
 
   useEffect(() => resolvedCapsuleSubscribe((event) => setCapsule(event)), [resolvedCapsuleSubscribe]);
+  useEffect(() => resolvedRadioSubscribe((event) => setRadio(event)), [resolvedRadioSubscribe]);
 
   useEffect(() => {
     if (!bursts.length) return;
@@ -109,10 +130,19 @@ export function WeddingLiveProjectorLayer({
     return () => window.clearTimeout(timer);
   }, [capsule]);
 
+  useEffect(() => {
+    if (!radio) return;
+    const timer = window.setTimeout(() => {
+      setRadio((current) => current?.id === radio.id ? null : current);
+    }, radio.durationMs);
+    return () => window.clearTimeout(timer);
+  }, [radio]);
+
   return (
     <>
       {children}
       {capsule && <CapsuleShowcaseOverlay messages={capsule.messages} />}
+      {radio && <TrainRadioOverlay transmission={radio} />}
       <aside className="wedding-live-projector-layer" aria-live="polite" aria-label="Реакции гостей">
         {bursts.map((burst) => (
           <div

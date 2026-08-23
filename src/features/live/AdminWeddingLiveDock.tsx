@@ -7,12 +7,19 @@ import {
   type OwnerMessageCapsuleControl,
   type PublishCapsuleResult,
 } from './messageCapsule.service';
+import {
+  RADIO_PRESETS,
+  sendTrainRadioTransmission,
+  type RadioPresetId,
+  type SendRadioTransmissionResult,
+} from './trainRadio.service';
 import type { WeddingLiveRpcClient } from './weddingLive.service';
 
 export type AdminWeddingLiveDependencies = {
   load: () => Promise<OwnerMessageCapsuleControl>;
   setOpen: (open: boolean) => Promise<{ status: 'ok'; open: boolean }>;
   publish: (limit: number) => Promise<PublishCapsuleResult>;
+  sendRadio?: (preset: RadioPresetId) => Promise<SendRadioTransmissionResult>;
 };
 
 type Props = {
@@ -27,6 +34,7 @@ function browserDependencies(eventSlug: string): AdminWeddingLiveDependencies {
     load: () => getOwnerMessageCapsule(client, eventSlug),
     setOpen: (open) => setOwnerMessageCapsuleOpen(client, eventSlug, open),
     publish: (limit) => publishOwnerMessageCapsule(client, eventSlug, limit),
+    sendRadio: (preset) => sendTrainRadioTransmission(client, eventSlug, preset),
   };
 }
 
@@ -43,6 +51,7 @@ export function AdminWeddingLiveDock({
   const [control, setControl] = useState<OwnerMessageCapsuleControl | null>(null);
   const [busy, setBusy] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [radioFeedback, setRadioFeedback] = useState('');
   const [error, setError] = useState('');
 
   const reload = async () => {
@@ -97,14 +106,26 @@ export function AdminWeddingLiveDock({
     setError('');
     try {
       const result = await deps.publish(7);
-      if (result.status === 'empty') {
-        setFeedback('ПОКА НЕТ СООБЩЕНИЙ');
-      } else {
-        setFeedback(`НА ТВ · ${result.publishedCount} СООБЩЕНИЙ`);
-      }
+      if (result.status === 'empty') setFeedback('ПОКА НЕТ СООБЩЕНИЙ');
+      else setFeedback(`НА ТВ · ${result.publishedCount} СООБЩЕНИЙ`);
       await reload().catch(() => undefined);
     } catch {
       setError('Не удалось отправить капсулу на телевизоры.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const sendRadio = async (preset: RadioPresetId, label: string) => {
+    if (!deps.sendRadio || busy) return;
+    setBusy(`radio:${preset}`);
+    setRadioFeedback('');
+    setError('');
+    try {
+      await deps.sendRadio(preset);
+      setRadioFeedback(`ЭФИР ОТПРАВЛЕН · ${label}`);
+    } catch {
+      setError('Не удалось отправить радиоэфир на телевизоры.');
     } finally {
       setBusy('');
     }
@@ -136,70 +157,90 @@ export function AdminWeddingLiveDock({
             <header>
               <div>
                 <p>LIVE+ · СВАДЕБНЫЙ ЭФИР</p>
-                <h2>КАПСУЛА ВЕЧЕРА</h2>
+                <h2>УПРАВЛЕНИЕ ЭФИРОМ</h2>
               </div>
               <button type="button" aria-label="Закрыть" onClick={() => setDrawerOpen(false)}>×</button>
             </header>
 
-            {!control && !error && <p className="admin-wedding-live-status">ЗАГРУЖАЕМ…</p>}
-            {error && <p className="admin-wedding-live-error" role="alert">{error}</p>}
-            {control?.status === 'not_found' && <p className="admin-wedding-live-error">Событие не найдено.</p>}
-
-            {ready && (
-              <>
-                <section className="admin-wedding-live-summary">
+            {deps.sendRadio && (
+              <section className="admin-wedding-radio" aria-label="Радио состава">
+                <div className="admin-wedding-live-section-heading">
                   <div>
-                    <span>СООБЩЕНИЯ</span>
-                    <strong>{ready.count} СООБЩЕНИЯ</strong>
+                    <span>LIVE OVERLAY</span>
+                    <strong>РАДИО СОСТАВА</strong>
                   </div>
-                  <div>
-                    <span>ПРИЁМ</span>
-                    <strong>{ready.open ? 'ОТКРЫТ' : 'ЗАКРЫТ'}</strong>
-                  </div>
-                </section>
-
-                <div className="admin-wedding-live-actions">
-                  <button
-                    type="button"
-                    disabled={Boolean(busy)}
-                    onClick={() => void toggleOpen()}
-                  >
-                    {busy === 'toggle'
-                      ? 'МЕНЯЕМ…'
-                      : ready.open ? 'ЗАКРЫТЬ ПРИЁМ' : 'ОТКРЫТЬ ПРИЁМ'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={Boolean(busy) || ready.count === 0}
-                    onClick={() => void publish()}
-                  >
-                    {busy === 'publish' ? 'ОТПРАВЛЯЕМ…' : 'ПОКАЗАТЬ КАПСУЛУ НА ТВ'}
-                  </button>
+                  <small>12 СЕК · БЕЗ ПЕРЕКЛЮЧЕНИЯ ЭТАПА</small>
                 </div>
+                <div className="admin-wedding-radio__presets">
+                  {RADIO_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      aria-label={`Эфир: ${preset.label}`}
+                      disabled={Boolean(busy)}
+                      onClick={() => void sendRadio(preset.id, preset.label)}
+                    >
+                      {busy === `radio:${preset.id}` ? 'В ЭФИР…' : preset.label}
+                    </button>
+                  ))}
+                </div>
+                {radioFeedback && <p className="admin-wedding-live-feedback" role="status">{radioFeedback}</p>}
+              </section>
+            )}
 
-                {feedback && <p className="admin-wedding-live-feedback" role="status">{feedback}</p>}
+            <section className="admin-wedding-capsule-control" aria-label="Капсула вечера">
+              <div className="admin-wedding-live-section-heading">
+                <div>
+                  <span>ГОСТИ → МОЛОДОЖЁНЫ</span>
+                  <strong>КАПСУЛА ВЕЧЕРА</strong>
+                </div>
+              </div>
 
-                <section className="admin-wedding-live-messages" aria-label="Сообщения гостей">
-                  <div className="admin-wedding-live-messages__heading">
-                    <strong>СООБЩЕНИЯ ГОСТЕЙ</strong>
-                    <span>{ready.count}</span>
+              {!control && !error && <p className="admin-wedding-live-status">ЗАГРУЖАЕМ…</p>}
+              {error && <p className="admin-wedding-live-error" role="alert">{error}</p>}
+              {control?.status === 'not_found' && <p className="admin-wedding-live-error">Событие не найдено.</p>}
+
+              {ready && (
+                <>
+                  <section className="admin-wedding-live-summary">
+                    <div>
+                      <span>СООБЩЕНИЯ</span>
+                      <strong>{ready.count} СООБЩЕНИЯ</strong>
+                    </div>
+                    <div>
+                      <span>ПРИЁМ</span>
+                      <strong>{ready.open ? 'ОТКРЫТ' : 'ЗАКРЫТ'}</strong>
+                    </div>
+                  </section>
+
+                  <div className="admin-wedding-live-actions">
+                    <button type="button" disabled={Boolean(busy)} onClick={() => void toggleOpen()}>
+                      {busy === 'toggle' ? 'МЕНЯЕМ…' : ready.open ? 'ЗАКРЫТЬ ПРИЁМ' : 'ОТКРЫТЬ ПРИЁМ'}
+                    </button>
+                    <button type="button" disabled={Boolean(busy) || ready.count === 0} onClick={() => void publish()}>
+                      {busy === 'publish' ? 'ОТПРАВЛЯЕМ…' : 'ПОКАЗАТЬ КАПСУЛУ НА ТВ'}
+                    </button>
                   </div>
-                  {ready.messages.length === 0 ? (
-                    <p className="admin-wedding-live-empty">Пока никто ничего не оставил.</p>
-                  ) : (
-                    ready.messages.map((message) => (
+
+                  {feedback && <p className="admin-wedding-live-feedback" role="status">{feedback}</p>}
+
+                  <section className="admin-wedding-live-messages" aria-label="Сообщения гостей">
+                    <div className="admin-wedding-live-messages__heading">
+                      <strong>СООБЩЕНИЯ ГОСТЕЙ</strong>
+                      <span>{ready.count}</span>
+                    </div>
+                    {ready.messages.length === 0 ? (
+                      <p className="admin-wedding-live-empty">Пока никто ничего не оставил.</p>
+                    ) : ready.messages.map((message) => (
                       <article key={message.guestId}>
-                        <div>
-                          <strong>{message.displayName}</strong>
-                          <span>{message.carriage}</span>
-                        </div>
+                        <div><strong>{message.displayName}</strong><span>{message.carriage}</span></div>
                         <p>{message.message}</p>
                       </article>
-                    ))
-                  )}
-                </section>
-              </>
-            )}
+                    ))}
+                  </section>
+                </>
+              )}
+            </section>
           </aside>
         </div>
       )}

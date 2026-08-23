@@ -33,6 +33,7 @@ import './styles/mobile-hardening.css';
 import './styles/bunker-accessibility.css';
 import './styles/bunker-projector-contrast.css';
 import './styles/wedding-live.css';
+import './styles/wedding-radio.css';
 
 const root = document.getElementById('root');
 
