@@ -379,30 +379,95 @@ export function BunkerPlayerDashboard({
     });
   };
 
-  if (revealStage || resultsStage) {
-    return (
-      <section
-        className="bunker-player-dashboard bunker-player-dashboard--results"
-        aria-label="Игровой модуль Бункер"
-        data-large-text={largeText ? 'true' : undefined}
-      >
-        {revealStage ? <LizaRevealPlayer /> : <BunkerResultsLivePlayer eventSlug={eventSlug} />}
-      </section>
-    );
-  }
+  const playerNavigation = (
+    <nav className="bunker-player-dashboard__nav" aria-label="Разделы игры">
+      {PRIMARY_SECTIONS.map((item) => (
+        <button
+          key={item}
+          type="button"
+          aria-pressed={section === item}
+          onClick={() => chooseSection(item)}
+        >
+          {item}
+        </button>
+      ))}
+      <div className="bunker-player-dashboard__nav-overflow" role="group" aria-label="Дополнительные разделы">
+        <button
+          ref={overflowToggleRef}
+          className="bunker-player-dashboard__nav-overflow-toggle"
+          type="button"
+          aria-expanded={compactNavigation ? overflowOpen : true}
+          aria-pressed={overflowSectionActive}
+          onClick={() => setOverflowOpen((current) => !current)}
+        >
+          {overflowSectionActive ? `ЕЩЁ · ${section}` : 'ЕЩЁ'}
+        </button>
+        <div
+          className="bunker-player-dashboard__nav-overflow-content"
+          hidden={compactNavigation && !overflowOpen}
+        >
+          {OVERFLOW_SECTIONS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              aria-pressed={section === item}
+              onClick={() => chooseSection(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
 
-  return (
-    <section
-      className={`bunker-player-dashboard${hasMission ? ' bunker-player-dashboard--active-mission' : ''}`}
-      aria-label="Игровой модуль Бункер"
-      data-large-text={largeText ? 'true' : undefined}
-    >
+  const playerIdentity = (
+    <>
+      <header className="bunker-player-dashboard__header">
+        <div>
+          <p className="bunker-player-dashboard__index">ПОСЛЕДНИЙ ВАГОН · {wagon.label}</p>
+          <h2 className="bunker-player-dashboard__guest-name">
+            {guest.realName.toLocaleUpperCase('ru-RU')}
+          </h2>
+        </div>
+        <div className="bunker-player-dashboard__status-controls">
+          <span className="bunker-player-dashboard__state">{gameStateLabel}</span>
+          <button
+            className="bunker-player-dashboard__large-text-toggle"
+            type="button"
+            aria-pressed={largeText}
+            onClick={toggleLargeText}
+          >
+            КРУПНЫЙ ТЕКСТ
+          </button>
+        </div>
+      </header>
+
       {isV2 && (
-        <BunkerOperatorTransmission
-          sessionKey={operatorSessionKey}
-          variant="phone"
-          message={operatorFeed.feed?.message ?? null}
-        />
+        <aside className="bunker-player-dashboard__wagon-summary" aria-label="Краткое состояние вагона">
+          <div>
+            <strong>{wagon.label}</strong>
+            {dashboard ? (
+              <ul>
+                <li>Питание · {bunkerStatusLabel(dashboard.wagonState.powerStatus)}</li>
+                <li>Связь · {bunkerStatusLabel(dashboard.wagonState.communicationStatus)}</li>
+                <li>Навигация · {bunkerStatusLabel(dashboard.wagonState.navigationStatus)}</li>
+              </ul>
+            ) : <p>Получаем текущее состояние вагона…</p>}
+            <small>BK-17 — сюжетный канал. Сообщения оператора не требуют ответа.</small>
+          </div>
+          <button type="button" onClick={() => chooseSection('СОСТОЯНИЕ')}>Показать всё состояние</button>
+        </aside>
+      )}
+    </>
+  );
+
+  const guidedMission = hasMission ? (
+    <main className="bunker-player-dashboard__guided-mission" aria-label="Текущее задание">
+      {!hasV2Mission && (
+        <p className="bunker-player-dashboard__guided-instruction">
+          Сначала выполните задание ниже. Данные вагона и архив доступны в навигации.
+        </p>
       )}
       {missionOne && <MissionOnePlayer model={missionOne} onConfirm={onConfirmMissionOne} />}
       {missionTwo && (
@@ -445,43 +510,68 @@ export function BunkerPlayerDashboard({
       )}
       {unknownPassenger && <UnknownPassengerPlayer model={unknownPassenger} />}
       {final && <FinalPlayer model={final} onRequestAccess={onRequestFinalAccess} />}
-
-      <header className="bunker-player-dashboard__header">
-        <div>
-          <p className="bunker-player-dashboard__index">ПОСЛЕДНИЙ ВАГОН · {wagon.label}</p>
-          <h2 className="bunker-player-dashboard__guest-name">
-            {guest.realName.toLocaleUpperCase('ru-RU')}
-          </h2>
-        </div>
-        <div className="bunker-player-dashboard__status-controls">
-          <span className="bunker-player-dashboard__state">{gameStateLabel}</span>
-          <button
-            className="bunker-player-dashboard__large-text-toggle"
-            type="button"
-            aria-pressed={largeText}
-            onClick={toggleLargeText}
-          >
-            КРУПНЫЙ ТЕКСТ
-          </button>
-        </div>
-      </header>
-
-      {isV2 && (
-        <aside className="bunker-player-dashboard__wagon-summary" aria-label="Краткое состояние вагона">
-          <div>
-            <strong>{wagon.label}</strong>
-            {dashboard ? (
-              <ul>
-                <li>Питание · {bunkerStatusLabel(dashboard.wagonState.powerStatus)}</li>
-                <li>Связь · {bunkerStatusLabel(dashboard.wagonState.communicationStatus)}</li>
-                <li>Навигация · {bunkerStatusLabel(dashboard.wagonState.navigationStatus)}</li>
-              </ul>
-            ) : <p>Получаем текущее состояние вагона…</p>}
-            <small>BK-17 — сюжетный канал. Сообщения оператора не требуют ответа.</small>
-          </div>
-          <button type="button" onClick={() => chooseSection('СОСТОЯНИЕ')}>Показать всё состояние</button>
-        </aside>
+      {!hasV2Mission && (
+        <article className="bunker-player-dashboard__guided-action-region">
+          {missionContent ? (
+            <BunkerMissionBriefing
+              content={missionContent}
+              availableItemKeys={availableItems}
+              missionAction={!isV2 ? runtime.missionAction : null}
+              missionPlan={!isV2 ? runtime.currentMission?.plan : null}
+              wagonId={wagon.id}
+              showConsequences={isV2 || runtime.missionAction?.completed === true}
+            />
+          ) : (
+            <p>Для текущего этапа активное задание не назначено.</p>
+          )}
+          {!isV2 && <BunkerAbilityActionCard runtime={runtime} onAbility={onAbility} />}
+          {!isV2 && (
+            <BunkerMissionActions
+              state={questState}
+              globalMissionState={runtime.game.state}
+              globalAction={runtime.missionAction}
+              inventory={inventory}
+              wagonState={runtime.wagonState}
+              submitting={missionSubmitting}
+              feedback={missionFeedback}
+              onGlobalMission={onGlobalMission}
+              onMission={onMission}
+              onFinalCode={onFinalCode}
+            />
+          )}
+        </article>
       )}
+    </main>
+  ) : null;
+
+  if (revealStage || resultsStage) {
+    return (
+      <section
+        className="bunker-player-dashboard bunker-player-dashboard--results"
+        aria-label="Игровой модуль Бункер"
+        data-large-text={largeText ? 'true' : undefined}
+      >
+        {revealStage ? <LizaRevealPlayer /> : <BunkerResultsLivePlayer eventSlug={eventSlug} />}
+      </section>
+    );
+  }
+
+  return (
+    <section
+      className={`bunker-player-dashboard${hasMission ? ' bunker-player-dashboard--active-mission' : ''}`}
+      aria-label="Игровой модуль Бункер"
+      data-large-text={largeText ? 'true' : undefined}
+    >
+      {isV2 && (
+        <BunkerOperatorTransmission
+          sessionKey={operatorSessionKey}
+          variant="phone"
+          message={operatorFeed.feed?.message ?? null}
+        />
+      )}
+      {guidedMission}
+      {hasMission && playerNavigation}
+      {!hasMission && playerIdentity}
 
       {!hasMission && (
         <BunkerResponsivePicture
@@ -522,45 +612,13 @@ export function BunkerPlayerDashboard({
         </button>
       )}
 
-      <nav className="bunker-player-dashboard__nav" aria-label="Разделы игры">
-        {PRIMARY_SECTIONS.map((item) => (
-          <button
-            key={item}
-            type="button"
-            aria-pressed={section === item}
-            onClick={() => chooseSection(item)}
-          >
-            {item}
-          </button>
-        ))}
-        <div className="bunker-player-dashboard__nav-overflow" role="group" aria-label="Дополнительные разделы">
-          <button
-            ref={overflowToggleRef}
-            className="bunker-player-dashboard__nav-overflow-toggle"
-            type="button"
-            aria-expanded={compactNavigation ? overflowOpen : true}
-            aria-pressed={overflowSectionActive}
-            onClick={() => setOverflowOpen((current) => !current)}
-          >
-            {overflowSectionActive ? `ЕЩЁ · ${section}` : 'ЕЩЁ'}
-          </button>
-          <div
-            className="bunker-player-dashboard__nav-overflow-content"
-            hidden={compactNavigation && !overflowOpen}
-          >
-            {OVERFLOW_SECTIONS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                aria-pressed={section === item}
-                onClick={() => chooseSection(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
+      {!hasMission && playerNavigation}
+      {hasMission && (
+        <details className="bunker-player-dashboard__secondary-details">
+          <summary>ДАННЫЕ ИГРОКА</summary>
+          {playerIdentity}
+        </details>
+      )}
 
       <div className="bunker-player-dashboard__content">
         {section === 'МОЙ ВАГОН' && (
@@ -682,43 +740,10 @@ export function BunkerPlayerDashboard({
           </article>
         )}
 
-        {section === 'ТЕКУЩЕЕ ЗАДАНИЕ' && (
+        {section === 'ТЕКУЩЕЕ ЗАДАНИЕ' && !hasMission && (
           <article aria-label="Текущее задание">
-            {hasV2Mission ? (
-              <>
-                <h3>ТЕКУЩЕЕ ЗАДАНИЕ</h3>
-                <p>Интерактивное задание находится в верхней части экрана.</p>
-              </>
-            ) : missionContent ? (
-              <BunkerMissionBriefing
-                content={missionContent}
-                availableItemKeys={availableItems}
-                missionAction={!isV2 ? runtime.missionAction : null}
-                missionPlan={!isV2 ? runtime.currentMission?.plan : null}
-                wagonId={wagon.id}
-                showConsequences={isV2 || runtime.missionAction?.completed === true}
-              />
-            ) : (
-              <>
-                <h3>ТЕКУЩЕЕ ЗАДАНИЕ</h3>
-                <p>Для текущего этапа активное задание не назначено.</p>
-              </>
-            )}
-            {!isV2 && <BunkerAbilityActionCard runtime={runtime} onAbility={onAbility} />}
-            {!isV2 && (
-              <BunkerMissionActions
-                state={questState}
-                globalMissionState={runtime.game.state}
-                globalAction={runtime.missionAction}
-                inventory={inventory}
-                wagonState={runtime.wagonState}
-                submitting={missionSubmitting}
-                feedback={missionFeedback}
-                onGlobalMission={onGlobalMission}
-                onMission={onMission}
-                onFinalCode={onFinalCode}
-              />
-            )}
+            <h3>ТЕКУЩЕЕ ЗАДАНИЕ</h3>
+            <p>Для текущего этапа активное задание не назначено.</p>
           </article>
         )}
       </div>

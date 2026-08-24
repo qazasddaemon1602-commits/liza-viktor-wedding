@@ -23,6 +23,42 @@ const runtime: ActiveGuestBunkerRuntime = {
 };
 
 describe('BunkerPlayerDashboard', () => {
+  it('puts an active mission first, keeps phone navigation available, and leaves secondary player details collapsed', () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    });
+
+    try {
+      render(
+        <BunkerPlayerDashboard
+          runtime={{
+            ...runtime,
+            game: { ...runtime.game, state: 'MISSION_03' },
+            currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+          }}
+        />,
+      );
+
+      const mission = screen.getByRole('main', { name: 'Текущее задание' });
+      const navigation = screen.getByRole('navigation', { name: 'Разделы игры' });
+      const secondaryDetails = screen.getByText('ДАННЫЕ ИГРОКА').closest('details');
+
+      expect(mission.compareDocumentPosition(navigation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(within(mission).getByRole('heading', { name: 'Аварийный запас' })).toBeInTheDocument();
+      expect(navigation).toContainElement(screen.getByRole('button', { name: 'ТЕКУЩЕЕ ЗАДАНИЕ' }));
+      expect(screen.getByRole('button', { name: 'ЕЩЁ' })).toHaveAttribute('aria-expanded', 'false');
+      expect(secondaryDetails).not.toHaveAttribute('open');
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
+    }
+  });
+
   it('persists the large-text preference and applies it to the dashboard', async () => {
     const user = userEvent.setup();
     window.localStorage.removeItem('bunker.largeText.v1');

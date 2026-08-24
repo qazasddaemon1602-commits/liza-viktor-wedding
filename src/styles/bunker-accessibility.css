@@ -380,3 +380,86 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Guided-player baseline: the task stays readable and actionable before secondary context. */
+.bunker-player-dashboard__guided-mission {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.bunker-player-dashboard__guided-instruction {
+  max-width: 54ch;
+  margin: 0;
+  color: #cbc6ba;
+  font-size: var(--bunker-player-body-size, 1rem);
+  line-height: 1.55;
+}
+
+.bunker-player-dashboard__guided-mission :focus-visible,
+.bunker-player-dashboard__secondary-details :focus-visible {
+  outline: 3px solid #f7f3e9;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px #0d0d0c, 0 0 0 6px #f7f3e9;
+}
+
+.bunker-player-dashboard__nav button:focus-visible,
+.bunker-player-dashboard__secondary-details > summary:focus-visible {
+  outline: 3px solid #6f2941;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px #fffaf2, 0 0 0 6px #6f2941;
+}
+
+@media (max-width: 760px) {
+  .bunker-player-shell {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  .bunker-player-dashboard,
+  .bunker-player-dashboard[data-large-text="true"] {
+    --bunker-player-body-size: 18px;
+    --bunker-player-mobile-nav-height: 64px;
+  }
+
+  .bunker-player-dashboard__nav {
+    min-height: calc(64px + env(safe-area-inset-bottom));
+    max-height: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  .bunker-player-dashboard__nav button {
+    min-height: 64px;
+    font-size: 1rem;
+  }
+
+  .bunker-player-dashboard__primary-action,
+  .bunker-v2-mission__primary,
+  .bunker-mission-one-player__primary,
+  .bunker-player-dashboard .bunker-mission-actions button {
+    min-height: 56px;
+  }
+
+  .bunker-v2-mission p,
+  .bunker-v2-mission li,
+  .bunker-v2-mission label,
+  .bunker-v2-final-terminal p,
+  .bunker-player-dashboard__guided-instruction {
+    font-size: 18px;
+  }
+
+  .bunker-v2-mission input[type="radio"],
+  .bunker-player-dashboard .bunker-mission-actions input[type="radio"] {
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bunker-player-dashboard__guided-mission *,
+  .bunker-player-dashboard__secondary-details * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

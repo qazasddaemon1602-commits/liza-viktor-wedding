@@ -833,6 +833,33 @@
   }
 }
 
+@media (max-width: 760px) {
+  .guest-bunker-quest p,
+  .guest-bunker-quest li,
+  .guest-bunker-quest label {
+    font-size: 18px;
+  }
+
+  .guest-bunker-options button,
+  .guest-bunker-answer button,
+  .guest-bunker-terminal button {
+    min-height: 56px;
+  }
+
+  .guest-bunker-quest input[type="radio"] {
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.guest-bunker-quest :focus-visible,
+.bunker-quest-scene :focus-visible {
+  outline: 3px solid #f7f3e9;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px #111210, 0 0 0 6px #f7f3e9;
+}
+
 /* BK-17 arrives above the active projector scene without entering screen_events. */
 .bunker-operator-transmission--projector {
   position: fixed;
