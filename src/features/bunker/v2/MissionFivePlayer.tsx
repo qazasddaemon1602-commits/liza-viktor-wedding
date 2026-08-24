@@ -1,6 +1,108 @@
 import { useState } from 'react';
 import type { MissionFiveOutcome, MissionFiveRoute } from './m05.service';
-export type MissionFivePlayerReadModel={instanceId:string;status:'active'|'completed';remainingSeconds:number;title:string;intro:string;routes:MissionFiveRoute[];selectedVote:'A'|'B'|null;voteCounts:{A:number;B:number;total:number;required:number};ability:{available:boolean;key:string;label:string;hint:string}|null;connection:'online'|'reconnecting';outcome?:MissionFiveOutcome};
-function timer(seconds:number){const n=Math.max(0,Math.floor(seconds));return`${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;}
-function minutes(value:number){return `${value>0?'+':''}${value} мин`}
-export function MissionFivePlayer({model,onVote,onUseAbility}:{model:MissionFivePlayerReadModel;onVote?:(vote:'A'|'B')=>Promise<void>|void;onUseAbility?:()=>Promise<void>|void}){const[busy,setBusy]=useState(false);const vote=(key:'A'|'B')=>{setBusy(true);Promise.resolve(onVote?.(key)).finally(()=>setBusy(false));};return<section className="bunker-v2-mission bunker-v2-mission--m05" aria-label="Задание 5 · Один шанс"><header className="bunker-v2-mission__header"><div><span>ЗАДАНИЕ 5</span><h1>{model.title}</h1></div><time>{timer(model.remainingSeconds)}</time></header><p className="bunker-v2-mission__intro">{model.intro}</p>{model.connection==='reconnecting'&&<p role="status">Связь восстанавливается. Уже отправленный голос сохранён.</p>}{model.status==='completed'&&model.outcome?<div className="bunker-v2-mission__result" role="status"><h2>МАРШРУТ {model.outcome.routeChoice} ПРИНЯТ</h2><p>Изменение финального времени: {minutes(model.outcome.routeBonusMinutes)}. Повреждение пути: +{model.outcome.trackDamage}. Нестабильность питания: +{model.outcome.powerInstability}.</p>{model.outcome.sector04Found&&<strong>В СЛУЖЕБНОЙ СХЕМЕ ОБНАРУЖЕН СЕКТОР 04</strong>}{model.outcome.fallback&&<small>Время истекло — применён безопасный резервный маршрут.</small>}</div>:<><div className="bunker-v2-route-grid">{model.routes.map(route=><article key={route.key}><span>МАРШРУТ {route.key}</span><h2>{route.title}</h2><p>{route.description}</p><small>{route.risk}</small><button type="button" disabled={busy||model.selectedVote!==null} onClick={()=>vote(route.key)} aria-label={`${route.key} · ${route.title.toLocaleUpperCase('ru-RU')}`}>{model.selectedVote===route.key?'ВАШ ГОЛОС ПРИНЯТ':`${route.key} · ${route.title.toLocaleUpperCase('ru-RU')}`}</button></article>)}</div><p className="bunker-v2-vote-progress">A {model.voteCounts.A} · B {model.voteCounts.B} · для решения нужно {model.voteCounts.required} голосов</p>{model.ability?.available&&<aside className="bunker-v2-mission__ability"><strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong><p>{model.ability.hint}</p><button type="button" disabled={busy} onClick={()=>{setBusy(true);Promise.resolve(onUseAbility?.()).finally(()=>setBusy(false));}}>ИСПОЛЬЗОВАТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button></aside>}{model.ability&&!model.ability.available&&<p className="bunker-v2-mission__hint">{model.ability.hint}</p>}</>}</section>}
+
+export type MissionFivePlayerReadModel = {
+  instanceId: string;
+  status: 'active' | 'completed';
+  remainingSeconds: number;
+  title: string;
+  intro: string;
+  routes: MissionFiveRoute[];
+  selectedVote: 'A' | 'B' | null;
+  voteCounts: { A: number; B: number; total: number; required: number };
+  ability: { available: boolean; key: string; label: string; hint: string } | null;
+  connection: 'online' | 'reconnecting';
+  outcome?: MissionFiveOutcome;
+};
+
+function timer(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+}
+
+function minutes(value: number) {
+  return `${value > 0 ? '+' : ''}${value} мин`;
+}
+
+export function MissionFivePlayer({
+  model,
+  onVote,
+  onUseAbility,
+}: {
+  model: MissionFivePlayerReadModel;
+  onVote?: (vote: 'A' | 'B') => Promise<void> | void;
+  onUseAbility?: () => Promise<void> | void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const vote = async (key: 'A' | 'B') => {
+    if (!onVote || busy || model.selectedVote !== null) return;
+    setBusy(true);
+    try {
+      await onVote(key);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="bunker-v2-mission bunker-v2-mission--m05" aria-label="Задание 5 · Один шанс">
+      <header className="bunker-v2-mission__header">
+        <div><span>ЗАДАНИЕ 5</span><h1>{model.title}</h1></div>
+        <time>{timer(model.remainingSeconds)}</time>
+      </header>
+      <p className="bunker-v2-mission__intro">{model.intro}</p>
+      {model.connection === 'reconnecting' && <p role="status">Связь восстанавливается. Уже отправленный голос сохранён.</p>}
+      {model.status === 'completed' && model.outcome ? (
+        <div className="bunker-v2-mission__result" role="status">
+          <h2>МАРШРУТ {model.outcome.routeChoice} ПРИНЯТ</h2>
+          <p>Изменение финального времени: {minutes(model.outcome.routeBonusMinutes)}. Повреждение пути: +{model.outcome.trackDamage}. Нестабильность питания: +{model.outcome.powerInstability}.</p>
+          {model.outcome.sector04Found && <strong>В СЛУЖЕБНОЙ СХЕМЕ ОБНАРУЖЕН СЕКТОР 04</strong>}
+          {model.outcome.fallback && <small>Время истекло — применён безопасный резервный маршрут.</small>}
+        </div>
+      ) : (
+        <>
+          <section aria-label="Выберите маршрут" className="bunker-v2-route-grid">
+            {model.routes.map((route) => (
+              <article key={route.key}>
+                <span>МАРШРУТ {route.key}</span>
+                <h2>{route.title}</h2>
+                <p>{route.description}</p>
+                <small>{route.risk}</small>
+                <button
+                  className="bunker-v2-mission__primary"
+                  type="button"
+                  disabled={busy || model.selectedVote !== null || !onVote}
+                  aria-pressed={model.selectedVote === route.key}
+                  onClick={() => void vote(route.key)}
+                  aria-label={`${route.key} · ${route.title.toLocaleUpperCase('ru-RU')}`}
+                >
+                  {route.key} · {route.title.toLocaleUpperCase('ru-RU')}
+                </button>
+              </article>
+            ))}
+          </section>
+
+          {model.selectedVote && (
+            <p className="bunker-v2-mission__answer-status" role="status" aria-label="Состояние вашего выбора">
+              <strong>Маршрут {model.selectedVote} принят.</strong>
+              <span>Ждём большинство замороженного состава вагона.</span>
+            </p>
+          )}
+
+          <details className="bunker-v2-mission__secondary">
+            <summary>ДЕТАЛИ ГОЛОСОВАНИЯ</summary>
+            <p className="bunker-v2-vote-progress">A {model.voteCounts.A} · B {model.voteCounts.B} · для решения нужно {model.voteCounts.required} голосов замороженного состава</p>
+            {model.ability?.available && (
+              <aside className="bunker-v2-mission__ability">
+                <strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong>
+                <p>{model.ability.hint}</p>
+                <button type="button" disabled={busy || !onUseAbility} onClick={() => { setBusy(true); Promise.resolve(onUseAbility?.()).finally(() => setBusy(false)); }}>ИСПОЛЬЗОВАТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button>
+              </aside>
+            )}
+            {model.ability && !model.ability.available && <p className="bunker-v2-mission__hint">{model.ability.hint}</p>}
+          </details>
+        </>
+      )}
+    </section>
+  );
+}

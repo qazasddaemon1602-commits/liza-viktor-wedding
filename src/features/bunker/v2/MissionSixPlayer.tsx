@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   MissionSixConsensus,
   MissionSixFragment,
@@ -48,12 +48,24 @@ export function MissionSixPlayer({
   const [busy, setBusy] = useState(false);
   const [localVote, setLocalVote] = useState<Vote | null>(model.selectedVote);
   const [voteState, setVoteState] = useState<VoteState>('idle');
+  const revealedInstance = useRef<string | null>(null);
   const mine = model.wagonConsensus.find((wagon) => wagon.wagonId === model.viewer.wagonId);
 
   useEffect(() => {
     setLocalVote(model.selectedVote);
     setVoteState('idle');
   }, [model.instanceId, model.selectedVote]);
+
+  useEffect(() => {
+    if (
+      model.status !== 'active'
+      || model.fragmentShared
+      || !onReveal
+      || revealedInstance.current === model.instanceId
+    ) return;
+    revealedInstance.current = model.instanceId;
+    void Promise.resolve().then(onReveal).catch(() => undefined);
+  }, [model.fragmentShared, model.instanceId, model.status, onReveal]);
 
   const castVote = async (vote: Vote) => {
     if (!onVote || !model.viewer.canVote || busy) return;
@@ -92,7 +104,7 @@ export function MissionSixPlayer({
       <p className="bunker-v2-mission__intro">{model.intro}</p>
       <section className="bunker-v2-mission__next-step" aria-label="Что делать сейчас">
         <strong>ЧТО ДЕЛАТЬ СЕЙЧАС</strong>
-        <p>Передайте свой фрагмент, сравните общие данные и выберите один протокол A, B или C.</p>
+        <p>Фрагмент передаётся автоматически. Сравните общие данные и выберите один протокол A, B или C.</p>
       </section>
       {model.connection === 'reconnecting' && <p role="status">Связь восстанавливается. Переданные фрагменты и голоса сохранены.</p>}
       {model.status === 'completed' && model.outcome ? (
@@ -108,36 +120,8 @@ export function MissionSixPlayer({
             <span>ВАШ ФРАГМЕНТ</span>
             <h2>{model.privateFragment.label}</h2>
             <p>{model.privateFragment.body}</p>
-            {model.fragmentShared ? (
-              <strong>ФРАГМЕНТ УЖЕ В ОБЩЕМ ПРОТОКОЛЕ</strong>
-            ) : (
-              <button type="button" disabled={busy || !onReveal} onClick={() => void useAction(onReveal)}>
-                ПЕРЕДАТЬ ФРАГМЕНТ В ОБЩИЙ ПРОТОКОЛ
-              </button>
-            )}
+            <strong>{model.fragmentShared ? 'ФРАГМЕНТ УЖЕ В ОБЩЕМ ПРОТОКОЛЕ' : 'ФРАГМЕНТ ПЕРЕДАЁТСЯ АВТОМАТИЧЕСКИ'}</strong>
           </article>
-          <section aria-label="Общие фрагменты">
-            <h2>ОБЩИЙ ПРОТОКОЛ · {model.fragmentsRevealed} / {model.fragmentsTotal}</h2>
-            {model.revealedFragments.length === 0 ? (
-              <p>Другие вагоны ещё не передали свои данные.</p>
-            ) : (
-              <div className="bunker-v2-fragments">
-                {model.revealedFragments.map((fragment) => (
-                  <article key={fragment.key}><strong>{fragment.label}</strong><p>{fragment.body}</p></article>
-                ))}
-              </div>
-            )}
-          </section>
-          {model.ability?.available && (
-            <aside className="bunker-v2-mission__ability">
-              <strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong>
-              <p>{model.ability.hint}</p>
-              <button type="button" disabled={busy || !onUseAbility} onClick={() => void useAction(onUseAbility)}>
-                ПРОВЕРИТЬ ПРОТОКОЛ · {model.ability.label.toLocaleUpperCase('ru-RU')}
-              </button>
-            </aside>
-          )}
-          {model.ability && !model.ability.available && <p className="bunker-v2-mission__hint">{model.ability.hint}</p>}
           <section aria-label="Выбор протокола">
             <h2>ВЫБЕРИТЕ ОДИН ПРОТОКОЛ</h2>
             <div className="bunker-v2-protocol-grid">
@@ -165,12 +149,39 @@ export function MissionSixPlayer({
                     <span>{authoritativeAccepted ? 'Выбор сохранён.' : voteState === 'sending' ? 'Голос отправляется…' : voteState === 'error' ? 'Голос не отправлен. Выберите протокол ещё раз.' : 'Голос отправлен. Ждём подтверждение сервера.'}</span>
                   </p>
                 )}
-                <p>{mine?.consensus ? `Ваш вагон согласовал протокол ${mine.consensus}.` : `Вашему вагону нужно ${mine?.required ?? 0} голоса для согласования.`}</p>
               </>
             ) : (
               <p>Вы присоединились после фиксации состава. Обсуждайте решение с вагоном; голосуют участники замороженного состава.</p>
             )}
           </section>
+          <details className="bunker-v2-mission__secondary">
+            <summary>ДЕТАЛИ ОБЩЕГО ПРОТОКОЛА</summary>
+            <section aria-label="Общие фрагменты">
+              <h2>ОБЩИЙ ПРОТОКОЛ · {model.fragmentsRevealed} / {model.fragmentsTotal}</h2>
+              {model.revealedFragments.length === 0 ? (
+                <p>Другие вагоны ещё не передали свои данные.</p>
+              ) : (
+                <div className="bunker-v2-fragments">
+                  {model.revealedFragments.map((fragment) => (
+                    <article key={fragment.key}><strong>{fragment.label}</strong><p>{fragment.body}</p></article>
+                  ))}
+                </div>
+              )}
+            </section>
+            {model.viewer.canVote && (
+              <p>{mine?.consensus ? `Ваш вагон согласовал протокол ${mine.consensus}.` : `Вашему вагону нужно ${mine?.required ?? 0} голоса для согласования.`}</p>
+            )}
+            {model.ability?.available && (
+              <aside className="bunker-v2-mission__ability">
+                <strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong>
+                <p>{model.ability.hint}</p>
+                <button type="button" disabled={busy || !onUseAbility} onClick={() => void useAction(onUseAbility)}>
+                  ПРОВЕРИТЬ ПРОТОКОЛ · {model.ability.label.toLocaleUpperCase('ru-RU')}
+                </button>
+              </aside>
+            )}
+            {model.ability && !model.ability.available && <p className="bunker-v2-mission__hint">{model.ability.hint}</p>}
+          </details>
         </>
       )}
     </section>
