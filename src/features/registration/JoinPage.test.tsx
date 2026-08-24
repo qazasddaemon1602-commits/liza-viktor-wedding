@@ -130,6 +130,10 @@ describe('JoinPage', () => {
     render(<JoinPage dependencies={dependencies({ restore })} />);
     expect(await screen.findByTestId('virtual-ticket')).toBeInTheDocument();
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     window.dispatchEvent(new Event('focus'));
     window.dispatchEvent(new Event('online'));
     window.dispatchEvent(new Event('focus'));
