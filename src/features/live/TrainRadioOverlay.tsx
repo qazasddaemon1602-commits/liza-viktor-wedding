@@ -1,12 +1,20 @@
+import { radioAudioSource } from './trainRadioAudio';
 import type { RadioTransmissionScreenEvent } from './trainRadio.service';
+import { WeddingLiveAudioPlayer } from './WeddingLiveAudioPlayer';
 
 type Props = {
   transmission: RadioTransmissionScreenEvent;
+  onAudioEnded?: () => void;
 };
 
-export function TrainRadioOverlay({ transmission }: Props) {
+export function TrainRadioOverlay({ transmission, onAudioEnded }: Props) {
   return (
     <aside className="wedding-train-radio" aria-live="assertive" aria-label="Радио состава">
+      <WeddingLiveAudioPlayer
+        src={radioAudioSource(transmission.preset)}
+        eventKey={transmission.id}
+        onEnded={onAudioEnded}
+      />
       <div className="wedding-train-radio__signal" aria-hidden="true"><span /><span /><span /><span /></div>
       <section className="wedding-train-radio__frame">
         <header>
