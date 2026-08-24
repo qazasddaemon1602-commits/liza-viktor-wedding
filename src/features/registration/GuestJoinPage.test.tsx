@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { GuestJoinPage } from './GuestJoinPage';
@@ -95,9 +95,9 @@ describe('GuestJoinPage', () => {
       p_device_key: 'lvw_device_31',
     });
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
-    await user.click(screen.getByRole('button', { name: 'ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ' }));
-    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ ИСПОЛЬЗОВАНИЕ' }));
+    const guidedMission = screen.getByRole('main', { name: 'Текущее задание' });
+    await user.click(within(guidedMission).getByRole('button', { name: 'ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ' }));
+    await user.click(within(guidedMission).getByRole('button', { name: 'ПОДТВЕРДИТЬ ИСПОЛЬЗОВАНИЕ' }));
     expect(await screen.findAllByText(/механик разблокировал/i)).toHaveLength(2);
     expect(bunkerRpc).toHaveBeenCalledWith('use_guest_bunker_ability', expect.objectContaining({
       p_event_slug: 'liza-viktor',

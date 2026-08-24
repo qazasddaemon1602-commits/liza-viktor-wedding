@@ -31,6 +31,9 @@ describe('MissionSixPlayer', () => {
 
     view.rerender(<MissionSixPlayer model={{ ...model, remainingSeconds: 479 }} onReveal={reveal} onVote={vi.fn()} />);
     await waitFor(() => expect(reveal).toHaveBeenCalledTimes(1));
+
+    view.rerender(<MissionSixPlayer model={{ ...model, instanceId: 'm6-next' }} onReveal={reveal} onVote={vi.fn()} />);
+    await waitFor(() => expect(reveal).toHaveBeenCalledTimes(2));
   });
 
   it('keeps fragment counters and abilities in secondary details', () => {

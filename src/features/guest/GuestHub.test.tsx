@@ -226,8 +226,8 @@ describe('GuestHub', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
-    const actions = screen.getByLabelText('Действие вагона');
+    const guidedMission = screen.getByRole('main', { name: 'Текущее задание' });
+    const actions = within(guidedMission).getByLabelText('Действие вагона');
     expect(within(actions).getByRole('heading', { name: `Проверка вагона ${carriageNumber}` })).toBeInTheDocument();
     expect(within(actions).getByText(/любой участник этого вагона/i)).toBeInTheDocument();
 
@@ -260,8 +260,8 @@ describe('GuestHub', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
-    const actions = screen.getByLabelText('Действие вагона');
+    const guidedMission = screen.getByRole('main', { name: 'Текущее задание' });
+    const actions = within(guidedMission).getByLabelText('Действие вагона');
     await user.type(within(actions).getByLabelText('Общий код Бункера'), '47-19');
     await user.click(within(actions).getByRole('button', { name: 'ОТКРЫТЬ ШЛЮЗ' }));
     expect(onFinalCode).toHaveBeenCalledWith('4719');
@@ -294,8 +294,8 @@ describe('GuestHub', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
-    const actions = within(screen.getByLabelText('Действие вагона'));
+    const guidedMission = screen.getByRole('main', { name: 'Текущее задание' });
+    const actions = within(within(guidedMission).getByLabelText('Действие вагона'));
     expect(actions.queryByText('RADIO')).not.toBeInTheDocument();
     expect(actions.queryByText('GAS_MASK')).not.toBeInTheDocument();
     await user.click(actions.getByRole('button', { name: 'Рация' }));
@@ -323,9 +323,9 @@ describe('GuestHub', () => {
         onQuizVote={vi.fn()}
       />,
     );
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
-    await user.click(screen.getByRole('checkbox', { name: /Рация/i }));
-    await user.click(screen.getByRole('button', { name: 'ПРИМЕНИТЬ ЗАПАС' }));
+    const guidedMission = screen.getByRole('main', { name: 'Текущее задание' });
+    await user.click(within(guidedMission).getByRole('checkbox', { name: /Рация/i }));
+    await user.click(within(guidedMission).getByRole('button', { name: 'ПРИМЕНИТЬ ЗАПАС' }));
     expect(onGlobalMission).toHaveBeenCalledWith('MISSION_03', { itemKeys: ['radio'] });
   });
 
@@ -417,10 +417,6 @@ describe('GuestHub', () => {
     expect(screen.getByText(/персонаж исключён из истории/i)).toBeInTheDocument();
     await user.click(within(mission).getByRole('checkbox', { name: /илья тестов/i }));
     await user.click(within(mission).getByRole('button', { name: 'Подтвердить решение' }));
-    await user.click(
-      within(screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' }))
-        .getByRole('button', { name: 'Подтвердить решение' }),
-    );
     expect(onConfirmBunkerMissionOne).toHaveBeenCalledWith([guest.id]);
   });
 });

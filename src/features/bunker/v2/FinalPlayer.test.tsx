@@ -66,6 +66,7 @@ describe('FinalPlayer', () => {
     await user.click(button);
     expect(submit).toHaveBeenCalledWith({ coordinates:'57°09 / 65°32',sector:'04',accessCode:'4719',gateTime:'23:40',password:'LV0830' });
     expect(submit).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/версия отправлена.*ожидайте подтверждения терминала/i)).toHaveAttribute('role', 'status');
   });
 
   it('explains an incorrect version, accepted submission, and host recovery when access is unavailable', async () => {
