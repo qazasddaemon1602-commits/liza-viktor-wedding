@@ -61,9 +61,38 @@ describe('Bunker wedding theme', () => {
   it('uses a warm, celebratory projector palette without reducing contrast', () => {
     const screen = ruleBody(css, '.bunker-v2-screen');
 
-    expect(screen).toContain('--bunker-v2-paper: #fff8ee');
-    expect(screen).toContain('--bunker-v2-muted: #ead7d2');
+    expect(screen).toContain('--bunker-v2-paper: #fffaf2');
+    expect(screen).toContain('--bunker-v2-ink: #3b1221');
+    expect(screen).toContain('--bunker-v2-muted: #684452');
     expect(screen).toMatch(/background:\s*radial-gradient/);
+  });
+
+  it('uses a 600ms warm crossfade and removes emergency blackout styling', () => {
+    const crossfade = ruleBody(css, '.bunker-emergency__warm-crossfade');
+    const title = ruleBody(css, '.bunker-emergency__title-crossfade');
+    expect(crossfade).toContain('animation: bunker-warm-crossfade 600ms ease-out both');
+    expect(crossfade).toContain('background: #f3d9ad');
+    expect(title).toContain('animation: bunker-title-crossfade 600ms ease-out both');
+    expect(css).not.toContain('.bunker-emergency__blackout');
+    expect(css).not.toContain('.bunker-emergency__sync-tear');
+  });
+
+  it('makes Viktor a 36vw natural-colour image without face cropping', () => {
+    const frame = ruleBody(css, '.bunker-emergency__route-story');
+    const portrait = ruleBody(css, '.bunker-emergency__route-story img');
+    expect(frame).toContain('width: 36vw');
+    expect(portrait).toContain('object-fit: contain');
+    expect(portrait).toContain('object-position: center');
+    expect(portrait).toContain('filter: none');
+  });
+
+  it('keeps Liza warm, natural and uncropped on the projector', () => {
+    const reveal = ruleBody(css, '.bunker-liza-reveal--screen');
+    const portrait = ruleBody(css, '.bunker-liza-reveal--screen .bunker-liza-reveal__portrait img');
+    expect(reveal).toContain('background-color: #f6e6d1');
+    expect(portrait).toContain('object-fit: contain');
+    expect(portrait).toContain('object-position: center');
+    expect(portrait).toContain('filter: none');
   });
 
   it('keeps finale metrics readable and fills epilogue side space without cropping the couple', () => {
@@ -77,8 +106,14 @@ describe('Bunker wedding theme', () => {
     );
 
     expect(metrics).toContain('color: #4b1728');
+    expect(metrics).toContain('font-size: 18px');
     expect(metrics).toContain('text-shadow: none');
     expect(backdrop).toContain("url('/images/bunker/story/couple-epilogue.webp')");
     expect(backdrop).toContain('filter: blur(18px)');
+    const portrait = ruleBody(
+      css,
+      '.bunker-v2-results-player .bunker-results-epilogue picture img,\n.bunker-v2-results .bunker-results-epilogue picture img',
+    );
+    expect(portrait).toContain('object-fit: contain');
   });
 });

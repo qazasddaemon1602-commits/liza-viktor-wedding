@@ -437,20 +437,22 @@
 
 /* Projector and arrival scenes retain railway drama with warmer wedding light. */
 .bunker-v2-screen {
-  --bunker-v2-paper: #fff8ee;
-  --bunker-v2-muted: #ead7d2;
-  --bunker-v2-rule: rgba(255, 248, 238, 0.32);
+  --bunker-v2-paper: #fffaf2;
+  --bunker-v2-ink: #3b1221;
+  --bunker-v2-muted: #684452;
+  --bunker-v2-rule: rgba(111, 41, 65, 0.3);
+  color: var(--bunker-v2-ink);
   background:
-    radial-gradient(circle at 14% 12%, rgba(226, 188, 120, 0.3), transparent 32%),
-    radial-gradient(circle at 88% 24%, rgba(237, 190, 191, 0.2), transparent 35%),
-    linear-gradient(145deg, #3b1221 0%, #651f39 55%, #32101c 100%);
+    radial-gradient(circle at 14% 12%, rgba(226, 188, 120, 0.46), transparent 32%),
+    radial-gradient(circle at 88% 24%, rgba(237, 190, 191, 0.34), transparent 35%),
+    linear-gradient(145deg, #fffaf2 0%, #f6e6d1 55%, #f1d8ca 100%);
 }
 
 .bunker-v2-screen::before {
   opacity: 0.32;
   background-image:
-    linear-gradient(rgba(255, 248, 238, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 248, 238, 0.055) 1px, transparent 1px);
+    linear-gradient(rgba(111, 41, 65, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(111, 41, 65, 0.05) 1px, transparent 1px);
 }
 
 .bunker-v2-screen h1,
@@ -458,40 +460,46 @@
 .bunker-v2-screen h3,
 .bunker-v2-screen strong,
 .bunker-v2-screen time {
-  color: #fff8ee;
-  text-shadow: 0 3px 22px rgba(49, 12, 25, 0.72);
+  color: var(--bunker-v2-ink);
+  text-shadow: none;
 }
 
 .bunker-v2-screen p,
 .bunker-v2-screen span,
 .bunker-v2-screen small,
 .bunker-v2-screen label {
-  color: #ead7d2;
+  color: var(--bunker-v2-muted);
+}
+
+.bunker-v2-screen > p[role="status"] {
+  color: var(--bunker-v2-ink);
+  font-size: clamp(22px, min(1.45vw, 2.5vh), 24px);
 }
 
 .bunker-v2-screen article,
 .bunker-v2-screen li {
-  border-color: rgba(255, 248, 238, 0.38);
-  background-color: rgba(75, 23, 40, 0.72);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 0.8rem 2.4rem rgba(49, 12, 25, 0.18);
+  border-color: rgba(111, 41, 65, 0.28);
+  color: var(--bunker-v2-ink);
+  background-color: #fffaf2;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72), 0 0.8rem 2.4rem rgba(75, 23, 40, 0.1);
 }
 
 .bunker-v2-screen article.is-complete,
 .bunker-v2-screen li.is-complete {
-  border-color: rgba(226, 188, 120, 0.88);
-  background: rgba(132, 47, 77, 0.9);
-  box-shadow: inset 5px 0 #e2bc78, 0 0 2rem rgba(226, 188, 120, 0.13);
+  border-color: #b8863f;
+  background: #f3dfb5;
+  box-shadow: inset 5px 0 #b8863f, 0 0 2rem rgba(184, 134, 63, 0.14);
 }
 
 .bunker-mission-one-screen::before {
   background:
-    linear-gradient(180deg, rgba(49, 12, 25, 0.36), rgba(59, 18, 33, 0.72)),
-    linear-gradient(90deg, rgba(226, 188, 120, 0.11), transparent 58%, rgba(237, 190, 191, 0.12));
+    linear-gradient(180deg, rgba(255, 250, 242, 0.88), rgba(246, 230, 209, 0.94)),
+    linear-gradient(90deg, rgba(226, 188, 120, 0.2), transparent 58%, rgba(237, 190, 191, 0.2));
 }
 
 .bunker-mission-one-screen__backdrop img,
 .bunker-quest-scene__backdrop img {
-  filter: sepia(0.2) saturate(0.75) contrast(1.02) brightness(0.82);
+  filter: sepia(0.12) saturate(0.85) contrast(1.02) brightness(1.03);
 }
 
 .bunker-mission-one-screen__summary,
@@ -501,8 +509,9 @@
 .bunker-quest-scene__briefing,
 .bunker-quest-scene__teams article,
 .bunker-quest-scene__slots article {
-  border-color: rgba(255, 248, 238, 0.34);
-  background: rgba(75, 23, 40, 0.76);
+  border-color: rgba(111, 41, 65, 0.28);
+  color: #3b1221;
+  background: #fffaf2;
 }
 
 .bunker-mission-one-screen__summary,
@@ -514,17 +523,41 @@
 
 .bunker-quest-scene {
   --bq-ink: #3b1221;
-  --bq-paper: #fff8ee;
-  --bq-muted: #ead7d2;
-  --bq-line: rgba(255, 248, 238, 0.24);
-  --bq-line-strong: rgba(255, 248, 238, 0.48);
-  --bq-panel: rgba(255, 248, 238, 0.08);
-  background-color: #3b1221;
+  --bq-paper: #fffaf2;
+  --bq-muted: #684452;
+  --bq-line: rgba(111, 41, 65, 0.26);
+  --bq-line-strong: rgba(111, 41, 65, 0.5);
+  --bq-panel: rgba(255, 250, 242, 0.86);
+  color: #3b1221;
+  background-color: #f6e6d1;
 }
 
 .bunker-emergency {
   color: #fff8ee;
   background-color: #3b1221;
+}
+
+.bunker-emergency__warm-crossfade {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background: #f3d9ad;
+  animation: bunker-warm-crossfade 600ms ease-out both;
+}
+
+.bunker-emergency__title-crossfade {
+  animation: bunker-title-crossfade 600ms ease-out both;
+}
+
+@keyframes bunker-warm-crossfade {
+  from { opacity: 0.82; }
+  to { opacity: 0; visibility: hidden; }
+}
+
+@keyframes bunker-title-crossfade {
+  from { opacity: 0; transform: translateY(0.35rem); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .bunker-emergency::before {
@@ -539,7 +572,46 @@
 }
 
 .bunker-emergency__artwork img {
-  filter: sepia(0.26) saturate(0.8) contrast(1.05) brightness(0.76);
+  filter: sepia(0.12) saturate(0.9) contrast(1.03) brightness(0.82);
+}
+
+.bunker-emergency__route-story {
+  top: clamp(8rem, 18vh, 12rem);
+  right: auto;
+  left: clamp(1.6rem, 3vw, 4rem);
+  width: 36vw;
+  max-width: 44rem;
+  border-color: rgba(226, 188, 120, 0.72);
+  background: #f3d9ad;
+  box-shadow: 0 1.4rem 4rem rgba(49, 12, 25, 0.28);
+}
+
+.bunker-emergency__route-story img {
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  filter: none;
+}
+
+.bunker-emergency__route-story figcaption {
+  color: #3b1221;
+  background: #fffaf2;
+  font-size: 18px;
+}
+
+.bunker-emergency__content {
+  width: 56%;
+  margin-left: auto;
+}
+
+.bunker-emergency__content > p {
+  font-size: clamp(22px, 1.45vw, 24px);
+}
+
+.bunker-emergency__header,
+.bunker-emergency__footer,
+.bunker-emergency__timer-block span {
+  font-size: clamp(18px, 1.1vw, 22px);
 }
 
 .bunker-emergency__header,
@@ -565,13 +637,74 @@
   text-shadow: 0 4px 28px rgba(49, 12, 25, 0.72);
 }
 
+.bunker-liza-reveal--screen {
+  --bunker-v2-ink: #3b1221;
+  --bunker-v2-muted: #684452;
+  color: #3b1221;
+  background-color: #f6e6d1;
+  background-image:
+    radial-gradient(circle at 24% 18%, rgba(226, 188, 120, 0.5), transparent 32%),
+    radial-gradient(circle at 82% 22%, rgba(237, 190, 191, 0.36), transparent 36%);
+}
+
+.bunker-liza-reveal--screen::before {
+  background: repeating-linear-gradient(0deg, transparent 0 4px, rgba(111, 41, 65, 0.035) 4px 5px);
+}
+
+.bunker-liza-reveal--screen .bunker-liza-reveal__portrait {
+  position: relative;
+  isolation: isolate;
+  border-color: rgba(184, 134, 63, 0.74);
+  background: #f3d9ad;
+  box-shadow: 0 2rem 6rem rgba(75, 23, 40, 0.18);
+}
+
+.bunker-liza-reveal--screen .bunker-liza-reveal__portrait img {
+  position: relative;
+  z-index: 1;
+  object-fit: contain;
+  object-position: center;
+  filter: none;
+}
+
+.bunker-liza-reveal--screen .bunker-liza-reveal__signal strong,
+.bunker-liza-reveal--screen .bunker-liza-reveal__copy h1,
+.bunker-liza-reveal--screen .bunker-liza-reveal__copy blockquote,
+.bunker-liza-reveal--screen > footer {
+  color: #3b1221;
+  text-shadow: none;
+}
+
+.bunker-liza-reveal--screen .bunker-liza-reveal__signal,
+.bunker-liza-reveal--screen > footer {
+  font-size: clamp(18px, 1.1vw, 22px);
+}
+
+.bunker-liza-reveal--screen .bunker-liza-reveal__copy > p,
+.bunker-liza-reveal--screen .bunker-liza-reveal__copy blockquote strong {
+  color: #80502f;
+}
+
+.bunker-liza-reveal--screen .bunker-liza-reveal__copy > p {
+  font-size: clamp(18px, 1.1vw, 22px);
+}
+
+.bunker-liza-reveal--screen .bunker-liza-reveal__signal span {
+  background: #b8863f;
+  box-shadow: 0 0 1.4rem rgba(184, 134, 63, 0.58);
+}
+
+.bunker-liza-reveal--screen > footer {
+  border-color: rgba(111, 41, 65, 0.34);
+}
+
 /* Finale: champagne framing and a brighter arrival mood around the existing image. */
 .bunker-v2-results {
-  color: #fff8ee;
+  color: #3b1221;
   background:
-    radial-gradient(circle at 18% 12%, rgba(226, 188, 120, 0.28), transparent 30%),
-    radial-gradient(circle at 88% 18%, rgba(237, 190, 191, 0.2), transparent 34%),
-    linear-gradient(145deg, #3b1221, #6f2941 58%, #3b1221);
+    radial-gradient(circle at 18% 12%, rgba(226, 188, 120, 0.5), transparent 30%),
+    radial-gradient(circle at 88% 18%, rgba(237, 190, 191, 0.36), transparent 34%),
+    linear-gradient(145deg, #fffaf2, #f6e6d1 58%, #f1d8ca);
 }
 
 .bunker-v2-results__grid {
@@ -588,7 +721,24 @@
 .bunker-v2-results .bunker-v2-results__grid article span,
 .bunker-v2-results .bunker-v2-results__grid article small {
   color: #4b1728;
+  font-size: 18px;
   text-shadow: none;
+}
+
+.bunker-v2-results .bunker-v2-results__grid article strong {
+  font-size: clamp(22px, min(1.45vw, 2.5vh), 24px);
+}
+
+.bunker-v2-results__hero p,
+.bunker-v2-results__hero strong,
+.bunker-v2-results__score span,
+.bunker-v2-results > footer {
+  font-size: 18px;
+}
+
+.bunker-v2-results__score p,
+.bunker-v2-results .bunker-results-epilogue p {
+  font-size: clamp(22px, min(1.45vw, 2.5vh), 24px);
 }
 
 .bunker-v2-results .bunker-v2-results__grid article span,
@@ -650,6 +800,10 @@
 .bunker-v2-results .bunker-results-epilogue picture img {
   position: relative;
   z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
 }
 
 .bunker-liza-reveal--player > p,
@@ -662,6 +816,25 @@
 .bunker-liza-reveal--player blockquote strong,
 .bunker-results-epilogue span {
   color: #80502f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bunker-emergency__warm-crossfade {
+    display: none;
+    animation: none;
+  }
+
+  .bunker-emergency__title-crossfade {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+.bunker-emergency[data-motion="reduced"] .bunker-emergency__title-crossfade {
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
 @media (max-width: 760px) {

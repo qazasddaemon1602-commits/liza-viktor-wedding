@@ -9,9 +9,10 @@ body:has(.bunker-v2-screen) {
 }
 
 .bunker-v2-screen {
-  --bunker-v2-paper: #f3eee3;
-  --bunker-v2-muted: #aaa59b;
-  --bunker-v2-rule: rgba(243, 238, 227, 0.26);
+  --bunker-v2-ink: #3b1221;
+  --bunker-v2-paper: #fffaf2;
+  --bunker-v2-muted: #684452;
+  --bunker-v2-rule: rgba(111, 41, 65, 0.28);
   position: fixed;
   inset: 0;
   z-index: 1200;
@@ -26,10 +27,10 @@ body:has(.bunker-v2-screen) {
   gap: clamp(0.65rem, 1.6vh, 1.15rem);
   padding: clamp(1rem, 2.6vh, 1.9rem) clamp(1.25rem, 4vw, 4.75rem);
   overflow: hidden;
-  color: var(--bunker-v2-paper);
+  color: var(--bunker-v2-ink);
   background:
-    radial-gradient(circle at 72% 30%, rgba(72, 80, 68, 0.14), transparent 38%),
-    linear-gradient(135deg, #0b0d0b 0%, #121510 58%, #0a0c0a 100%);
+    radial-gradient(circle at 72% 30%, rgba(226, 188, 120, 0.38), transparent 38%),
+    linear-gradient(135deg, #fffaf2 0%, #f6e6d1 58%, #f1d8ca 100%);
   isolation: isolate;
 }
 
@@ -41,8 +42,8 @@ body:has(.bunker-v2-screen) {
   pointer-events: none;
   opacity: 0.38;
   background-image:
-    linear-gradient(rgba(243, 238, 227, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(243, 238, 227, 0.035) 1px, transparent 1px);
+    linear-gradient(rgba(111, 41, 65, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(111, 41, 65, 0.045) 1px, transparent 1px);
   background-size: clamp(44px, 5vw, 76px) clamp(44px, 5vw, 76px);
 }
 
@@ -79,10 +80,16 @@ body:has(.bunker-v2-screen) {
   text-transform: uppercase;
 }
 
+.bunker-v2-screen > header p,
+.bunker-v2-screen > header span,
+.bunker-v2-screen > footer {
+  font-size: clamp(18px, 1.1vw, 22px);
+}
+
 .bunker-v2-screen > header h1 {
   max-width: 18ch;
   margin: 0.25rem 0 0;
-  color: var(--bunker-v2-paper);
+  color: var(--bunker-v2-ink);
   font: 400 clamp(2.6rem, min(5vw, 7.4vh), 5.4rem)/0.88 Georgia, 'Times New Roman', serif;
   letter-spacing: -0.045em;
   text-wrap: balance;
@@ -101,7 +108,7 @@ body:has(.bunker-v2-screen) {
   display: grid;
   justify-items: end;
   align-content: end;
-  color: var(--bunker-v2-paper);
+  color: var(--bunker-v2-ink);
   font: 500 clamp(3.1rem, min(5vw, 8vh), 6rem)/0.82 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.075em;
@@ -117,7 +124,7 @@ body:has(.bunker-v2-screen) {
 .bunker-v2-screen > header time > small {
   margin-top: 0.35rem;
   color: var(--bunker-v2-muted);
-  font: 700 clamp(0.68rem, min(0.85vw, 1.45vh), 0.95rem)/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font: 700 clamp(18px, min(1.05vw, 1.8vh), 22px)/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   letter-spacing: 0.14em;
 }
 
@@ -132,15 +139,16 @@ body:has(.bunker-v2-screen) {
 .bunker-v2-screen > main > p {
   flex: 0 0 auto;
   max-width: 92ch;
-  color: rgba(243, 238, 227, 0.72);
-  font-size: clamp(0.8rem, min(1.05vw, 1.75vh), 1.15rem);
+  color: var(--bunker-v2-ink);
+  font-size: clamp(22px, min(1.45vw, 2.5vh), 24px);
+  line-height: 1.35;
 }
 
 .bunker-v2-screen > main > strong {
   flex: 0 0 auto;
   margin: 0;
-  color: var(--bunker-v2-paper);
-  font: 700 clamp(1rem, min(1.45vw, 2.3vh), 1.55rem)/1.1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--bunker-v2-ink);
+  font: 700 clamp(18px, min(1.45vw, 2.3vh), 24px)/1.1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   letter-spacing: 0.07em;
 }
 
@@ -172,13 +180,15 @@ body:has(.bunker-v2-screen) {
   gap: clamp(0.35rem, 0.9vh, 0.7rem);
   padding: clamp(0.8rem, min(1.4vw, 2.2vh), 1.45rem);
   border: 1px solid var(--bunker-v2-rule);
-  background: rgba(15, 18, 15, 0.92);
+  color: var(--bunker-v2-ink);
+  background: #fffaf2;
+  box-shadow: 0 0.8rem 2.4rem rgba(75, 23, 40, 0.1);
   overflow: hidden;
 }
 
 .bunker-v2-screen article.is-complete {
-  border-color: rgba(196, 218, 194, 0.58);
-  background: rgba(37, 48, 37, 0.94);
+  border-color: #b8863f;
+  background: #f3dfb5;
 }
 
 .bunker-v2-screen article h2,
@@ -191,20 +201,20 @@ body:has(.bunker-v2-screen) {
 }
 
 .bunker-v2-screen article h2 {
-  color: var(--bunker-v2-paper);
+  color: var(--bunker-v2-ink);
   font: 400 clamp(1.65rem, min(2.5vw, 4.2vh), 3rem)/0.96 Georgia, 'Times New Roman', serif;
 }
 
 .bunker-v2-screen article strong {
-  color: var(--bunker-v2-paper);
-  font: 700 clamp(0.88rem, min(1.25vw, 2vh), 1.25rem)/1.18 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--bunker-v2-ink);
+  font: 700 clamp(18px, min(1.25vw, 2vh), 24px)/1.18 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   letter-spacing: 0.055em;
 }
 
 .bunker-v2-screen article span,
 .bunker-v2-screen article small {
   color: var(--bunker-v2-muted);
-  font: 600 clamp(0.72rem, min(0.95vw, 1.6vh), 1rem)/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font: 600 clamp(18px, min(1.05vw, 1.8vh), 22px)/1.3 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   letter-spacing: 0.05em;
 }
 
@@ -231,7 +241,7 @@ body:has(.bunker-v2-screen) {
 
 .bunker-v2-protocol-progress span {
   color: var(--bunker-v2-muted);
-  font-size: clamp(0.72rem, min(0.95vw, 1.6vh), 1rem);
+  font-size: clamp(18px, min(1.05vw, 1.8vh), 22px);
 }
 
 .bunker-v2-screen > footer {

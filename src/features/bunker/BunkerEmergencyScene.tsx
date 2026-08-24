@@ -52,10 +52,11 @@ export function BunkerEmergencyScene({
         </figure>
       )}
       {!reducedMotion && (
-        <>
-          <div className="bunker-emergency__blackout" aria-hidden="true" data-testid="bunker-blackout" />
-          <div className="bunker-emergency__sync-tear" aria-hidden="true" data-testid="bunker-sync-tear" />
-        </>
+        <div
+          className="bunker-emergency__warm-crossfade"
+          aria-hidden="true"
+          data-testid="bunker-warm-crossfade"
+        />
       )}
       <div className="bunker-emergency__scan" aria-hidden="true" />
       <div className="bunker-emergency__frame" aria-hidden="true">
@@ -88,7 +89,7 @@ export function BunkerEmergencyScene({
 
       <div className="bunker-emergency__content">
         <p>ПОЕЗД ИЗМЕНИЛ МАРШРУТ.</p>
-        <h1 className="bunker-emergency__title-reveal">БУНКЕР</h1>
+        <h1 className="bunker-emergency__title-crossfade">БУНКЕР</h1>
         <p>ЕДИНСТВЕННАЯ БЕЗОПАСНАЯ ТОЧКА</p>
 
         <div className="bunker-emergency__timer-block">

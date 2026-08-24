@@ -30,6 +30,25 @@ describe('Bunker V2 projector layout', () => {
     expect(heading).toMatch(/max-width:/);
   });
 
+  it('keeps projector instructions at 22-24px and secondary text at least 18px', () => {
+    const instructions = body('.bunker-v2-screen > main > p');
+    const secondary = body(
+      '.bunker-v2-screen > header p,\n.bunker-v2-screen > header span,\n.bunker-v2-screen > footer',
+    );
+    expect(instructions).toMatch(/font-size:\s*clamp\(22px,[^;]*24px\)/);
+    expect(secondary).toMatch(/font-size:\s*clamp\(18px,[^;]*22px\)/);
+  });
+
+  it('uses warm paper cards with dark railway ink as the base mission surface', () => {
+    const screen = body('.bunker-v2-screen');
+    const card = body('.bunker-v2-screen article');
+    expect(screen).toContain('--bunker-v2-ink: #3b1221');
+    expect(screen).toContain('--bunker-v2-paper: #fffaf2');
+    expect(screen).toContain('#f6e6d1');
+    expect(card).toContain('background: #fffaf2');
+    expect(card).toContain('color: var(--bunker-v2-ink)');
+  });
+
   it('keeps mission content and wagon cards inside the remaining viewport height', () => {
     const mission = body('.bunker-v2-screen > main');
     const grid = body('.bunker-v2-screen .bunker-wagon-grid,\n.bunker-v2-screen .bunker-v2-groups');

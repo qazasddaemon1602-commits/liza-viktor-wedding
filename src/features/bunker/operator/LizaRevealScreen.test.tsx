@@ -1,8 +1,12 @@
+// @ts-expect-error Vitest runs this style contract in Node; the browser bundle intentionally omits Node types.
+import { readFileSync } from 'node:fs';
 import { StrictMode } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { siteAudio } from '../../../lib/siteAudio';
 import { LizaRevealScreen } from './LizaRevealScreen';
+
+const testRuntime = globalThis as typeof globalThis & { process: { cwd: () => string } };
 
 describe('LizaRevealScreen', () => {
   beforeEach(() => {
@@ -29,6 +33,24 @@ describe('LizaRevealScreen', () => {
     fireEvent.error(screen.getByRole('img'));
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(reveal).toHaveTextContent('Сигнал принят. Поезд Виктора прибыл. Я ждала вас. — Лиза');
+  });
+
+  it('presents the complete portrait in natural colour on the warm projector surface', () => {
+    const style = document.createElement('style');
+    style.textContent = [
+      readFileSync(`${testRuntime.process.cwd()}/src/styles/bunker-quest.css`, 'utf8'),
+      readFileSync(`${testRuntime.process.cwd()}/src/styles/bunker-wedding-theme.css`, 'utf8'),
+    ].join('\n');
+    document.head.append(style);
+    render(<LizaRevealScreen />);
+
+    const portrait = screen.getByRole('img', {
+      name: 'Лиза встречает прибывший поезд у открытого Бункера',
+    });
+    expect(getComputedStyle(portrait).objectFit).toBe('contain');
+    expect(getComputedStyle(portrait).objectPosition).toBe('center');
+    expect(getComputedStyle(portrait).filter).toBe('none');
+    style.remove();
   });
 
   it('plays the door before the reveal once per run', () => {

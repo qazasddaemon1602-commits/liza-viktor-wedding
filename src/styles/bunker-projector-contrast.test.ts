@@ -9,9 +9,9 @@ const css = readFileSync(
 ).replace(/\s+/g, ' ');
 
 describe('Bunker projector contrast', () => {
-  it('keeps M01 primary copy bright and separates it from the photo', () => {
+  it('keeps M01 primary copy high-contrast and separates it from the photo', () => {
     expect(css).toContain('.bunker-mission-one-screen {');
-    expect(css).toContain('--projector-ink: #f7f3e9;');
+    expect(css).toContain('--projector-ink: #3b1221;');
     expect(css).toContain('.bunker-mission-one-screen::before');
     expect(css).toContain('.bunker-mission-one-screen__summary');
     expect(css).toContain('.bunker-mission-one-screen__wagons li');
@@ -23,5 +23,18 @@ describe('Bunker projector contrast', () => {
     expect(css).toContain('.bunker-quest-scene__teams article');
     expect(css).not.toContain('.bunker-v2-mission {');
     expect(css).not.toContain('.guest-bunker-quest {');
+  });
+
+  it('uses dark ink on warm paper for M01 and fallback mission panels', () => {
+    expect(css).toContain('--projector-ink: #3b1221;');
+    expect(css).toContain('--projector-muted: #684452;');
+    expect(css).toContain('background: #fffaf2;');
+    expect(css).toContain('--bq-paper: #fffaf2;');
+    expect(css).toContain('--bq-ink: #3b1221;');
+  });
+
+  it('keeps M01 and fallback instructions at 22-24px with 18px secondary copy', () => {
+    expect(css).toContain('font-size: clamp(22px, 1.45vw, 24px);');
+    expect(css).toContain('font-size: clamp(18px, 1.1vw, 22px);');
   });
 });

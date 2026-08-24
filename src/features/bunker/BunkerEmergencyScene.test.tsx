@@ -82,18 +82,20 @@ describe('BunkerEmergencyScene', () => {
     expect(screen.getByText('ТОЧКА ДОСТИГНУТА')).toBeInTheDocument();
   });
 
-  it('runs one blackout and sync tear before the masked title reveal', () => {
+  it('uses one short warm crossfade instead of blackout and glitch layers', () => {
     render(<BunkerEmergencyScene remainingSeconds={1800} motionPreference="full" />);
 
-    expect(screen.getByTestId('bunker-blackout')).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByTestId('bunker-sync-tear')).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByText('БУНКЕР')).toHaveClass('bunker-emergency__title-reveal');
+    expect(screen.getByTestId('bunker-warm-crossfade')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByTestId('bunker-blackout')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bunker-sync-tear')).not.toBeInTheDocument();
+    expect(screen.getByText('БУНКЕР')).toHaveClass('bunker-emergency__title-crossfade');
   });
 
   it('omits decorative transition layers when reduced motion is preferred', () => {
     render(<BunkerEmergencyScene remainingSeconds={1800} motionPreference="reduced" />);
 
     expect(screen.getByTestId('bunker-emergency-scene')).toHaveAttribute('data-motion', 'reduced');
+    expect(screen.queryByTestId('bunker-warm-crossfade')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bunker-blackout')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bunker-sync-tear')).not.toBeInTheDocument();
   });
