@@ -584,6 +584,18 @@
   background: #fff8ee;
 }
 
+.bunker-v2-results .bunker-v2-results__grid article strong,
+.bunker-v2-results .bunker-v2-results__grid article span,
+.bunker-v2-results .bunker-v2-results__grid article small {
+  color: #4b1728;
+  text-shadow: none;
+}
+
+.bunker-v2-results .bunker-v2-results__grid article span,
+.bunker-v2-results .bunker-v2-results__grid article small {
+  color: #79505d;
+}
+
 .bunker-v2-results-player__hero,
 .bunker-v2-results-player__score {
   border-color: rgba(111, 41, 65, 0.22);
@@ -604,6 +616,40 @@
   border-color: rgba(226, 188, 120, 0.74);
   background: linear-gradient(145deg, #fffaf2, #f5dfdc);
   box-shadow: 0 1rem 3rem rgba(75, 23, 40, 0.13);
+}
+
+.bunker-v2-results-player .bunker-results-epilogue picture,
+.bunker-v2-results .bunker-results-epilogue picture {
+  position: relative;
+  isolation: isolate;
+  background: #2c2025;
+}
+
+.bunker-v2-results-player .bunker-results-epilogue picture::before,
+.bunker-v2-results .bunker-results-epilogue picture::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -1.5rem;
+  background: url('/images/bunker/story/couple-epilogue.webp') center / cover no-repeat;
+  filter: blur(18px) saturate(0.82) brightness(0.7);
+  transform: scale(1.08);
+}
+
+.bunker-v2-results-player .bunker-results-epilogue picture::after,
+.bunker-v2-results .bunker-results-epilogue picture::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(75, 23, 40, 0.22), transparent 28% 72%, rgba(75, 23, 40, 0.22));
+  pointer-events: none;
+}
+
+.bunker-v2-results-player .bunker-results-epilogue picture img,
+.bunker-v2-results .bunker-results-epilogue picture img {
+  position: relative;
+  z-index: 1;
 }
 
 .bunker-liza-reveal--player > p,

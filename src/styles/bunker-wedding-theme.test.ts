@@ -65,4 +65,20 @@ describe('Bunker wedding theme', () => {
     expect(screen).toContain('--bunker-v2-muted: #ead7d2');
     expect(screen).toMatch(/background:\s*radial-gradient/);
   });
+
+  it('keeps finale metrics readable and fills epilogue side space without cropping the couple', () => {
+    const metrics = ruleBody(
+      css,
+      '.bunker-v2-results .bunker-v2-results__grid article strong,\n.bunker-v2-results .bunker-v2-results__grid article span,\n.bunker-v2-results .bunker-v2-results__grid article small',
+    );
+    const backdrop = ruleBody(
+      css,
+      '.bunker-v2-results-player .bunker-results-epilogue picture::before,\n.bunker-v2-results .bunker-results-epilogue picture::before',
+    );
+
+    expect(metrics).toContain('color: #4b1728');
+    expect(metrics).toContain('text-shadow: none');
+    expect(backdrop).toContain("url('/images/bunker/story/couple-epilogue.webp')");
+    expect(backdrop).toContain('filter: blur(18px)');
+  });
 });
