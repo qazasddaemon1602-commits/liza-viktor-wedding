@@ -60,6 +60,11 @@ type Props = { eventSlug?: string; dependencies?: BunkerScreenGuardDependencies;
 type Timed<T> = { model: T; receivedAt: number };
 const BUNKER_AUTOMATIC_INTRO_ID = 'bunker-run-intro';
 const BUNKER_REVEAL_AUDIO_DELAY_MS = 1_600;
+type AmbienceAuthorization = {
+  run: string | null;
+  status: 'idle' | 'pending' | 'blocked' | 'armed';
+  revision: number;
+};
 
 function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies | null {
   try {
@@ -236,6 +241,11 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   const offset = useRef(0);
   const latest = useRef(Number.NEGATIVE_INFINITY);
   const ambiencePlayToken = useRef(0);
+  const ambienceAuthorization = useRef<AmbienceAuthorization>({
+    run: null,
+    status: 'idle',
+    revision: 0,
+  });
   const revealPlayToken = useRef(0);
   const revealSequence = useRef<{ run: string; doorPlayed: boolean; complete: boolean } | null>(null);
   const loadGeneration = useRef(0);
@@ -438,31 +448,71 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     const audio = deps?.audio;
     if (!audio) return;
     const token = ++ambiencePlayToken.current;
+    const run = narrationRunIdentity;
+    if (ambienceAuthorization.current.run !== run) {
+      ambienceAuthorization.current = {
+        run,
+        status: 'idle',
+        revision: ambienceAuthorization.current.revision + 1,
+      };
+    }
     if (!bunkerActive || emergency || revealActive || resultsActive || state?.status !== 'active' || !state.soundEnabled) {
       audio.stopAmbience();
       return;
     }
     let active = true;
     let started = false;
-    const startWhenArmed = () => {
-      if (started) return;
+    const startAuthorizedAmbience = () => {
+      if (!active || token !== ambiencePlayToken.current || started) return;
+      started = true;
+      audio.startAmbience();
+    };
+    const startWhenArmed = (explicitRearm = false) => {
+      const authorization = ambienceAuthorization.current;
+      if (authorization.run !== run || authorization.status === 'pending') return;
+      if (authorization.status === 'armed') {
+        startAuthorizedAmbience();
+        return;
+      }
+      if (authorization.status === 'blocked' && !explicitRearm) return;
+      authorization.status = 'pending';
+      authorization.revision += 1;
+      const revision = authorization.revision;
       void audio.arm()
         .then((armed) => {
-          if (!active || token !== ambiencePlayToken.current || !armed || started) return;
-          started = true;
-          audio.startAmbience();
+          const current = ambienceAuthorization.current;
+          if (current.run !== run || current.revision !== revision) return;
+          current.status = armed ? 'armed' : 'blocked';
+          if (armed) startAuthorizedAmbience();
         })
-        .catch(() => undefined);
+        .catch(() => {
+          const current = ambienceAuthorization.current;
+          if (current.run === run && current.revision === revision) current.status = 'blocked';
+        });
     };
     startWhenArmed();
-    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
+    const rearm = () => startWhenArmed(true);
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
     return () => {
       active = false;
       ambiencePlayToken.current += 1;
-      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
+      const authorization = ambienceAuthorization.current;
+      if (authorization.run === run && authorization.status === 'pending') {
+        authorization.status = 'blocked';
+        authorization.revision += 1;
+      }
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
       audio.stopAmbience();
     };
-  }, [deps?.audio, bunkerActive, emergency, revealActive, resultsActive, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [
+    deps?.audio,
+    bunkerActive,
+    emergency,
+    narrationRunIdentity,
+    revealActive,
+    resultsActive,
+    state?.status === 'active' ? state.soundEnabled : false,
+  ]);
 
   useEffect(() => {
     const audio = deps?.audio;

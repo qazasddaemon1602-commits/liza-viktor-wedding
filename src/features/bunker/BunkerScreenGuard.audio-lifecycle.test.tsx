@@ -2,6 +2,7 @@ import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
 import { BunkerScreenGuard, type BunkerScreenGuardDependencies } from './BunkerScreenGuard';
+import { createBunkerAudioController } from './bunkerAudio';
 import type {
   BunkerNarrationMission,
   BunkerNarrationSessionController,
@@ -183,6 +184,62 @@ describe('BunkerScreenGuard audio lifecycle', () => {
     expect(audio.stopAmbience).toHaveBeenCalled();
   });
 
+  it('does not retry a blocked mission arm after emergency until explicit re-arm', async () => {
+    let refresh: (() => void) | undefined;
+    const arm = vi.fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const audio = audioController(arm);
+    const load = vi.fn()
+      .mockResolvedValueOnce(activeState('MISSION_01'))
+      .mockResolvedValueOnce({
+        ...activeState('MISSION_01'),
+        phase: 'emergency' as const,
+        globalGameState: undefined,
+        currentMission: null,
+        serverNow: '2026-08-30T18:11:00.000Z',
+      })
+      .mockResolvedValue({
+        ...activeState('MISSION_02'),
+        serverNow: '2026-08-30T18:12:00.000Z',
+      });
+
+    render(
+      <BunkerScreenGuard dependencies={{
+        load,
+        subscribe: (callback) => { refresh = callback; return () => undefined; },
+        audio,
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+    expect(arm).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(arm).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(arm).toHaveBeenCalledTimes(2);
+    expect(audio.startAmbience).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+    await flushLoadedState();
+    expect(arm).toHaveBeenCalledTimes(3);
+    expect(audio.startAmbience).toHaveBeenCalledTimes(1);
+  });
+
   it('uses one door owner and starts the finale once after the reveal transition', async () => {
     vi.useFakeTimers();
     let refresh: (() => void) | undefined;
@@ -269,6 +326,42 @@ describe('BunkerScreenGuard audio lifecycle', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1_600); });
     expect(audio.playReveal).toHaveBeenCalledTimes(1);
     expect(audio.playFinale).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a finale missed during the reveal delay only after local audio re-arm', async () => {
+    vi.useFakeTimers();
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn().mockResolvedValue('played' as const),
+      stopCue: vi.fn(),
+    };
+    const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn().mockResolvedValue(activeState('BUNKER_OPEN', '2026-08-30T19:30:00.000Z')),
+        audio,
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledWith('bunker.door', {
+      priority: 'major',
+    }));
+
+    act(() => siteAudio.setEnabled(false));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_600); });
+    expect(samplePlayer.playCue).not.toHaveBeenCalledWith('bunker.finale', expect.anything());
+
+    act(() => siteAudio.setEnabled(true));
+    await Promise.resolve();
+    expect(samplePlayer.playCue).not.toHaveBeenCalledWith('bunker.finale', expect.anything());
+
+    window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledWith('bunker.finale', {
+      priority: 'scene',
+    }));
+    audio.dispose();
   });
 
   it('keeps stale pending play tokens from starting after restart', async () => {

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { PROJECTOR_AUDIO_REARM_EVENT } from '../../lib/siteAudio';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PROJECTOR_AUDIO_REARM_EVENT, siteAudio } from '../../lib/siteAudio';
 import { createBunkerAudioController } from './bunkerAudio';
 
 type FileSystem = {
@@ -59,6 +59,16 @@ function rootMeanSquareSample(bytes: Uint8Array, startSeconds: number, durationS
 }
 
 describe('Bunker sample audio bridge', () => {
+  beforeEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
+  afterEach(() => {
+    siteAudio.setVolume(0.75);
+    siteAudio.setEnabled(true);
+  });
+
   it('plays and stops the acquired alarm loop on the shared timestamp-capable bus', async () => {
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),
@@ -256,6 +266,56 @@ describe('Bunker sample audio bridge', () => {
 
     await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(1));
     window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(2));
+    audio.dispose();
+  });
+
+  it('stops requested samples on local mute and resumes them only after explicit re-arm', async () => {
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn().mockResolvedValue('played' as const),
+      stopCue: vi.fn(),
+    };
+    const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
+
+    audio.startAlarm();
+    audio.startAmbience();
+    audio.playFinale();
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(3));
+    samplePlayer.stopCue.mockClear();
+
+    siteAudio.setEnabled(false);
+
+    expect(samplePlayer.stopCue).toHaveBeenCalledWith('bunker.alarm');
+    expect(samplePlayer.stopCue).toHaveBeenCalledWith('bunker.ambience');
+    expect(samplePlayer.stopCue).toHaveBeenCalledWith('bunker.finale');
+    siteAudio.setEnabled(true);
+    await Promise.resolve();
+    expect(samplePlayer.playCue).toHaveBeenCalledTimes(3);
+
+    window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(6));
+    audio.dispose();
+  });
+
+  it.each([
+    ['alarm', (audio: ReturnType<typeof createBunkerAudioController>) => audio.startAlarm()],
+    ['ambience', (audio: ReturnType<typeof createBunkerAudioController>) => audio.startAmbience()],
+    ['finale', (audio: ReturnType<typeof createBunkerAudioController>) => audio.playFinale()],
+  ])('recovers a rejected %s request only after explicit re-arm', async (_label, request) => {
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn()
+        .mockRejectedValueOnce(new Error('autoplay rejected'))
+        .mockResolvedValueOnce('played' as const),
+      stopCue: vi.fn(),
+    };
+    const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
+
+    request(audio);
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(1));
+    window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+
     await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(2));
     audio.dispose();
   });

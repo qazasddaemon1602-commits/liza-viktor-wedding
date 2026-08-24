@@ -100,8 +100,23 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     oscillator.stop(now + 0.5);
   };
 
+  const pauseSamplePlayback = () => {
+    sampleAlarmPlayback = 'idle';
+    sampleAmbiencePlayback = 'idle';
+    sampleFinalePlayback = 'idle';
+    sampleAlarmRevision += 1;
+    sampleAmbienceRevision += 1;
+    sampleFinaleRevision += 1;
+    if (hasSample('bunker.alarm')) samplePlayer.stopCue('bunker.alarm');
+    if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
+    if (hasSample('bunker.door')) samplePlayer.stopCue('bunker.door');
+    if (hasSample('ui.reveal')) samplePlayer.stopCue('ui.reveal');
+    if (hasSample('bunker.finale')) samplePlayer.stopCue('bunker.finale');
+  };
+
   const unsubscribeSettings = siteAudio.subscribe((settings) => {
     if (!settings.enabled || settings.volume <= 0) {
+      pauseSamplePlayback();
       stopActive();
       return;
     }
@@ -110,35 +125,56 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
 
   const requestSampleAlarm = () => {
     if (!sampleAlarmRequested || sampleAlarmPlayback !== 'idle' || !hasSample('bunker.alarm')) return;
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
     const revision = sampleAlarmRevision;
     const lifecycle = lifecycleRevision;
     sampleAlarmPlayback = 'pending';
-    void samplePlayer.playCue('bunker.alarm', { loop: true, priority: 'major' }).then((result) => {
-      if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAlarmRevision || !sampleAlarmRequested) return;
-      sampleAlarmPlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
-    });
+    void samplePlayer.playCue('bunker.alarm', { loop: true, priority: 'major' }).then(
+      (result) => {
+        if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAlarmRevision || !sampleAlarmRequested) return;
+        sampleAlarmPlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
+      },
+      () => {
+        if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAlarmRevision || !sampleAlarmRequested) return;
+        sampleAlarmPlayback = 'idle';
+      },
+    );
   };
 
   const requestSampleAmbience = () => {
     if (!sampleAmbienceRequested || sampleAmbiencePlayback !== 'idle' || !hasSample('bunker.ambience')) return;
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
     const revision = sampleAmbienceRevision;
     const lifecycle = lifecycleRevision;
     sampleAmbiencePlayback = 'pending';
-    void samplePlayer.playCue('bunker.ambience', { loop: true, priority: 'scene' }).then((result) => {
-      if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAmbienceRevision || !sampleAmbienceRequested) return;
-      sampleAmbiencePlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
-    });
+    void samplePlayer.playCue('bunker.ambience', { loop: true, priority: 'scene' }).then(
+      (result) => {
+        if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAmbienceRevision || !sampleAmbienceRequested) return;
+        sampleAmbiencePlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
+      },
+      () => {
+        if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAmbienceRevision || !sampleAmbienceRequested) return;
+        sampleAmbiencePlayback = 'idle';
+      },
+    );
   };
 
   const requestSampleFinale = () => {
     if (!sampleFinaleRequested || sampleFinalePlayback !== 'idle' || !hasSample('bunker.finale')) return;
+    if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
     const revision = sampleFinaleRevision;
     const lifecycle = lifecycleRevision;
     sampleFinalePlayback = 'pending';
-    void samplePlayer.playCue('bunker.finale', { priority: 'scene' }).then((result) => {
-      if (disposed || lifecycle !== lifecycleRevision || revision !== sampleFinaleRevision || !sampleFinaleRequested) return;
-      sampleFinalePlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
-    });
+    void samplePlayer.playCue('bunker.finale', { priority: 'scene' }).then(
+      (result) => {
+        if (disposed || lifecycle !== lifecycleRevision || revision !== sampleFinaleRevision || !sampleFinaleRequested) return;
+        sampleFinalePlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
+      },
+      () => {
+        if (disposed || lifecycle !== lifecycleRevision || revision !== sampleFinaleRevision || !sampleFinaleRequested) return;
+        sampleFinalePlayback = 'idle';
+      },
+    );
   };
 
   const rearmFromProjectorControl = () => {
@@ -207,7 +243,6 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     },
     playFinale: () => {
       if (disposed) return;
-      if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
       if (!hasSample('bunker.finale')) return;
       if (sampleFinaleRequested) return;
       sampleFinaleRequested = true;
