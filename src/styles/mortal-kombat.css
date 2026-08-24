@@ -283,6 +283,42 @@
   text-align: center;
 }
 
+.mk-predraw-roster {
+  width: min(64rem, 100%);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: 0.55rem;
+  margin: 0.45rem auto 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.mk-predraw-roster li {
+  min-height: 3.75rem;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(243, 236, 223, 0.18);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.mk-predraw-roster span {
+  color: var(--mk-gold);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.mk-predraw-roster strong {
+  min-width: 0;
+  color: var(--mk-paper);
+  font-size: clamp(0.78rem, 1.4vw, 1rem);
+  overflow-wrap: anywhere;
+}
+
 /* Main projector and dedicated MK projector */
 .mk-screen-page,
 .screen-page--mk {

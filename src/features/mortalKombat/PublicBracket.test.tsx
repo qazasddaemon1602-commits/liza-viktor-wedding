@@ -46,6 +46,47 @@ const state: ActiveProjection = {
 };
 
 describe('PublicBracket with byes', () => {
+  it('shows every registered participant before the draw is finalized', () => {
+    const preDraw: ActiveProjection = {
+      ...state,
+      state: 'registration',
+      activeCount: 2,
+      players: players.slice(0, 2).map((player) => ({ ...player, seed: null })),
+      matches: [],
+    };
+
+    render(<PublicBracket state={preDraw} />);
+
+    expect(screen.getByRole('list', { name: 'Участники турнира' })).toBeInTheDocument();
+    expect(screen.getByText('Игрок 1')).toBeInTheDocument();
+    expect(screen.getByText('Игрок 2')).toBeInTheDocument();
+  });
+
+  it('renders two players as one final fight card with both names', () => {
+    const twoPlayers: ActiveProjection = {
+      ...state,
+      activeCount: 2,
+      players: players.slice(0, 2),
+      matches: [
+        match({
+          id: 'final-1',
+          matchKey: 'final-1',
+          round: 'final',
+          position: 1,
+          player1GuestId: 'g1',
+          player2GuestId: 'g2',
+          status: 'ready',
+        }),
+      ],
+    };
+
+    const { container } = render(<PublicBracket state={twoPlayers} />);
+
+    expect(container.querySelectorAll('.mk-bracket-match')).toHaveLength(1);
+    expect(screen.getByText('Игрок 1')).toBeInTheDocument();
+    expect(screen.getByText('Игрок 2')).toBeInTheDocument();
+  });
+
   it('renders only real fights and hides bye/empty internal matches', () => {
     render(<PublicBracket state={state} />);
 

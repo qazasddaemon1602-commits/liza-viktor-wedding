@@ -84,6 +84,29 @@ describe('Mortal Kombat service', () => {
       .resolves.toMatchObject({ maxPlayers: 16, matches: [{ round: 'r16' }] });
   });
 
+  it('normalizes a production match with no selected current bout to false', async () => {
+    const client = clientWith({
+      ...hiddenActiveTournament,
+      activeCount: 2,
+      players: [
+        { registrationId: 'r1', guestId: 'g1', displayName: 'Багида Ахметова', seed: 1 },
+        { registrationId: 'r2', guestId: 'g2', displayName: 'Илья Нагавкин', seed: 2 },
+      ],
+      matches: [{
+        id: 'final-1', matchKey: 'final-1', round: 'final', position: 1,
+        player1GuestId: 'g1', player2GuestId: 'g2', winnerGuestId: null,
+        status: 'ready', current: null,
+      }],
+    });
+
+    await expect(getMkTournamentDedicatedScreenState(client, 'liza-viktor'))
+      .resolves.toMatchObject({
+        activeCount: 2,
+        players: [{ guestId: 'g1' }, { guestId: 'g2' }],
+        matches: [{ matchKey: 'final-1', current: false }],
+      });
+  });
+
   it('normalizes the legacy production cap while no more than 16 players are active', async () => {
     const client = clientWith({
       ...hiddenActiveTournament,

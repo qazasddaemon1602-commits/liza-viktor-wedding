@@ -34,11 +34,51 @@ describe('MissionTwoPlayer', () => {
     const button = screen.getByRole('button', { name: 'ПРОВЕРИТЬ ВЕРСИЮ' });
     expect(button).toBeDisabled();
     await user.click(screen.getByLabelText('Вагон №4'));
+    expect(screen.getByRole('status', { name: 'Готовность ответа' })).toHaveTextContent('1 из 3');
     await user.click(screen.getByLabelText('Открытие технического шлюза'));
     await user.click(screen.getByLabelText('05'));
+    expect(screen.getByRole('status', { name: 'Готовность ответа' })).toHaveTextContent('Все ответы выбраны');
     expect(button).toBeEnabled();
     await user.click(button);
     expect(submit).toHaveBeenCalledWith(['Вагон №4', 'Открытие технического шлюза', '05']);
+  });
+
+  it('keeps a draft answer when polling returns an unchanged authoritative attempt', async () => {
+    const user = userEvent.setup();
+    const view = render(<MissionTwoPlayer model={model} onSubmit={vi.fn()} />);
+
+    await user.click(screen.getByLabelText('Вагон №4'));
+    expect(screen.getByLabelText('Вагон №4')).toBeChecked();
+
+    view.rerender(
+      <MissionTwoPlayer
+        model={{ ...model, remainingSeconds: 298, selectedAnswers: ['', '', ''] }}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Вагон №4')).toBeChecked();
+    expect(screen.getByRole('status', { name: 'Готовность ответа' })).toHaveTextContent('1 из 3');
+  });
+
+  it('shows an unambiguous submitted state while the authoritative result is loading', async () => {
+    const user = userEvent.setup();
+    let resolveSubmit!: () => void;
+    const submit = vi.fn(() => new Promise<void>((resolve) => { resolveSubmit = resolve; }));
+    render(<MissionTwoPlayer model={model} onSubmit={submit} />);
+
+    await user.click(screen.getByLabelText('Вагон №4'));
+    await user.click(screen.getByLabelText('Открытие технического шлюза'));
+    await user.click(screen.getByLabelText('05'));
+    await user.click(screen.getByRole('button', { name: 'ПРОВЕРИТЬ ВЕРСИЮ' }));
+
+    expect(screen.getByRole('status', { name: 'Состояние отправки ответа' })).toHaveTextContent(
+      /ответ отправляется/i,
+    );
+    resolveSubmit();
+    expect(await screen.findByRole('status', { name: 'Состояние отправки ответа' })).toHaveTextContent(
+      /ответ отправлен.*ждём результат/i,
+    );
   });
 
   it('explains retry count without technical terms and exposes ability only when available', () => {

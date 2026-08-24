@@ -1,0 +1,711 @@
+/*
+ * Wedding warmth for every Bunker surface.
+ * Loaded after the structural, accessibility and projector contrast layers so
+ * this file only changes atmosphere and legibility, never game behaviour.
+ */
+
+.bunker-player-shell {
+  --bunker-player-black: #fff8ee;
+  --bunker-player-graphite: #fffdf8;
+  --bunker-player-ivory: #4b1728;
+  --bunker-player-muted: #79505d;
+  --bunker-player-rule: rgba(111, 41, 65, 0.24);
+  color: var(--bunker-player-ivory);
+  background:
+    radial-gradient(circle at 8% 3%, rgba(237, 190, 191, 0.52), transparent 31rem),
+    radial-gradient(circle at 95% 15%, rgba(226, 188, 120, 0.32), transparent 28rem),
+    linear-gradient(155deg, #fffaf2 0%, #f8e9e4 54%, #f4ddda 100%);
+  background-attachment: fixed;
+}
+
+.bunker-player-dashboard__header {
+  border-color: rgba(111, 41, 65, 0.32);
+}
+
+.bunker-player-dashboard__index,
+.bunker-player-dashboard__state,
+.bunker-player-character dt,
+.bunker-player-character__ability > span,
+.bunker-player-character__ability small,
+.bunker-player-list strong,
+.bunker-player-list small,
+.bunker-mission-actions label > span {
+  color: #79505d;
+}
+
+.bunker-player-dashboard__state {
+  border-color: rgba(111, 41, 65, 0.3);
+  color: #6f2941;
+  background: rgba(255, 253, 248, 0.78);
+  box-shadow: 0 0.45rem 1.4rem rgba(111, 41, 65, 0.08);
+}
+
+.bunker-player-dashboard__large-text-toggle,
+.bunker-player-dashboard__wagon-summary button {
+  min-height: 52px;
+  border-color: #6f2941;
+  color: #6f2941;
+  background: rgba(255, 253, 248, 0.82);
+}
+
+.bunker-player-dashboard__large-text-toggle[aria-pressed="true"] {
+  color: #fffaf2;
+  background: #6f2941;
+}
+
+.bunker-player-dashboard__connection,
+.bunker-player-dashboard__late,
+.bunker-player-dashboard__continuity,
+.bunker-player-ability-action__confirm,
+.bunker-player-ability-action__result,
+.bunker-player-ability-action__error,
+.bunker-player-ability-action__spent,
+.bunker-mission-actions__confirmation {
+  color: #4b1728;
+  background: #fff5ef;
+}
+
+.bunker-player-dashboard__connection,
+.bunker-player-ability-action__error {
+  border-color: #a94750;
+  background: #fff0ee;
+}
+
+.bunker-player-dashboard__continuity,
+.bunker-mission-actions__confirmation {
+  border-color: #b8863f;
+}
+
+.bunker-player-dashboard__relief,
+.bunker-player-archive__artwork {
+  border-color: rgba(111, 41, 65, 0.25);
+  background: #f3ded9;
+}
+
+.bunker-player-dashboard__relief img,
+.bunker-player-archive__artwork img {
+  filter: sepia(0.2) saturate(0.88) contrast(1.02) brightness(1.03);
+}
+
+.bunker-player-dashboard__nav {
+  border: 1px solid rgba(111, 41, 65, 0.26);
+  background: rgba(255, 250, 242, 0.94);
+  box-shadow: 0 0.8rem 2rem rgba(75, 23, 40, 0.1);
+}
+
+.bunker-player-dashboard__nav button {
+  min-height: 56px;
+  border-color: rgba(111, 41, 65, 0.2);
+  color: #6f4654;
+}
+
+.bunker-player-dashboard__nav button[aria-pressed="true"] {
+  color: #fffaf2;
+  background: #6f2941;
+  box-shadow: inset 0 4px #e2bc78;
+}
+
+.bunker-player-dashboard__content {
+  border-color: rgba(111, 41, 65, 0.28);
+  background: rgba(255, 253, 248, 0.94);
+  box-shadow: 0 1rem 3rem rgba(75, 23, 40, 0.1);
+}
+
+.bunker-player-dashboard__content p,
+.bunker-player-dashboard__content dd,
+.bunker-player-dashboard__wagon-summary small {
+  color: #63414d;
+}
+
+.bunker-player-character dl,
+.bunker-player-list {
+  background: rgba(111, 41, 65, 0.18);
+}
+
+.bunker-player-character dl > div,
+.bunker-player-list article,
+.bunker-inventory-cards article {
+  background: #fffaf3;
+}
+
+.bunker-player-dashboard__wagon-summary {
+  border-color: rgba(184, 134, 63, 0.55);
+  color: #4b1728;
+  background: linear-gradient(135deg, #fffaf2, #f8e3df);
+  box-shadow: 0 0.75rem 2rem rgba(111, 41, 65, 0.1);
+}
+
+.bunker-player-ability-action,
+.bunker-mission-actions,
+.bunker-mission-briefing {
+  border-color: rgba(184, 134, 63, 0.48);
+  background: linear-gradient(145deg, rgba(255, 250, 242, 0.98), rgba(248, 227, 223, 0.72));
+}
+
+.bunker-mission-actions input:not([type="checkbox"]):not([type="radio"]),
+.bunker-mission-actions select,
+.bunker-mission-actions textarea,
+.bunker-v2-mission input:not([type="checkbox"]):not([type="radio"]),
+.bunker-v2-mission select,
+.bunker-v2-mission textarea,
+.bunker-v2-final-terminal input {
+  border-color: rgba(111, 41, 65, 0.4);
+  color: #4b1728;
+  background: #fffdf8;
+  box-shadow: inset 0 1px 0 rgba(75, 23, 40, 0.04);
+}
+
+.bunker-mission-actions input::placeholder,
+.bunker-mission-actions textarea::placeholder,
+.bunker-v2-mission input::placeholder,
+.bunker-v2-mission textarea::placeholder {
+  color: #9b7782;
+  opacity: 1;
+}
+
+.bunker-v2-mission__primary,
+.bunker-mission-one-player__primary,
+.bunker-mission-actions button,
+.bunker-player-ability-action button {
+  min-height: 56px;
+  border: 1px solid #6f2941;
+  color: #fffaf2;
+  background: #6f2941;
+  font-weight: 800;
+  box-shadow: 0 0.55rem 1.3rem rgba(111, 41, 65, 0.16);
+}
+
+.bunker-mission-actions button:hover:not(:disabled),
+.bunker-player-ability-action button:hover:not(:disabled),
+.bunker-v2-mission__primary:hover:not(:disabled),
+.bunker-mission-one-player__primary:hover:not(:disabled) {
+  background: #842f4d;
+}
+
+.bunker-player-ability-action__confirm button:last-child,
+.bunker-mission-one-player__secondary {
+  min-height: 56px;
+  border-color: #6f2941;
+  color: #6f2941;
+  background: #fffdf8;
+}
+
+.bunker-player-dashboard button:focus-visible,
+.bunker-v2-mission button:focus-visible,
+.bunker-v2-mission input:focus-visible,
+.bunker-v2-mission select:focus-visible,
+.bunker-v2-mission textarea:focus-visible,
+.bunker-mission-one-player button:focus-visible,
+.bunker-mission-one-player input:focus-visible,
+.bunker-operator-panel button:focus-visible {
+  outline: 3px solid #6f2941;
+  outline-offset: 3px;
+}
+
+/* Phone missions: light archival cards, clear answer states and one strong CTA. */
+.bunker-v2-mission,
+.bunker-mission-one-player {
+  border-color: rgba(111, 41, 65, 0.28);
+  color: #4b1728;
+  background: rgba(255, 253, 248, 0.97);
+  box-shadow: 0 1rem 3rem rgba(75, 23, 40, 0.11);
+}
+
+.bunker-v2-mission__header,
+.bunker-mission-one-player__header {
+  border-color: rgba(111, 41, 65, 0.25);
+}
+
+.bunker-v2-mission__header h1,
+.bunker-v2-mission h2,
+.bunker-v2-mission h3,
+.bunker-mission-one-player__header h2,
+.bunker-mission-one-player__question,
+.bunker-mission-one-player__members strong,
+.bunker-mission-one-player__confirmation h3 {
+  color: #4b1728;
+}
+
+.bunker-v2-mission__header span,
+.bunker-v2-mission__header p,
+.bunker-v2-mission__questions legend,
+.bunker-v2-private-fragment > span,
+.bunker-mission-one-player__header p,
+.bunker-mission-one-player__members legend,
+.bunker-mission-one-player__members b,
+.bunker-mission-one-player__members small,
+.bunker-mission-one-player__quota span {
+  color: #79505d;
+}
+
+.bunker-v2-mission__header time,
+.bunker-mission-one-player__header time {
+  border-color: rgba(184, 134, 63, 0.62);
+  color: #6f2941;
+  background: #fff5df;
+}
+
+.bunker-v2-mission__next-step,
+.bunker-v2-mission__answer-status,
+.bunker-v2-mission__role,
+.bunker-v2-mission__result,
+.bunker-v2-mission__ability,
+.bunker-v2-private-fragment,
+.bunker-v2-final-player__brief,
+.bunker-v2-final-hint,
+.bunker-v2-dossier,
+.bunker-v2-story-reveal {
+  border-left-color: #b8863f;
+  color: #4b1728;
+  background: #fff2e9;
+}
+
+.bunker-v2-mission__answer-status span,
+.bunker-v2-mission__role span,
+.bunker-v2-mission__result small,
+.bunker-v2-final-player__brief small,
+.bunker-v2-final-fragments small {
+  color: #79505d;
+}
+
+.bunker-v2-mission__question,
+.bunker-v2-mission__evidence-grid article,
+.bunker-v2-fragments article,
+.bunker-v2-inventory article,
+.bunker-v2-route-grid article,
+.bunker-v2-final-fragments article,
+.bunker-v2-mission > section,
+.bunker-v2-mission > div[role="status"] {
+  border-color: rgba(111, 41, 65, 0.22);
+  color: #4b1728;
+  background: #fffaf3;
+}
+
+.bunker-v2-mission__question label,
+.bunker-v2-problems label,
+.bunker-v2-mission fieldset label,
+.bunker-mission-one-player__members label {
+  min-height: 56px;
+  border-color: rgba(111, 41, 65, 0.28);
+  color: #4b1728;
+  background: #fffdf8;
+}
+
+.bunker-v2-mission__question label.is-selected,
+.bunker-v2-protocol-grid button.is-selected,
+.bunker-mission-one-player__members label.is-selected {
+  border-color: #b8863f;
+  background: #fff0d5;
+  box-shadow: inset 5px 0 #b8863f;
+}
+
+.bunker-v2-mission input[type="radio"],
+.bunker-v2-mission input[type="checkbox"],
+.bunker-mission-one-player__members input,
+.bunker-mission-actions input[type="radio"],
+.bunker-mission-actions input[type="checkbox"] {
+  accent-color: #6f2941;
+}
+
+.bunker-v2-mission__evidence-grid button,
+.bunker-v2-private-fragment button,
+.bunker-v2-mission__ability button,
+.bunker-v2-protocol-grid button,
+.bunker-v2-route-grid button,
+.bunker-v2-mission section > button:not(.bunker-v2-mission__primary) {
+  min-height: 56px;
+  border-color: #6f2941;
+  color: #6f2941;
+  background: #fffdf8;
+}
+
+.bunker-v2-protocol-grid button small {
+  color: #80502f;
+}
+
+.bunker-v2-mission__error,
+.bunker-mission-one-player__error {
+  border-color: #a94750;
+  color: #702c35;
+  background: #fff0ee;
+}
+
+.bunker-mission-one-player__continuity,
+.bunker-mission-one-player__sync {
+  color: #63414d;
+}
+
+.bunker-mission-one-player__sync {
+  border-color: #b8863f;
+  background: #fff5e6;
+}
+
+.bunker-mission-one-player__members {
+  border-color: rgba(111, 41, 65, 0.22);
+  background: rgba(111, 41, 65, 0.18);
+}
+
+.bunker-mission-one-player__members legend {
+  background: #fffdf8;
+}
+
+.bunker-mission-one-player__modal-layer {
+  background: rgba(75, 23, 40, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.bunker-mission-one-player__confirmation {
+  border: 2px solid #e2bc78;
+  color: #4b1728;
+  background: #fffaf2;
+  box-shadow: 0 1.5rem 5rem rgba(49, 12, 25, 0.34);
+}
+
+.bunker-mission-one-player__confirmation p,
+.bunker-mission-one-player__confirmation li {
+  color: #63414d;
+}
+
+.bunker-mission-one-player__confirmation .bunker-mission-one-player__primary {
+  border-color: #6f2941;
+  color: #fffaf2;
+  background: #6f2941;
+}
+
+.bunker-mission-one-player__confirmation .bunker-mission-one-player__secondary {
+  border-color: #6f2941;
+  color: #6f2941;
+  background: #fffdf8;
+}
+
+/* Operator stays distinct, but reads as a warm conductor's desk instead of a bunker console. */
+.bunker-operator-shell {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(226, 188, 120, 0.3), transparent 32rem),
+    linear-gradient(145deg, #3b1221 0%, #651f39 58%, #401322 100%);
+}
+
+.bunker-operator-panel {
+  border-color: rgba(226, 188, 120, 0.72);
+  color: #fff8ee;
+  background: linear-gradient(150deg, rgba(112, 41, 65, 0.97), rgba(59, 18, 33, 0.98));
+  box-shadow: 0 1.5rem 5rem rgba(49, 12, 25, 0.34);
+}
+
+.bunker-operator-panel > header,
+.bunker-operator-panel__mission {
+  border-color: rgba(226, 188, 120, 0.48);
+}
+
+.bunker-operator-panel > header span {
+  color: #f0d3cf;
+}
+
+.bunker-operator-panel__identity {
+  border-color: rgba(226, 188, 120, 0.56);
+  background: #4b1728;
+}
+
+.bunker-operator-panel__identity img {
+  filter: sepia(0.12) saturate(0.9) brightness(1.03);
+}
+
+.bunker-operator-panel__options button,
+.bunker-operator-panel__confirmation button,
+.bunker-operator-panel__results-error button,
+.bunker-operator-panel__results-refresh {
+  min-height: 56px;
+  border-color: rgba(255, 248, 238, 0.72);
+  color: #fff8ee;
+  background: rgba(75, 23, 40, 0.78);
+}
+
+.bunker-operator-panel__options button[aria-pressed="true"] {
+  border-color: #e2bc78;
+  background: #842f4d;
+  box-shadow: inset 5px 0 #e2bc78;
+}
+
+.bunker-operator-panel__confirmation,
+.bunker-operator-panel__outcome,
+.bunker-operator-panel__error,
+.bunker-operator-panel__expired,
+.bunker-operator-panel__results-error {
+  border-color: #e2bc78;
+  background: rgba(49, 12, 25, 0.46);
+}
+
+/* Projector and arrival scenes retain railway drama with warmer wedding light. */
+.bunker-v2-screen {
+  --bunker-v2-paper: #fff8ee;
+  --bunker-v2-muted: #ead7d2;
+  --bunker-v2-rule: rgba(255, 248, 238, 0.32);
+  background:
+    radial-gradient(circle at 14% 12%, rgba(226, 188, 120, 0.3), transparent 32%),
+    radial-gradient(circle at 88% 24%, rgba(237, 190, 191, 0.2), transparent 35%),
+    linear-gradient(145deg, #3b1221 0%, #651f39 55%, #32101c 100%);
+}
+
+.bunker-v2-screen::before {
+  opacity: 0.32;
+  background-image:
+    linear-gradient(rgba(255, 248, 238, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 248, 238, 0.055) 1px, transparent 1px);
+}
+
+.bunker-v2-screen h1,
+.bunker-v2-screen h2,
+.bunker-v2-screen h3,
+.bunker-v2-screen strong,
+.bunker-v2-screen time {
+  color: #fff8ee;
+  text-shadow: 0 3px 22px rgba(49, 12, 25, 0.72);
+}
+
+.bunker-v2-screen p,
+.bunker-v2-screen span,
+.bunker-v2-screen small,
+.bunker-v2-screen label {
+  color: #ead7d2;
+}
+
+.bunker-v2-screen article,
+.bunker-v2-screen li {
+  border-color: rgba(255, 248, 238, 0.38);
+  background-color: rgba(75, 23, 40, 0.72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 0.8rem 2.4rem rgba(49, 12, 25, 0.18);
+}
+
+.bunker-v2-screen article.is-complete,
+.bunker-v2-screen li.is-complete {
+  border-color: rgba(226, 188, 120, 0.88);
+  background: rgba(132, 47, 77, 0.9);
+  box-shadow: inset 5px 0 #e2bc78, 0 0 2rem rgba(226, 188, 120, 0.13);
+}
+
+.bunker-mission-one-screen::before {
+  background:
+    linear-gradient(180deg, rgba(49, 12, 25, 0.36), rgba(59, 18, 33, 0.72)),
+    linear-gradient(90deg, rgba(226, 188, 120, 0.11), transparent 58%, rgba(237, 190, 191, 0.12));
+}
+
+.bunker-mission-one-screen__backdrop img,
+.bunker-quest-scene__backdrop img {
+  filter: sepia(0.2) saturate(0.75) contrast(1.02) brightness(0.82);
+}
+
+.bunker-mission-one-screen__summary,
+.bunker-mission-one-screen__wagons li,
+.bunker-quest-scene__mission,
+.bunker-quest-scene__final,
+.bunker-quest-scene__briefing,
+.bunker-quest-scene__teams article,
+.bunker-quest-scene__slots article {
+  border-color: rgba(255, 248, 238, 0.34);
+  background: rgba(75, 23, 40, 0.76);
+}
+
+.bunker-mission-one-screen__summary,
+.bunker-mission-one-screen__wagons li.is-complete,
+.bunker-quest-scene__teams article.is-complete,
+.bunker-quest-scene__slots article.is-open {
+  border-color: rgba(226, 188, 120, 0.78);
+}
+
+.bunker-quest-scene {
+  --bq-ink: #3b1221;
+  --bq-paper: #fff8ee;
+  --bq-muted: #ead7d2;
+  --bq-line: rgba(255, 248, 238, 0.24);
+  --bq-line-strong: rgba(255, 248, 238, 0.48);
+  --bq-panel: rgba(255, 248, 238, 0.08);
+  background-color: #3b1221;
+}
+
+.bunker-emergency {
+  color: #fff8ee;
+  background-color: #3b1221;
+}
+
+.bunker-emergency::before {
+  background:
+    radial-gradient(circle at 50% 24%, rgba(226, 188, 120, 0.18), transparent 35%),
+    linear-gradient(rgba(255, 248, 238, 0.018) 1px, transparent 1px);
+  background-size: auto, 100% 4px;
+}
+
+.bunker-emergency__artwork {
+  opacity: 0.5;
+}
+
+.bunker-emergency__artwork img {
+  filter: sepia(0.26) saturate(0.8) contrast(1.05) brightness(0.76);
+}
+
+.bunker-emergency__header,
+.bunker-emergency__footer {
+  border-color: rgba(255, 248, 238, 0.25);
+}
+
+.bunker-emergency__footer,
+.bunker-emergency__timer-block span {
+  color: rgba(255, 248, 238, 0.72);
+}
+
+.bunker-emergency__signal {
+  border-color: #e2bc78;
+  background: #e2bc78;
+  box-shadow: 0 0 1.2rem rgba(226, 188, 120, 0.52);
+}
+
+.bunker-emergency__header strong,
+.bunker-emergency__content h1,
+.bunker-emergency__timer-block strong {
+  color: #fff8ee;
+  text-shadow: 0 4px 28px rgba(49, 12, 25, 0.72);
+}
+
+/* Finale: champagne framing and a brighter arrival mood around the existing image. */
+.bunker-v2-results {
+  color: #fff8ee;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(226, 188, 120, 0.28), transparent 30%),
+    radial-gradient(circle at 88% 18%, rgba(237, 190, 191, 0.2), transparent 34%),
+    linear-gradient(145deg, #3b1221, #6f2941 58%, #3b1221);
+}
+
+.bunker-v2-results__grid {
+  background: rgba(226, 188, 120, 0.48);
+}
+
+.bunker-v2-results__grid article,
+.bunker-v2-results-player {
+  color: #4b1728;
+  background: #fff8ee;
+}
+
+.bunker-v2-results-player__hero,
+.bunker-v2-results-player__score {
+  border-color: rgba(111, 41, 65, 0.22);
+}
+
+.bunker-v2-results-player__facts {
+  background: rgba(111, 41, 65, 0.2);
+}
+
+.bunker-v2-results-player__facts p {
+  color: #4b1728;
+  background: #fffdf8;
+}
+
+.bunker-liza-reveal--player,
+.bunker-v2-results-player .bunker-results-epilogue,
+.bunker-v2-results .bunker-results-epilogue {
+  border-color: rgba(226, 188, 120, 0.74);
+  background: linear-gradient(145deg, #fffaf2, #f5dfdc);
+  box-shadow: 0 1rem 3rem rgba(75, 23, 40, 0.13);
+}
+
+.bunker-liza-reveal--player > p,
+.bunker-v2-results-player .bunker-results-epilogue p,
+.bunker-v2-results .bunker-results-epilogue p {
+  color: #4b1728;
+}
+
+.bunker-liza-reveal--player header span,
+.bunker-liza-reveal--player blockquote strong,
+.bunker-results-epilogue span {
+  color: #80502f;
+}
+
+@media (max-width: 760px) {
+  .bunker-player-shell {
+    padding-inline: 0.75rem;
+  }
+
+  .bunker-player-dashboard {
+    gap: 0.85rem;
+  }
+
+  .bunker-player-dashboard__header {
+    align-items: start;
+    padding-block: 0.8rem;
+  }
+
+  .bunker-player-dashboard__guest-name {
+    font-size: clamp(2rem, 10vw, 3.4rem);
+    line-height: 0.96;
+  }
+
+  .bunker-player-dashboard__nav {
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    background: rgba(255, 250, 242, 0.97);
+    backdrop-filter: blur(14px);
+  }
+
+  .bunker-player-dashboard__nav button {
+    min-height: 58px;
+    padding: 0.55rem 0.35rem;
+    color: #5f3544;
+  }
+
+  .bunker-player-dashboard__content,
+  .bunker-v2-mission,
+  .bunker-mission-one-player {
+    padding: 1rem;
+  }
+
+  .bunker-v2-mission__header h1 {
+    font-size: clamp(2rem, 9vw, 3rem);
+    line-height: 1;
+  }
+
+  .bunker-v2-mission__header time,
+  .bunker-mission-one-player__header time {
+    min-width: 5rem;
+    padding: 0.7rem 0.55rem;
+    font-size: 1.05rem;
+  }
+
+  .bunker-v2-mission__question h2 {
+    font-size: clamp(1.2rem, 5.4vw, 1.55rem);
+    line-height: 1.18;
+  }
+
+  .bunker-v2-mission__question label,
+  .bunker-v2-problems label,
+  .bunker-v2-mission fieldset label,
+  .bunker-mission-one-player__members label {
+    padding: 0.85rem;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .bunker-mission-one-player__modal-layer {
+    place-items: end center;
+    padding: max(0.75rem, env(safe-area-inset-top)) 0 0;
+  }
+
+  .bunker-mission-one-player__confirmation {
+    width: 100%;
+    max-height: calc(100dvh - max(0.75rem, env(safe-area-inset-top)));
+    padding: 1.15rem;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+  }
+
+  .bunker-mission-one-player__confirmation h3 {
+    font-size: 1.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bunker-player-shell,
+  .bunker-player-dashboard__nav {
+    background-attachment: scroll;
+    backdrop-filter: none;
+  }
+}

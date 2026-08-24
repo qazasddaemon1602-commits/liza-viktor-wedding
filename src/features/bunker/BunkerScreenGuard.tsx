@@ -58,6 +58,7 @@ export type BunkerScreenGuardDependencies = {
 
 type Props = { eventSlug?: string; dependencies?: BunkerScreenGuardDependencies; children: ReactNode };
 type Timed<T> = { model: T; receivedAt: number };
+const BUNKER_AUTOMATIC_INTRO_ID = 'bunker-run-intro';
 
 function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies | null {
   try {
@@ -442,9 +443,25 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
       audio.stopAmbience();
       return;
     }
-    audio.startAmbience();
-    void audio.arm();
-    return () => audio.stopAmbience();
+    let active = true;
+    let started = false;
+    const startWhenArmed = () => {
+      if (started) return;
+      void audio.arm()
+        .then((armed) => {
+          if (!active || !armed || started) return;
+          started = true;
+          audio.startAmbience();
+        })
+        .catch(() => undefined);
+    };
+    startWhenArmed();
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
+    return () => {
+      active = false;
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
+      audio.stopAmbience();
+    };
   }, [deps, bunkerActive, revealActive, resultsActive, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => {
@@ -464,7 +481,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     }
 
     narration.setMission({
-      id: state.currentMission?.id ?? narrationContent.key,
+      id: BUNKER_AUTOMATIC_INTRO_ID,
       text: narrationContent.intro.narration,
     });
     narration.setArmed(false);

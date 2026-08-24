@@ -11,6 +11,7 @@ type AdminCarriageCallsProps = {
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
   onClear: (callId: string, carriageIds: string[]) => Promise<void>;
+  onShowMap?: () => Promise<void>;
 };
 
 export function AdminCarriageCalls({
@@ -18,6 +19,7 @@ export function AdminCarriageCalls({
   initialActiveCall = null,
   onSend,
   onClear,
+  onShowMap,
 }: AdminCarriageCallsProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState('');
@@ -25,6 +27,7 @@ export function AdminCarriageCalls({
   const [activeCall, setActiveCall] = useState<OwnerCarriageCall | null>(initialActiveCall);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const [showingMap, setShowingMap] = useState(false);
 
   const toggle = (carriageId: string) => {
     setSelected((current) => current.includes(carriageId)
@@ -62,6 +65,19 @@ export function AdminCarriageCalls({
     const { callId, targetCarriageIds } = activeCall;
     await onClear(callId, targetCarriageIds);
     setActiveCall(null);
+  };
+
+  const showMap = async () => {
+    if (!onShowMap || showingMap) return;
+    setShowingMap(true);
+    setError('');
+    try {
+      await onShowMap();
+    } catch {
+      setError('Не удалось показать карту на общем экране. Проверьте связь и попробуйте снова.');
+    } finally {
+      setShowingMap(false);
+    }
   };
 
   return (
@@ -127,6 +143,17 @@ export function AdminCarriageCalls({
       >
         {sending ? 'ОТПРАВЛЯЕМ…' : 'ОТПРАВИТЬ ВЫЗОВ'}
       </button>
+
+      {onShowMap && (
+        <button
+          type="button"
+          className="registration-secondary"
+          disabled={showingMap}
+          onClick={() => void showMap()}
+        >
+          {showingMap ? 'ПОКАЗЫВАЕМ КАРТУ…' : 'ПОКАЗАТЬ КАРТУ ВАГОНОВ НА ОБЩЕМ ЭКРАНЕ'}
+        </button>
+      )}
     </section>
   );
 }

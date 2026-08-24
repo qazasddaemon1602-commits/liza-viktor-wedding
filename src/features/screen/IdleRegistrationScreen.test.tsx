@@ -131,6 +131,19 @@ describe('IdleRegistrationScreen', () => {
     expect(screen.getByTestId('registration-qr')).toBeInTheDocument();
   });
 
+  it('opens the map from the physical M key when the projector keyboard uses a Russian layout', () => {
+    render(
+      <IdleRegistrationScreen
+        joinUrl="https://wedding.example/join"
+        carriageMap={registrationMap}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: 'ь', code: 'KeyM' });
+
+    expect(screen.getByLabelText('Карта вагонов')).toBeInTheDocument();
+  });
+
   it('does not offer a preview for a not-found read model', () => {
     render(
       <IdleRegistrationScreen

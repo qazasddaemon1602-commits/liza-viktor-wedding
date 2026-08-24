@@ -11,7 +11,7 @@ const sql = readFileSync(
 describe('registration carriage full-name migration', () => {
   it('adds a safe fullName while retaining initials for rolling deploy compatibility', () => {
     expect(sql).toContain("'fullName'");
-    expect(sql).toContain("pg_catalog.concat_ws(' ',");
+    expect(sql).toMatch(/pg_catalog\.concat_ws\(\s*' '\s*,/);
     expect(sql).toContain("pg_catalog.btrim(guest.first_name)");
     expect(sql).toContain("pg_catalog.btrim(guest.last_name)");
     expect(sql).toContain("'initials'");

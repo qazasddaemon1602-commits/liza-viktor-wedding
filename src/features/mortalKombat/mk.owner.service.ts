@@ -64,10 +64,10 @@ function parseMatch(value: unknown): MkMatch {
     || !MK_ROUNDS.includes(String(value.round) as MkRound)
     || typeof value.position !== 'number'
     || !['pending', 'ready', 'complete'].includes(String(value.status))
-    || typeof value.current !== 'boolean') {
+    || !(value.current === null || typeof value.current === 'boolean')) {
     throw new Error('Unexpected owner MK match payload');
   }
-  return value as unknown as MkMatch;
+  return { ...value, current: value.current === true } as unknown as MkMatch;
 }
 
 function parseAffectedMatch(value: unknown): MkAffectedMatch {

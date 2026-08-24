@@ -62,4 +62,21 @@ describe('BunkerResultsScreen', () => {
     const mobile = css.match(/@media \(max-width: 760px\)[\s\S]*/)?.[0] ?? '';
     expect(mobile).toMatch(/\.bunker-v2-results\s*\{[^}]*height:\s*auto[^}]*overflow-y:\s*auto/);
   });
+
+  it('keeps the complete couple portrait visible on a 16:9 projector', () => {
+    const style = document.createElement('style');
+    style.textContent = readFileSync(
+      `${testRuntime.process.cwd()}/src/styles/bunker-quest.css`,
+      'utf8',
+    );
+    document.head.append(style);
+    render(<BunkerResultsScreen model={model} />);
+
+    const portrait = screen.getByRole('img', {
+      name: 'Лиза и Виктор вместе после прибытия поезда',
+    });
+    expect(getComputedStyle(portrait).objectFit).toBe('contain');
+    expect(getComputedStyle(portrait).objectPosition).toBe('center');
+    style.remove();
+  });
 });

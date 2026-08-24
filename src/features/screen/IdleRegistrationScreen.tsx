@@ -6,11 +6,13 @@ import type { RegistrationCarriageMap } from './carriageMap.service';
 type IdleRegistrationScreenProps = {
   joinUrl: string;
   carriageMap?: RegistrationCarriageMap | null;
+  showMapRequest?: number;
 };
 
 export function IdleRegistrationScreen({
   joinUrl,
   carriageMap = null,
+  showMapRequest = 0,
 }: IdleRegistrationScreenProps) {
   const canPreviewMap = carriageMap?.status === 'registration';
   const [showMap, setShowMap] = useState(false);
@@ -20,10 +22,14 @@ export function IdleRegistrationScreen({
   }, [canPreviewMap]);
 
   useEffect(() => {
+    if (canPreviewMap && showMapRequest > 0) setShowMap(true);
+  }, [canPreviewMap, showMapRequest]);
+
+  useEffect(() => {
     if (!canPreviewMap) return;
     const toggleMap = (event: KeyboardEvent) => {
       if (
-        event.key.toLowerCase() !== 'm'
+        (event.code !== 'KeyM' && event.key.toLowerCase() !== 'm')
         || event.repeat
         || event.altKey
         || event.ctrlKey

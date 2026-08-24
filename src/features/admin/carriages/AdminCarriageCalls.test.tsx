@@ -69,4 +69,20 @@ describe('AdminCarriageCalls', () => {
     expect(onClear).toHaveBeenCalledWith('call-1', ['c2', 'c4']);
     expect(screen.queryByText('ВЫЗОВ АКТИВЕН')).not.toBeInTheDocument();
   });
+
+  it('gives the owner a dedicated control to show the live carriage map on the projector', async () => {
+    const user = userEvent.setup();
+    const onShowMap = vi.fn().mockResolvedValue(undefined);
+    const props = {
+      carriages,
+      onSend: vi.fn(),
+      onClear: vi.fn(),
+      onShowMap,
+    } as unknown as React.ComponentProps<typeof AdminCarriageCalls>;
+    render(<AdminCarriageCalls {...props} />);
+
+    await user.click(screen.getByRole('button', { name: 'ПОКАЗАТЬ КАРТУ ВАГОНОВ НА ОБЩЕМ ЭКРАНЕ' }));
+
+    expect(onShowMap).toHaveBeenCalledTimes(1);
+  });
 });

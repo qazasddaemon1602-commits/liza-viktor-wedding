@@ -466,6 +466,23 @@ export function BunkerPlayerDashboard({
         </div>
       </header>
 
+      {isV2 && (
+        <aside className="bunker-player-dashboard__wagon-summary" aria-label="Краткое состояние вагона">
+          <div>
+            <strong>{wagon.label}</strong>
+            {dashboard ? (
+              <ul>
+                <li>Питание · {bunkerStatusLabel(dashboard.wagonState.powerStatus)}</li>
+                <li>Связь · {bunkerStatusLabel(dashboard.wagonState.communicationStatus)}</li>
+                <li>Навигация · {bunkerStatusLabel(dashboard.wagonState.navigationStatus)}</li>
+              </ul>
+            ) : <p>Получаем текущее состояние вагона…</p>}
+            <small>BK-17 — сюжетный канал. Сообщения оператора не требуют ответа.</small>
+          </div>
+          <button type="button" onClick={() => chooseSection('СОСТОЯНИЕ')}>Показать всё состояние</button>
+        </aside>
+      )}
+
       {!hasMission && (
         <BunkerResponsivePicture
           asset="tunnel-relief-wide"
@@ -528,7 +545,7 @@ export function BunkerPlayerDashboard({
             {overflowSectionActive ? `ЕЩЁ · ${section}` : 'ЕЩЁ'}
           </button>
           <div
-            className="bunker-player-dashboard__nav-overflow-menu"
+            className="bunker-player-dashboard__nav-overflow-content"
             hidden={compactNavigation && !overflowOpen}
           >
             {OVERFLOW_SECTIONS.map((item) => (

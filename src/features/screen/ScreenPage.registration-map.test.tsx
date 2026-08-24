@@ -84,6 +84,29 @@ describe('ScreenPage registration carriage map', () => {
     expect(screen.getByRole('button', { name: 'ОТКРЫТЬ КАРТУ СОСТАВА' })).toBeInTheDocument();
   });
 
+  it('shows the live map when the owner console requests it', async () => {
+    let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
+    const dependencies: ScreenPageDependencies = {
+      subscribe: (callback) => {
+        pushEvent = callback;
+        return vi.fn();
+      },
+      loadCarriageMap: vi.fn().mockRejectedValue(new Error('PGRST202')),
+    };
+
+    render(<ScreenPage joinUrl="https://wedding.example/join" dependencies={dependencies} />);
+    await act(async () => { await Promise.resolve(); });
+
+    act(() => pushEvent?.({
+      id: 'map-show-1',
+      kind: 'carriage_map_show',
+      createdAt: '2026-08-30T10:00:01.000Z',
+      payload: { map: makeMap('registration') },
+    }));
+
+    expect(screen.getByLabelText('Карта вагонов')).toBeInTheDocument();
+  });
+
   it('refreshes the authoritative map after a guest registration signal', async () => {
     let pushEvent: ((event: ScreenPresentationEvent) => void) | undefined;
     const loadCarriageMap = vi.fn().mockResolvedValue(makeMap('registration'));

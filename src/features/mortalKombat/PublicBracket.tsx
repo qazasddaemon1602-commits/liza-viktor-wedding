@@ -95,6 +95,16 @@ export function PublicBracket({ state, displayMode = 'embedded' }: PublicBracket
         <h2>ЖДЁМ ЖЕРЕБЬЁВКУ</h2>
         <p className="mk-bracket-live-label">LIVE BRACKET</p>
         <strong className="mk-projector-count">{state.activeCount} / {state.maxPlayers} БОЙЦОВ</strong>
+        {state.players.length > 0 && (
+          <ul className="mk-predraw-roster" aria-label="Участники турнира">
+            {state.players.map((player, index) => (
+              <li key={player.registrationId}>
+                <span>{String(player.seed ?? index + 1).padStart(2, '0')}</span>
+                <strong>{player.displayName}</strong>
+              </li>
+            ))}
+          </ul>
+        )}
         {displayMode === 'projector' && <p className="mk-projector-next">СЛЕДУЮЩЕЕ · ЖЕРЕБЬЁВКА</p>}
       </section>
     );

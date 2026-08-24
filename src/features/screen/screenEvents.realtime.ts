@@ -1,4 +1,5 @@
 import type { CarriageSummary } from '../registration/registration.types';
+import { parseRegistrationCarriageMap, type RegistrationCarriageMap } from './carriageMap.service';
 import type { GuestRegistrationScreenEvent } from './TrainArrivalScene';
 
 type ScreenEventsRealtimePayload = {
@@ -27,7 +28,17 @@ export type CarriageCallScreenEvent = {
   };
 };
 
-export type ScreenPresentationEvent = GuestRegistrationScreenEvent | CarriageCallScreenEvent;
+export type CarriageMapShowScreenEvent = {
+  id: string;
+  kind: 'carriage_map_show';
+  createdAt: string;
+  payload: { map: RegistrationCarriageMap };
+};
+
+export type ScreenPresentationEvent =
+  | GuestRegistrationScreenEvent
+  | CarriageCallScreenEvent
+  | CarriageMapShowScreenEvent;
 
 export type ScreenEventsRealtimeChannel = {
   on: (
@@ -135,9 +146,25 @@ function parseCarriageCallEvent(row: Record<string, unknown>): CarriageCallScree
   };
 }
 
+function parseCarriageMapShowEvent(row: Record<string, unknown>): CarriageMapShowScreenEvent | null {
+  if (!nonEmptyString(row.id) || row.kind !== 'carriage_map_show' || !nonEmptyString(row.created_at)) {
+    return null;
+  }
+  if (typeof row.payload !== 'object' || row.payload === null) return null;
+  const map = parseRegistrationCarriageMap((row.payload as Record<string, unknown>).map);
+  if (!map) return null;
+  return {
+    id: row.id,
+    kind: 'carriage_map_show',
+    createdAt: row.created_at,
+    payload: { map },
+  };
+}
+
 export function parseScreenEvent(row: Record<string, unknown>): ScreenPresentationEvent | null {
   if (row.kind === 'guest_registered') return parseGuestRegistrationEvent(row);
   if (row.kind === 'carriage_call') return parseCarriageCallEvent(row);
+  if (row.kind === 'carriage_map_show') return parseCarriageMapShowEvent(row);
   return null;
 }
 

@@ -15,6 +15,10 @@ import {
   type OwnerCarriageCall,
 } from '../carriages/carriageCalls.service';
 import {
+  publishRegistrationCarriageMap,
+  type OwnerCarriageMapRpcClient,
+} from './carriages/carriageMapOwner.service';
+import {
   closeMkRegistration,
   finalizeMkDraw,
   getOwnerMkControl,
@@ -140,6 +144,7 @@ export type AdminPageDependencies = {
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
+  showCarriageMap?: (eventId: string) => Promise<void>;
   couplePreanswers?: AdminCouplePreanswersPanelDependencies;
   premiere?: AdminPremiereControlDependencies;
   quiz?: AdminQuizPanelDependencies;
@@ -183,6 +188,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
   const client = getSupabaseClient();
   const bunkerRealtimeClient = client as unknown as BunkerRealtimeClient;
   const carriageRpcClient = client as unknown as CarriageCallRpcClient;
+  const carriageMapRpcClient = client as unknown as OwnerCarriageMapRpcClient;
   const carriageRealtimeClient = client as unknown as CarriageCallRealtimeClient;
   const mkRpcClient = client as unknown as MkOwnerRpcClient;
   const mkRealtimeClient = client as unknown as MkRealtimeClient;
@@ -269,6 +275,7 @@ export function createAdminPageDependencies(): AdminPageDependencies {
       await clearCarriageCallRpc(carriageRpcClient, callId);
       await broadcastCarriageCallRefresh(carriageRealtimeClient, carriageIds);
     },
+    showCarriageMap: (eventId) => publishRegistrationCarriageMap(carriageMapRpcClient, eventId),
     couplePreanswers: {
       load: (eventId) => getOwnerCouplePreanswerStatus(coupleRpcClient, eventId),
       issue: (eventId) => issueOwnerCouplePreanswerAccess(coupleRpcClient, eventId),
@@ -496,6 +503,7 @@ export function AdminPage({ dependencies }: AdminPageProps) {
             subscribeToRegistrations: deps.subscribeToRegistrations,
             sendCarriageCall: deps.sendCarriageCall,
             clearCarriageCall: deps.clearCarriageCall,
+            showCarriageMap: deps.showCarriageMap,
             couplePreanswers: deps.couplePreanswers,
             premiere: deps.premiere,
             quiz: deps.quiz,

@@ -8,9 +8,9 @@ const main = readFileSync(`${runtime.process.cwd()}/src/main.tsx`, 'utf8');
 
 function body(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = [...css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))].at(-1);
-  expect(match, `missing CSS rule for ${selector}`).toBeDefined();
-  return match?.[1] ?? '';
+  const matches = [...css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))];
+  expect(matches.length, `missing CSS rule for ${selector}`).toBeGreaterThan(0);
+  return matches.map((match) => match[1]).join('\n');
 }
 
 describe('Bunker V2 projector layout', () => {

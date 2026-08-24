@@ -46,6 +46,23 @@ describe('owner MK service', () => {
     expect(state).toMatchObject({ status: 'owner', activeCount: 16, waitlistCount: 2, maxPlayers: 16 });
   });
 
+  it('keeps owner control compatible with a rolling projection that returns current null', async () => {
+    const client = clientWith({
+      ...ownerPayload,
+      state: 'active',
+      activeCount: 2,
+      registrations: ownerPayload.registrations.slice(0, 2),
+      matches: [{
+        id: 'final-1', matchKey: 'final-1', round: 'final', position: 1,
+        player1GuestId: 'g1', player2GuestId: 'g2', winnerGuestId: null,
+        status: 'ready', current: null,
+      }],
+    });
+
+    await expect(getOwnerMkControl(client, 'event-1'))
+      .resolves.toMatchObject({ matches: [{ matchKey: 'final-1', current: false }] });
+  });
+
   it('normalizes the legacy production cap for an owner tournament within 16 active players', async () => {
     const client = clientWith({ ...ownerPayload, activeCount: 0, maxPlayers: 40, registrations: [] });
 

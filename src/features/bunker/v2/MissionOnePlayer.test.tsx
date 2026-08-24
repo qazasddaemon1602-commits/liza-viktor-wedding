@@ -90,6 +90,8 @@ describe('MissionOnePlayer', () => {
 
     const dialog = screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' });
     expect(within(dialog).getByRole('heading', { name: 'Проверьте решение вагона' })).toHaveFocus();
+    expect(within(dialog).getByText('Сейчас вы исключаете из сюжета:')).toBeInTheDocument();
+    expect(within(dialog).getByText(/после кнопки «подтвердить решение» выбор будет принят/i)).toBeInTheDocument();
     expect(within(dialog).getByText(members[0].realName)).toBeInTheDocument();
     expect(within(dialog).getByText(members[2].realName)).toBeInTheDocument();
     expect(within(dialog).queryByText(members[1].realName)).not.toBeInTheDocument();

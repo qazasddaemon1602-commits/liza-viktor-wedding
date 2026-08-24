@@ -132,6 +132,25 @@ beforeEach(() => {
 });
 
 describe('persistent Bunker V2 player dashboard', () => {
+  it('keeps a plain-language wagon summary visible and opens the complete state from it', async () => {
+    const user = userEvent.setup();
+    render(<BunkerPlayerDashboard runtime={runtime} dashboard={dashboard} />);
+
+    const summary = screen.getByRole('complementary', { name: 'Краткое состояние вагона' });
+    expect(summary).toHaveTextContent('ВАГОН №2');
+    expect(summary).toHaveTextContent('Питание · Нестабильно');
+    expect(summary).toHaveTextContent('Связь · С перебоями');
+    expect(summary).toHaveTextContent('Навигация · Работает');
+
+    await user.click(within(summary).getByRole('button', { name: 'Показать всё состояние' }));
+    expect(screen.getByLabelText('Состояние вагона')).toBeInTheDocument();
+  });
+
+  it('uses the styled overflow menu class expected by the mobile navigation', () => {
+    const { container } = render(<BunkerPlayerDashboard runtime={runtime} dashboard={dashboard} />);
+    expect(container.querySelector('.bunker-player-dashboard__nav-overflow-content')).not.toBeNull();
+  });
+
   it('keeps passengers, inventory, archive and wagon state visible during M05 without old mission models', async () => {
     const user = userEvent.setup();
     render(<BunkerPlayerDashboard runtime={runtime} dashboard={dashboard} />);

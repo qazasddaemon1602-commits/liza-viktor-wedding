@@ -309,6 +309,7 @@ export function ScreenPage({
   });
   const mkState = mkRecovery.state;
   const [carriageMap, setCarriageMap] = useState<RegistrationCarriageMap | null>(null);
+  const [showMapRequest, setShowMapRequest] = useState(0);
   const [premiereNowMs, setPremiereNowMs] = useState(() => Date.now());
   const [audioSettings, setAudioSettings] = useState(() => siteAudio.getSettings());
   const [audioArmed, setAudioArmed] = useState(() => !hasAudioArm);
@@ -496,6 +497,12 @@ export function ScreenPage({
   }, [deps]);
 
   useEffect(() => deps.subscribe((event) => {
+    if (event.kind === 'carriage_map_show') {
+      if (presentationProtectedRef.current) return;
+      setCarriageMap(event.payload.map);
+      setShowMapRequest((current) => current + 1);
+      return;
+    }
     if (event.kind === 'guest_registered') {
       if (presentationProtectedRef.current) protectedMapDirtyRef.current = true;
       else carriageMapRefreshRef.current();
@@ -766,6 +773,7 @@ export function ScreenPage({
         <IdleRegistrationScreen
           joinUrl={joinUrl}
           carriageMap={carriageMap?.status === 'registration' ? carriageMap : null}
+          showMapRequest={showMapRequest}
         />
       )}
 

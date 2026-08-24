@@ -1,6 +1,8 @@
 import type { GuestRegistrationScreenEvent } from './TrainArrivalScene';
 import type { CarriageCallScreenEvent, ScreenPresentationEvent } from './screenEvents.realtime';
 
+type AnnouncementScreenEvent = GuestRegistrationScreenEvent | CarriageCallScreenEvent;
+
 export type ArrivalPresentation = {
   kind: 'arrival';
   event: GuestRegistrationScreenEvent;
@@ -44,7 +46,7 @@ export function createAnnouncementQueueState(sessionKey = 'default'): Announceme
   return { sessionKey, active: null, pending: [], seenIds: [], protected: false };
 }
 
-function presentationFor(event: ScreenPresentationEvent): AnnouncementPresentation {
+function presentationFor(event: AnnouncementScreenEvent): AnnouncementPresentation {
   if (event.kind === 'guest_registered') {
     return {
       kind: 'arrival',
@@ -100,6 +102,8 @@ export function announcementQueueReducer(
     const [next, ...rest] = state.pending;
     return { ...state, active: next ? { presentation: next } : null, pending: rest };
   }
+
+  if (action.event.kind === 'carriage_map_show') return state;
 
   if (state.seenIds.includes(action.event.id)) return state;
   const seenIds = [...state.seenIds, action.event.id];

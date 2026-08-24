@@ -1279,6 +1279,267 @@
   }
 }
 
+/* Bunker V2 guest missions: one readable action path on a phone. */
+.bunker-v2-mission {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1rem, 4vw, 1.6rem);
+  border: 1px solid var(--bunker-player-rule, rgba(238, 233, 221, 0.22));
+  color: var(--bunker-player-ivory, #eee9dd);
+  background: var(--bunker-player-graphite, #181817);
+}
+
+.bunker-v2-mission__header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--bunker-player-rule, rgba(238, 233, 221, 0.22));
+}
+
+.bunker-v2-mission__header > div { min-width: 0; }
+
+.bunker-v2-mission__header span,
+.bunker-v2-mission__header p,
+.bunker-v2-mission__questions legend,
+.bunker-v2-private-fragment > span {
+  color: var(--bunker-player-muted, #b8b2a6);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.bunker-v2-mission__header h1 {
+  margin: 0.35rem 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 11vw, 4.6rem);
+  font-weight: 400;
+  line-height: 0.95;
+  overflow-wrap: anywhere;
+}
+
+.bunker-v2-mission__header p,
+.bunker-v2-mission__intro,
+.bunker-v2-mission h2,
+.bunker-v2-mission p { margin-block: 0; }
+
+.bunker-v2-mission__header time {
+  flex: 0 0 auto;
+  min-width: 4.7rem;
+  padding: 0.65rem;
+  border: 1px solid var(--bunker-player-rule, rgba(238, 233, 221, 0.28));
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.bunker-v2-mission__next-step,
+.bunker-v2-mission__answer-status,
+.bunker-v2-mission__role,
+.bunker-v2-mission__result,
+.bunker-v2-mission__ability,
+.bunker-v2-private-fragment {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border-left: 4px solid #c6a96a;
+  background: #22221f;
+}
+
+.bunker-v2-mission__next-step ol {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
+.bunker-v2-mission__questions {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bunker-v2-mission__questions legend {
+  width: 100%;
+  margin-bottom: 0.7rem;
+  font-size: 1rem;
+}
+
+.bunker-v2-mission__question {
+  min-width: 0;
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem;
+  border: 1px solid var(--bunker-player-rule, rgba(238, 233, 221, 0.22));
+  background: var(--bunker-player-black, #0d0d0c);
+}
+
+.bunker-v2-mission__question h2 { font-size: clamp(1.25rem, 5.4vw, 1.7rem); }
+
+.bunker-v2-mission__question label {
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(238, 233, 221, 0.28);
+  background: #181817;
+  cursor: pointer;
+}
+
+.bunker-v2-mission__question label.is-selected {
+  border-color: #e0c27f;
+  background: #303027;
+  box-shadow: inset 4px 0 #e0c27f;
+}
+
+.bunker-v2-mission__question input {
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0;
+  accent-color: #e0c27f;
+}
+
+.bunker-v2-mission__evidence,
+.bunker-v2-mission > section[aria-label="Общие фрагменты"],
+.bunker-v2-mission > section[aria-label="Выбор протокола"] {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bunker-v2-mission__evidence-grid,
+.bunker-v2-fragments,
+.bunker-v2-protocol-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bunker-v2-mission__evidence-grid article,
+.bunker-v2-fragments article { border: 1px solid var(--bunker-player-rule, rgba(238, 233, 221, 0.22)); }
+
+.bunker-v2-mission__evidence-grid button,
+.bunker-v2-private-fragment button,
+.bunker-v2-mission__ability button,
+.bunker-v2-protocol-grid button {
+  width: 100%;
+  min-height: 52px;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(238, 233, 221, 0.36);
+  color: #eee9dd;
+  background: #11110f;
+  font-weight: 700;
+  text-align: left;
+}
+
+.bunker-v2-mission__evidence-grid article > p,
+.bunker-v2-fragments article {
+  padding: 1rem;
+}
+
+.bunker-v2-mission__answer-status strong,
+.bunker-v2-mission__answer-status span,
+.bunker-v2-mission__role strong,
+.bunker-v2-mission__role span { display: block; }
+
+.bunker-v2-mission__answer-status span,
+.bunker-v2-mission__role span { color: #d0cabd; }
+
+.bunker-v2-mission__answer-status { border-left: 4px solid #c6a96a; }
+
+.bunker-v2-mission__error {
+  padding: 0.9rem 1rem;
+  border-left: 4px solid #d47768;
+  background: #2d1c1a;
+}
+
+.bunker-v2-mission__primary {
+  width: 100%;
+  min-height: 56px;
+  padding: 0.85rem 1rem;
+  border: 1px solid #eee9dd;
+  color: #0d0d0c;
+  background: #eee9dd;
+  font-weight: 800;
+}
+
+.bunker-v2-protocol-grid button {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.bunker-v2-protocol-grid button.is-selected {
+  border-color: #e0c27f;
+  background: #303027;
+  box-shadow: inset 5px 0 #e0c27f;
+}
+
+.bunker-v2-protocol-grid button small { color: #f0d899; }
+
+.bunker-player-dashboard__wagon-summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(224, 194, 127, 0.5);
+  background: #25241f;
+}
+
+.bunker-player-dashboard__wagon-summary > div { min-width: 0; }
+
+.bunker-player-dashboard__wagon-summary ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0.55rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bunker-player-dashboard__wagon-summary small {
+  display: block;
+  color: #c8c1b4;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.bunker-player-dashboard__wagon-summary button {
+  min-height: 52px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #eee9dd;
+  color: #eee9dd;
+  background: transparent;
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .bunker-v2-mission {
+    display: grid;
+    padding: 0.9rem;
+  }
+
+  .bunker-v2-mission__header { align-items: flex-start; }
+
+  .bunker-v2-mission__header h1 { font-size: clamp(2rem, 10vw, 3rem); }
+
+  .bunker-v2-protocol-grid { grid-template-columns: minmax(0, 1fr); }
+
+  .bunker-player-dashboard__wagon-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bunker-player-dashboard__wagon-summary button { width: 100%; }
+}
+
 .bunker-mission-one-player {
   min-width: 0;
   display: grid;
@@ -1500,8 +1761,25 @@
 .bunker-mission-one-player__confirmation {
   width: min(100%, 32rem);
   max-height: min(42rem, calc(100dvh - 2rem));
+  border-color: rgba(238, 233, 221, 0.28);
+  color: #eee9dd;
+  background: #0d0d0c;
   overflow-y: auto;
   box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 48%);
+}
+
+.bunker-mission-one-player__confirmation p { color: #cbc6ba; }
+
+.bunker-mission-one-player__confirmation .bunker-mission-one-player__primary {
+  border-color: #eee9dd;
+  color: #0d0d0c;
+  background: #eee9dd;
+}
+
+.bunker-mission-one-player__confirmation .bunker-mission-one-player__secondary {
+  border-color: #eee9dd;
+  color: #eee9dd;
+  background: transparent;
 }
 
 .bunker-mission-one-player__confirmation h3 {

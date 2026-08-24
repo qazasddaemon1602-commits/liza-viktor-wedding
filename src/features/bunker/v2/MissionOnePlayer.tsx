@@ -245,10 +245,16 @@ export function MissionOnePlayer({ model, onConfirm }: MissionOnePlayerProps) {
             >
               Проверьте решение вагона
             </h3>
-            <p>После подтверждения изменить список сможет только ведущий с указанием причины.</p>
+            <strong className="bunker-mission-one-player__decision">
+              Сейчас вы исключаете из сюжета:
+            </strong>
             <ul>
               {draftMembers.map((member) => <li key={member.guestId}>{member.realName}</li>)}
             </ul>
+            <p>
+              После кнопки «Подтвердить решение» выбор будет принят. Изменить его сможет
+              только ведущий.
+            </p>
             {error && (
               <p className="bunker-mission-one-player__error" role="alert" aria-live="assertive">
                 {error}

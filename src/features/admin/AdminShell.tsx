@@ -45,6 +45,7 @@ export type AdminShellDependencies = {
     showOnScreen: boolean,
   ) => Promise<OwnerCarriageCall>;
   clearCarriageCall?: (callId: string, carriageIds: string[]) => Promise<void>;
+  showCarriageMap?: (eventId: string) => Promise<void>;
   couplePreanswers?: AdminCouplePreanswersPanelDependencies;
   premiere?: AdminPremiereControlDependencies;
   quiz?: AdminQuizPanelDependencies;
@@ -419,6 +420,9 @@ export function AdminShell({ dependencies, refreshIntervalMs = 4_000 }: AdminShe
           carriages={dashboard.carriages.filter((carriage) => carriage.enabled)}
           onSend={dependencies.sendCarriageCall}
           onClear={dependencies.clearCarriageCall}
+          onShowMap={dependencies.showCarriageMap
+            ? () => dependencies.showCarriageMap!(dashboard.event.id)
+            : undefined}
         />
       )}
 

@@ -170,6 +170,34 @@ describe('subscribeToScreenEvents', () => {
     });
   });
 
+  it('parses an owner-published carriage map only after validating the complete payload', () => {
+    const callback = vi.fn();
+    const on = vi.fn().mockReturnThis();
+    const channel = { on, subscribe: vi.fn(), unsubscribe: vi.fn() };
+    const client: ScreenEventsRealtimeClient = { channel: vi.fn().mockReturnValue(channel) };
+
+    subscribeToScreenEvents(client, 'liza-viktor', callback);
+    const handler = on.mock.calls[0][2];
+    const map = {
+      status: 'registration', expectedGuestCount: 2, registeredGuestCount: 1,
+      serverNow: '2026-08-30T10:00:00.000Z', unassignedCount: 0,
+      carriages: [
+        { id: 'c1', number: 1, label: 'ВАГОН №1', accentHex: '#31483A', visualMark: '01', guests: [
+          { id: 'g1', fullName: 'Анна Петрова', initials: 'АП', seatIndex: 1 },
+        ] },
+        { id: 'c2', number: 2, label: 'ВАГОН №2', accentHex: '#9A6348', visualMark: '02', guests: [] },
+      ],
+    };
+
+    handler({ new: { id: 'map-1', kind: 'carriage_map_show', created_at: '2026-08-30T10:00:01.000Z', payload: { map } } });
+    handler({ new: { id: 'map-2', kind: 'carriage_map_show', created_at: '2026-08-30T10:00:02.000Z', payload: { map: { ...map, carriages: [] } } } });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledWith({
+      id: 'map-1', kind: 'carriage_map_show', createdAt: '2026-08-30T10:00:01.000Z', payload: { map },
+    });
+  });
+
   it('ignores malformed or unsupported screen events', () => {
     const callback = vi.fn();
     const on = vi.fn().mockReturnThis();

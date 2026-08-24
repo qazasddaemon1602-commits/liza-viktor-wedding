@@ -67,4 +67,23 @@ describe('AdminShell carriage calls', () => {
     );
     expect(await screen.findByText('ВЫЗОВ АКТИВЕН')).toBeInTheDocument();
   });
+
+  it('publishes the carriage map for the current event through the owner dependency', async () => {
+    const user = userEvent.setup();
+    const showCarriageMap = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AdminShell
+        dependencies={dependencies({
+          sendCarriageCall: vi.fn(),
+          clearCarriageCall: vi.fn().mockResolvedValue(undefined),
+          showCarriageMap,
+        })}
+      />,
+    );
+
+    await screen.findByText('Лиза × Виктор');
+    await user.click(screen.getByRole('button', { name: 'ПОКАЗАТЬ КАРТУ ВАГОНОВ НА ОБЩЕМ ЭКРАНЕ' }));
+
+    expect(showCarriageMap).toHaveBeenCalledWith('event-1');
+  });
 });

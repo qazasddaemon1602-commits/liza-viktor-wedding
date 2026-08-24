@@ -1226,12 +1226,15 @@
   display: block;
   aspect-ratio: 3 / 2;
   overflow: hidden;
+  background: radial-gradient(circle at 52% 36%, rgba(199, 168, 108, 0.16), rgba(8, 13, 16, 0.92) 72%);
 }
 
 .bunker-v2-results .bunker-results-epilogue img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .bunker-v2-results .bunker-results-epilogue span {

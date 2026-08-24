@@ -32,7 +32,38 @@ describe('MissionSixPlayer', () => {
     render(<MissionSixPlayer model={{ ...model, fragmentShared: true }} onReveal={vi.fn()} onVote={vote} onUseAbility={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /ПРОТОКОЛ B/ }));
     expect(vote).toHaveBeenCalledWith('B');
+    expect(screen.getByRole('button', { name: /ПРОТОКОЛ B/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('status', { name: 'Состояние вашего голоса' })).toHaveTextContent(
+      /протокол B.*голос отправлен/i,
+    );
     expect(screen.getByText(/нужно 3 голоса/i)).toBeInTheDocument();
+  });
+
+  it('keeps the submitted vote selected while polling still returns the previous value', async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <MissionSixPlayer model={{ ...model, fragmentShared: true }} onVote={vi.fn().mockResolvedValue(undefined)} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /ПРОТОКОЛ C/ }));
+    view.rerender(
+      <MissionSixPlayer
+        model={{ ...model, fragmentShared: true, remainingSeconds: 478, selectedVote: null }}
+        onVote={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /ПРОТОКОЛ C/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('status', { name: 'Состояние вашего голоса' })).toHaveTextContent(/протокол C/i);
+  });
+
+  it('marks an authoritative vote as accepted and keeps it visible', () => {
+    render(<MissionSixPlayer model={{ ...model, fragmentShared: true, selectedVote: 'B' }} />);
+
+    expect(screen.getByRole('button', { name: /ПРОТОКОЛ B/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('status', { name: 'Состояние вашего голоса' })).toHaveTextContent(
+      /ответ принят.*протокол B/i,
+    );
   });
 
   it('shows unlocked sector and access code only after authoritative success', () => {
