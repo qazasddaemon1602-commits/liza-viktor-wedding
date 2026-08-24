@@ -6,7 +6,7 @@ import { MissionTwoPlayer, type MissionTwoPlayerReadModel } from './MissionTwoPl
 const model: MissionTwoPlayerReadModel = {
   instanceId: 'm02', instanceVersion: 1, status: 'active', remainingSeconds: 300,
   title: 'Чёрный ящик', subtitle: 'ВОССТАНОВЛЕНИЕ ДАННЫХ ПОСЛЕ АВАРИИ',
-  intro: 'Чёрный ящик частично повреждён. Восстановлено шесть фрагментов записи. Только часть данных подлинна. Сопоставьте время, технические события и маршрут.',
+  intro: 'Чёрный ящик частично повреждён. Восстановлено шесть фрагментов записи.',
   evidence: Array.from({ length: 6 }, (_, index) => ({ key: `e${index + 1}`, label: `Фрагмент ${index + 1}`, body: `Данные ${index + 1}` })),
   questions: [
     { key: 'wagon', prompt: 'Из какого вагона пришёл аварийный сигнал?', options: ['Вагон №2', 'Вагон №3', 'Вагон №4'] },
@@ -18,72 +18,39 @@ const model: MissionTwoPlayerReadModel = {
 };
 
 describe('MissionTwoPlayer', () => {
-  it('shows the question before evidence controls and explains the task in plain Russian', () => {
+  it('shows one question at a time, advances after a confirmed answer, and keeps the evidence in a hint drawer', async () => {
+    const user = userEvent.setup();
     render(<MissionTwoPlayer model={model} onSubmit={vi.fn()} onUseAbility={vi.fn()} />);
-    const question = screen.getByText('Из какого вагона пришёл аварийный сигнал?');
-    const evidence = screen.getByRole('button', { name: /Фрагмент 1/i });
-    expect(question.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText(/шесть фрагментов/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Фрагмент/i })).toHaveLength(6);
+
+    expect(screen.getByRole('heading', { name: 'Из какого вагона пришёл аварийный сигнал?' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Какое действие произошло непосредственно перед сбоем?' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Подсказки из чёрного ящика' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Открыть подсказки' }));
+    expect(screen.getByRole('region', { name: 'Подсказки из чёрного ящика' })).toHaveTextContent('Данные 1');
+
+    await user.click(screen.getByLabelText('Вагон №4'));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить ответ' }));
+    expect(screen.getByRole('heading', { name: 'Какое действие произошло непосредственно перед сбоем?' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Из какого вагона пришёл аварийный сигнал?' })).not.toBeInTheDocument();
   });
 
-  it('keeps one dominant submit action disabled until all three answers are selected', async () => {
+  it('keeps the archive recovery visible and sends the existing three-answer payload only after sequential confirmation', async () => {
     const user = userEvent.setup();
-    const submit = vi.fn();
-    render(<MissionTwoPlayer model={model} onSubmit={submit} onUseAbility={vi.fn()} />);
-    const button = screen.getByRole('button', { name: 'ПРОВЕРИТЬ ВЕРСИЮ' });
-    expect(button).toBeDisabled();
+    const submit = vi.fn().mockResolvedValue(undefined);
+    render(<MissionTwoPlayer model={{ ...model, archiveUnlocked: 'BK-17' }} onSubmit={submit} />);
+
+    expect(screen.getByRole('status', { name: 'Архив вагона' })).toHaveTextContent('BK-17');
     await user.click(screen.getByLabelText('Вагон №4'));
-    expect(screen.getByRole('status', { name: 'Готовность ответа' })).toHaveTextContent('1 из 3');
+    await user.click(screen.getByRole('button', { name: 'Подтвердить ответ' }));
     await user.click(screen.getByLabelText('Открытие технического шлюза'));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить ответ' }));
     await user.click(screen.getByLabelText('05'));
-    expect(screen.getByRole('status', { name: 'Готовность ответа' })).toHaveTextContent('Все ответы выбраны');
-    expect(button).toBeEnabled();
-    await user.click(button);
-    expect(submit).toHaveBeenCalledWith(['Вагон №4', 'Открытие технического шлюза', '05']);
-  });
-
-  it('keeps a draft answer when polling returns an unchanged authoritative attempt', async () => {
-    const user = userEvent.setup();
-    const view = render(<MissionTwoPlayer model={model} onSubmit={vi.fn()} />);
-
-    await user.click(screen.getByLabelText('Вагон №4'));
-    expect(screen.getByLabelText('Вагон №4')).toBeChecked();
-
-    view.rerender(
-      <MissionTwoPlayer
-        model={{ ...model, remainingSeconds: 298, selectedAnswers: ['', '', ''] }}
-        onSubmit={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByLabelText('Вагон №4')).toBeChecked();
-    expect(screen.getByRole('status', { name: 'Готовность ответа' })).toHaveTextContent('1 из 3');
-  });
-
-  it('shows an unambiguous submitted state while the authoritative result is loading', async () => {
-    const user = userEvent.setup();
-    let resolveSubmit!: () => void;
-    const submit = vi.fn(() => new Promise<void>((resolve) => { resolveSubmit = resolve; }));
-    render(<MissionTwoPlayer model={model} onSubmit={submit} />);
-
-    await user.click(screen.getByLabelText('Вагон №4'));
-    await user.click(screen.getByLabelText('Открытие технического шлюза'));
-    await user.click(screen.getByLabelText('05'));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить ответ' }));
     await user.click(screen.getByRole('button', { name: 'ПРОВЕРИТЬ ВЕРСИЮ' }));
 
-    expect(screen.getByRole('status', { name: 'Состояние отправки ответа' })).toHaveTextContent(
-      /ответ отправляется/i,
-    );
-    resolveSubmit();
-    expect(await screen.findByRole('status', { name: 'Состояние отправки ответа' })).toHaveTextContent(
-      /ответ отправлен.*ждём результат/i,
-    );
-  });
-
-  it('explains retry count without technical terms and exposes ability only when available', () => {
-    render(<MissionTwoPlayer model={{ ...model, attemptCount: 1, attemptsRemaining: 1 }} onSubmit={vi.fn()} onUseAbility={vi.fn()} />);
-    expect(screen.getByText(/осталась 1 попытка/i)).toBeInTheDocument();
+    expect(submit).toHaveBeenCalledWith(['Вагон №4', 'Открытие технического шлюза', '05']);
     expect(screen.getByRole('button', { name: /использовать способность/i })).toBeInTheDocument();
+    expect(screen.getByText(/осталось попыток: 2/i)).toBeInTheDocument();
   });
 });

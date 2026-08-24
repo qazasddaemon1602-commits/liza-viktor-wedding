@@ -50,20 +50,17 @@ function model(
 }
 
 describe('MissionOnePlayer', () => {
-  it('keeps the 390×844 semantic order and enables its only decision CTA at the exact frozen quota', async () => {
+  it('shows the selected guests and exact quota before its only confirmation sends the existing payload', async () => {
     const user = userEvent.setup();
-    render(<MissionOnePlayer model={model()} onConfirm={vi.fn()} />);
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(<MissionOnePlayer model={model()} onConfirm={onConfirm} />);
 
     const mission = screen.getByRole('region', { name: 'Миссия 01 · Лишний пассажир' });
-    const title = within(mission).getByRole('heading', { name: 'Лишний пассажир' });
-    const question = within(mission).getByText(/каких двух сюжетных персонажей/i);
     const group = within(mission).getByRole('group', { name: /выберите ровно 2/i });
     const confirm = within(mission).getByRole('button', { name: 'Подтвердить решение' });
 
-    expect(title.compareDocumentPosition(question) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(question.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(group.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(mission).getAllByRole('button', { name: 'Подтвердить решение' })).toHaveLength(1);
+    expect(screen.getByText(/резервный вагон временно держит двери закрытыми/i)).toBeInTheDocument();
     expect(confirm).toBeDisabled();
     expect(screen.getByText('ВЫБРАНО · 0 / 2')).toBeInTheDocument();
 
@@ -72,103 +69,13 @@ describe('MissionOnePlayer', () => {
     await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
     expect(confirm).toBeEnabled();
     expect(screen.getByText('ВЫБРАНО · 2 / 2')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Выбор вагона' })).toHaveTextContent(
+      `${members[0].realName} · ${members[1].realName}`,
+    );
     expect(screen.getByRole('checkbox', { name: /екатерина воскресенская/i })).toBeDisabled();
-
-    await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
-    expect(confirm).toBeDisabled();
-    expect(screen.getByRole('checkbox', { name: /екатерина воскресенская/i })).toBeEnabled();
-  });
-
-  it('requires a second confirmation that names the selected registered guests', async () => {
-    const user = userEvent.setup();
-    const onConfirm = vi.fn().mockResolvedValue(undefined);
-    render(<MissionOnePlayer model={model()} onConfirm={onConfirm} />);
-
-    await user.click(screen.getByRole('checkbox', { name: /александра-мария/i }));
-    await user.click(screen.getByRole('checkbox', { name: /екатерина воскресенская/i }));
-    await user.click(screen.getByRole('button', { name: 'Подтвердить решение' }));
-
-    const dialog = screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' });
-    expect(within(dialog).getByRole('heading', { name: 'Проверьте решение вагона' })).toHaveFocus();
-    expect(within(dialog).getByText('Сейчас вы исключаете из сюжета:')).toBeInTheDocument();
-    expect(within(dialog).getByText(/после кнопки «подтвердить решение» выбор будет принят/i)).toBeInTheDocument();
-    expect(within(dialog).getByText(members[0].realName)).toBeInTheDocument();
-    expect(within(dialog).getByText(members[2].realName)).toBeInTheDocument();
-    expect(within(dialog).queryByText(members[1].realName)).not.toBeInTheDocument();
-    expect(onConfirm).not.toHaveBeenCalled();
-
-    await user.click(within(dialog).getByRole('button', { name: 'Вернуться к выбору' }));
-    const restoredConfirm = screen.getByRole('button', { name: 'Подтвердить решение' });
-    expect(restoredConfirm).toHaveFocus();
-
-    await user.click(restoredConfirm);
-    await user.click(
-      within(screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' }))
-        .getByRole('button', { name: 'Подтвердить решение' }),
-    );
-    expect(onConfirm).toHaveBeenCalledWith(['guest-1', 'guest-3']);
-  });
-
-  it('opens confirmation as an isolated keyboard modal and restores the initiating control on Escape', async () => {
-    const user = userEvent.setup();
-    const { container } = render(<MissionOnePlayer model={model()} onConfirm={vi.fn()} />);
-
-    await user.click(screen.getByRole('checkbox', { name: /александра-мария/i }));
-    await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
-    const initiator = screen.getByRole('button', { name: 'Подтвердить решение' });
-    await user.click(initiator);
-
-    const dialog = screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' });
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(within(dialog).getByRole('heading', { name: 'Проверьте решение вагона' })).toHaveFocus();
-    expect(container).toHaveAttribute('inert');
-
-    await user.tab({ shift: true });
-    expect(within(dialog).getByRole('button', { name: 'Подтвердить решение' })).toHaveFocus();
-    await user.tab();
-    expect(within(dialog).getByRole('button', { name: 'Вернуться к выбору' })).toHaveFocus();
-
-    await user.keyboard('{Escape}');
+    await user.click(confirm);
+    expect(onConfirm).toHaveBeenCalledWith(['guest-1', 'guest-2']);
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Подтвердить решение' })).toHaveFocus();
-    expect(container).not.toHaveAttribute('inert');
-  });
-
-  it('announces a failed confirmation inside the active modal instead of the inert page', async () => {
-    const user = userEvent.setup();
-    render(
-      <MissionOnePlayer
-        model={model()}
-        onConfirm={vi.fn().mockRejectedValue(new Error('still active'))}
-      />,
-    );
-
-    await user.click(screen.getByRole('checkbox', { name: /александра-мария/i }));
-    await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
-    await user.click(screen.getByRole('button', { name: 'Подтвердить решение' }));
-    const dialog = screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' });
-    await user.click(within(dialog).getByRole('button', { name: 'Подтвердить решение' }));
-
-    const error = await within(dialog).findByRole('alert');
-    expect(error).toHaveTextContent(/состояние задания/i);
-    expect(error.closest('[aria-modal="true"]')).toBe(dialog);
-  });
-
-  it('moves focus to the resulting live status after a successful modal confirmation', async () => {
-    const user = userEvent.setup();
-    render(<MissionOnePlayer model={model()} onConfirm={vi.fn().mockResolvedValue(undefined)} />);
-
-    await user.click(screen.getByRole('checkbox', { name: /александра-мария/i }));
-    await user.click(screen.getByRole('checkbox', { name: /николай добровольский/i }));
-    await user.click(screen.getByRole('button', { name: 'Подтвердить решение' }));
-    await user.click(
-      within(screen.getByRole('alertdialog', { name: 'Проверьте решение вагона' }))
-        .getByRole('button', { name: 'Подтвердить решение' }),
-    );
-
-    const status = await screen.findByRole('status');
-    expect(status).toHaveTextContent(/решение отправлено/i);
-    expect(status).toHaveFocus();
   });
 
   it('replaces reconnecting controls with the authoritative completed outcome', () => {

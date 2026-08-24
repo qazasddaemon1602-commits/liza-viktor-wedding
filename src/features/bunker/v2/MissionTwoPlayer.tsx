@@ -8,28 +8,52 @@ export type MissionTwoPlayerReadModel = {
   ability: MissionTwoAbility; outcome?: 'success' | 'black_box_incomplete'; archiveUnlocked?: 'BK-17';
 };
 
-function timer(seconds: number) { const safe = Math.max(0, Math.floor(seconds)); return `${String(Math.floor(safe / 60)).padStart(2,'0')}:${String(safe % 60).padStart(2,'0')}`; }
+function timer(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+}
 
 function authoritativeAnswers(model: MissionTwoPlayerReadModel): string[] {
   return model.selectedAnswers.length === 3 ? [...model.selectedAnswers] : ['', '', ''];
 }
 
-export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: { model: MissionTwoPlayerReadModel; onSubmit?: (answers: string[]) => Promise<void> | void; onUseAbility?: (ability: 'system_access' | 'terminal_hack') => Promise<void> | void }) {
+function firstUnanswered(answers: readonly string[]): number {
+  const index = answers.findIndex((answer) => !answer.trim());
+  return index === -1 ? answers.length : index;
+}
+
+export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: {
+  model: MissionTwoPlayerReadModel;
+  onSubmit?: (answers: string[]) => Promise<void> | void;
+  onUseAbility?: (ability: 'system_access' | 'terminal_hack') => Promise<void> | void;
+}) {
   const [answers, setAnswers] = useState<string[]>(() => authoritativeAnswers(model));
-  const [openEvidence, setOpenEvidence] = useState<string | null>(null);
+  const [questionIndex, setQuestionIndex] = useState(() => firstUnanswered(authoritativeAnswers(model)));
+  const [hintDrawerOpen, setHintDrawerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submissionState, setSubmissionState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState('');
   const selectedAnswersKey = model.selectedAnswers.join('\u001f');
+
   useEffect(() => {
-    setAnswers(authoritativeAnswers(model));
+    const nextAnswers = authoritativeAnswers(model);
+    setAnswers(nextAnswers);
+    setQuestionIndex(firstUnanswered(nextAnswers));
     setSubmissionState('idle');
     setError('');
   }, [model.instanceId, model.instanceVersion, model.attemptCount, model.status, selectedAnswersKey]);
+
   const complete = answers.every((answer) => answer.trim());
-  const answeredCount = answers.filter((answer) => answer.trim()).length;
   const resolved = model.status === 'completed';
+  const currentQuestion = model.questions[questionIndex];
+  const currentAnswer = answers[questionIndex] ?? '';
   const attemptText = model.attemptsRemaining === 1 ? 'Осталась 1 попытка.' : `Осталось попыток: ${model.attemptsRemaining}.`;
+
+  const confirmAnswer = () => {
+    if (!currentAnswer.trim()) return;
+    setQuestionIndex((current) => Math.min(current + 1, model.questions.length));
+  };
+
   const submit = async () => {
     if (!onSubmit || !complete || busy) return;
     setBusy(true);
@@ -45,19 +69,13 @@ export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: { model: Mis
       setBusy(false);
     }
   };
+
   return (
     <section className="bunker-v2-mission bunker-v2-mission--m02" aria-label="Задание 2 · Чёрный ящик">
       <header className="bunker-v2-mission__header"><div><span>ЗАДАНИЕ 2</span><h1>{model.title}</h1><p>{model.subtitle}</p></div><time aria-label="До конца задания">{timer(model.remainingSeconds)}</time></header>
       <p className="bunker-v2-mission__intro">{model.intro}</p>
-      <section className="bunker-v2-mission__next-step" aria-label="Что делать сейчас">
-        <strong>ЧТО ДЕЛАТЬ СЕЙЧАС</strong>
-        <ol>
-          <li>Откройте все фрагменты и сравните данные.</li>
-          <li>Выберите по одному ответу в каждом из трёх вопросов.</li>
-          <li>Когда появится «Все ответы выбраны», нажмите «Проверить версию».</li>
-        </ol>
-      </section>
       {model.connection === 'reconnecting' && <p role="status">Связь восстанавливается. Ваши уже полученные данные остаются на экране.</p>}
+      {model.archiveUnlocked && <p role="status" aria-label="Архив вагона">Архив вагона: {model.archiveUnlocked} доступен.</p>}
       {resolved ? (
         <div className="bunker-v2-mission__result" role="status">
           <h2>{model.outcome === 'success' ? 'ЧЁРНЫЙ ЯЩИК РАСШИФРОВАН' : 'ЗАПИСЬ ВОССТАНОВЛЕНА НЕ ПОЛНОСТЬЮ'}</h2>
@@ -65,17 +83,36 @@ export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: { model: Mis
         </div>
       ) : (
         <>
-          <fieldset className="bunker-v2-mission__questions"><legend>Ответьте на три вопроса</legend>{model.questions.map((question, questionIndex) => <div key={question.key} className="bunker-v2-mission__question"><h2>{question.prompt}</h2>{question.options.map((option) => <label key={option} className={answers[questionIndex] === option ? 'is-selected' : ''}><input type="radio" name={`m02-${question.key}`} value={option} checked={answers[questionIndex] === option} onChange={() => { setSubmissionState('idle'); setError(''); setAnswers((current) => current.map((value, index) => index === questionIndex ? option : value)); }} /> <span>{option}</span></label>)}</div>)}</fieldset>
-          <section className="bunker-v2-mission__evidence" aria-label="Фрагменты чёрного ящика"><h2>ШЕСТЬ ВОССТАНОВЛЕННЫХ ФРАГМЕНТОВ</h2><div className="bunker-v2-mission__evidence-grid">{model.evidence.map((entry) => <article key={entry.key}><button type="button" aria-expanded={openEvidence === entry.key} onClick={() => setOpenEvidence((current) => current === entry.key ? null : entry.key)}>{entry.label}</button>{openEvidence === entry.key && <p>{entry.body}</p>}</article>)}</div></section>
-          {model.ability?.available && <aside className="bunker-v2-mission__ability"><strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong><p>{model.ability.hint}</p><button type="button" disabled={busy} onClick={() => { setBusy(true); Promise.resolve(onUseAbility?.(model.ability!.key)).finally(() => setBusy(false)); }}>ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button></aside>}
-          <p className="bunker-v2-mission__answer-status" role="status" aria-label="Готовность ответа">
-            <strong>{complete ? 'Все ответы выбраны' : `Вы ответили: ${answeredCount} из 3`}</strong>
-            <span>{complete ? 'Теперь нажмите кнопку ниже.' : 'Выбор сохранится на этом телефоне.'}</span>
-          </p>
+          {currentQuestion ? (
+            <fieldset className="bunker-v2-mission__questions">
+              <legend>Вопрос {questionIndex + 1} из {model.questions.length}</legend>
+              <div className="bunker-v2-mission__question">
+                <h2>{currentQuestion.prompt}</h2>
+                {currentQuestion.options.map((option) => <label key={option} className={currentAnswer === option ? 'is-selected' : ''}>
+                  <input type="radio" name={`m02-${currentQuestion.key}`} value={option} checked={currentAnswer === option} onChange={() => {
+                    setSubmissionState('idle');
+                    setError('');
+                    setAnswers((current) => current.map((value, index) => index === questionIndex ? option : value));
+                  }} />
+                  <span>{option}</span>
+                </label>)}
+              </div>
+              <button className="bunker-v2-mission__primary" type="button" disabled={!currentAnswer.trim()} onClick={confirmAnswer}>Подтвердить ответ</button>
+            </fieldset>
+          ) : (
+            <>
+              <p className="bunker-v2-mission__answer-status" role="status" aria-label="Готовность ответа"><strong>Все ответы выбраны</strong><span>Теперь отправьте версию на проверку.</span></p>
+              {submissionState !== 'idle' && <p className="bunker-v2-mission__answer-status" role="status" aria-label="Состояние отправки ответа"><strong>{submissionState === 'sending' ? 'Ответ отправляется…' : 'Ответ отправлен'}</strong><span>{submissionState === 'sending' ? 'Не закрывайте страницу.' : 'Ждём результат проверки с сервера.'}</span></p>}
+              {error && <p className="bunker-v2-mission__error" role="alert">{error}</p>}
+              <button className="bunker-v2-mission__primary" type="button" disabled={!complete || busy || !onSubmit} onClick={() => void submit()}>{submissionState === 'sending' ? 'ОТПРАВЛЯЕМ…' : 'ПРОВЕРИТЬ ВЕРСИЮ'}</button>
+            </>
+          )}
+          <section className="bunker-v2-mission__evidence" aria-label="Фрагменты чёрного ящика">
+            <button type="button" aria-expanded={hintDrawerOpen} aria-controls="mission-two-hints" onClick={() => setHintDrawerOpen((open) => !open)}>{hintDrawerOpen ? 'Закрыть подсказки' : 'Открыть подсказки'}</button>
+            {hintDrawerOpen && <div id="mission-two-hints" role="region" aria-label="Подсказки из чёрного ящика"><h2>ПОДСКАЗКИ ИЗ ЧЁРНОГО ЯЩИКА</h2><ul>{model.evidence.map((entry) => <li key={entry.key}><strong>{entry.label}</strong><span>{entry.body}</span></li>)}</ul></div>}
+          </section>
           <p className="bunker-v2-mission__attempts" role="status">{attemptText}</p>
-          {submissionState !== 'idle' && <p className="bunker-v2-mission__answer-status" role="status" aria-label="Состояние отправки ответа"><strong>{submissionState === 'sending' ? 'Ответ отправляется…' : 'Ответ отправлен'}</strong><span>{submissionState === 'sending' ? 'Не закрывайте страницу.' : 'Ждём результат проверки с сервера.'}</span></p>}
-          {error && <p className="bunker-v2-mission__error" role="alert">{error}</p>}
-          <button className="bunker-v2-mission__primary" type="button" disabled={!complete || busy || !onSubmit} onClick={() => void submit()}>{submissionState === 'sending' ? 'ОТПРАВЛЯЕМ…' : 'ПРОВЕРИТЬ ВЕРСИЮ'}</button>
+          {model.ability?.available && <aside className="bunker-v2-mission__ability"><strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong><p>{model.ability.hint}</p><button type="button" disabled={busy} onClick={() => { setBusy(true); Promise.resolve(onUseAbility?.(model.ability!.key)).finally(() => setBusy(false)); }}>ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button></aside>}
         </>
       )}
     </section>
