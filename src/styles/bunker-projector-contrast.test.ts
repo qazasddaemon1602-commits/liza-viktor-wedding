@@ -37,4 +37,10 @@ describe('Bunker projector contrast', () => {
     expect(css).toContain('font-size: clamp(22px, 1.45vw, 24px);');
     expect(css).toContain('font-size: clamp(18px, 1.1vw, 22px);');
   });
+
+  it('guarantees FinalScreen attempt and hint copy an 18px minimum', () => {
+    expect(css).toMatch(
+      /\.bunker-v2-final-screen > main > span,\s*\.bunker-v2-final-screen > main > small\s*\{[^}]*font-size:\s*clamp\(18px,[^;]*22px\)/,
+    );
+  });
 });

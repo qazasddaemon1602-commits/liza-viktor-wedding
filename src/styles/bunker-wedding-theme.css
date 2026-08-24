@@ -580,7 +580,6 @@
   right: auto;
   left: clamp(1.6rem, 3vw, 4rem);
   width: 36vw;
-  max-width: 44rem;
   border-color: rgba(226, 188, 120, 0.72);
   background: #f3d9ad;
   box-shadow: 0 1.4rem 4rem rgba(49, 12, 25, 0.28);
@@ -816,6 +815,11 @@
 .bunker-liza-reveal--player blockquote strong,
 .bunker-results-epilogue span {
   color: #80502f;
+}
+
+.bunker-v2-results .bunker-results-epilogue span {
+  color: #80502f;
+  font-size: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -39,6 +39,11 @@ describe('Bunker V2 projector layout', () => {
     expect(secondary).toMatch(/font-size:\s*clamp\(18px,[^;]*22px\)/);
   });
 
+  it('keeps the primary M06 protocol status in the 22-24px projector range', () => {
+    const protocolStatus = body('.bunker-v2-protocol-progress strong');
+    expect(protocolStatus).toMatch(/font-size:\s*clamp\(22px,[^;]*24px\)/);
+  });
+
   it('uses warm paper cards with dark railway ink as the base mission surface', () => {
     const screen = body('.bunker-v2-screen');
     const card = body('.bunker-v2-screen article');

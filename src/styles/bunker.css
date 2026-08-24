@@ -49,42 +49,6 @@
   display: none;
 }
 
-.bunker-emergency__blackout,
-.bunker-emergency__sync-tear {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  pointer-events: none;
-}
-
-.bunker-emergency__blackout {
-  background: #050505;
-  animation: bunker-blackout 800ms linear both;
-}
-
-.bunker-emergency__sync-tear {
-  z-index: 21;
-  opacity: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    rgba(236, 232, 222, 0.84) 0 2px,
-    rgba(17, 18, 16, 0.96) 2px 7px
-  );
-  clip-path: inset(46% 0 46% 0);
-  animation: bunker-sync-tear 800ms steps(2, end) both;
-}
-
-@keyframes bunker-blackout {
-  0%, 76% { opacity: 1; visibility: visible; }
-  100% { opacity: 0; visibility: hidden; }
-}
-
-@keyframes bunker-sync-tear {
-  0%, 77%, 91%, 100% { opacity: 0; transform: translateX(0); }
-  78%, 84% { opacity: 0.72; transform: translateX(-1.8vw); }
-  85%, 90% { opacity: 0.38; transform: translateX(1.1vw); }
-}
-
 .bunker-emergency__header,
 .bunker-emergency__footer {
   display: flex;
@@ -151,16 +115,6 @@
   text-transform: uppercase;
   color: #d8d8d8;
   font-style: normal;
-}
-
-.bunker-emergency__title-reveal {
-  clip-path: inset(0 100% 0 0);
-  animation: bunker-title-reveal 760ms cubic-bezier(.2, .7, .2, 1) 800ms both;
-}
-
-@keyframes bunker-title-reveal {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
 }
 
 .bunker-emergency__timer-block {
@@ -369,21 +323,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bunker-emergency__blackout,
-  .bunker-emergency__sync-tear,
-  .bunker-emergency__title-reveal,
   .bunker-emergency__schematic,
   .bunker-emergency__route-story,
   .bunker-emergency__signal {
     animation: none;
-  }
-
-  .bunker-emergency__blackout,
-  .bunker-emergency__sync-tear {
-    display: none;
-  }
-
-  .bunker-emergency__title-reveal {
-    clip-path: none;
   }
 }

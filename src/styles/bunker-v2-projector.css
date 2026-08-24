@@ -236,7 +236,7 @@ body:has(.bunker-v2-screen) {
 }
 
 .bunker-v2-protocol-progress strong {
-  font-size: clamp(1rem, min(1.5vw, 2.4vh), 1.55rem);
+  font-size: clamp(22px, min(1.5vw, 2.4vh), 24px);
 }
 
 .bunker-v2-protocol-progress span {

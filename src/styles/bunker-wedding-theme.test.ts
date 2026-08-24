@@ -17,6 +17,12 @@ function ruleBody(css: string, selector: string): string {
 
 describe('Bunker wedding theme', () => {
   const css = readStyle('bunker-wedding-theme.css');
+  const transitionCss = [
+    readStyle('bunker.css'),
+    readStyle('bunker-v2-projector.css'),
+    readStyle('bunker-projector-contrast.css'),
+    css,
+  ].join('\n');
   const main = readFileSync(`${runtime.process.cwd()}/src/main.tsx`, 'utf8');
 
   it('loads after accessibility and projector contrast so the shared celebration palette wins', () => {
@@ -73,14 +79,17 @@ describe('Bunker wedding theme', () => {
     expect(crossfade).toContain('animation: bunker-warm-crossfade 600ms ease-out both');
     expect(crossfade).toContain('background: #f3d9ad');
     expect(title).toContain('animation: bunker-title-crossfade 600ms ease-out both');
-    expect(css).not.toContain('.bunker-emergency__blackout');
-    expect(css).not.toContain('.bunker-emergency__sync-tear');
+    expect(transitionCss).not.toContain('.bunker-emergency__blackout');
+    expect(transitionCss).not.toContain('.bunker-emergency__sync-tear');
+    expect(transitionCss).not.toContain('@keyframes bunker-blackout');
+    expect(transitionCss).not.toContain('@keyframes bunker-sync-tear');
   });
 
   it('makes Viktor a 36vw natural-colour image without face cropping', () => {
     const frame = ruleBody(css, '.bunker-emergency__route-story');
     const portrait = ruleBody(css, '.bunker-emergency__route-story img');
     expect(frame).toContain('width: 36vw');
+    expect(frame).not.toMatch(/max-width:\s*44rem/);
     expect(portrait).toContain('object-fit: contain');
     expect(portrait).toContain('object-position: center');
     expect(portrait).toContain('filter: none');
@@ -115,5 +124,7 @@ describe('Bunker wedding theme', () => {
       '.bunker-v2-results-player .bunker-results-epilogue picture img,\n.bunker-v2-results .bunker-results-epilogue picture img',
     );
     expect(portrait).toContain('object-fit: contain');
+    const epilogueLabel = ruleBody(css, '.bunker-v2-results .bunker-results-epilogue span');
+    expect(epilogueLabel).toContain('font-size: 18px');
   });
 });
