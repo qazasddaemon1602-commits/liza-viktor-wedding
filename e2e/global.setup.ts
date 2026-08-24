@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { assertSafeE2ESupabaseTarget } from './environmentGuard';
 
 const OWNER_EMAIL = 'owner@wedding.test';
 const OWNER_PASSWORD = 'WeddingTest!2026';
@@ -17,6 +18,8 @@ export default async function globalSetup() {
   if (!url || !anonKey || !serviceRoleKey) {
     throw new Error('E2E Supabase environment is missing');
   }
+
+  assertSafeE2ESupabaseTarget(url);
 
   const admin = createClient(url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
