@@ -446,6 +446,12 @@
     font-size: 18px;
   }
 
+  .bunker-mission-briefing article p,
+  .bunker-mission-briefing article li,
+  .bunker-mission-briefing li[data-item-key] span {
+    font-size: 18px;
+  }
+
   .bunker-v2-mission input[type="radio"],
   .bunker-player-dashboard .bunker-mission-actions input[type="radio"] {
     box-sizing: border-box;

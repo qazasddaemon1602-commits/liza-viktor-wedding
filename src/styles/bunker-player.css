@@ -1743,7 +1743,7 @@
   min-height: 3.25rem;
   border: 1px solid var(--bunker-player-ivory);
   padding: 0.75rem 1rem;
-  font-size: 0.76rem;
+  font-size: 20px;
   font-weight: 800;
   cursor: pointer;
 }

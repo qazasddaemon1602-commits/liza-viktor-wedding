@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { BunkerPlayerDashboard } from './BunkerPlayerDashboard';
 import type { ActiveGuestBunkerRuntime } from './bunkerRuntime.service';
+import type { BunkerV2ActiveGuestRuntime } from './v2/contracts';
+import type { MissionFivePlayerReadModel } from './v2/MissionFivePlayer';
 
 const runtime: ActiveGuestBunkerRuntime = {
   status: 'active', serverNow: '2026-08-20T18:00:00.000Z',
@@ -20,6 +22,56 @@ const runtime: ActiveGuestBunkerRuntime = {
   wagonState: { powerStatus: 'unstable', communicationStatus: 'working', navigationStatus: 'working', technicalDoorStatus: 'locked', trackDamage: 0, waterStatus: 'stable', routeChoice: null, routeBonus: 0, powerInstability: 0, sector04Found: false, coordinationBonus: false },
   currentMission: null,
   missionAction: null,
+};
+
+const v2Runtime: BunkerV2ActiveGuestRuntime = {
+  contractVersion: 2,
+  status: 'active',
+  serverNow: '2026-08-30T19:10:00Z',
+  state: 'MISSION_05',
+  planVersion: 1,
+  runNonce: 'run-v2-order',
+  viewer: {
+    kind: 'guest',
+    guest: { id: 'guest-v2', realName: 'Анна Петрова' },
+    wagon: { number: 2, label: 'ВАГОН №2' },
+  },
+  character: {
+    profileKey: 'architect',
+    profileVersion: 1,
+    profession: 'АРХИТЕКТОР',
+    health: 'хорошее',
+    visibleSkill: 'чтение чертежей',
+    specialAbility: 'plan_analysis',
+    abilityDescription: 'Помогает восстановить часть планировки Бункера.',
+    abilityUsesRemaining: 1,
+    status: 'active',
+    m01Eligibility: 'frozen_member',
+    hiddenTraitRevealed: false,
+  },
+  currentMission: {
+    instanceId: 'm05-order',
+    instanceVersion: 1,
+    code: 'MISSION_05',
+    status: 'active',
+    scope: 'wagon',
+  },
+};
+
+const missionFive: MissionFivePlayerReadModel = {
+  instanceId: 'm05-order',
+  status: 'active',
+  remainingSeconds: 600,
+  title: 'Один шанс',
+  intro: 'Вагон должен выбрать безопасный маршрут.',
+  routes: [
+    { key: 'A', title: 'Северный путь', description: 'Дольше, но безопаснее.', risk: 'Потеряем время.' },
+    { key: 'B', title: 'Южный путь', description: 'Быстрее, но рискованнее.', risk: 'Повредим путь.' },
+  ],
+  selectedVote: null,
+  voteCounts: { A: 0, B: 0, total: 0, required: 2 },
+  ability: null,
+  connection: 'online',
 };
 
 describe('BunkerPlayerDashboard', () => {
@@ -57,6 +109,47 @@ describe('BunkerPlayerDashboard', () => {
     } finally {
       Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia });
     }
+  });
+
+  it('does not repeat the legacy open-mission action once the guided mission is visible', () => {
+    render(
+      <BunkerPlayerDashboard
+        runtime={{
+          ...runtime,
+          game: { ...runtime.game, state: 'MISSION_03' },
+          currentMission: { id: 'mission_03', state: 'MISSION_03', plan: null },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('main', { name: 'Текущее задание' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' })).not.toBeInTheDocument();
+  });
+
+  it('puts the V2 guided mission before operator transmission and secondary details', async () => {
+    render(
+      <BunkerPlayerDashboard
+        runtime={v2Runtime}
+        missionFive={missionFive}
+        operatorFeedDependencies={{
+          load: vi.fn().mockResolvedValue({
+            status: 'active', active: true, globalGameState: 'MISSION_05', revealed: false,
+            serverNow: '2026-08-30T19:10:00.000Z',
+            message: {
+              id: 'signal-order', stage: 'MISSION_04', source: 'fallback',
+              body: 'Сначала выполните задание.', publishedAt: '2026-08-30T19:09:50.000Z',
+            },
+          }),
+        }}
+      />,
+    );
+
+    const mission = screen.getByRole('main', { name: 'Текущее задание' });
+    const transmission = await screen.findByRole('note', { name: 'Последняя передача оператора BK-17' });
+    const secondaryDetails = screen.getByText('ДАННЫЕ ИГРОКА').closest('details');
+
+    expect(mission.compareDocumentPosition(transmission) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mission.compareDocumentPosition(secondaryDetails!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('persists the large-text preference and applies it to the dashboard', async () => {
@@ -202,8 +295,6 @@ describe('BunkerPlayerDashboard', () => {
     } as unknown as ActiveGuestBunkerRuntime;
 
     render(<BunkerPlayerDashboard runtime={missionRuntime} onAbility={onAbility} />);
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
-
     const mission = within(screen.getByLabelText('Текущее задание'));
     expect(mission.getByRole('heading', { name: 'ОСОБАЯ СПОСОБНОСТЬ' })).toBeInTheDocument();
     expect(mission.getByText(/отсек будет разблокирован/i)).toBeInTheDocument();
@@ -236,8 +327,6 @@ describe('BunkerPlayerDashboard', () => {
     } as unknown as ActiveGuestBunkerRuntime;
 
     render(<BunkerPlayerDashboard runtime={missionRuntime} />);
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
-
     const mission = within(screen.getByLabelText('Текущее задание'));
     expect(mission.getByText(/в первом задании способности отключены/i)).toBeInTheDocument();
     expect(mission.queryByRole('button', { name: 'ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ' })).not.toBeInTheDocument();
@@ -295,8 +384,7 @@ describe('BunkerPlayerDashboard', () => {
     expect(screen.getByText(/вы продолжаете участвовать/i)).toBeInTheDocument();
   });
 
-  it('wraps a long authoritative guest name and keeps one dominant mission action', async () => {
-    const user = userEvent.setup();
+  it('wraps a long authoritative guest name while keeping the active mission dominant', () => {
     render(
       <BunkerPlayerDashboard
         runtime={{
@@ -310,12 +398,10 @@ describe('BunkerPlayerDashboard', () => {
 
     const heading = screen.getByRole('heading', { name: 'АЛЕКСАНДРА-МАРИЯ КОНСТАНТИНОПОЛЬСКАЯ' });
     expect(heading).toHaveClass('bunker-player-dashboard__guest-name');
-    const action = screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' });
-    expect(action).toHaveClass('bunker-player-dashboard__primary-action');
-    expect(screen.getAllByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' })).toHaveLength(1);
-
-    await user.click(action);
-    expect(screen.getByRole('heading', { name: 'Аварийный запас' })).toBeInTheDocument();
+    expect(screen.getByRole('main', { name: 'Текущее задание' })).toContainElement(
+      screen.getByRole('heading', { name: 'Аварийный запас' }),
+    );
+    expect(screen.queryByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' })).not.toBeInTheDocument();
   });
 
   it('explains the active mission instead of exposing internal runtime identifiers', async () => {
@@ -330,7 +416,6 @@ describe('BunkerPlayerDashboard', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
     const mission = screen.getByLabelText('Текущее задание');
     expect(within(mission).getByRole('heading', { name: 'Аварийный запас' })).toBeInTheDocument();
     expect(within(mission).getByText(/пять проблем/i)).toBeInTheDocument();
@@ -356,7 +441,6 @@ describe('BunkerPlayerDashboard', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
     const briefing = within(screen.getByLabelText('Описание текущего задания'));
     expect(briefing.getByText('Рация')).toBeInTheDocument();
     expect(briefing.queryByText('Аптечка')).not.toBeInTheDocument();
@@ -391,7 +475,6 @@ describe('BunkerPlayerDashboard', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
     const briefing = within(screen.getByLabelText('Описание текущего задания'));
     expect(briefing.getByText(/квота вашего вагона: исключить 2 сюжетных персонажей/i)).toBeInTheDocument();
     expect(briefing.queryByRole('heading', { name: 'ЧТО ИЗМЕНИТСЯ' })).not.toBeInTheDocument();
@@ -425,7 +508,6 @@ describe('BunkerPlayerDashboard', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ' }));
     expect(screen.queryByText('СТАРАЯ МИССИЯ')).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: /Рация/i }));
     await user.click(screen.getByRole('button', { name: 'ПРИМЕНИТЬ ЗАПАС' }));

@@ -562,6 +562,7 @@ export function BunkerPlayerDashboard({
       aria-label="Игровой модуль Бункер"
       data-large-text={largeText ? 'true' : undefined}
     >
+      {guidedMission}
       {isV2 && (
         <BunkerOperatorTransmission
           sessionKey={operatorSessionKey}
@@ -569,7 +570,6 @@ export function BunkerPlayerDashboard({
           message={operatorFeed.feed?.message ?? null}
         />
       )}
-      {guidedMission}
       {hasMission && playerNavigation}
       {!hasMission && playerIdentity}
 
@@ -600,16 +600,6 @@ export function BunkerPlayerDashboard({
         <p className="bunker-player-dashboard__continuity" role="status">
           Персонаж спасён. Вы продолжаете участвовать во всех следующих заданиях вместе со своим вагоном.
         </p>
-      )}
-
-      {(missionContent || questState?.status === 'active') && !hasV2Mission && (
-        <button
-          className="bunker-player-dashboard__primary-action"
-          type="button"
-          onClick={() => chooseSection('ТЕКУЩЕЕ ЗАДАНИЕ')}
-        >
-          ОТКРЫТЬ ТЕКУЩЕЕ ЗАДАНИЕ
-        </button>
       )}
 
       {!hasMission && playerNavigation}
