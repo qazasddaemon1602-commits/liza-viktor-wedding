@@ -19,6 +19,7 @@ import {
   type RadioPresetId,
   type SendRadioTransmissionResult,
 } from './trainRadio.service';
+import { sendTrainSound, type SendTrainSoundResult } from './trainSound.service';
 import type { WeddingLiveRpcClient } from './weddingLive.service';
 
 export type AdminWeddingLiveDependencies = {
@@ -26,6 +27,7 @@ export type AdminWeddingLiveDependencies = {
   setOpen: (open: boolean) => Promise<{ status: 'ok'; open: boolean }>;
   publish: (limit: number) => Promise<PublishCapsuleResult>;
   sendRadio?: (preset: RadioPresetId) => Promise<SendRadioTransmissionResult>;
+  sendTrainSound?: () => Promise<SendTrainSoundResult>;
   loadNominations?: () => Promise<EveningNominationsControl>;
   publishNominations?: () => Promise<PublishEveningNominationsResult>;
 };
@@ -39,6 +41,7 @@ function browserDependencies(eventSlug: string): AdminWeddingLiveDependencies {
     setOpen: (open) => setOwnerMessageCapsuleOpen(client, eventSlug, open),
     publish: (limit) => publishOwnerMessageCapsule(client, eventSlug, limit),
     sendRadio: (preset) => sendTrainRadioTransmission(client, eventSlug, preset),
+    sendTrainSound: () => sendTrainSound(client, eventSlug),
     loadNominations: () => getOwnerEveningNominations(client, eventSlug),
     publishNominations: () => publishOwnerEveningNominations(client, eventSlug),
   };
@@ -114,6 +117,19 @@ export function AdminWeddingLiveDock({ eventSlug = 'liza-viktor', dependencies, 
     finally { setBusy(''); }
   };
 
+  const sendPlainTrainSound = async () => {
+    if (!deps.sendTrainSound || busy) return;
+    setBusy('train-sound'); setRadioFeedback(''); setError('');
+    try {
+      await deps.sendTrainSound();
+      setRadioFeedback('ЗВУК ПОЕЗДА ОТПРАВЛЕН НА ТВ');
+    } catch {
+      setError('Не удалось отправить звук поезда на телевизоры.');
+    } finally {
+      setBusy('');
+    }
+  };
+
   const publishNominations = async () => {
     if (!deps.publishNominations || busy || !nominations?.nominations.length) return;
     setBusy('nominations'); setNominationFeedback(''); setError('');
@@ -137,12 +153,24 @@ export function AdminWeddingLiveDock({ eventSlug = 'liza-viktor', dependencies, 
           <aside className="admin-wedding-live-drawer" aria-label="LIVE+ пульт">
             <header><div><p>LIVE+ · СВАДЕБНЫЙ ЭФИР</p><h2>УПРАВЛЕНИЕ ЭФИРОМ</h2></div><button type="button" aria-label="Закрыть" onClick={() => setDrawerOpen(false)}>×</button></header>
 
-            {deps.sendRadio && (
+            {(deps.sendRadio || deps.sendTrainSound) && (
               <section className="admin-wedding-radio" aria-label="Радио состава">
-                <div className="admin-wedding-live-section-heading"><div><span>LIVE OVERLAY</span><strong>РАДИО СОСТАВА</strong></div><small>12 СЕК · БЕЗ ПЕРЕКЛЮЧЕНИЯ ЭТАПА</small></div>
-                <div className="admin-wedding-radio__presets">
-                  {RADIO_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`Эфир: ${preset.label}`} disabled={Boolean(busy)} onClick={() => void sendRadio(preset.id, preset.label)}>{busy === `radio:${preset.id}` ? 'В ЭФИР…' : preset.label}</button>)}
-                </div>
+                <div className="admin-wedding-live-section-heading"><div><span>ГОЛОС ДИКТОРА · LIVE OVERLAY</span><strong>РАДИО СОСТАВА</strong></div><small>ОЗВУЧКА И ТЕКСТ НА ТВ</small></div>
+                {deps.sendTrainSound && (
+                  <button
+                    className="admin-wedding-radio__train"
+                    type="button"
+                    disabled={Boolean(busy)}
+                    onClick={() => void sendPlainTrainSound()}
+                  >
+                    {busy === 'train-sound' ? 'ЗАПУСКАЕМ…' : '🚆 ЗВУК ПОЕЗДА'}
+                  </button>
+                )}
+                {deps.sendRadio && (
+                  <div className="admin-wedding-radio__presets">
+                    {RADIO_PRESETS.map((preset) => <button key={preset.id} type="button" aria-label={`Эфир: ${preset.label}`} disabled={Boolean(busy)} onClick={() => void sendRadio(preset.id, preset.label)}>{busy === `radio:${preset.id}` ? 'В ЭФИР…' : preset.label}</button>)}
+                  </div>
+                )}
                 {radioFeedback && <p className="admin-wedding-live-feedback" role="status">{radioFeedback}</p>}
               </section>
             )}
