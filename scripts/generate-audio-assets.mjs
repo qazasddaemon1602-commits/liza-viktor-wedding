@@ -130,10 +130,11 @@ const MISSION_CHORDS = [
   { bass: 110, notes: [220, 277.18, 329.63, 392] },
 ];
 const MISSION_DURATION = MISSION_CHORDS.length * MISSION_BAR;
+const MISSION_LOOP_BOUNDARY_OFFSET = MISSION_BEAT / 2;
 
-function composeMissionWaltz(buffer) {
+function addMissionWaltzCycle(buffer, cycleStart) {
   MISSION_CHORDS.forEach((chord, barIndex) => {
-    const barStart = barIndex * MISSION_BAR;
+    const barStart = cycleStart + barIndex * MISSION_BAR;
     addWarmPad(buffer, {
       start: barStart,
       duration: MISSION_BAR,
@@ -166,7 +167,22 @@ function composeMissionWaltz(buffer) {
       pan: barIndex % 2 === 0 ? 0.34 : -0.34,
     });
   });
-  addEcho(buffer, [[0.19, 0.055, -0.22], [0.37, 0.035, 0.24]]);
+}
+
+function composeMissionWaltz(buffer) {
+  const periodic = createBuffer(MISSION_DURATION * 3);
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    addMissionWaltzCycle(periodic, cycle * MISSION_DURATION);
+  }
+  addEcho(periodic, [[0.19, 0.055, -0.22], [0.37, 0.035, 0.24]]);
+
+  const firstSample = Math.floor(
+    (MISSION_DURATION + MISSION_LOOP_BOUNDARY_OFFSET) * SAMPLE_RATE,
+  );
+  for (let index = 0; index < buffer.left.length; index += 1) {
+    buffer.left[index] = periodic.left[firstSample + index];
+    buffer.right[index] = periodic.right[firstSample + index];
+  }
 }
 
 const FINALE_BPM = 80;

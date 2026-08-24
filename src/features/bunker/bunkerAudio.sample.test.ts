@@ -43,6 +43,21 @@ function meanAbsoluteSample(bytes: Uint8Array, startSeconds: number, durationSec
   return total / Math.max(1, samples);
 }
 
+function rootMeanSquareSample(bytes: Uint8Array, startSeconds: number, durationSeconds: number) {
+  const bytesPerSecond = 48_000 * 2 * 2;
+  const from = 44 + Math.floor(startSeconds * bytesPerSecond / 4) * 4;
+  const to = Math.min(bytes.length, from + Math.floor(durationSeconds * bytesPerSecond / 4) * 4);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let totalSquares = 0;
+  let samples = 0;
+  for (let offset = from; offset < to; offset += 2) {
+    const sample = view.getInt16(offset, true) / 32_768;
+    totalSquares += sample * sample;
+    samples += 1;
+  }
+  return Math.sqrt(totalSquares / Math.max(1, samples));
+}
+
 describe('Bunker sample audio bridge', () => {
   it('plays and stops the acquired alarm loop on the shared timestamp-capable bus', async () => {
     const samplePlayer = {
@@ -82,7 +97,7 @@ describe('Bunker sample audio bridge', () => {
     audio.dispose();
   });
 
-  it('runs the recorded bunker room tone as a scene loop and exposes the recorded door hit', () => {
+  it('runs the generated Bunker mission music as a scene loop and exposes the recorded door hit', () => {
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),
       playCue: vi.fn().mockResolvedValue('played'),
@@ -172,7 +187,21 @@ describe('Bunker sample audio bridge', () => {
     expect(meanAbsoluteSample(finale.bytes, finale.durationSeconds - 0.25, 0.25)).toBeLessThan(middle * 0.2);
   });
 
-  it('restarts requested recorded ambience after projector audio is rearmed', async () => {
+  it('keeps mission-music energy continuous across the loop boundary', async () => {
+    const mission = await readWav('bunker/ambience.wav');
+    const boundaryWindowSeconds = 0.1;
+    const leadingRms = rootMeanSquareSample(mission.bytes, 0, boundaryWindowSeconds);
+    const trailingRms = rootMeanSquareSample(
+      mission.bytes,
+      mission.durationSeconds - boundaryWindowSeconds,
+      boundaryWindowSeconds,
+    );
+
+    expect(trailingRms / leadingRms).toBeGreaterThan(0.65);
+    expect(trailingRms / leadingRms).toBeLessThan(1.55);
+  });
+
+  it('restarts requested generated mission music after projector audio is rearmed', async () => {
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),
       playCue: vi.fn().mockResolvedValue('played'),

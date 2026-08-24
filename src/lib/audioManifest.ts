@@ -10,6 +10,7 @@ export const BUNKER_NARRATION_PROFILE = Object.freeze({
 export type AudioAttribution = {
   license: string;
   status: 'pending' | 'verified';
+  dateKind?: 'downloaded' | 'generated';
   assetSha256?: string;
   author?: string;
   sourceUrl?: string;
@@ -52,6 +53,7 @@ function localCue(
     attribution: {
       license: 'Original procedural synthesis; project-owned',
       status: 'verified',
+      dateKind: 'generated',
       author: 'Liza & Viktor wedding project',
       downloadedAt: '2026-08-21',
       originalFilename,
@@ -73,7 +75,10 @@ function recordedCue(
     src: `/audio/${id.replace('.', '/')}.wav`,
     sourceType: 'recording',
     defaultPriority,
-    attribution,
+    attribution: {
+      ...attribution,
+      dateKind: 'downloaded',
+    },
     ...options,
   };
 }

@@ -2,7 +2,9 @@
 
 The train arrival, tournament gong, Bunker alarm and Bunker door use locally bundled acoustic recordings. UI micro-cues, the terminal key, Bunker mission music and Bunker finale remain original deterministic project-owned synthesis. No cue is loaded from an external runtime URL; the quiet Web Audio oscillator remains only as an emergency decode/load fallback.
 
-| Local file | Original file | Author | Licence | Source URL | Download date | Edits | Verification |
+The date column records acquisition for bundled recordings and generation for original project-owned synthesis.
+
+| Local file | Original file | Author | Licence | Source URL | Acquisition / generation date | Edits | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `/audio/ui/tap.wav` | `tap.wav` | Liza & Viktor wedding project | Original procedural synthesis; project-owned | Internal generation script | 2026-08-21 | 48 kHz stereo synthesis; normalized peak | Verified |
 | `/audio/ui/select.wav` | `select.wav` | Liza & Viktor wedding project | Original procedural synthesis; project-owned | Internal generation script | 2026-08-21 | Tonal selection shimmer | Verified |

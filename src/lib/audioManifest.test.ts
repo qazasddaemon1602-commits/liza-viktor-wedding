@@ -45,6 +45,7 @@ describe('audio manifest', () => {
       expect(cue.sourceType, `${id} must not be procedural`).toBe('recording');
       expect(cue.attribution.status, `${id} attribution must be verified`).toBe('verified');
       expect(cue.attribution.sourceUrl, `${id} needs a stable source page`).toMatch(/^https:\/\//);
+      expect(cue.attribution.dateKind, `${id} must identify its acquisition date`).toBe('downloaded');
       expect(cue.attribution.license, `${id} must not claim procedural ownership`).not.toContain(
         'procedural synthesis',
       );
@@ -70,6 +71,7 @@ describe('audio manifest', () => {
     expect(cue.attribution.author).toBe('Liza & Viktor wedding project');
     expect(cue.attribution.license).toContain('project-owned');
     expect(cue.attribution.sourceUrl).toBeUndefined();
+    expect(cue.attribution.dateKind).toBe('generated');
     expect(cue.attribution.edits).toMatch(/3\/4|triple-meter/i);
     expect(cue.attribution.edits).toMatch(/train waltz/i);
     expect(cue.attribution.edits).toMatch(/no vocals|instrumental/i);
@@ -92,6 +94,7 @@ describe('audio manifest', () => {
     expect(cue.attribution.author).toBe('Liza & Viktor wedding project');
     expect(cue.attribution.license).toContain('project-owned');
     expect(cue.attribution.sourceUrl).toBeUndefined();
+    expect(cue.attribution.dateKind).toBe('generated');
     expect(cue.attribution.edits).toMatch(/instrumental/i);
     expect(cue.attribution.edits).toMatch(/no vocals/i);
     expect(cue.attribution.edits).toMatch(/no external/i);
