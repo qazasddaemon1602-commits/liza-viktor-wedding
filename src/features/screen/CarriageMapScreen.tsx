@@ -58,19 +58,21 @@ function CarriagePlan({ carriage }: { carriage: RegistrationCarriageMapCarriage 
           {carriage.guests.map((guest) => {
             const seatColumn = Math.ceil(guest.seatIndex / 2);
             const seatRow = guest.seatIndex % 2 === 1 ? 1 : 3;
+            const displayName = guest.fullName ?? guest.initials;
             return (
               <span
                 key={guest.id}
                 className="carriage-map__seat carriage-map__seat--occupied"
                 role="img"
                 data-seat-index={guest.seatIndex}
-                aria-label={`Гость ${guest.initials}, место ${guest.seatIndex}, вагон ${carriage.number}`}
+                aria-label={`Гость ${displayName}, место ${guest.seatIndex}, вагон ${carriage.number}`}
+                title={displayName}
                 style={{
                   '--seat-column': seatColumn,
                   '--seat-row': seatRow,
                 } as CSSProperties}
               >
-                {guest.initials}
+                {displayName}
               </span>
             );
           })}
