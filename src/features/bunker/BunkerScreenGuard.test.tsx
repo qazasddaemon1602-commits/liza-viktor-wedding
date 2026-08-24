@@ -160,7 +160,7 @@ describe('BunkerScreenGuard', () => {
     expect(screen.getByText('МИССИЯ 04')).toBeInTheDocument();
   });
 
-  it('starts recorded ambience for an audible active run and plays the door only on an authoritative unlock transition', async () => {
+  it('starts mission ambience for an audible active run without stealing door ownership from the reveal', async () => {
     const audio = {
       arm: vi.fn().mockResolvedValue(true),
       startAlarm: vi.fn(),
@@ -169,6 +169,8 @@ describe('BunkerScreenGuard', () => {
       stopAmbience: vi.fn(),
       playDoorUnlock: vi.fn(),
       playReveal: vi.fn(),
+      playFinale: vi.fn(),
+      stopFinale: vi.fn(),
       dispose: vi.fn(),
     };
     let refresh: (() => void) | undefined;
@@ -203,7 +205,7 @@ describe('BunkerScreenGuard', () => {
       await Promise.resolve();
     });
 
-    expect(audio.playDoorUnlock).toHaveBeenCalledTimes(1);
+    expect(audio.playDoorUnlock).not.toHaveBeenCalled();
   });
 
   it('does not replay the door recording when a projector reconnects to an already unlocked scene', async () => {
@@ -215,6 +217,8 @@ describe('BunkerScreenGuard', () => {
       stopAmbience: vi.fn(),
       playDoorUnlock: vi.fn(),
       playReveal: vi.fn(),
+      playFinale: vi.fn(),
+      stopFinale: vi.fn(),
       dispose: vi.fn(),
     };
     const load = vi.fn().mockResolvedValue({
@@ -241,7 +245,7 @@ describe('BunkerScreenGuard', () => {
     expect(audio.playDoorUnlock).not.toHaveBeenCalled();
   });
 
-  it('ignores stale screen snapshots so an out-of-order response cannot replay the door', async () => {
+  it('ignores stale screen snapshots without consuming the reveal-owned door cue', async () => {
     const audio = {
       arm: vi.fn().mockResolvedValue(true),
       startAlarm: vi.fn(),
@@ -250,6 +254,8 @@ describe('BunkerScreenGuard', () => {
       stopAmbience: vi.fn(),
       playDoorUnlock: vi.fn(),
       playReveal: vi.fn(),
+      playFinale: vi.fn(),
+      stopFinale: vi.fn(),
       dispose: vi.fn(),
     };
     let refresh: (() => void) | undefined;
@@ -284,7 +290,7 @@ describe('BunkerScreenGuard', () => {
       });
     }
 
-    expect(audio.playDoorUnlock).toHaveBeenCalledTimes(1);
+    expect(audio.playDoorUnlock).not.toHaveBeenCalled();
   });
 
   it('restores the current server scene and server-derived timer after a remount', async () => {
@@ -399,6 +405,8 @@ describe('BunkerScreenGuard', () => {
         stopAmbience: vi.fn(),
         playDoorUnlock: vi.fn(),
         playReveal: vi.fn(),
+        playFinale: vi.fn(),
+        stopFinale: vi.fn(),
         dispose: vi.fn(),
       },
     };
@@ -438,6 +446,8 @@ describe('BunkerScreenGuard', () => {
         stopAmbience: vi.fn(),
         playDoorUnlock: vi.fn(),
         playReveal: vi.fn(),
+        playFinale: vi.fn(),
+        stopFinale: vi.fn(),
         dispose: vi.fn(),
       },
     };

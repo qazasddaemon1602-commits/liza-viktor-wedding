@@ -32,6 +32,13 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
   let interval: number | null = null;
   let sampleAlarmRequested = false;
   let sampleAmbienceRequested = false;
+  let sampleFinaleRequested = false;
+  let sampleAlarmPlayback: 'idle' | 'pending' | 'playing' = 'idle';
+  let sampleAmbiencePlayback: 'idle' | 'pending' | 'playing' = 'idle';
+  let sampleFinalePlayback: 'idle' | 'pending' | 'playing' = 'idle';
+  let sampleAlarmRevision = 0;
+  let sampleAmbienceRevision = 0;
+  let sampleFinaleRevision = 0;
   let disposed = false;
   let lifecycleRevision = 0;
   const activeOscillators = new Set<OscillatorNode>();
@@ -101,18 +108,50 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     if (context?.state === 'suspended') void context.resume().catch(() => undefined);
   });
 
+  const requestSampleAlarm = () => {
+    if (!sampleAlarmRequested || sampleAlarmPlayback !== 'idle' || !hasSample('bunker.alarm')) return;
+    const revision = sampleAlarmRevision;
+    const lifecycle = lifecycleRevision;
+    sampleAlarmPlayback = 'pending';
+    void samplePlayer.playCue('bunker.alarm', { loop: true, priority: 'major' }).then((result) => {
+      if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAlarmRevision || !sampleAlarmRequested) return;
+      sampleAlarmPlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
+    });
+  };
+
+  const requestSampleAmbience = () => {
+    if (!sampleAmbienceRequested || sampleAmbiencePlayback !== 'idle' || !hasSample('bunker.ambience')) return;
+    const revision = sampleAmbienceRevision;
+    const lifecycle = lifecycleRevision;
+    sampleAmbiencePlayback = 'pending';
+    void samplePlayer.playCue('bunker.ambience', { loop: true, priority: 'scene' }).then((result) => {
+      if (disposed || lifecycle !== lifecycleRevision || revision !== sampleAmbienceRevision || !sampleAmbienceRequested) return;
+      sampleAmbiencePlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
+    });
+  };
+
+  const requestSampleFinale = () => {
+    if (!sampleFinaleRequested || sampleFinalePlayback !== 'idle' || !hasSample('bunker.finale')) return;
+    const revision = sampleFinaleRevision;
+    const lifecycle = lifecycleRevision;
+    sampleFinalePlayback = 'pending';
+    void samplePlayer.playCue('bunker.finale', { priority: 'scene' }).then((result) => {
+      if (disposed || lifecycle !== lifecycleRevision || revision !== sampleFinaleRevision || !sampleFinaleRequested) return;
+      sampleFinalePlayback = result === 'played' || result === 'fallback' ? 'playing' : 'idle';
+    });
+  };
+
   const rearmFromProjectorControl = () => {
     const revision = lifecycleRevision;
     void arm().then((armed) => {
       if (!armed || disposed || revision !== lifecycleRevision) return;
       if (sampleAlarmRequested) {
-        void samplePlayer.playCue('bunker.alarm', { loop: true, priority: 'major' });
+        requestSampleAlarm();
       } else if (interval !== null) {
         pulse();
       }
-      if (sampleAmbienceRequested && hasSample('bunker.ambience')) {
-        void samplePlayer.playCue('bunker.ambience', { loop: true, priority: 'scene' });
-      }
+      requestSampleAmbience();
+      requestSampleFinale();
     });
   };
   window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);
@@ -122,8 +161,9 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     startAlarm: () => {
       if (disposed) return;
       if (hasSample('bunker.alarm')) {
+        if (sampleAlarmRequested) return;
         sampleAlarmRequested = true;
-        void samplePlayer.playCue('bunker.alarm', { loop: true, priority: 'major' });
+        requestSampleAlarm();
         return;
       }
       if (interval !== null) return;
@@ -132,6 +172,8 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     },
     stopAlarm: () => {
       sampleAlarmRequested = false;
+      sampleAlarmPlayback = 'idle';
+      sampleAlarmRevision += 1;
       if (hasSample('bunker.alarm')) samplePlayer.stopCue('bunker.alarm');
       if (interval !== null) window.clearInterval(interval);
       interval = null;
@@ -141,11 +183,14 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     startAmbience: () => {
       if (disposed) return;
       if (!hasSample('bunker.ambience')) return;
+      if (sampleAmbienceRequested) return;
       sampleAmbienceRequested = true;
-      void samplePlayer.playCue('bunker.ambience', { loop: true, priority: 'scene' });
+      requestSampleAmbience();
     },
     stopAmbience: () => {
       sampleAmbienceRequested = false;
+      sampleAmbiencePlayback = 'idle';
+      sampleAmbienceRevision += 1;
       if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
     },
     playDoorUnlock: () => {
@@ -164,9 +209,14 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
       if (disposed) return;
       if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
       if (!hasSample('bunker.finale')) return;
-      void samplePlayer.playCue('bunker.finale', { priority: 'scene' });
+      if (sampleFinaleRequested) return;
+      sampleFinaleRequested = true;
+      requestSampleFinale();
     },
     stopFinale: () => {
+      sampleFinaleRequested = false;
+      sampleFinalePlayback = 'idle';
+      sampleFinaleRevision += 1;
       if (hasSample('bunker.finale')) samplePlayer.stopCue('bunker.finale');
     },
     dispose: () => {
@@ -175,6 +225,10 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
       lifecycleRevision += 1;
       sampleAlarmRequested = false;
       sampleAmbienceRequested = false;
+      sampleFinaleRequested = false;
+      sampleAlarmPlayback = 'idle';
+      sampleAmbiencePlayback = 'idle';
+      sampleFinalePlayback = 'idle';
       if (interval !== null) window.clearInterval(interval);
       interval = null;
       window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearmFromProjectorControl);

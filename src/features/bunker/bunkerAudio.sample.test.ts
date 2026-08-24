@@ -82,15 +82,18 @@ describe('Bunker sample audio bridge', () => {
     audio.dispose();
   });
 
-  it('retries an requested sample alarm after the projector is rearmed', async () => {
+  it('retries a blocked requested sample alarm after the projector is rearmed', async () => {
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),
-      playCue: vi.fn().mockResolvedValue('played'),
+      playCue: vi.fn()
+        .mockResolvedValueOnce('failed' as const)
+        .mockResolvedValueOnce('played' as const),
       stopCue: vi.fn(),
     };
     const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
 
     audio.startAlarm();
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(1));
     window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
 
     await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(2));
@@ -201,7 +204,7 @@ describe('Bunker sample audio bridge', () => {
     expect(trailingRms / leadingRms).toBeLessThan(1.55);
   });
 
-  it('restarts requested generated mission music after projector audio is rearmed', async () => {
+  it('does not restart mission music that is already playing when projector audio is rearmed', async () => {
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),
       playCue: vi.fn().mockResolvedValue('played'),
@@ -212,6 +215,47 @@ describe('Bunker sample audio bridge', () => {
     audio.startAmbience();
     window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
 
+    await vi.waitFor(() => expect(samplePlayer.arm).toHaveBeenCalled());
+    expect(samplePlayer.playCue).toHaveBeenCalledTimes(1);
+    audio.dispose();
+  });
+
+  it('retries blocked mission music only when projector audio is explicitly rearmed', async () => {
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn()
+        .mockResolvedValueOnce('failed' as const)
+        .mockResolvedValueOnce('played' as const),
+      stopCue: vi.fn(),
+    };
+    const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
+
+    audio.startAmbience();
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(samplePlayer.playCue).toHaveBeenCalledTimes(1);
+
+    window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
+
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(2));
+    audio.dispose();
+  });
+
+  it('deduplicates finale requests and retries a blocked finale only on explicit re-arm', async () => {
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn()
+        .mockResolvedValueOnce('failed' as const)
+        .mockResolvedValueOnce('played' as const),
+      stopCue: vi.fn(),
+    };
+    const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
+
+    audio.playFinale();
+    audio.playFinale();
+
+    await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(1));
+    window.dispatchEvent(new Event(PROJECTOR_AUDIO_REARM_EVENT));
     await vi.waitFor(() => expect(samplePlayer.playCue).toHaveBeenCalledTimes(2));
     audio.dispose();
   });

@@ -3,7 +3,7 @@ import { PROJECTOR_AUDIO_REARM_EVENT } from '../../lib/siteAudio';
 import { getSupabaseClient } from '../../lib/supabase';
 import { BunkerEmergencyScene } from './BunkerEmergencyScene';
 import { BunkerQuestScene, phaseForGlobalGameState } from './BunkerQuestScene';
-import { createBunkerAudioController, type BunkerAudioController } from './bunkerAudio';
+import { createBunkerAudioController, type BunkerAudioFinaleController } from './bunkerAudio';
 import {
   bunkerNarrationSession,
   type BunkerNarrationSessionController,
@@ -52,13 +52,14 @@ export type BunkerScreenGuardDependencies = {
   loadResults?: () => Promise<BunkerV2ResultsReadModel>;
   loadOperatorFeed?: BunkerOperatorFeedDependencies['load'];
   subscribe?: (callback: () => void) => () => void;
-  audio?: BunkerAudioController;
+  audio?: BunkerAudioFinaleController;
   narration?: BunkerNarrationSessionController;
 };
 
 type Props = { eventSlug?: string; dependencies?: BunkerScreenGuardDependencies; children: ReactNode };
 type Timed<T> = { model: T; receivedAt: number };
 const BUNKER_AUTOMATIC_INTRO_ID = 'bunker-run-intro';
+const BUNKER_REVEAL_AUDIO_DELAY_MS = 1_600;
 
 function browserDependencies(eventSlug: string): BunkerScreenGuardDependencies | null {
   try {
@@ -234,7 +235,9 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   ));
   const offset = useRef(0);
   const latest = useRef(Number.NEGATIVE_INFINITY);
-  const unlock = useRef<boolean | null>(null);
+  const ambiencePlayToken = useRef(0);
+  const revealPlayToken = useRef(0);
+  const revealSequence = useRef<{ run: string; doorPlayed: boolean; complete: boolean } | null>(null);
   const loadGeneration = useRef(0);
   const loadInFlight = useRef<Promise<BunkerScreenState | null> | null>(null);
 
@@ -397,11 +400,6 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   const storyView = storyModel(unknown, nowMs);
   const finalView = finalModel(final, nowMs);
   const resultsView = resultModel(results);
-  const revealAudio = useMemo(() => (
-    deps?.audio
-      ? { playDoor: deps.audio.playDoorUnlock, playReveal: deps.audio.playReveal }
-      : undefined
-  ), [deps?.audio]);
   const narrationContent = state?.status === 'active'
     ? getBunkerMissionContent(state.currentMission?.id ?? state.globalGameState)
     : undefined;
@@ -439,7 +437,8 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   useEffect(() => {
     const audio = deps?.audio;
     if (!audio) return;
-    if (!bunkerActive || revealActive || resultsActive || state?.status !== 'active' || !state.soundEnabled) {
+    const token = ++ambiencePlayToken.current;
+    if (!bunkerActive || emergency || revealActive || resultsActive || state?.status !== 'active' || !state.soundEnabled) {
       audio.stopAmbience();
       return;
     }
@@ -449,7 +448,7 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
       if (started) return;
       void audio.arm()
         .then((armed) => {
-          if (!active || !armed || started) return;
+          if (!active || token !== ambiencePlayToken.current || !armed || started) return;
           started = true;
           audio.startAmbience();
         })
@@ -459,10 +458,70 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
     return () => {
       active = false;
+      ambiencePlayToken.current += 1;
       window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
       audio.stopAmbience();
     };
-  }, [deps, bunkerActive, revealActive, resultsActive, state?.status === 'active' ? state.soundEnabled : false]);
+  }, [deps?.audio, bunkerActive, emergency, revealActive, resultsActive, state?.status === 'active' ? state.soundEnabled : false]);
+
+  useEffect(() => {
+    const audio = deps?.audio;
+    if (!audio) return;
+    const token = ++revealPlayToken.current;
+    audio.stopFinale();
+    if (!revealActive || state?.status !== 'active' || !state.soundEnabled) return;
+    if (revealSequence.current?.run !== operatorSessionKey) {
+      revealSequence.current = { run: operatorSessionKey, doorPlayed: false, complete: false };
+    }
+    if (revealSequence.current.complete) return;
+
+    let active = true;
+    let armPending = false;
+    let revealTimer: number | null = null;
+    const startWhenArmed = () => {
+      const sequence = revealSequence.current;
+      if (armPending || revealTimer !== null || !sequence || sequence.run !== operatorSessionKey || sequence.complete) return;
+      armPending = true;
+      void audio.arm()
+        .then((armed) => {
+          armPending = false;
+          const currentSequence = revealSequence.current;
+          if (!active || token !== revealPlayToken.current || !armed
+            || !currentSequence || currentSequence.run !== operatorSessionKey || currentSequence.complete) return;
+          audio.stopAlarm();
+          audio.stopAmbience();
+          if (!currentSequence.doorPlayed) {
+            currentSequence.doorPlayed = true;
+            audio.playDoorUnlock();
+          }
+          revealTimer = window.setTimeout(() => {
+            if (!active || token !== revealPlayToken.current) return;
+            const completingSequence = revealSequence.current;
+            if (!completingSequence || completingSequence.run !== operatorSessionKey || completingSequence.complete) return;
+            completingSequence.complete = true;
+            revealTimer = null;
+            audio.playReveal();
+            audio.playFinale();
+          }, BUNKER_REVEAL_AUDIO_DELAY_MS);
+        })
+        .catch(() => { armPending = false; });
+    };
+
+    startWhenArmed();
+    window.addEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
+    return () => {
+      active = false;
+      revealPlayToken.current += 1;
+      if (revealTimer !== null) window.clearTimeout(revealTimer);
+      window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, startWhenArmed);
+      audio.stopFinale();
+    };
+  }, [
+    deps?.audio,
+    operatorSessionKey,
+    revealActive,
+    state?.status === 'active' ? state.soundEnabled : false,
+  ]);
 
   useEffect(() => {
     const narration = deps?.narration;
@@ -514,32 +573,6 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     state?.status === 'active' ? state.soundEnabled : false,
   ]);
 
-  useEffect(() => {
-    const audio = deps?.audio;
-    if (!bunkerActive || state?.status !== 'active') {
-      unlock.current = null;
-      return;
-    }
-    if (revealActive) {
-      unlock.current = state.unlocked;
-      return;
-    }
-    const finalPhase = phase === 'final' || phase === 'completed';
-    const wasUnlocked = unlock.current;
-    if (finalPhase && state.soundEnabled && wasUnlocked === false && state.unlocked) {
-      audio?.playDoorUnlock();
-      void audio?.arm();
-    }
-    unlock.current = state.unlocked;
-  }, [
-    deps,
-    bunkerActive,
-    phase,
-    revealActive,
-    state?.status === 'active' ? state.unlocked : false,
-    state?.status === 'active' ? state.soundEnabled : false,
-  ]);
-
   return (
     <>
       {children}
@@ -564,7 +597,6 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
         <LizaRevealScreen
           sessionKey={operatorSessionKey}
           soundEnabled={state?.status === 'active' && state.soundEnabled}
-          audio={revealAudio}
         />
       )}
       {resultsActive && (
