@@ -7,7 +7,6 @@ const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RECORDING_BACKED_ASSETS = new Set([
   'arrival/sequence.wav',
   'bunker/alarm.wav',
-  'bunker/ambience.wav',
   'bunker/door.wav',
   'tournament/gong.wav',
 ]);
@@ -89,6 +88,140 @@ function addEcho(buffer, delays) {
 function addClack(buffer, time, gain, pan, seed) {
   addNoise(buffer, { start: time, duration: 0.09, gain, pan, attack: 0.002, release: 0.85, lowpass: 5_500, highpass: 900, seed });
   addTone(buffer, { start: time, duration: 0.13, frequency: 170, endFrequency: 115, gain: gain * 0.75, pan, attack: 0.002, release: 0.9 });
+}
+
+function addWarmKey(buffer, { start, duration, frequency, gain, pan = 0 }) {
+  addTone(buffer, { start, duration, frequency, gain, pan, attack: 0.018, release: 0.68, curve: 1.25 });
+  addTone(buffer, { start, duration: duration * 0.82, frequency: frequency * 2, gain: gain * 0.16, pan: pan * 0.65, attack: 0.012, release: 0.76, curve: 1.4, phase: 0.4 });
+  addTone(buffer, { start, duration: duration * 0.65, frequency: frequency * 3, gain: gain * 0.045, pan: -pan * 0.45, attack: 0.01, release: 0.82, curve: 1.55, phase: 0.8 });
+}
+
+function addWarmPad(buffer, { start, duration, frequencies, gain, pan = 0 }) {
+  frequencies.forEach((frequency, index) => {
+    const voicePan = pan + (index - (frequencies.length - 1) / 2) * 0.13;
+    addTone(buffer, { start, duration, frequency, gain: gain / frequencies.length, pan: voicePan, attack: 0.18, release: 0.2, curve: 1.15, phase: index * 0.7 });
+    addTone(buffer, { start, duration, frequency: frequency * 2.003, gain: gain * 0.08 / frequencies.length, pan: -voicePan, attack: 0.22, release: 0.22, curve: 1.05, phase: 1.1 + index });
+  });
+}
+
+function applyFade(buffer, fadeInSeconds, fadeOutSeconds) {
+  const fadeInSamples = Math.max(1, Math.floor(fadeInSeconds * SAMPLE_RATE));
+  const fadeOutSamples = Math.max(1, Math.floor(fadeOutSeconds * SAMPLE_RATE));
+  for (let index = 0; index < buffer.left.length; index += 1) {
+    const fadeIn = Math.min(1, index / fadeInSamples);
+    const fadeOut = Math.min(1, (buffer.left.length - 1 - index) / fadeOutSamples);
+    const gain = Math.sin(Math.min(fadeIn, fadeOut) * Math.PI / 2) ** 2;
+    buffer.left[index] *= gain;
+    buffer.right[index] *= gain;
+  }
+}
+
+const MISSION_BPM = 80;
+const MISSION_BEAT = 60 / MISSION_BPM;
+const MISSION_BAR = MISSION_BEAT * 3;
+const MISSION_CHORDS = [
+  { bass: 146.83, notes: [220, 293.66, 369.99] },
+  { bass: 123.47, notes: [220, 293.66, 369.99] },
+  { bass: 98, notes: [196, 246.94, 293.66, 369.99] },
+  { bass: 110, notes: [220, 277.18, 329.63, 392] },
+  { bass: 92.5, notes: [185, 220, 293.66, 369.99] },
+  { bass: 82.41, notes: [164.81, 196, 246.94, 293.66] },
+  { bass: 98, notes: [196, 246.94, 293.66, 440] },
+  { bass: 110, notes: [220, 277.18, 329.63, 392] },
+];
+const MISSION_DURATION = MISSION_CHORDS.length * MISSION_BAR;
+
+function composeMissionWaltz(buffer) {
+  MISSION_CHORDS.forEach((chord, barIndex) => {
+    const barStart = barIndex * MISSION_BAR;
+    addWarmPad(buffer, {
+      start: barStart,
+      duration: MISSION_BAR,
+      frequencies: chord.notes,
+      gain: 0.12,
+      pan: barIndex % 2 === 0 ? -0.08 : 0.08,
+    });
+    addWarmKey(buffer, {
+      start: barStart,
+      duration: MISSION_BEAT * 0.88,
+      frequency: chord.bass,
+      gain: 0.27,
+      pan: -0.12,
+    });
+    [1, 2].forEach((beat, beatIndex) => {
+      chord.notes.forEach((frequency, noteIndex) => addWarmKey(buffer, {
+        start: barStart + beat * MISSION_BEAT,
+        duration: MISSION_BEAT * 0.67,
+        frequency,
+        gain: 0.12 / chord.notes.length,
+        pan: (beatIndex ? 0.18 : -0.18) + (noteIndex - 1.5) * 0.05,
+      }));
+    });
+    const glint = chord.notes[(barIndex * 2 + 1) % chord.notes.length] * 2;
+    addWarmKey(buffer, {
+      start: barStart + MISSION_BEAT * 1.5,
+      duration: MISSION_BEAT * 0.42,
+      frequency: glint,
+      gain: 0.045,
+      pan: barIndex % 2 === 0 ? 0.34 : -0.34,
+    });
+  });
+  addEcho(buffer, [[0.19, 0.055, -0.22], [0.37, 0.035, 0.24]]);
+}
+
+const FINALE_BPM = 80;
+const FINALE_BEAT = 60 / FINALE_BPM;
+const FINALE_BAR = FINALE_BEAT * 4;
+const FINALE_CHORDS = [
+  { bass: 98, notes: [196, 246.94, 293.66, 369.99] },
+  { bass: 82.41, notes: [164.81, 196, 246.94, 293.66] },
+  { bass: 65.41, notes: [164.81, 196, 246.94, 329.63] },
+  { bass: 73.42, notes: [146.83, 196, 220, 293.66] },
+  { bass: 61.74, notes: [196, 246.94, 293.66, 392] },
+  { bass: 65.41, notes: [164.81, 196, 246.94, 329.63] },
+  { bass: 55, notes: [164.81, 196, 261.63, 329.63] },
+  { bass: 73.42, notes: [146.83, 184.99, 220, 261.63] },
+  { bass: 98, notes: [196, 246.94, 293.66, 369.99] },
+  { bass: 123.47, notes: [185, 246.94, 293.66, 369.99] },
+  { bass: 65.41, notes: [164.81, 196, 246.94, 329.63] },
+  { bass: 73.42, notes: [146.83, 196, 220, 293.66] },
+  { bass: 82.41, notes: [164.81, 196, 246.94, 329.63] },
+  { bass: 65.41, notes: [164.81, 196, 246.94, 329.63] },
+  { bass: 98, notes: [196, 246.94, 293.66, 392] },
+];
+const FINALE_DURATION = FINALE_CHORDS.length * FINALE_BAR;
+
+function composeWarmFinale(buffer) {
+  FINALE_CHORDS.forEach((chord, barIndex) => {
+    const barStart = barIndex * FINALE_BAR;
+    const phraseGain = 0.1 + 0.045 * Math.sin((barIndex / (FINALE_CHORDS.length - 1)) * Math.PI);
+    addWarmPad(buffer, {
+      start: barStart,
+      duration: FINALE_BAR + 0.08,
+      frequencies: chord.notes,
+      gain: phraseGain,
+      pan: barIndex % 2 === 0 ? -0.1 : 0.1,
+    });
+    [0, 2].forEach((beat, index) => addWarmKey(buffer, {
+      start: barStart + beat * FINALE_BEAT,
+      duration: FINALE_BEAT * 1.75,
+      frequency: chord.bass * (index === 0 ? 1 : 2),
+      gain: index === 0 ? 0.21 : 0.11,
+      pan: index === 0 ? -0.16 : 0.12,
+    }));
+    for (let eighth = 0; eighth < 8; eighth += 1) {
+      const noteIndex = [0, 2, 1, 3, 1, 2, 0, 3][(eighth + barIndex) % 8] % chord.notes.length;
+      addWarmKey(buffer, {
+        start: barStart + eighth * FINALE_BEAT / 2,
+        duration: FINALE_BEAT * 0.43,
+        frequency: chord.notes[noteIndex] * (eighth >= 4 ? 2 : 1),
+        gain: 0.055,
+        pan: -0.3 + eighth * 0.085,
+      });
+    }
+  });
+  addEcho(buffer, [[0.28, 0.075, -0.3], [0.52, 0.045, 0.32]]);
+  applyFade(buffer, 2.2, 5.5);
 }
 
 function normalize(buffer, peak = 0.88) {
@@ -197,6 +330,10 @@ rendered.push(await render('terminal/key.wav', 0.12, (b) => {
   addNoise(b, { duration: 0.08, gain: 0.38, attack: 0.001, release: 0.94, lowpass: 9_000, highpass: 1_800, seed: 121 });
   addTone(b, { duration: 0.1, frequency: 1_450, endFrequency: 720, gain: 0.18, attack: 0.001, release: 0.9 });
 }, 0.62));
+
+rendered.push(await render('bunker/ambience.wav', MISSION_DURATION, composeMissionWaltz, 0.68));
+
+rendered.push(await render('bunker/finale.wav', FINALE_DURATION, composeWarmFinale, 0.72));
 
 console.log(`Rendered ${rendered.length} original project-owned WAV assets:`);
 for (const file of rendered) console.log(`- ${file}`);

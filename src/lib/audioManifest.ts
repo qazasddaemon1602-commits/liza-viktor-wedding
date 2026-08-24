@@ -41,6 +41,7 @@ function localCue(
   id: string,
   defaultPriority: AudioPriority,
   options: Pick<AudioCueDefinition, 'defaultLoop' | 'gain' | 'maxAgeSeconds' | 'fallback'>,
+  attributionOverrides: Pick<AudioAttribution, 'downloadedAt' | 'edits'> | undefined = undefined,
 ): AudioCueDefinition {
   const originalFilename = `${id.split('.').at(-1)}.wav`;
   return {
@@ -55,6 +56,7 @@ function localCue(
       downloadedAt: '2026-08-21',
       originalFilename,
       edits: 'Deterministic 48 kHz stereo synthesis; normalized peak; no external samples.',
+      ...attributionOverrides,
     },
     ...options,
   };
@@ -145,19 +147,21 @@ export const AUDIO_MANIFEST = {
     gain: 0.58,
     fallback: { frequency: 82, durationSeconds: 0.48, gain: 0.04 },
   }),
-  'bunker.ambience': recordedCue('bunker.ambience', 'scene', {
-    license: 'CC0 1.0 Universal',
-    status: 'verified',
-    author: 'rubberduck',
-    sourceUrl: 'https://opengameart.org/content/100-cc0-sfx',
-    downloadedAt: '2026-08-21',
-    originalFilename: 'machine_01.ogg + machine_02.ogg + machine_03.ogg',
-    assetSha256: 'ec000cb498ac8622d5f0c1a7cb4984c3b6aa53ceaf8046584f6194376659aa86',
-    edits: '8.4 s industrial bed built only from three Android-recorded machine takes; pitch-lowered motor bed plus staggered mechanical layers, filtered, resampled to 48 kHz stereo and peak-limited.',
-  }, {
+  'bunker.ambience': localCue('bunker.ambience', 'scene', {
     defaultLoop: true,
-    gain: 0.42,
-    fallback: { frequency: 58, durationSeconds: 0.5, gain: 0.015, oscillatorType: 'triangle' },
+    gain: 0.34,
+    fallback: { frequency: 220, durationSeconds: 0.48, gain: 0.012, oscillatorType: 'triangle' },
+  }, {
+    downloadedAt: '2026-08-25',
+    edits: 'Original 18 s instrumental train waltz in 3/4: warm key, pad and string-like synthesis; seamless mission loop; no vocals and no external samples, recognizable melody or industrial timbre.',
+  }),
+  'bunker.finale': localCue('bunker.finale', 'scene', {
+    gain: 0.46,
+    maxAgeSeconds: 50,
+    fallback: { frequency: 392, durationSeconds: 0.72, gain: 0.016, oscillatorType: 'triangle' },
+  }, {
+    downloadedAt: '2026-08-25',
+    edits: 'Original 45 s warm instrumental finale with distinct harmony and texture, plus baked fade-in and fade-out; no vocals and no external samples or recognizable melody.',
   }),
   'bunker.door': recordedCue('bunker.door', 'major', {
     license: 'CC0 1.0 Universal',

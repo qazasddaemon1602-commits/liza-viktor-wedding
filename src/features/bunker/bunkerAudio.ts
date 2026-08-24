@@ -13,6 +13,11 @@ export type BunkerAudioController = {
   dispose: () => void;
 };
 
+export type BunkerAudioFinaleController = BunkerAudioController & {
+  playFinale: () => void;
+  stopFinale: () => void;
+};
+
 type AudioContextLike = AudioContext;
 
 type BunkerAudioOptions = {
@@ -20,7 +25,7 @@ type BunkerAudioOptions = {
   hasSample?: (id: AudioCueId) => boolean;
 };
 
-export function createBunkerAudioController(options: BunkerAudioOptions = {}): BunkerAudioController {
+export function createBunkerAudioController(options: BunkerAudioOptions = {}): BunkerAudioFinaleController {
   const samplePlayer = options.samplePlayer ?? sampleAudio;
   const hasSample = options.hasSample ?? hasLocalAudioSource;
   let context: AudioContextLike | null = null;
@@ -155,6 +160,15 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
       if (!hasSample('ui.reveal')) return;
       void samplePlayer.playCue('ui.reveal', { priority: 'scene' });
     },
+    playFinale: () => {
+      if (disposed) return;
+      if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
+      if (!hasSample('bunker.finale')) return;
+      void samplePlayer.playCue('bunker.finale', { priority: 'scene' });
+    },
+    stopFinale: () => {
+      if (hasSample('bunker.finale')) samplePlayer.stopCue('bunker.finale');
+    },
     dispose: () => {
       if (disposed) return;
       disposed = true;
@@ -169,6 +183,7 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
       if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
       if (hasSample('bunker.door')) samplePlayer.stopCue('bunker.door');
       if (hasSample('ui.reveal')) samplePlayer.stopCue('ui.reveal');
+      if (hasSample('bunker.finale')) samplePlayer.stopCue('bunker.finale');
       stopActive();
       void context?.close();
       context = null;

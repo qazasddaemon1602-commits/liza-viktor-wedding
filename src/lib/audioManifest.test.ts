@@ -35,7 +35,6 @@ describe('audio manifest', () => {
     const recordedCueIds = [
       'arrival.sequence',
       'bunker.alarm',
-      'bunker.ambience',
       'bunker.door',
       'tournament.gong',
     ] as const;
@@ -58,5 +57,51 @@ describe('audio manifest', () => {
   it('keeps the arrival ceremony on its single recorded sequence cue', () => {
     expect(audioCueIds).toContain('arrival.sequence');
     expect(audioCueIds).not.toContain(`arrival.${'chime'}` as never);
+  });
+
+  it('registers the looping Bunker mission music as an original train waltz', () => {
+    const cue = AUDIO_MANIFEST['bunker.ambience'];
+
+    expect(cue.src).toBe('/audio/bunker/ambience.wav');
+    expect(cue.sourceType).toBe('procedural');
+    expect(cue.defaultLoop).toBe(true);
+    expect(cue.defaultPriority).toBe('scene');
+    expect(cue.attribution.status).toBe('verified');
+    expect(cue.attribution.author).toBe('Liza & Viktor wedding project');
+    expect(cue.attribution.license).toContain('project-owned');
+    expect(cue.attribution.sourceUrl).toBeUndefined();
+    expect(cue.attribution.edits).toMatch(/3\/4|triple-meter/i);
+    expect(cue.attribution.edits).toMatch(/train waltz/i);
+    expect(cue.attribution.edits).toMatch(/no vocals|instrumental/i);
+    expect(cue.attribution.edits).toMatch(/no external/i);
+  });
+
+  it('registers a distinct project-owned Bunker finale without an external source', () => {
+    const cue = AUDIO_MANIFEST['bunker.finale'];
+    if (!cue) {
+      expect(cue).toBeDefined();
+      return;
+    }
+
+    expect(cue.src).toBe('/audio/bunker/finale.wav');
+    expect(cue.src).not.toBe(AUDIO_MANIFEST['bunker.ambience'].src);
+    expect(cue.sourceType).toBe('procedural');
+    expect(cue.defaultLoop).not.toBe(true);
+    expect(cue.defaultPriority).toBe('scene');
+    expect(cue.attribution.status).toBe('verified');
+    expect(cue.attribution.author).toBe('Liza & Viktor wedding project');
+    expect(cue.attribution.license).toContain('project-owned');
+    expect(cue.attribution.sourceUrl).toBeUndefined();
+    expect(cue.attribution.edits).toMatch(/instrumental/i);
+    expect(cue.attribution.edits).toMatch(/no vocals/i);
+    expect(cue.attribution.edits).toMatch(/no external/i);
+    expect(cue.attribution.edits).toMatch(/fade-in and fade-out/i);
+  });
+
+  it('preserves the existing success, alarm, and door cues', () => {
+    expect(audioCueIds).toEqual(expect.arrayContaining(['ui.success', 'bunker.alarm', 'bunker.door']));
+    expect(AUDIO_MANIFEST['ui.success'].sourceType).toBe('procedural');
+    expect(AUDIO_MANIFEST['bunker.alarm'].sourceType).toBe('recording');
+    expect(AUDIO_MANIFEST['bunker.door'].sourceType).toBe('recording');
   });
 });
