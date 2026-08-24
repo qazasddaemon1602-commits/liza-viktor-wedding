@@ -7,6 +7,25 @@ type Props = {
   onEnded?: () => void;
 };
 
+function safePause(audio: HTMLAudioElement) {
+  try {
+    audio.pause();
+  } catch {
+    // Some embedded/test browsers do not implement media playback controls.
+  }
+}
+
+function safePlay(audio: HTMLAudioElement) {
+  try {
+    const result = audio.play();
+    if (result && typeof result.catch === 'function') {
+      void result.catch(() => undefined);
+    }
+  } catch {
+    // Autoplay may be blocked until the projector sound control is armed.
+  }
+}
+
 export function WeddingLiveAudioPlayer({ src, eventKey, onEnded }: Props) {
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -18,13 +37,17 @@ export function WeddingLiveAudioPlayer({ src, eventKey, onEnded }: Props) {
       audio.volume = Math.min(1, Math.max(0, settings.volume));
       audio.muted = !settings.enabled || settings.volume <= 0;
       if (audio.muted) {
-        audio.pause();
+        safePause(audio);
         return;
       }
-      if (!audio.ended) void audio.play().catch(() => undefined);
+      if (!audio.ended) safePlay(audio);
     };
 
-    audio.currentTime = 0;
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Metadata can still be loading; a fresh source starts from zero anyway.
+    }
     applySettings();
     const unsubscribe = siteAudio.subscribe(applySettings);
     const rearm = () => applySettings();
@@ -33,7 +56,7 @@ export function WeddingLiveAudioPlayer({ src, eventKey, onEnded }: Props) {
     return () => {
       unsubscribe();
       window.removeEventListener(PROJECTOR_AUDIO_REARM_EVENT, rearm);
-      audio.pause();
+      safePause(audio);
     };
   }, [eventKey, src]);
 
