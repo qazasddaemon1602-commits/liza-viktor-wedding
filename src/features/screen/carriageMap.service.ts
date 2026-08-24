@@ -2,6 +2,7 @@ export type RegistrationCarriageMapStatus = 'registration' | 'complete' | 'not_f
 
 export type RegistrationCarriageMapGuest = {
   id: string;
+  fullName?: string;
   initials: string;
   seatIndex: number;
 };
@@ -43,6 +44,7 @@ const ROOT_KEYS = [
 ] as const;
 const CARRIAGE_KEYS = ['id', 'number', 'label', 'accentHex', 'visualMark', 'guests'] as const;
 const GUEST_KEYS = ['id', 'initials', 'seatIndex'] as const;
+const GUEST_FULL_NAME_KEYS = ['id', 'fullName', 'initials', 'seatIndex'] as const;
 const SAFE_INITIALS = /^\p{L}{1,2}$/u;
 const SAFE_ACCENT = /^#[0-9a-f]{6}$/i;
 const ISO_TIMESTAMP_WITH_TIMEZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -69,11 +71,15 @@ function isNonNegativeInteger(value: unknown): value is number {
 }
 
 function parseGuest(value: unknown, expectedSeatIndex: number): RegistrationCarriageMapGuest | null {
-  if (!isRecord(value) || !hasOnlyKeys(value, GUEST_KEYS)) return null;
+  if (!isRecord(value)) return null;
+  const hasLegacyShape = hasOnlyKeys(value, GUEST_KEYS);
+  const hasFullNameShape = hasOnlyKeys(value, GUEST_FULL_NAME_KEYS);
+  if (!hasLegacyShape && !hasFullNameShape) return null;
   if (
     !isSafeString(value.id, 128)
     || !isSafeString(value.initials, 2)
     || !SAFE_INITIALS.test(value.initials)
+    || (hasFullNameShape && !isSafeString(value.fullName, 160))
     || !Number.isSafeInteger(value.seatIndex)
     || (value.seatIndex as number) < 1
     || (value.seatIndex as number) > 40
@@ -84,6 +90,7 @@ function parseGuest(value: unknown, expectedSeatIndex: number): RegistrationCarr
 
   return {
     id: value.id,
+    ...(hasFullNameShape ? { fullName: value.fullName as string } : {}),
     initials: value.initials,
     seatIndex: value.seatIndex as number,
   };
