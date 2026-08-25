@@ -496,7 +496,7 @@
 }
 
 .bunker-player-dashboard[data-large-text="true"] button {
-  min-height: 52px;
+  min-height: 56px;
   font-size: var(--bunker-player-body-size);
 }
 

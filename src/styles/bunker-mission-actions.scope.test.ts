@@ -13,9 +13,9 @@ function ruleBody(selector: string): string {
 }
 
 describe('Bunker phone mission action sizing', () => {
-  it('provides an 18px body token and 52px targets in large-text mode', () => {
+  it('provides an 18px base token, 56px buttons, and 52px choice rows in large-text mode', () => {
     expect(ruleBody('.bunker-player-dashboard[data-large-text="true"]')).toContain('--bunker-player-body-size: 1.125rem');
-    expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] button')).toContain('min-height: 52px');
+    expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] button')).toContain('min-height: 56px');
     expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] .bunker-mission-actions label:has(input[type="checkbox"])')).toContain('min-height: 52px');
     expect(ruleBody('.bunker-player-dashboard[data-large-text="true"] .bunker-mission-actions label:has(input[type="radio"])')).toContain('min-height: 52px');
   });

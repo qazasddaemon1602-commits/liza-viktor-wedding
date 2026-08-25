@@ -90,4 +90,21 @@ describe('Bunker accessibility stylesheet order', () => {
       expect(heights.every((height) => height >= 56)).toBe(true);
     });
   });
+
+  it('keeps generic, primary, and ability V2 buttons at 56px inside the real large-text dashboard', () => {
+    withFinalCascade(`
+      <main class="bunker-player-dashboard" data-large-text="true">
+        <section class="bunker-v2-mission">
+          <button type="button">ОБЫЧНАЯ КНОПКА</button>
+          <button class="bunker-v2-mission__primary" type="button">ГЛАВНОЕ ДЕЙСТВИЕ</button>
+          <aside class="bunker-v2-mission__ability"><button type="button">СПОСОБНОСТЬ</button></aside>
+        </section>
+      </main>
+    `, (host) => {
+      const heights = [...host.querySelectorAll<HTMLButtonElement>('.bunker-v2-mission button')]
+        .map((button) => Number.parseFloat(getComputedStyle(button).minHeight));
+
+      expect(heights).toEqual([56, 56, 56]);
+    });
+  });
 });
