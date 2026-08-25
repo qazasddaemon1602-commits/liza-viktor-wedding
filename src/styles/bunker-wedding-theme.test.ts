@@ -128,14 +128,11 @@ describe('Bunker wedding theme', () => {
     expect(epilogueLabel).toContain('font-size: 18px');
   });
 
-  it('keeps the FINAL_30 couple portrait uncropped beside a readable progress panel', () => {
+  it('keeps the FINAL_30 progress panel full-width before the couple reveal', () => {
     const content = ruleBody(css, '.bunker-v2-final-screen__content');
     const status = ruleBody(css, '.bunker-v2-final-screen__status');
-    const portrait = ruleBody(css, '.bunker-v2-final-screen__couple img');
 
-    expect(content).toMatch(/grid-template-columns:\s*minmax\(0,[^;]*\)\s+minmax\(0,[^;]*\)/);
+    expect(content).toContain('grid-template-columns: 1fr');
     expect(status).toContain('background: rgba(255, 250, 242, 0.94)');
-    expect(portrait).toContain('object-fit: contain');
-    expect(portrait).toContain('object-position: center');
   });
 });

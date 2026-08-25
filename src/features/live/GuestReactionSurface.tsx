@@ -37,8 +37,10 @@ export function GuestReactionSurface({ eventSlug = 'liza-viktor', children }: Pr
   return (
     <>
       {children}
-      <GuestMessageCapsuleDock load={live.loadCapsule} save={live.saveCapsule} />
-      <GuestReactionDock onReact={live.onReact} />
+      <div className="guest-live-controls">
+        <GuestMessageCapsuleDock load={live.loadCapsule} save={live.saveCapsule} />
+        <GuestReactionDock onReact={live.onReact} />
+      </div>
     </>
   );
 }

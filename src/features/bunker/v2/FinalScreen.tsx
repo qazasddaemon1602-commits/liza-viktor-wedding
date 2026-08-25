@@ -36,20 +36,6 @@ export function FinalScreen({ model }: { model: FinalScreenModel }) {
             </>
           )}
         </section>
-        <figure className="bunker-v2-final-screen__couple">
-          <picture>
-            <source srcSet="/images/bunker/story/couple-epilogue.avif" type="image/avif" />
-            <img
-              src="/images/bunker/story/couple-epilogue.webp"
-              width={1536}
-              height={1024}
-              alt="Лиза и Виктор вместе после прибытия поезда"
-              loading="eager"
-              decoding="async"
-            />
-          </picture>
-          <figcaption>ЛИЗА И ВИКТОР · ФИНАЛ ПУТЕШЕСТВИЯ</figcaption>
-        </figure>
       </main>
       <footer>ПОЕЗД ИДЁТ К ТОЧКЕ ПРИБЫТИЯ · ТАЙМЕР СЕРВЕРНЫЙ</footer>
     </section>

@@ -114,7 +114,7 @@ export function MissionFourPlayer({
       <p>Ваша группа: {model.group.wagons.map((wagon) => wagon.label).join(' + ')}. Связь ограничена — коротко передавайте только важное.</p>
       <p className="bunker-v2-mission__role" role="status" aria-label="Ваша роль в задании">
         <strong>{model.viewer.isOperator ? 'ВЫ — СВЯЗИСТ ВАГОНА' : 'ВЫ ПОМОГАЕТЕ ОБСУЖДАТЬ'}</strong>
-        <span>{model.viewer.isOperator ? 'Выберите готовое сообщение. Дополнительные действия доступны ниже.' : 'Связист вагона отправляет общее решение. Передайте ему важные данные вслух.'}</span>
+        <span>{model.viewer.isOperator ? 'Выберите готовое сообщение. Дополнительные действия доступны ниже.' : 'Обсудите варианты вслух. Связист выберет и отправит общее решение вагона.'}</span>
       </p>
       {model.connection === 'reconnecting' && <p role="status">Связь с сервером восстанавливается. Уже принятые сообщения и обмены сохранены.</p>}
       {actionError && <p className="bunker-v2-mission__error" role="alert">{actionError}</p>}

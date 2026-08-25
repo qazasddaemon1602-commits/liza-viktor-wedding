@@ -61,7 +61,9 @@ describe('MissionFourPlayer', () => {
     render(<MissionFourPlayer model={{ ...base, viewer: { ...base.viewer, isOperator: false } }} />);
     expect(screen.queryByRole('region', { name: 'Готовые сообщения' })).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-    expect(screen.getByRole('status', { name: 'Ваша роль в задании' })).toHaveTextContent(/вы помогаете обсуждать.*связист вагона отправляет/i);
+    const role = screen.getByRole('status', { name: 'Ваша роль в задании' });
+    expect(role).toHaveTextContent(/вы помогаете обсуждать.*обсудите варианты вслух.*связист выберет и отправит общее решение вагона/i);
+    expect(role).not.toHaveTextContent(/передайте ему важные данные/i);
   });
 
   it('restores prepared messages and shows retry guidance when sending is rejected', async () => {

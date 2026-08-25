@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   GuestMessageCapsuleState,
   SaveGuestMessageResult,
@@ -72,7 +73,7 @@ export function GuestMessageCapsuleDock({ load, save }: Props) {
         КАПСУЛА
       </button>
 
-      {open && (
+      {open && createPortal((
         <div className="guest-capsule-modal" role="dialog" aria-modal="true" aria-label="Капсула для Лизы и Виктора">
           <button
             type="button"
@@ -136,7 +137,7 @@ export function GuestMessageCapsuleDock({ load, save }: Props) {
             ) : null}
           </section>
         </div>
-      )}
+      ), document.body)}
     </>
   );
 }
