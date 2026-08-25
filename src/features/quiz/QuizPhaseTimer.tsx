@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 type QuizPhaseTimerProps = {
   endsAt?: string | null;
   onExpire?: () => void;
+  onSecondChange?: (seconds: number) => void;
   now?: () => number;
   className?: string;
 };
@@ -22,23 +23,30 @@ function format(seconds: number): string {
 export function QuizPhaseTimer({
   endsAt,
   onExpire,
+  onSecondChange,
   now,
   className = '',
 }: QuizPhaseTimerProps) {
   const clock = useMemo(() => now ?? (() => Date.now()), [now]);
   const [seconds, setSeconds] = useState(() => endsAt ? remainingSeconds(endsAt, clock) : 0);
   const expiredFor = useRef<string | null>(null);
+  const announcedSecond = useRef<number | null>(null);
 
   useEffect(() => {
     if (!endsAt) {
       setSeconds(0);
       expiredFor.current = null;
+      announcedSecond.current = null;
       return;
     }
 
     const tick = () => {
       const next = remainingSeconds(endsAt, clock);
       setSeconds(next);
+      if (announcedSecond.current !== next) {
+        announcedSecond.current = next;
+        onSecondChange?.(next);
+      }
       if (next === 0 && expiredFor.current !== endsAt) {
         expiredFor.current = endsAt;
         onExpire?.();
@@ -46,10 +54,11 @@ export function QuizPhaseTimer({
     };
 
     expiredFor.current = null;
+    announcedSecond.current = null;
     tick();
     const timer = window.setInterval(tick, 250);
     return () => window.clearInterval(timer);
-  }, [clock, endsAt, onExpire]);
+  }, [clock, endsAt, onExpire, onSecondChange]);
 
   if (!endsAt) return null;
 

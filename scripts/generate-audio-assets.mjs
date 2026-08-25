@@ -185,6 +185,79 @@ function composeMissionWaltz(buffer) {
   }
 }
 
+const QUIZ_BPM = 108;
+const QUIZ_BEAT = 60 / QUIZ_BPM;
+const QUIZ_BAR = QUIZ_BEAT * 4;
+const QUIZ_CHORDS = [
+  { bass: 98, notes: [196, 246.94, 293.66, 369.99] },
+  { bass: 82.41, notes: [164.81, 196, 246.94, 293.66] },
+  { bass: 110, notes: [220, 261.63, 329.63, 392] },
+  { bass: 73.42, notes: [146.83, 220, 293.66, 369.99] },
+  { bass: 98, notes: [196, 246.94, 293.66, 392] },
+  { bass: 123.47, notes: [185, 246.94, 293.66, 369.99] },
+  { bass: 82.41, notes: [164.81, 196, 246.94, 329.63] },
+  { bass: 73.42, notes: [146.83, 184.99, 220, 293.66] },
+  { bass: 98, notes: [196, 246.94, 293.66, 369.99] },
+  { bass: 82.41, notes: [164.81, 196, 246.94, 293.66] },
+  { bass: 110, notes: [220, 261.63, 329.63, 392] },
+  { bass: 73.42, notes: [146.83, 220, 293.66, 369.99] },
+];
+const QUIZ_DURATION = QUIZ_CHORDS.length * QUIZ_BAR;
+
+function addQuizLoungeCycle(buffer, cycleStart) {
+  QUIZ_CHORDS.forEach((chord, barIndex) => {
+    const barStart = cycleStart + barIndex * QUIZ_BAR;
+    addWarmPad(buffer, {
+      start: barStart,
+      duration: QUIZ_BAR,
+      frequencies: chord.notes,
+      gain: 0.075,
+      pan: barIndex % 2 === 0 ? -0.06 : 0.06,
+    });
+    [0, 2].forEach((beat, index) => addWarmKey(buffer, {
+      start: barStart + beat * QUIZ_BEAT,
+      duration: QUIZ_BEAT * 0.72,
+      frequency: chord.bass * (index === 0 ? 1 : 2),
+      gain: index === 0 ? 0.17 : 0.09,
+      pan: index === 0 ? -0.18 : 0.12,
+    }));
+    [0.68, 1.68, 2.68, 3.68].forEach((beat, accentIndex) => {
+      chord.notes.forEach((frequency, noteIndex) => addWarmKey(buffer, {
+        start: barStart + beat * QUIZ_BEAT,
+        duration: QUIZ_BEAT * 0.34,
+        frequency,
+        gain: 0.055 / chord.notes.length,
+        pan: (accentIndex % 2 ? 0.18 : -0.18) + (noteIndex - 1.5) * 0.04,
+      }));
+    });
+    [1.72, 3.72].forEach((beat, brushIndex) => addNoise(buffer, {
+      start: barStart + beat * QUIZ_BEAT,
+      duration: 0.08,
+      gain: 0.035,
+      pan: brushIndex ? 0.18 : -0.18,
+      attack: 0.002,
+      release: 0.88,
+      lowpass: 6_000,
+      highpass: 1_800,
+      seed: 700 + barIndex * 3 + brushIndex,
+    }));
+  });
+}
+
+function composeQuizLounge(buffer) {
+  const periodic = createBuffer(QUIZ_DURATION * 3);
+  for (let cycle = 0; cycle < 3; cycle += 1) {
+    addQuizLoungeCycle(periodic, cycle * QUIZ_DURATION);
+  }
+  addEcho(periodic, [[0.14, 0.045, -0.2], [0.29, 0.025, 0.22]]);
+
+  const firstSample = Math.floor(QUIZ_DURATION * SAMPLE_RATE);
+  for (let index = 0; index < buffer.left.length; index += 1) {
+    buffer.left[index] = periodic.left[firstSample + index];
+    buffer.right[index] = periodic.right[firstSample + index];
+  }
+}
+
 const FINALE_BPM = 80;
 const FINALE_BEAT = 60 / FINALE_BPM;
 const FINALE_BAR = FINALE_BEAT * 4;
@@ -347,6 +420,7 @@ rendered.push(await render('terminal/key.wav', 0.12, (b) => {
   addTone(b, { duration: 0.1, frequency: 1_450, endFrequency: 720, gain: 0.18, attack: 0.001, release: 0.9 });
 }, 0.62));
 
+rendered.push(await render('quiz/ambience.wav', QUIZ_DURATION, composeQuizLounge, 0.62));
 rendered.push(await render('bunker/ambience.wav', MISSION_DURATION, composeMissionWaltz, 0.68));
 
 rendered.push(await render('bunker/finale.wav', FINALE_DURATION, composeWarmFinale, 0.72));

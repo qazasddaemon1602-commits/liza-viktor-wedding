@@ -8,6 +8,7 @@ type ActiveQuizScreenState = Extract<QuizScreenState, { status: 'active' }>;
 type QuizScreenSceneProps = {
   state: ActiveQuizScreenState;
   expectedGuestCount?: number;
+  onCountdownSecond?: (seconds: number) => void;
 };
 
 function percentage(value: number, total: number): number {
@@ -26,6 +27,7 @@ export function toAvifQuizImagePath(imagePath: string): string | null {
 export function QuizScreenScene({
   state,
   expectedGuestCount = 40,
+  onCountdownSecond,
 }: QuizScreenSceneProps) {
   const answeredLabel = `${state.answeredCount} / ${expectedGuestCount} ОТВЕТИЛИ`;
   const lizaPercent = state.phase === 'results'
@@ -61,7 +63,11 @@ export function QuizScreenScene({
         <header className="quiz-screen-header">
           <p className="eyebrow">ЛИЗА ИЛИ ВИКТОР?</p>
           <div className="quiz-screen-header__status">
-            <QuizPhaseTimer endsAt={state.phaseEndsAt} className="quiz-screen-timer" />
+            <QuizPhaseTimer
+              endsAt={state.phaseEndsAt}
+              onSecondChange={state.phase === 'voting' ? onCountdownSecond : undefined}
+              className="quiz-screen-timer"
+            />
             <span className="quiz-screen-counter">{answeredLabel}</span>
           </div>
         </header>

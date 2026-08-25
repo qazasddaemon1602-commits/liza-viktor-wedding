@@ -93,6 +93,9 @@ export type ScreenPageDependencies = {
   armArrivalAudio?: () => Promise<boolean>;
   playArrivalSignal?: () => void;
   playQuizVotingSignal?: () => void;
+  startQuizMusic?: () => void;
+  stopQuizMusic?: () => void;
+  playQuizCountdownSignal?: (seconds: number) => void;
   playQuizRevealSignal?: () => void;
   playTournamentGong?: () => void;
   stopArrivalAudio?: () => void;
@@ -159,6 +162,9 @@ function browserDependencies(eventSlug: string): ScreenPageDependencies {
     armArrivalAudio: audio.arm,
     playArrivalSignal: audio.playArrival,
     playQuizVotingSignal: audio.playQuizVoting,
+    startQuizMusic: audio.startQuizMusic,
+    stopQuizMusic: audio.stopQuizMusic,
+    playQuizCountdownSignal: () => audio.playQuizCountdown(),
     playQuizRevealSignal: audio.playQuizReveal,
     playTournamentGong: audio.playTournamentGong,
     stopArrivalAudio: audio.stopArrival,
@@ -713,6 +719,31 @@ export function ScreenPage({
   const presentedQuiz = activeQuiz && !finalFiveForCurrentQuestion && !revealedForCurrentQuestion
     ? activeQuiz
     : null;
+  const quizMusicVisible = Boolean(
+    presentedQuiz?.phase === 'voting'
+    && !presentationProtected
+    && !activePresentation
+    && soundEnabled
+    && audioArmed,
+  );
+
+  useEffect(() => {
+    if (quizMusicVisible) deps.startQuizMusic?.();
+    else deps.stopQuizMusic?.();
+    return () => deps.stopQuizMusic?.();
+  }, [deps, quizMusicVisible]);
+
+  const playQuizCountdownSecond = useCallback((seconds: number) => {
+    if (
+      seconds < 1
+      || seconds > 5
+      || presentationProtected
+      || activePresentation
+      || !soundEnabled
+      || !audioArmed
+    ) return;
+    deps.playQuizCountdownSignal?.(seconds);
+  }, [activePresentation, audioArmed, deps, presentationProtected, soundEnabled]);
 
   useEffect(() => {
     lastPresentedQuizKeyRef.current = null;
@@ -765,6 +796,7 @@ export function ScreenPage({
           <QuizScreenScene
             state={activeQuiz}
             expectedGuestCount={expectedGuestCount}
+            onCountdownSecond={playQuizCountdownSecond}
           />
         )
       ) : carriageMap?.status === 'complete' ? (

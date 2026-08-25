@@ -39,6 +39,9 @@ export type ScreenAudioController = {
   playCarriageCall: () => void;
   stopCarriageCall: () => void;
   playQuizVoting: () => void;
+  startQuizMusic: () => void;
+  stopQuizMusic: () => void;
+  playQuizCountdown: () => void;
   playQuizReveal: () => void;
   playTournamentGong: () => void;
   dispose: () => void;
@@ -90,12 +93,19 @@ export function createScreenAudioController(
     if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
     const needsArrivalFallback = !hasSample('arrival.sequence');
     const needsSequenceFallback = !hasSample('arrival.sequence');
-    const needsQuizFallback = !hasSample('ui.confirm') || !hasSample('ui.reveal');
+    const needsQuizFallback = !hasSample('ui.confirm')
+      || !hasSample('ui.reveal')
+      || !hasSample('ui.countdown')
+      || !hasSample('quiz.ambience');
     if (!needsArrivalFallback && !needsSequenceFallback && !needsQuizFallback) {
       const [armed, arrivalBuffer] = await Promise.all([
         samplePlayer.arm(),
         samplePlayer.preloadCue('arrival.sequence'),
       ]);
+      if (armed) {
+        void samplePlayer.preloadCue('quiz.ambience');
+        void samplePlayer.preloadCue('ui.countdown');
+      }
       return Boolean(armed && arrivalBuffer);
     }
     try {
@@ -216,6 +226,24 @@ export function createScreenAudioController(
     playTone(659.25, now + 0.12, 0.2, 0.018, 'triangle');
   };
 
+  const startQuizMusic = () => {
+    if (!hasSample('quiz.ambience')) return;
+    void samplePlayer.playCue('quiz.ambience', { loop: true, priority: 'ui' });
+  };
+
+  const stopQuizMusic = () => {
+    if (hasSample('quiz.ambience')) samplePlayer.stopCue('quiz.ambience');
+  };
+
+  const playQuizCountdown = () => {
+    if (hasSample('ui.countdown')) {
+      void samplePlayer.playCue('ui.countdown', { priority: 'scene' });
+      return;
+    }
+    if (!context || context.state !== 'running') return;
+    playTone(880, context.currentTime + 0.01, 0.09, 0.012, 'sine');
+  };
+
   const playTournamentGong = () => {
     if (hasSample('tournament.gong')) {
       void samplePlayer.playCue('tournament.gong', { priority: 'major' });
@@ -243,6 +271,7 @@ export function createScreenAudioController(
     }
     stopOscillators();
     if (hasSample('arrival.sequence')) samplePlayer.stopCue('arrival.sequence');
+    if (hasSample('quiz.ambience')) samplePlayer.stopCue('quiz.ambience');
     const current = context;
     context = null;
     masterGain = null;
@@ -257,6 +286,9 @@ export function createScreenAudioController(
     playCarriageCall,
     stopCarriageCall,
     playQuizVoting,
+    startQuizMusic,
+    stopQuizMusic,
+    playQuizCountdown,
     playQuizReveal,
     playTournamentGong,
     dispose,

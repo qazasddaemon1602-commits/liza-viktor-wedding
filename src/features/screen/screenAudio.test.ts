@@ -160,7 +160,10 @@ describe('createScreenAudioController', () => {
     audio.playArrival();
     audio.playCarriageCall();
     audio.playQuizVoting();
+    audio.startQuizMusic();
+    audio.playQuizCountdown();
     audio.playQuizReveal();
+    audio.stopQuizMusic();
     audio.playTournamentGong();
     audio.stopArrival();
     audio.stopCarriageCall();
@@ -168,7 +171,10 @@ describe('createScreenAudioController', () => {
     expect(samplePlayer.playCue).toHaveBeenNthCalledWith(1, 'arrival.sequence', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenNthCalledWith(2, 'arrival.sequence', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.confirm', { priority: 'scene' });
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('quiz.ambience', { loop: true, priority: 'ui' });
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.countdown', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.reveal', { priority: 'scene' });
+    expect(samplePlayer.stopCue).toHaveBeenCalledWith('quiz.ambience');
     expect(samplePlayer.playCue).toHaveBeenCalledWith('tournament.gong', { priority: 'major' });
     expect(samplePlayer.stopCue).toHaveBeenCalledWith('arrival.sequence');
     expect(context.createOscillator).not.toHaveBeenCalled();

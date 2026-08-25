@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUDIO_MANIFEST, audioCueIds, hasLocalAudioSource } from './audioManifest';
+import { AUDIO_MANIFEST, audioCueIds, hasLocalAudioSource, type AudioCueDefinition } from './audioManifest';
 
 describe('audio manifest', () => {
   it('keeps every acquired runtime source local and every cue attributable', () => {
@@ -99,6 +99,21 @@ describe('audio manifest', () => {
     expect(cue.attribution.edits).toMatch(/no vocals/i);
     expect(cue.attribution.edits).toMatch(/no external/i);
     expect(cue.attribution.edits).toMatch(/fade-in and fade-out/i);
+  });
+
+  it('registers a quiet original quiz loop for the projector screen', () => {
+    const cue = (AUDIO_MANIFEST as Record<string, AudioCueDefinition>)['quiz.ambience'];
+    expect(cue).toBeDefined();
+    if (!cue) return;
+
+    expect(cue.src).toBe('/audio/quiz/ambience.wav');
+    expect(cue.sourceType).toBe('procedural');
+    expect(cue.defaultLoop).toBe(true);
+    expect(cue.defaultPriority).toBe('ui');
+    expect(cue.gain).toBeLessThanOrEqual(0.3);
+    expect(cue.attribution.edits).toMatch(/instrumental/i);
+    expect(cue.attribution.edits).toMatch(/no vocals/i);
+    expect(cue.attribution.edits).toMatch(/no external/i);
   });
 
   it('preserves the existing success, alarm, and door cues', () => {

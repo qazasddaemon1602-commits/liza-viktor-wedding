@@ -138,6 +138,14 @@ export const AUDIO_MANIFEST = {
     maxAgeSeconds: 14,
     fallback: { frequency: 174.61, durationSeconds: 1.35, gain: 0.03, oscillatorType: 'triangle' },
   }),
+  'quiz.ambience': localCue('quiz.ambience', 'ui', {
+    defaultLoop: true,
+    gain: 0.24,
+    fallback: { frequency: 293.66, durationSeconds: 0.42, gain: 0.009, oscillatorType: 'triangle' },
+  }, {
+    downloadedAt: '2026-08-25',
+    edits: 'Original 26.7 s instrumental wedding lounge loop with a light swing pulse and warm keys; no vocals, no recognizable melody and no external samples.',
+  }),
   'bunker.alarm': recordedCue('bunker.alarm', 'major', {
     license: 'CC0 1.0 Universal',
     status: 'verified',

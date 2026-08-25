@@ -153,6 +153,59 @@ describe('ScreenPage live quiz base scene', () => {
     expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
   });
 
+  it('runs music and the final five countdown cues only while voting is visible on the projector', async () => {
+    vi.setSystemTime('2026-08-30T13:00:00.000Z');
+    let refreshQuiz: (() => void) | undefined;
+    const startQuizMusic = vi.fn();
+    const stopQuizMusic = vi.fn();
+    const playQuizCountdownSignal = vi.fn();
+    const playQuizRevealSignal = vi.fn();
+    const timedVoting: QuizScreenState = {
+      ...voting,
+      phaseEndsAt: '2026-08-30T13:00:06.000Z',
+    };
+    const dependencies: ScreenPageDependencies = {
+      subscribe: () => vi.fn(),
+      loadQuiz: vi.fn()
+        .mockResolvedValueOnce(timedVoting)
+        .mockResolvedValueOnce(results),
+      subscribeToQuizRefresh: (callback) => {
+        refreshQuiz = callback;
+        return vi.fn();
+      },
+      startQuizMusic,
+      stopQuizMusic,
+      playQuizCountdownSignal,
+      playQuizRevealSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    expect(startQuizMusic).toHaveBeenCalledTimes(1);
+    expect(playQuizCountdownSignal).not.toHaveBeenCalled();
+    stopQuizMusic.mockClear();
+
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(playQuizCountdownSignal).toHaveBeenCalledTimes(1);
+    expect(playQuizCountdownSignal).toHaveBeenLastCalledWith(5);
+
+    await act(async () => {
+      refreshQuiz?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(stopQuizMusic).toHaveBeenCalled();
+    expect(playQuizRevealSignal).toHaveBeenCalledTimes(1);
+  });
+
   it('temporarily overlays guest announcements and returns to the quiz instead of the QR screen', async () => {
     let pushScreenEvent: ((event: ScreenPresentationEvent) => void) | undefined;
     const dependencies: ScreenPageDependencies = {
