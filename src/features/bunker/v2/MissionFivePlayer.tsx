@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MissionFiveOutcome, MissionFiveRoute } from './m05.service';
 
 export type MissionFivePlayerReadModel = {
@@ -36,6 +36,8 @@ export function MissionFivePlayer({
   const [busy, setBusy] = useState(false);
   const [localVote, setLocalVote] = useState<'A' | 'B' | null>(model.selectedVote);
   const [actionError, setActionError] = useState('');
+  const authoritativeVote = useRef(model.selectedVote);
+  authoritativeVote.current = model.selectedVote;
 
   useEffect(() => {
     setLocalVote(model.selectedVote);
@@ -51,8 +53,9 @@ export function MissionFivePlayer({
     try {
       await onVote(key);
     } catch {
-      setLocalVote(model.selectedVote);
-      setActionError('Голос не отправлен. Проверьте связь и попробуйте ещё раз.');
+      const latestVote = authoritativeVote.current;
+      setLocalVote(latestVote);
+      setActionError(latestVote === null ? 'Голос не отправлен. Проверьте связь и попробуйте ещё раз.' : '');
     } finally {
       setBusy(false);
     }

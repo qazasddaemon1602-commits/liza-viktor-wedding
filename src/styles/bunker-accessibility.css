@@ -6,12 +6,19 @@
 .bunker-v2-mission button,
 .bunker-v2-mission select,
 .bunker-v2-mission textarea {
-  min-height: 52px;
   font-size: 1rem;
+}
+
+.bunker-v2-mission button {
+  min-height: 56px;
 }
 
 .bunker-v2-mission select {
   min-height: 56px;
+}
+
+.bunker-v2-mission textarea {
+  min-height: 52px;
 }
 
 .bunker-v2-mission input:not([type="radio"]):not([type="checkbox"]) {
@@ -83,15 +90,16 @@
   width: min(100%, 42rem);
   margin-inline: auto;
   padding: clamp(1.15rem, 4vw, 2rem);
-  border: 1px solid rgba(238, 233, 221, 0.24);
-  background: #181817;
+  border: 1px solid rgba(111, 41, 65, 0.3);
+  color: #4b1728;
+  background-color: #fff8ee;
 }
 
 .bunker-v2-results-player__hero {
   display: grid;
   gap: 0.65rem;
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid rgba(238, 233, 221, 0.2);
+  border-bottom: 1px solid rgba(111, 41, 65, 0.22);
 }
 
 .bunker-v2-results-player__hero span,
@@ -132,13 +140,13 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
   margin-bottom: 1.25rem;
-  background: rgba(238, 233, 221, 0.18);
+  background-color: rgba(111, 41, 65, 0.2);
 }
 
 .bunker-v2-results-player__facts p {
   margin: 0;
   padding: 1rem;
-  background: #0d0d0c;
+  background-color: #fffdf8;
 }
 
 .bunker-v2-results-player__facts strong {
@@ -154,8 +162,8 @@
   align-content: center;
   gap: clamp(1.5rem, 4vw, 3.5rem);
   padding: clamp(1.5rem, 5vw, 5rem);
-  color: #eee9dd;
-  background: #0d0d0c;
+  color: #3b1221;
+  background-color: #fffaf2;
 }
 
 .bunker-v2-results__body {
@@ -202,7 +210,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
-  background: rgba(238, 233, 221, 0.22);
+  background-color: rgba(226, 188, 120, 0.48);
 }
 
 .bunker-v2-results__grid article {
@@ -210,7 +218,7 @@
   display: grid;
   gap: 0.45rem;
   padding: clamp(1rem, 2vw, 1.8rem);
-  background: #181817;
+  background-color: #fff8ee;
 }
 
 .bunker-v2-results__grid strong {

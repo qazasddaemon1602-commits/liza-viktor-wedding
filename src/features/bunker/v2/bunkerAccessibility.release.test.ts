@@ -16,9 +16,9 @@ function cssText(): string {
 }
 
 describe('Bunker mobile accessibility release guard', () => {
-  it('keeps all game buttons and final inputs large enough for an older guest on a phone', () => {
+  it('keeps all V2 buttons at 56px and final inputs large enough for an older guest on a phone', () => {
     const css = cssText();
-    expect(css).toMatch(/\.bunker-v2-mission\s+(?:button|input|select|textarea)[^{]*\{[^}]*min-height:\s*(?:52px|3\.25rem)/s);
+    expect(css).toMatch(/\.bunker-v2-mission\s+button\s*\{[^}]*min-height:\s*56px/s);
     expect(css).toMatch(/\.bunker-v2-final-terminal\s+input[^{]*\{[^}]*min-height:\s*(?:5[2-9]px|3\.25rem)/s);
     expect(css).toMatch(/\.bunker-player-dashboard__nav button[^{]*\{[^}]*min-height:\s*(?:5[2-9]px|3\.25rem)/s);
   });

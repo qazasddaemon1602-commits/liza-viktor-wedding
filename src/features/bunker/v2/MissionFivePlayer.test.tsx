@@ -72,6 +72,25 @@ describe('MissionFivePlayer', () => {
     expect(screen.queryByRole('status', { name: 'Состояние вашего выбора' })).not.toBeInTheDocument();
   });
 
+  it('keeps a projected accepted vote locked when the original command rejects afterward', async () => {
+    const user = userEvent.setup();
+    let rejectVote: ((reason?: unknown) => void) | undefined;
+    const vote = vi.fn(() => new Promise<void>((_resolve, reject) => { rejectVote = reject; }));
+    const view = render(<MissionFivePlayer model={base} onVote={vote} />);
+
+    await user.click(screen.getByRole('button', { name: /A · ТЕХНИЧЕСКИЙ ТОННЕЛЬ/i }));
+    view.rerender(<MissionFivePlayer model={{ ...base, selectedVote: 'A' }} onVote={vote} />);
+
+    await act(async () => { rejectVote?.(new Error('response lost after projection')); });
+
+    expect(screen.getByRole('status', { name: 'Состояние вашего выбора' })).toHaveTextContent(/маршрут A принят/i);
+    for (const route of within(screen.getByRole('region', { name: 'Выберите маршрут' })).getAllByRole('button')) {
+      expect(route).toBeDisabled();
+    }
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(vote).toHaveBeenCalledTimes(1);
+  });
+
   it('restores the secondary ability action after a rejected command', async () => {
     const user = userEvent.setup();
     const useAbility = vi.fn().mockRejectedValue(new Error('offline'));
