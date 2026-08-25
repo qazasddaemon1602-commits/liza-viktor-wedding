@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MissionTwoPlayer, type MissionTwoPlayerReadModel } from './MissionTwoPlayer';
@@ -50,7 +50,43 @@ describe('MissionTwoPlayer', () => {
     await user.click(screen.getByRole('button', { name: 'ПРОВЕРИТЬ ВЕРСИЮ' }));
 
     expect(submit).toHaveBeenCalledWith(['Вагон №4', 'Открытие технического шлюза', '05']);
-    expect(screen.getByRole('button', { name: /использовать способность/i })).toBeInTheDocument();
-    expect(screen.getByText(/осталось попыток: 2/i)).toBeInTheDocument();
+    const extras = screen.getByText('ДОПОЛНИТЕЛЬНО').closest('details');
+    expect(extras).not.toBeNull();
+    expect(extras).not.toHaveAttribute('open');
+    expect(within(extras as HTMLElement).getByRole('button', { name: /использовать способность/i })).not.toBeVisible();
+    expect(within(extras as HTMLElement).getByText(/осталось попыток: 2/i)).not.toBeVisible();
+  });
+
+  it('restarts guided editing at question one after a wrong first attempt and submits changed answers', async () => {
+    const user = userEvent.setup();
+    const submit = vi.fn().mockResolvedValue(undefined);
+    const firstAnswers = ['Вагон №4', 'Открытие технического шлюза', '05'];
+    const view = render(<MissionTwoPlayer model={model} onSubmit={submit} />);
+
+    for (const answer of firstAnswers) {
+      await user.click(screen.getByLabelText(answer));
+      await user.click(screen.getByRole('button', { name: 'Подтвердить ответ' }));
+    }
+    await user.click(screen.getByRole('button', { name: 'ПРОВЕРИТЬ ВЕРСИЮ' }));
+
+    view.rerender(
+      <MissionTwoPlayer
+        model={{ ...model, attemptCount: 1, attemptsRemaining: 1, selectedAnswers: firstAnswers }}
+        onSubmit={submit}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Из какого вагона пришёл аварийный сигнал?' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Вагон №4')).toBeChecked();
+    expect(screen.getByText(/предыдущая версия не подошла/i)).toBeInTheDocument();
+
+    for (const answer of ['Вагон №2', 'Отключение освещения', '06']) {
+      await user.click(screen.getByLabelText(answer));
+      await user.click(screen.getByRole('button', { name: 'Подтвердить ответ' }));
+    }
+    await user.click(screen.getByRole('button', { name: 'ПРОВЕРИТЬ ВЕРСИЮ' }));
+
+    expect(submit).toHaveBeenLastCalledWith(['Вагон №2', 'Отключение освещения', '06']);
+    expect(submit).toHaveBeenCalledTimes(2);
   });
 });

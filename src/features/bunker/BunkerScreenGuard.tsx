@@ -248,6 +248,8 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
   });
   const revealPlayToken = useRef(0);
   const revealSequence = useRef<{ run: string; doorPlayed: boolean; complete: boolean } | null>(null);
+  const missionCompletion = useRef<{ key: string | null; complete: boolean }>({ key: null, complete: false });
+  const completedMissionCues = useRef(new Set<string>());
   const loadGeneration = useRef(0);
   const loadInFlight = useRef<Promise<BunkerScreenState | null> | null>(null);
 
@@ -414,11 +416,33 @@ export function BunkerScreenGuard({ eventSlug = 'liza-viktor', dependencies, chi
     ? getBunkerMissionContent(state.currentMission?.id ?? state.globalGameState)
     : undefined;
   const narrationRunIdentity = state?.status === 'active' ? state.startedAt : null;
+  const completionProgress = state?.status === 'active'
+    && state.missionProgress
+    && /^MISSION_0[1-6]$/.test(state.missionProgress.missionState)
+    ? state.missionProgress
+    : null;
+  const completionKey = state?.status === 'active' && completionProgress
+    ? `${eventSlug}:${state.startedAt}:${completionProgress.missionState}`
+    : null;
+  const completionReached = completionProgress?.complete === true;
 
   useEffect(() => {
     setBunkerPresentationProtected(bunkerActive);
     return () => setBunkerPresentationProtected(false);
   }, [bunkerActive]);
+
+  useEffect(() => {
+    const previous = missionCompletion.current;
+    if (previous.key !== completionKey) {
+      missionCompletion.current = { key: completionKey, complete: completionReached };
+      return;
+    }
+    const transitioned = !previous.complete && completionReached;
+    missionCompletion.current = { key: completionKey, complete: completionReached };
+    if (!transitioned || !completionKey || completedMissionCues.current.has(completionKey)) return;
+    completedMissionCues.current.add(completionKey);
+    if (state?.status === 'active' && state.soundEnabled) deps?.audio?.playSuccess();
+  }, [completionKey, completionReached, deps?.audio, state?.status === 'active' ? state.soundEnabled : false]);
 
   useEffect(() => {
     if (!bunkerActive || remainingSeconds <= 0) return;

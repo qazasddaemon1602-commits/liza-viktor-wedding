@@ -25,13 +25,13 @@ describe('Bunker wedding theme', () => {
   ].join('\n');
   const main = readFileSync(`${runtime.process.cwd()}/src/main.tsx`, 'utf8');
 
-  it('loads after accessibility and projector contrast so the shared celebration palette wins', () => {
+  it('loads after projector contrast while accessibility remains the final usability layer', () => {
     const accessibility = main.indexOf("./styles/bunker-accessibility.css");
     const projectorContrast = main.indexOf("./styles/bunker-projector-contrast.css");
     const weddingTheme = main.indexOf("./styles/bunker-wedding-theme.css");
 
-    expect(weddingTheme).toBeGreaterThan(accessibility);
     expect(weddingTheme).toBeGreaterThan(projectorContrast);
+    expect(accessibility).toBeGreaterThan(weddingTheme);
   });
 
   it('replaces the guest shell black palette with warm wedding paper and burgundy ink', () => {
@@ -126,5 +126,16 @@ describe('Bunker wedding theme', () => {
     expect(portrait).toContain('object-fit: contain');
     const epilogueLabel = ruleBody(css, '.bunker-v2-results .bunker-results-epilogue span');
     expect(epilogueLabel).toContain('font-size: 18px');
+  });
+
+  it('keeps the FINAL_30 couple portrait uncropped beside a readable progress panel', () => {
+    const content = ruleBody(css, '.bunker-v2-final-screen__content');
+    const status = ruleBody(css, '.bunker-v2-final-screen__status');
+    const portrait = ruleBody(css, '.bunker-v2-final-screen__couple img');
+
+    expect(content).toMatch(/grid-template-columns:\s*minmax\(0,[^;]*\)\s+minmax\(0,[^;]*\)/);
+    expect(status).toContain('background: rgba(255, 250, 242, 0.94)');
+    expect(portrait).toContain('object-fit: contain');
+    expect(portrait).toContain('object-position: center');
   });
 });

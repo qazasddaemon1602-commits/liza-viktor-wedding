@@ -63,8 +63,11 @@ export function MissionSixPlayer({
       || !onReveal
       || revealedInstance.current === model.instanceId
     ) return;
-    revealedInstance.current = model.instanceId;
-    void Promise.resolve().then(onReveal).catch(() => undefined);
+    const instanceId = model.instanceId;
+    revealedInstance.current = instanceId;
+    void Promise.resolve().then(onReveal).catch(() => {
+      if (revealedInstance.current === instanceId) revealedInstance.current = null;
+    });
   }, [model.fragmentShared, model.instanceId, model.status, onReveal]);
 
   const castVote = async (vote: Vote) => {

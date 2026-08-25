@@ -36,6 +36,22 @@ describe('MissionSixPlayer', () => {
     await waitFor(() => expect(reveal).toHaveBeenCalledTimes(2));
   });
 
+  it('allows an explicit same-instance retry after automatic reveal is rejected without looping', async () => {
+    const reveal = vi.fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(undefined);
+    const view = render(<MissionSixPlayer model={model} onReveal={reveal} onVote={vi.fn()} />);
+
+    await waitFor(() => expect(reveal).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+    expect(reveal).toHaveBeenCalledTimes(1);
+
+    const retryReveal = () => reveal();
+    view.rerender(<MissionSixPlayer model={{ ...model, remainingSeconds: 479 }} onReveal={retryReveal} onVote={vi.fn()} />);
+
+    await waitFor(() => expect(reveal).toHaveBeenCalledTimes(2));
+  });
+
   it('keeps fragment counters and abilities in secondary details', () => {
     render(<MissionSixPlayer model={{
       ...model,

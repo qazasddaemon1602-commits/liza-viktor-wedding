@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MissionFivePlayer, type MissionFivePlayerReadModel } from './MissionFivePlayer';
@@ -35,6 +35,54 @@ describe('MissionFivePlayer', () => {
     await user.click(screen.getByRole('button', { name: /A · ТЕХНИЧЕСКИЙ ТОННЕЛЬ/i }));
     expect(vote).toHaveBeenCalledTimes(1);
     expect(vote).toHaveBeenCalledWith('A');
+  });
+
+  it('accepts one local vote immediately and keeps both routes locked while projection is deferred', async () => {
+    const user = userEvent.setup();
+    let resolveVote: (() => void) | undefined;
+    const vote = vi.fn(() => new Promise<void>((resolve) => { resolveVote = resolve; }));
+    const view = render(<MissionFivePlayer model={base} onVote={vote} />);
+
+    await user.click(screen.getByRole('button', { name: /A · ТЕХНИЧЕСКИЙ ТОННЕЛЬ/i }));
+
+    expect(screen.getByRole('status', { name: 'Состояние вашего выбора' })).toHaveTextContent(/маршрут A принят/i);
+    for (const route of within(screen.getByRole('region', { name: 'Выберите маршрут' })).getAllByRole('button')) {
+      expect(route).toBeDisabled();
+    }
+
+    await act(async () => { resolveVote?.(); });
+    view.rerender(<MissionFivePlayer model={{ ...base, remainingSeconds: 89 }} onVote={vote} />);
+    for (const route of within(screen.getByRole('region', { name: 'Выберите маршрут' })).getAllByRole('button')) {
+      expect(route).toBeDisabled();
+    }
+    expect(vote).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores both routes and shows retry guidance when the vote is rejected', async () => {
+    const user = userEvent.setup();
+    const vote = vi.fn().mockRejectedValue(new Error('offline'));
+    render(<MissionFivePlayer model={base} onVote={vote} />);
+
+    await user.click(screen.getByRole('button', { name: /B · ОБХОДНОЙ ПУТЬ/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/голос не отправлен.*попробуйте ещё раз/i);
+    for (const route of within(screen.getByRole('region', { name: 'Выберите маршрут' })).getAllByRole('button')) {
+      expect(route).toBeEnabled();
+    }
+    expect(screen.queryByRole('status', { name: 'Состояние вашего выбора' })).not.toBeInTheDocument();
+  });
+
+  it('restores the secondary ability action after a rejected command', async () => {
+    const user = userEvent.setup();
+    const useAbility = vi.fn().mockRejectedValue(new Error('offline'));
+    render(<MissionFivePlayer model={base} onVote={vi.fn()} onUseAbility={useAbility} />);
+
+    await user.click(screen.getByText('ДЕТАЛИ ГОЛОСОВАНИЯ'));
+    const action = screen.getByRole('button', { name: /ИСПОЛЬЗОВАТЬ · АНАЛИЗ МАРШРУТА/i });
+    await user.click(action);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/подсказку не удалось получить.*попробуйте ещё раз/i);
+    expect(action).toBeEnabled();
   });
 
   it('shows the accepted choice and waiting state without exposing live totals in the primary path', () => {

@@ -8,6 +8,7 @@ export type BunkerAudioController = {
   stopAlarm: () => void;
   startAmbience: () => void;
   stopAmbience: () => void;
+  playSuccess: () => void;
   playDoorUnlock: () => void;
   playReveal: () => void;
   dispose: () => void;
@@ -109,6 +110,7 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
     sampleFinaleRevision += 1;
     if (hasSample('bunker.alarm')) samplePlayer.stopCue('bunker.alarm');
     if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
+    if (hasSample('ui.success')) samplePlayer.stopCue('ui.success');
     if (hasSample('bunker.door')) samplePlayer.stopCue('bunker.door');
     if (hasSample('ui.reveal')) samplePlayer.stopCue('ui.reveal');
     if (hasSample('bunker.finale')) samplePlayer.stopCue('bunker.finale');
@@ -229,6 +231,12 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
       sampleAmbienceRevision += 1;
       if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
     },
+    playSuccess: () => {
+      if (disposed) return;
+      if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
+      if (!hasSample('ui.success')) return;
+      void samplePlayer.playCue('ui.success', { priority: 'scene' }).catch(() => undefined);
+    },
     playDoorUnlock: () => {
       if (disposed) return;
       if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return;
@@ -270,6 +278,7 @@ export function createBunkerAudioController(options: BunkerAudioOptions = {}): B
       unsubscribeSettings();
       if (hasSample('bunker.alarm')) samplePlayer.stopCue('bunker.alarm');
       if (hasSample('bunker.ambience')) samplePlayer.stopCue('bunker.ambience');
+      if (hasSample('ui.success')) samplePlayer.stopCue('ui.success');
       if (hasSample('bunker.door')) samplePlayer.stopCue('bunker.door');
       if (hasSample('ui.reveal')) samplePlayer.stopCue('ui.reveal');
       if (hasSample('bunker.finale')) samplePlayer.stopCue('bunker.finale');

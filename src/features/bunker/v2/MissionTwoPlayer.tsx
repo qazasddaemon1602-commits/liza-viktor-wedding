@@ -22,13 +22,20 @@ function firstUnanswered(answers: readonly string[]): number {
   return index === -1 ? answers.length : index;
 }
 
+function guidedQuestionIndex(model: MissionTwoPlayerReadModel, answers: readonly string[]): number {
+  if (model.status === 'active' && model.attemptCount > 0 && answers.every((answer) => answer.trim())) {
+    return 0;
+  }
+  return firstUnanswered(answers);
+}
+
 export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: {
   model: MissionTwoPlayerReadModel;
   onSubmit?: (answers: string[]) => Promise<void> | void;
   onUseAbility?: (ability: 'system_access' | 'terminal_hack') => Promise<void> | void;
 }) {
   const [answers, setAnswers] = useState<string[]>(() => authoritativeAnswers(model));
-  const [questionIndex, setQuestionIndex] = useState(() => firstUnanswered(authoritativeAnswers(model)));
+  const [questionIndex, setQuestionIndex] = useState(() => guidedQuestionIndex(model, authoritativeAnswers(model)));
   const [hintDrawerOpen, setHintDrawerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [submissionState, setSubmissionState] = useState<'idle' | 'sending' | 'sent'>('idle');
@@ -38,10 +45,10 @@ export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: {
   useEffect(() => {
     const nextAnswers = authoritativeAnswers(model);
     setAnswers(nextAnswers);
-    setQuestionIndex(firstUnanswered(nextAnswers));
+    setQuestionIndex(guidedQuestionIndex(model, nextAnswers));
     setSubmissionState('idle');
     setError('');
-  }, [model.instanceId, model.instanceVersion, model.attemptCount, model.status, selectedAnswersKey]);
+  }, [model.instanceId, model.attemptCount, model.status, selectedAnswersKey]);
 
   const complete = answers.every((answer) => answer.trim());
   const resolved = model.status === 'completed';
@@ -83,6 +90,12 @@ export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: {
         </div>
       ) : (
         <>
+          {model.attemptCount > 0 && (
+            <p className="bunker-v2-mission__answer-status" role="status">
+              <strong>Предыдущая версия не подошла.</strong>
+              <span>Ответы сохранены для сравнения. Проверьте их заново, начиная с первого вопроса.</span>
+            </p>
+          )}
           {currentQuestion ? (
             <fieldset className="bunker-v2-mission__questions">
               <legend>Вопрос {questionIndex + 1} из {model.questions.length}</legend>
@@ -111,8 +124,11 @@ export function MissionTwoPlayer({ model, onSubmit, onUseAbility }: {
             <button type="button" aria-expanded={hintDrawerOpen} aria-controls="mission-two-hints" onClick={() => setHintDrawerOpen((open) => !open)}>{hintDrawerOpen ? 'Закрыть подсказки' : 'Открыть подсказки'}</button>
             {hintDrawerOpen && <div id="mission-two-hints" role="region" aria-label="Подсказки из чёрного ящика"><h2>ПОДСКАЗКИ ИЗ ЧЁРНОГО ЯЩИКА</h2><ul>{model.evidence.map((entry) => <li key={entry.key}><strong>{entry.label}</strong><span>{entry.body}</span></li>)}</ul></div>}
           </section>
-          <p className="bunker-v2-mission__attempts" role="status">{attemptText}</p>
-          {model.ability?.available && <aside className="bunker-v2-mission__ability"><strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong><p>{model.ability.hint}</p><button type="button" disabled={busy} onClick={() => { setBusy(true); Promise.resolve(onUseAbility?.(model.ability!.key)).finally(() => setBusy(false)); }}>ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button></aside>}
+          <details className="bunker-v2-mission__secondary">
+            <summary>ДОПОЛНИТЕЛЬНО</summary>
+            <p className="bunker-v2-mission__attempts" role="status">{attemptText}</p>
+            {model.ability?.available && <aside className="bunker-v2-mission__ability"><strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong><p>{model.ability.hint}</p><button type="button" disabled={busy} onClick={() => { setBusy(true); Promise.resolve(onUseAbility?.(model.ability!.key)).finally(() => setBusy(false)); }}>ИСПОЛЬЗОВАТЬ СПОСОБНОСТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button></aside>}
+          </details>
         </>
       )}
     </section>

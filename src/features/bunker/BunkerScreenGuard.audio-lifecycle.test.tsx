@@ -70,6 +70,7 @@ function audioController(arm = vi.fn().mockResolvedValue(true)) {
     stopAlarm: vi.fn(),
     startAmbience: vi.fn(),
     stopAmbience: vi.fn(),
+    playSuccess: vi.fn(),
     playDoorUnlock: vi.fn(),
     playReveal: vi.fn(),
     playFinale: vi.fn(),
@@ -182,6 +183,94 @@ describe('BunkerScreenGuard audio lifecycle', () => {
     expect(audio.startAlarm).toHaveBeenCalledTimes(1);
     expect(audio.startAmbience).not.toHaveBeenCalled();
     expect(audio.stopAmbience).toHaveBeenCalled();
+  });
+
+  it('plays one success cue when authoritative mission progress transitions to completed', async () => {
+    let refresh: (() => void) | undefined;
+    const audio = audioController();
+    const incomplete = {
+      ...activeState('MISSION_02'),
+      missionProgress: { missionState: 'MISSION_02' as const, completedWagons: 1, totalWagons: 2, complete: false },
+    };
+    const complete = {
+      ...incomplete,
+      serverNow: '2026-08-30T18:12:00.000Z',
+      missionProgress: { ...incomplete.missionProgress, completedWagons: 2, complete: true },
+    };
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn()
+          .mockResolvedValueOnce(incomplete)
+          .mockResolvedValueOnce(complete)
+          .mockResolvedValue({ ...complete, serverNow: '2026-08-30T18:13:00.000Z' }),
+        subscribe: (callback) => { refresh = callback; return () => undefined; },
+        audio,
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+    expect(audio.playSuccess).not.toHaveBeenCalled();
+
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(audio.playSuccess).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(audio.playSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not play or defer a mission success cue when completion arrives muted', async () => {
+    let refresh: (() => void) | undefined;
+    const audio = audioController();
+    const incomplete = {
+      ...activeState('MISSION_02'),
+      soundEnabled: false,
+      missionProgress: { missionState: 'MISSION_02' as const, completedWagons: 1, totalWagons: 2, complete: false },
+    };
+    const completeMuted = {
+      ...incomplete,
+      serverNow: '2026-08-30T18:12:00.000Z',
+      missionProgress: { ...incomplete.missionProgress, completedWagons: 2, complete: true },
+    };
+    const completeUnmuted = { ...completeMuted, soundEnabled: true, serverNow: '2026-08-30T18:13:00.000Z' };
+    render(
+      <BunkerScreenGuard dependencies={{
+        load: vi.fn()
+          .mockResolvedValueOnce(incomplete)
+          .mockResolvedValueOnce(completeMuted)
+          .mockResolvedValue(completeUnmuted),
+        subscribe: (callback) => { refresh = callback; return () => undefined; },
+        audio,
+      }}>
+        <div>ОБЫЧНЫЙ ЭКРАН</div>
+      </BunkerScreenGuard>,
+    );
+    await flushLoadedState();
+
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      refresh?.();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(audio.playSuccess).not.toHaveBeenCalled();
   });
 
   it('does not retry a blocked mission arm after emergency until explicit re-arm', async () => {

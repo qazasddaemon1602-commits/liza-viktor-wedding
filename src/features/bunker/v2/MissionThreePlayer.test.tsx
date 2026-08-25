@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MissionThreePlayer, type MissionThreePlayerReadModel } from './MissionThreePlayer';
@@ -29,14 +29,47 @@ describe('MissionThreePlayer', () => {
     expect(confirm).toHaveBeenCalledWith(['injury']);
   });
 
-  it('keeps non-captains in a passive discussion state while their ability remains secondary', () => {
-    render(<MissionThreePlayer model={{ ...base, memberRole: 'member' }} onConfirm={vi.fn()} onUseAbility={vi.fn()} />);
+  it('keeps non-captains in a passive discussion state without disabled action controls', () => {
+    render(<MissionThreePlayer model={{
+      ...base,
+      memberRole: 'member',
+      pendingCommitments: [{ problemKey: 'injury', status: 'pending', label: 'Медицинская помощь Анны' }],
+    }} onConfirm={vi.fn()} onUseAbility={vi.fn()} />);
 
     expect(screen.getByRole('status', { name: 'Ожидание решения капитана' })).toHaveTextContent(/капитан вагона/i);
     expect(screen.queryByRole('button', { name: 'ПОДТВЕРДИТЬ РАСПРЕДЕЛЕНИЕ' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /применить мою способность/i })).toBeInTheDocument();
-    for (const checkbox of screen.getAllByRole('checkbox')) {
-      expect(checkbox).toBeDisabled();
-    }
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    const extras = screen.getByText('ДОПОЛНИТЕЛЬНО').closest('details');
+    expect(extras).not.toBeNull();
+    expect(extras).not.toHaveAttribute('open');
+    expect(within(extras as HTMLElement).getByRole('button', { name: /применить мою способность/i })).not.toBeVisible();
+    expect(within(extras as HTMLElement).getByText(/предложено способностей: 1/i)).not.toBeVisible();
+  });
+
+  it('keeps the captain selection and restores confirmation after a rejected command', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.fn().mockRejectedValue(new Error('offline'));
+    render(<MissionThreePlayer model={base} onConfirm={confirm} />);
+
+    const injury = screen.getByRole('checkbox', { name: /ранен пассажир/i });
+    await user.click(injury);
+    await user.click(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ РАСПРЕДЕЛЕНИЕ' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/не удалось подтвердить.*попробуйте ещё раз/i);
+    expect(injury).toBeChecked();
+    expect(screen.getByRole('button', { name: 'ПОДТВЕРДИТЬ РАСПРЕДЕЛЕНИЕ' })).toBeEnabled();
+  });
+
+  it('restores the secondary ability action after a rejected command', async () => {
+    const user = userEvent.setup();
+    const useAbility = vi.fn().mockRejectedValue(new Error('offline'));
+    render(<MissionThreePlayer model={base} onUseAbility={useAbility} />);
+
+    await user.click(screen.getByText('ДОПОЛНИТЕЛЬНО'));
+    const action = screen.getByRole('button', { name: /применить мою способность/i });
+    await user.click(action);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/способность не применена.*попробуйте ещё раз/i);
+    expect(action).toBeEnabled();
   });
 });

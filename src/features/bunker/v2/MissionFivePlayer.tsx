@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MissionFiveOutcome, MissionFiveRoute } from './m05.service';
 
 export type MissionFivePlayerReadModel = {
@@ -34,11 +34,38 @@ export function MissionFivePlayer({
   onUseAbility?: () => Promise<void> | void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [localVote, setLocalVote] = useState<'A' | 'B' | null>(model.selectedVote);
+  const [actionError, setActionError] = useState('');
+
+  useEffect(() => {
+    setLocalVote(model.selectedVote);
+    setActionError('');
+    setBusy(false);
+  }, [model.instanceId, model.selectedVote]);
+
   const vote = async (key: 'A' | 'B') => {
-    if (!onVote || busy || model.selectedVote !== null) return;
+    if (!onVote || busy || localVote !== null) return;
+    setLocalVote(key);
+    setActionError('');
     setBusy(true);
     try {
       await onVote(key);
+    } catch {
+      setLocalVote(model.selectedVote);
+      setActionError('Голос не отправлен. Проверьте связь и попробуйте ещё раз.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const useAbility = async () => {
+    if (!onUseAbility || busy) return;
+    setBusy(true);
+    setActionError('');
+    try {
+      await onUseAbility();
+    } catch {
+      setActionError('Подсказку не удалось получить. Проверьте связь и попробуйте ещё раз.');
     } finally {
       setBusy(false);
     }
@@ -71,8 +98,8 @@ export function MissionFivePlayer({
                 <button
                   className="bunker-v2-mission__primary"
                   type="button"
-                  disabled={busy || model.selectedVote !== null || !onVote}
-                  aria-pressed={model.selectedVote === route.key}
+                  disabled={busy || localVote !== null || !onVote}
+                  aria-pressed={localVote === route.key}
                   onClick={() => void vote(route.key)}
                   aria-label={`${route.key} · ${route.title.toLocaleUpperCase('ru-RU')}`}
                 >
@@ -82,12 +109,13 @@ export function MissionFivePlayer({
             ))}
           </section>
 
-          {model.selectedVote && (
+          {localVote && (
             <p className="bunker-v2-mission__answer-status" role="status" aria-label="Состояние вашего выбора">
-              <strong>Маршрут {model.selectedVote} принят.</strong>
+              <strong>Маршрут {localVote} принят.</strong>
               <span>Ждём большинство замороженного состава вагона.</span>
             </p>
           )}
+          {actionError && <p className="bunker-v2-mission__error" role="alert">{actionError}</p>}
 
           <details className="bunker-v2-mission__secondary">
             <summary>ДЕТАЛИ ГОЛОСОВАНИЯ</summary>
@@ -96,7 +124,7 @@ export function MissionFivePlayer({
               <aside className="bunker-v2-mission__ability">
                 <strong>ВАША СПОСОБНОСТЬ МОЖЕТ ПОМОЧЬ</strong>
                 <p>{model.ability.hint}</p>
-                <button type="button" disabled={busy || !onUseAbility} onClick={() => { setBusy(true); Promise.resolve(onUseAbility?.()).finally(() => setBusy(false)); }}>ИСПОЛЬЗОВАТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button>
+                <button type="button" disabled={busy || !onUseAbility} onClick={() => void useAbility()}>ИСПОЛЬЗОВАТЬ · {model.ability.label.toLocaleUpperCase('ru-RU')}</button>
               </aside>
             )}
             {model.ability && !model.ability.available && <p className="bunker-v2-mission__hint">{model.ability.hint}</p>}

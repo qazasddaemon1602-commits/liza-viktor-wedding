@@ -28,7 +28,7 @@ describe('BunkerScreenGuard final TV',()=>{
   it('connects the reveal scene to the existing door and reveal cues in order',async()=>{
     vi.useFakeTimers();
     const order:string[]=[];
-    const audio={arm:vi.fn().mockResolvedValue(true),startAlarm:vi.fn(),stopAlarm:vi.fn(),startAmbience:vi.fn(),stopAmbience:vi.fn(),playDoorUnlock:vi.fn(()=>order.push('door')),playReveal:vi.fn(()=>order.push('reveal')),playFinale:vi.fn(()=>order.push('finale')),stopFinale:vi.fn(),dispose:vi.fn()};
+    const audio={arm:vi.fn().mockResolvedValue(true),startAlarm:vi.fn(),stopAlarm:vi.fn(),startAmbience:vi.fn(),stopAmbience:vi.fn(),playSuccess:vi.fn(),playDoorUnlock:vi.fn(()=>order.push('door')),playReveal:vi.fn(()=>order.push('reveal')),playFinale:vi.fn(()=>order.push('finale')),stopFinale:vi.fn(),dispose:vi.fn()};
     render(<BunkerScreenGuard dependencies={{load:vi.fn().mockResolvedValue({...state,soundEnabled:true,phase:'completed',unlocked:true,globalGameState:'BUNKER_OPEN',currentMission:null}),loadResults:vi.fn().mockResolvedValue(results),audio}}><div>base</div></BunkerScreenGuard>);
     await flush();
     expect(order).toEqual(['door']);

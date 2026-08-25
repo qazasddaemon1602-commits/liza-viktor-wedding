@@ -150,6 +150,23 @@ describe('Bunker sample audio bridge', () => {
     expect(samplePlayer.stopCue).toHaveBeenCalledWith('ui.reveal');
   });
 
+  it('exposes the existing success cue and suppresses it while locally muted', () => {
+    const samplePlayer = {
+      arm: vi.fn().mockResolvedValue(true),
+      playCue: vi.fn().mockResolvedValue('played'),
+      stopCue: vi.fn(),
+    };
+    const audio = createBunkerAudioController({ samplePlayer, hasSample: () => true });
+
+    audio.playSuccess();
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.success', { priority: 'scene' });
+
+    siteAudio.setEnabled(false);
+    audio.playSuccess();
+    expect(samplePlayer.playCue).toHaveBeenCalledTimes(1);
+    audio.dispose();
+  });
+
   it('exposes the original finale cue without owning its screen lifecycle', () => {
     const samplePlayer = {
       arm: vi.fn().mockResolvedValue(true),

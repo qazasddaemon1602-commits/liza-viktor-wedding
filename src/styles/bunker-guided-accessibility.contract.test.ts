@@ -8,8 +8,10 @@ const readStyle = (fileName: string) => readFileSync(
   'utf8',
 ).replace(/\r\n/g, '\n');
 
+const accessibilityCss = readStyle('bunker-accessibility.css');
+
 const css = [
-  readStyle('bunker-accessibility.css'),
+  accessibilityCss,
   readStyle('bunker-player.css'),
   readStyle('bunker-quest.css'),
 ].join('\n');
@@ -21,8 +23,22 @@ describe('Bunker guided-player accessibility contract', () => {
     expect(css).toMatch(/\.bunker-v2-mission input\[type="radio"\][^{]*\{[^}]*width:\s*24px[^}]*height:\s*24px/s);
   });
 
+  it('keeps large-text mission copy at 20px even where mobile mission rules set 18px', () => {
+    expect(css).toMatch(/\.bunker-player-dashboard\[data-large-text="true"\]\s*\{[^}]*--bunker-player-body-size:\s*20px/s);
+    expect(css).toMatch(
+      /\.bunker-player-dashboard\[data-large-text="true"\] \.bunker-v2-mission p,[\s\S]*?\.bunker-player-dashboard\[data-large-text="true"\] \.bunker-mission-one-player__members small\s*\{[^}]*font-size:\s*var\(--bunker-player-body-size\)/s,
+    );
+  });
+
+  it('keeps every V2 select at 56px and explicitly sizes M1 and M3 choice controls to 24px', () => {
+    expect(css).toMatch(/\.bunker-v2-mission select\s*\{[^}]*min-height:\s*56px/s);
+    expect(css).toMatch(
+      /\.bunker-mission-one-player__members input,[\s\S]*?\.bunker-v2-mission--m03 input\[type="checkbox"\][^{]*\{[^}]*width:\s*24px[^}]*height:\s*24px/s,
+    );
+  });
+
   it('covers the legacy briefing and Mission 01 action controls rather than only generic targets', () => {
-    expect(css).toMatch(/\.bunker-mission-briefing article p,[\s\S]*?\.bunker-mission-briefing li\[data-item-key\] span[^{]*\{[^}]*font-size:\s*18px/s);
+    expect(css).toMatch(/\.bunker-player-dashboard \.bunker-mission-briefing article p,[\s\S]*?\.bunker-player-dashboard \.bunker-mission-briefing li\[data-item-key\] span[^{]*\{[^}]*font-size:\s*var\(--bunker-player-body-size\)/s);
     expect(css).toMatch(/\.bunker-mission-one-player__primary,[\s\S]*?\.bunker-mission-one-player__secondary[^{]*\{[^}]*font-size:\s*20px/s);
   });
 
@@ -33,8 +49,18 @@ describe('Bunker guided-player accessibility contract', () => {
   });
 
   it('provides visible focus and motion fallbacks for guided player surfaces', () => {
-    expect(css).toMatch(/\.bunker-player-dashboard__guided-mission\s+:focus-visible[^{]*\{[^}]*outline:\s*3px/s);
+    expect(css).toMatch(/\.bunker-player-dashboard__guided-mission\s+:focus-visible[^{]*\{[^}]*outline:\s*3px\s+solid\s+#6f2941/s);
     expect(css).toMatch(/\.bunker-player-dashboard__nav button:focus-visible[^{]*\{[^}]*outline:\s*3px\s+solid\s+#6f2941/s);
+    expect(css).toMatch(/\.bunker-operator-panel button:focus-visible\s*\{[^}]*outline:\s*3px\s+solid\s+#e2bc78/s);
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.bunker-player-dashboard__guided-mission \*/s);
+  });
+
+  it('keeps projector result copy above the readable floor in the final cascade layer', () => {
+    expect(accessibilityCss).toMatch(
+      /@media \(min-width: 761px\)[\s\S]*?\.bunker-v2-results__hero p,[\s\S]*?\.bunker-v2-results > footer\s*\{[^}]*font-size:\s*18px/s,
+    );
+    expect(accessibilityCss).toMatch(
+      /@media \(min-width: 761px\)[\s\S]*?\.bunker-v2-results__score p,[\s\S]*?\.bunker-v2-results__grid strong\s*\{[^}]*font-size:\s*clamp\(22px,[^;]+24px\)/s,
+    );
   });
 });
