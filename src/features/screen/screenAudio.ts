@@ -93,7 +93,7 @@ export function createScreenAudioController(
     if (!siteAudio.isEnabled() || siteAudio.getVolume() <= 0) return false;
     const needsArrivalFallback = !hasSample('arrival.sequence');
     const needsSequenceFallback = !hasSample('arrival.sequence');
-    const needsQuizFallback = !hasSample('ui.confirm')
+    const needsQuizFallback = !hasSample('ui.success')
       || !hasSample('ui.reveal')
       || !hasSample('ui.countdown')
       || !hasSample('quiz.ambience');
@@ -105,6 +105,7 @@ export function createScreenAudioController(
       if (armed) {
         void samplePlayer.preloadCue('quiz.ambience');
         void samplePlayer.preloadCue('ui.countdown');
+        void samplePlayer.preloadCue('ui.success');
       }
       return Boolean(armed && arrivalBuffer);
     }
@@ -205,14 +206,15 @@ export function createScreenAudioController(
   };
 
   const playQuizVoting = () => {
-    if (hasSample('ui.confirm')) {
-      void samplePlayer.playCue('ui.confirm', { priority: 'scene' });
+    if (hasSample('ui.success')) {
+      void samplePlayer.playCue('ui.success', { priority: 'scene' });
       return;
     }
     if (!context || context.state !== 'running') return;
     const now = context.currentTime + 0.015;
-    playTone(392, now, 0.09, 0.012, 'triangle');
-    playTone(523.25, now + 0.1, 0.12, 0.014, 'sine');
+    playTone(523.25, now, 0.28, 0.018, 'triangle');
+    playTone(659.25, now + 0.12, 0.34, 0.02, 'sine');
+    playTone(783.99, now + 0.26, 0.46, 0.022, 'triangle');
   };
 
   const playQuizReveal = () => {

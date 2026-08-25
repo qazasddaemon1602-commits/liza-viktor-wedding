@@ -153,6 +153,56 @@ describe('ScreenPage live quiz base scene', () => {
     expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
   });
 
+  it('plays the question-opening cue once audio becomes armed without replaying it on refresh', async () => {
+    let refreshQuiz: (() => void) | undefined;
+    let resolveAudioArm: ((armed: boolean) => void) | undefined;
+    const audioArm = new Promise<boolean>((resolve) => {
+      resolveAudioArm = resolve;
+    });
+    const playQuizVotingSignal = vi.fn();
+    const dependencies: ScreenPageDependencies = {
+      subscribe: () => vi.fn(),
+      loadQuiz: vi.fn()
+        .mockResolvedValueOnce(voting)
+        .mockResolvedValueOnce({ ...voting, answeredCount: 18 }),
+      subscribeToQuizRefresh: (callback) => {
+        refreshQuiz = callback;
+        return vi.fn();
+      },
+      armArrivalAudio: vi.fn(() => audioArm),
+      playQuizVotingSignal,
+    };
+
+    render(
+      <ScreenPage
+        joinUrl="https://wedding.example/join"
+        eventSlug="liza-viktor"
+        dependencies={dependencies}
+      />,
+    );
+    await flushPromises();
+
+    expect(screen.getByTestId('quiz-screen-scene')).toBeInTheDocument();
+    expect(playQuizVotingSignal).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveAudioArm?.(true);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      refreshQuiz?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(answeredText(18))).toBeInTheDocument();
+    expect(playQuizVotingSignal).toHaveBeenCalledTimes(1);
+  });
+
   it('runs music and the final five countdown cues only while voting is visible on the projector', async () => {
     vi.setSystemTime('2026-08-30T13:00:00.000Z');
     let refreshQuiz: (() => void) | undefined;

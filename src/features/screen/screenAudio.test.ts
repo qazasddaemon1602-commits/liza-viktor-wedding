@@ -170,7 +170,7 @@ describe('createScreenAudioController', () => {
 
     expect(samplePlayer.playCue).toHaveBeenNthCalledWith(1, 'arrival.sequence', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenNthCalledWith(2, 'arrival.sequence', { priority: 'scene' });
-    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.confirm', { priority: 'scene' });
+    expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.success', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('quiz.ambience', { loop: true, priority: 'ui' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.countdown', { priority: 'scene' });
     expect(samplePlayer.playCue).toHaveBeenCalledWith('ui.reveal', { priority: 'scene' });

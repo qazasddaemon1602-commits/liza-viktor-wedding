@@ -750,14 +750,20 @@ export function ScreenPage({
   }, [eventSlug]);
 
   useEffect(() => {
-    if (!presentedQuiz || presentationProtected || activePresentation) return;
+    if (
+      !presentedQuiz
+      || presentationProtected
+      || activePresentation
+      || !soundEnabled
+      || !audioArmed
+    ) return;
     const key = quizPresentationKey(presentedQuiz.question.id, presentedQuiz.phase);
     if (lastPresentedQuizKeyRef.current === key) return;
 
     lastPresentedQuizKeyRef.current = key;
     if (presentedQuiz.phase === 'voting') deps.playQuizVotingSignal?.();
     else deps.playQuizRevealSignal?.();
-  }, [activePresentation, deps, eventSlug, presentedQuiz, presentationProtected]);
+  }, [activePresentation, audioArmed, deps, eventSlug, presentedQuiz, presentationProtected, soundEnabled]);
 
   return (
     <div className={`screen-page${premiereProtected ? ' screen-page--premiere' : ''}${mortalKombatProtected ? ' screen-page--mk' : ''}`}>
