@@ -52,17 +52,18 @@ describe('WeddingLiveProjectorLayer', () => {
         kind: 'ilya_song',
         createdAt: '2026-08-26T18:00:00Z',
         action: 'play',
-        title: 'Песня про Илью',
-        artist: 'Посажёный отец',
-        durationMs: 233080,
+        trackId: 'last-route',
+        title: 'Последний маршрут',
+        artist: 'Свадебный плейлист',
+        durationMs: 227440,
       });
     });
 
-    const player = screen.getByRole('status', { name: 'Сейчас играет песня про Илью' });
+    const player = screen.getByRole('status', { name: 'Сейчас играет: Последний маршрут' });
     expect(player).toHaveTextContent('СЕЙЧАС ИГРАЕТ');
-    expect(player).toHaveTextContent('Песня про Илью');
-    expect(player).toHaveTextContent('Посажёный отец');
-    expect(player.querySelector('audio')).toHaveAttribute('src', '/audio/live/ilya-toast.mp3');
+    expect(player).toHaveTextContent('Последний маршрут');
+    expect(player).toHaveTextContent('Свадебный плейлист');
+    expect(player.querySelector('audio')).toHaveAttribute('src', '/audio/live/last-route.mp3');
 
     act(() => {
       songListener?.({
@@ -73,6 +74,6 @@ describe('WeddingLiveProjectorLayer', () => {
       });
     });
 
-    expect(screen.queryByRole('status', { name: 'Сейчас играет песня про Илью' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Сейчас играет: Последний маршрут' })).not.toBeInTheDocument();
   });
 });

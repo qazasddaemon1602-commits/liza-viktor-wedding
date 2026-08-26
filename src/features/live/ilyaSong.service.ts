@@ -6,12 +6,61 @@ import type {
 
 export type IlyaSongAction = 'play' | 'stop';
 
+export const WEDDING_MUSIC_TRACKS = [
+  {
+    id: 'ilya-toast',
+    title: 'Песня про Илью',
+    artist: 'Посажёный отец',
+    durationMs: 233_080,
+    audioSource: '/audio/live/ilya-toast.mp3',
+  },
+  {
+    id: 'koshkin-dom',
+    title: 'Кошкин дом',
+    artist: 'Свадебный плейлист',
+    durationMs: 347_680,
+    audioSource: '/audio/live/koshkin-dom.mp3',
+  },
+  {
+    id: 'koshkin-dom-2',
+    title: 'Кошкин дом — версия 2',
+    artist: 'Свадебный плейлист',
+    durationMs: 350_281,
+    audioSource: '/audio/live/koshkin-dom-2.mp3',
+  },
+  {
+    id: 'koshkin-dom-3',
+    title: 'Кошкин дом — версия 3',
+    artist: 'Свадебный плейлист',
+    durationMs: 354_721,
+    audioSource: '/audio/live/koshkin-dom-3.mp3',
+  },
+  {
+    id: 'last-route',
+    title: 'Последний маршрут',
+    artist: 'Свадебный плейлист',
+    durationMs: 227_440,
+    audioSource: '/audio/live/last-route.mp3',
+  },
+] as const;
+
+export type WeddingMusicTrackId = typeof WEDDING_MUSIC_TRACKS[number]['id'];
+
+export function getWeddingMusicTrack(trackId: WeddingMusicTrackId) {
+  return WEDDING_MUSIC_TRACKS.find((track) => track.id === trackId) ?? WEDDING_MUSIC_TRACKS[0];
+}
+
+function isTrackId(value: unknown): value is WeddingMusicTrackId {
+  return typeof value === 'string' && WEDDING_MUSIC_TRACKS.some((track) => track.id === value);
+}
+
 export type IlyaSongScreenEvent = {
   id: string;
   kind: 'ilya_song';
   createdAt: string;
 } & ({
   action: 'play';
+  trackId: WeddingMusicTrackId;
   title: string;
   artist: string;
   durationMs: number;
@@ -25,7 +74,7 @@ export type ControlIlyaSongResult = {
   action: IlyaSongAction;
 };
 
-export const ILYA_SONG_AUDIO_SOURCE = '/audio/live/ilya-toast.mp3';
+export const ILYA_SONG_AUDIO_SOURCE = WEDDING_MUSIC_TRACKS[0].audioSource;
 export const ILYA_SONG_DURATION_MS = 233_080;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -60,19 +109,24 @@ export function parseIlyaSongScreenEvent(row: Record<string, unknown>): IlyaSong
 
   const base = { id: row.id, kind: 'ilya_song' as const, createdAt: row.created_at };
   if (row.payload.action === 'stop') return { ...base, action: 'stop' };
-  if (typeof row.payload.title !== 'string'
+  const trackId = isTrackId(row.payload.trackId)
+    ? row.payload.trackId
+    : row.payload.title === WEDDING_MUSIC_TRACKS[0].title ? 'ilya-toast' : null;
+  if (!trackId
+    || typeof row.payload.title !== 'string'
     || row.payload.title.trim().length === 0
     || typeof row.payload.artist !== 'string'
     || row.payload.artist.trim().length === 0
     || typeof row.payload.durationMs !== 'number'
     || !Number.isFinite(row.payload.durationMs)
     || row.payload.durationMs < 10_000
-    || row.payload.durationMs > 300_000) {
+    || row.payload.durationMs > 600_000) {
     return null;
   }
   return {
     ...base,
     action: 'play',
+    trackId,
     title: row.payload.title.trim(),
     artist: row.payload.artist.trim(),
     durationMs: Math.round(row.payload.durationMs),
@@ -83,10 +137,12 @@ export async function controlIlyaSong(
   client: WeddingLiveRpcClient,
   eventSlug: string,
   action: IlyaSongAction,
+  trackId?: WeddingMusicTrackId,
 ): Promise<ControlIlyaSongResult> {
   const { data, error } = await client.rpc('owner_control_ilya_song', {
     p_event_slug: eventSlug,
     p_action: action,
+    ...(trackId ? { p_track_id: trackId } : {}),
   });
   if (error) throw error;
   return parseControlIlyaSongResult(data);

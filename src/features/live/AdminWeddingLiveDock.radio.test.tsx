@@ -25,7 +25,7 @@ describe('AdminWeddingLiveDock radio', () => {
     expect(await screen.findByText('ЭФИР ОТПРАВЛЕН · ТАНЦПОЛ')).toBeInTheDocument();
   });
 
-  it('keeps the Ilya song controls at the bottom of the admin and sends play or stop to the screen', async () => {
+  it('keeps the music controls at the bottom of the admin and sends the selected track or stop to the screen', async () => {
     const controlIlyaSong = vi.fn().mockResolvedValue({
       status: 'ok', eventId: 'song-1', action: 'play',
     });
@@ -40,15 +40,20 @@ describe('AdminWeddingLiveDock radio', () => {
       </AdminWeddingLiveDock>,
     );
 
-    const card = screen.getByRole('region', { name: 'Песня про Илью' });
+    const card = screen.getByRole('region', { name: 'Музыкальный плеер' });
     expect(card.compareDocumentPosition(screen.getByText('АДМИНКА')) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(screen.getByText('Песня про Илью')).toBeInTheDocument();
+    expect(screen.getByText('Кошкин дом')).toBeInTheDocument();
+    expect(screen.getByText('Кошкин дом — версия 2')).toBeInTheDocument();
+    expect(screen.getByText('Кошкин дом — версия 3')).toBeInTheDocument();
+    expect(screen.getByText('Последний маршрут')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Включить песню на экране' }));
-    await waitFor(() => expect(controlIlyaSong).toHaveBeenCalledWith('play'));
-    expect(await screen.findByText('ПЕСНЯ ИГРАЕТ НА ЭКРАНЕ')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Включить на экране: Кошкин дом — версия 2' }));
+    await waitFor(() => expect(controlIlyaSong).toHaveBeenCalledWith('play', 'koshkin-dom-2'));
+    expect(await screen.findByText('НА ЭКРАНЕ · КОШКИН ДОМ — ВЕРСИЯ 2')).toBeInTheDocument();
 
     controlIlyaSong.mockResolvedValueOnce({ status: 'ok', eventId: 'song-2', action: 'stop' });
     fireEvent.click(screen.getByRole('button', { name: 'Остановить песню на экране' }));
-    await waitFor(() => expect(controlIlyaSong).toHaveBeenCalledWith('stop'));
+    await waitFor(() => expect(controlIlyaSong).toHaveBeenCalledWith('stop', undefined));
   });
 });

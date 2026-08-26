@@ -17,6 +17,8 @@ import {
   controlIlyaSong,
   type ControlIlyaSongResult,
   type IlyaSongAction,
+  type WeddingMusicTrackId,
+  WEDDING_MUSIC_TRACKS,
 } from './ilyaSong.service';
 import {
   RADIO_PRESETS,
@@ -35,7 +37,7 @@ export type AdminWeddingLiveDependencies = {
   sendTrainSound?: () => Promise<SendTrainSoundResult>;
   loadNominations?: () => Promise<EveningNominationsControl>;
   publishNominations?: () => Promise<PublishEveningNominationsResult>;
-  controlIlyaSong?: (action: IlyaSongAction) => Promise<ControlIlyaSongResult>;
+  controlIlyaSong?: (action: IlyaSongAction, trackId?: WeddingMusicTrackId) => Promise<ControlIlyaSongResult>;
 };
 
 type Props = { eventSlug?: string; dependencies?: AdminWeddingLiveDependencies; children: ReactNode };
@@ -50,7 +52,7 @@ function browserDependencies(eventSlug: string): AdminWeddingLiveDependencies {
     sendTrainSound: () => sendTrainSound(client, eventSlug),
     loadNominations: () => getOwnerEveningNominations(client, eventSlug),
     publishNominations: () => publishOwnerEveningNominations(client, eventSlug),
-    controlIlyaSong: (action) => controlIlyaSong(client, eventSlug, action),
+    controlIlyaSong: (action, trackId) => controlIlyaSong(client, eventSlug, action, trackId),
   };
 }
 
@@ -63,7 +65,7 @@ export function AdminWeddingLiveDock({ eventSlug = 'liza-viktor', dependencies, 
   const [feedback, setFeedback] = useState('');
   const [radioFeedback, setRadioFeedback] = useState('');
   const [nominationFeedback, setNominationFeedback] = useState('');
-  const [songBusy, setSongBusy] = useState<'play' | 'stop' | ''>('');
+  const [songBusy, setSongBusy] = useState('');
   const [songFeedback, setSongFeedback] = useState('');
   const [songError, setSongError] = useState('');
   const [error, setError] = useState('');
@@ -153,14 +155,15 @@ export function AdminWeddingLiveDock({ eventSlug = 'liza-viktor', dependencies, 
 
   const ready = control?.status === 'ok' ? control : null;
 
-  const controlSong = async (action: IlyaSongAction) => {
+  const controlSong = async (action: IlyaSongAction, trackId?: WeddingMusicTrackId) => {
     if (!deps.controlIlyaSong || songBusy) return;
-    setSongBusy(action);
+    setSongBusy(trackId ? `${action}:${trackId}` : action);
     setSongFeedback('');
     setSongError('');
     try {
-      await deps.controlIlyaSong(action);
-      setSongFeedback(action === 'play' ? 'ПЕСНЯ ИГРАЕТ НА ЭКРАНЕ' : 'ПЕСНЯ ОСТАНОВЛЕНА');
+      await deps.controlIlyaSong(action, trackId);
+      const track = trackId ? WEDDING_MUSIC_TRACKS.find((item) => item.id === trackId) : undefined;
+      setSongFeedback(action === 'play' && track ? `НА ЭКРАНЕ · ${track.title.toLocaleUpperCase('ru-RU')}` : 'МУЗЫКА ОСТАНОВЛЕНА');
     } catch {
       setSongError('Не удалось управлять песней на экране. Проверьте связь.');
     } finally {
@@ -172,18 +175,23 @@ export function AdminWeddingLiveDock({ eventSlug = 'liza-viktor', dependencies, 
     <>
       {children}
       {deps.controlIlyaSong && (
-        <section className="admin-ilya-song-card" aria-label="Песня про Илью">
+        <section className="admin-ilya-song-card" aria-label="Музыкальный плеер">
           <div>
             <p>МУЗЫКАЛЬНЫЙ СЮРПРИЗ · ТОЛЬКО НА ОБЩЕМ ЭКРАНЕ</p>
-            <h2>ПЕСНЯ ПРО ИЛЬЮ</h2>
-            <span>Посажёный отец · Весёлая (тост)</span>
+            <h2>МУЗЫКАЛЬНЫЙ ПЛЕЕР</h2>
+            <span>Выберите песню — предыдущая остановится автоматически.</span>
           </div>
-          <div className="admin-ilya-song-card__actions">
-            <button type="button" disabled={Boolean(songBusy)} aria-label="Включить песню на экране" onClick={() => void controlSong('play')}>
-              {songBusy === 'play' ? 'ВКЛЮЧАЕМ…' : '▶ ВКЛЮЧИТЬ НА ЭКРАНЕ'}
-            </button>
-            <button type="button" disabled={Boolean(songBusy)} aria-label="Остановить песню на экране" onClick={() => void controlSong('stop')}>
-              {songBusy === 'stop' ? 'ОСТАНАВЛИВАЕМ…' : '■ ОСТАНОВИТЬ'}
+          <div className="admin-ilya-song-card__tracks">
+            {WEDDING_MUSIC_TRACKS.map((track) => (
+              <article key={track.id}>
+                <div><strong>{track.title}</strong><small>{track.artist}</small></div>
+                <button type="button" disabled={Boolean(songBusy)} aria-label={`Включить на экране: ${track.title}`} onClick={() => void controlSong('play', track.id)}>
+                  {songBusy === `play:${track.id}` ? 'ВКЛЮЧАЕМ…' : '▶ ВКЛЮЧИТЬ'}
+                </button>
+              </article>
+            ))}
+            <button className="admin-ilya-song-card__stop" type="button" disabled={Boolean(songBusy)} aria-label="Остановить песню на экране" onClick={() => void controlSong('stop')}>
+              {songBusy === 'stop' ? 'ОСТАНАВЛИВАЕМ…' : '■ ОСТАНОВИТЬ МУЗЫКУ'}
             </button>
           </div>
           {songFeedback && <p className="admin-wedding-live-feedback" role="status">{songFeedback}</p>}

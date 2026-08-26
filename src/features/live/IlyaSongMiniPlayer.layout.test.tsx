@@ -18,11 +18,12 @@ describe('IlyaSongMiniPlayer layout', () => {
         kind: 'ilya_song',
         createdAt: '2026-08-26T18:00:00Z',
         action: 'play',
+        trackId: 'ilya-toast',
         title: 'Песня про Илью',
         artist: 'Посажёный отец',
         durationMs: 233080,
       }} />);
-      const player = screen.getByRole('status', { name: 'Сейчас играет песня про Илью' });
+      const player = screen.getByRole('status', { name: 'Сейчас играет: Песня про Илью' });
       const computed = getComputedStyle(player);
       expect(computed.position).toBe('fixed');
       expect(computed.left).not.toBe('auto');
