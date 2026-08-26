@@ -2,6 +2,11 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { getSupabaseClient } from '../../lib/supabase';
 import { CapsuleShowcaseOverlay } from './CapsuleShowcaseOverlay';
 import { EveningNominationsOverlay } from './EveningNominationsOverlay';
+import { IlyaSongMiniPlayer } from './IlyaSongMiniPlayer';
+import {
+  subscribeToIlyaSong,
+  type IlyaSongScreenEvent,
+} from './ilyaSong.service';
 import {
   subscribeToEveningNominations,
   type EveningNominationsScreenEvent,
@@ -44,6 +49,7 @@ type Props = {
   subscribeRadio?: (callback: (event: RadioTransmissionScreenEvent) => void) => () => void;
   subscribeTrainSound?: (callback: (event: TrainSoundScreenEvent) => void) => () => void;
   subscribeNominations?: (callback: (event: EveningNominationsScreenEvent) => void) => () => void;
+  subscribeIlyaSong?: (callback: (event: IlyaSongScreenEvent) => void) => () => void;
   ttlMs?: number;
 };
 
@@ -67,11 +73,16 @@ function browserNominationsSubscribe(eventSlug: string) {
   const client = getSupabaseClient() as unknown as WeddingLiveRealtimeClient;
   return (callback: (event: EveningNominationsScreenEvent) => void) => subscribeToEveningNominations(client, eventSlug, callback);
 }
+function browserIlyaSongSubscribe(eventSlug: string) {
+  const client = getSupabaseClient() as unknown as WeddingLiveRealtimeClient;
+  return (callback: (event: IlyaSongScreenEvent) => void) => subscribeToIlyaSong(client, eventSlug, callback);
+}
 
 const noCapsuleSubscribe = () => () => undefined;
 const noRadioSubscribe = () => () => undefined;
 const noTrainSoundSubscribe = () => () => undefined;
 const noNominationsSubscribe = () => () => undefined;
+const noIlyaSongSubscribe = () => () => undefined;
 
 export function WeddingLiveProjectorLayer({
   eventSlug = 'liza-viktor',
@@ -81,6 +92,7 @@ export function WeddingLiveProjectorLayer({
   subscribeRadio,
   subscribeTrainSound,
   subscribeNominations,
+  subscribeIlyaSong,
   ttlMs = 2800,
 }: Props) {
   const resolvedSubscribe = useMemo(() => subscribe ?? browserReactionSubscribe(eventSlug), [eventSlug, subscribe]);
@@ -100,11 +112,16 @@ export function WeddingLiveProjectorLayer({
     () => subscribeNominations ?? (subscribe ? noNominationsSubscribe : browserNominationsSubscribe(eventSlug)),
     [eventSlug, subscribe, subscribeNominations],
   );
+  const resolvedIlyaSongSubscribe = useMemo(
+    () => subscribeIlyaSong ?? (subscribe ? noIlyaSongSubscribe : browserIlyaSongSubscribe(eventSlug)),
+    [eventSlug, subscribe, subscribeIlyaSong],
+  );
   const [bursts, setBursts] = useState<ReactionBurst[]>([]);
   const [capsule, setCapsule] = useState<CapsuleShowcaseScreenEvent | null>(null);
   const [radio, setRadio] = useState<RadioTransmissionScreenEvent | null>(null);
   const [trainSound, setTrainSound] = useState<TrainSoundScreenEvent | null>(null);
   const [nominations, setNominations] = useState<EveningNominationsScreenEvent | null>(null);
+  const [ilyaSong, setIlyaSong] = useState<Extract<IlyaSongScreenEvent, { action: 'play' }> | null>(null);
 
   useEffect(() => resolvedSubscribe((event) => {
     const now = Date.now();
@@ -123,6 +140,13 @@ export function WeddingLiveProjectorLayer({
   useEffect(() => resolvedRadioSubscribe((event) => setRadio(event)), [resolvedRadioSubscribe]);
   useEffect(() => resolvedTrainSoundSubscribe((event) => setTrainSound(event)), [resolvedTrainSoundSubscribe]);
   useEffect(() => resolvedNominationsSubscribe((event) => setNominations(event)), [resolvedNominationsSubscribe]);
+  useEffect(() => resolvedIlyaSongSubscribe((event) => {
+    if (event.action === 'stop') {
+      setIlyaSong(null);
+      return;
+    }
+    setIlyaSong(event);
+  }), [resolvedIlyaSongSubscribe]);
 
   useEffect(() => {
     if (!bursts.length) return;
@@ -161,12 +185,26 @@ export function WeddingLiveProjectorLayer({
     );
     return () => window.clearTimeout(timer);
   }, [nominations]);
+  useEffect(() => {
+    if (!ilyaSong) return;
+    const timer = window.setTimeout(
+      () => setIlyaSong((current) => current?.id === ilyaSong.id ? null : current),
+      ilyaSong.durationMs + 5_000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [ilyaSong]);
 
   return (
     <>
       {children}
       {capsule && <CapsuleShowcaseOverlay messages={capsule.messages} />}
       {nominations && <EveningNominationsOverlay nominations={nominations.nominations} />}
+      {ilyaSong && (
+        <IlyaSongMiniPlayer
+          song={ilyaSong}
+          onEnded={() => setIlyaSong((current) => current?.id === ilyaSong.id ? null : current)}
+        />
+      )}
       {radio && (
         <TrainRadioOverlay
           transmission={radio}

@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import type { IlyaSongScreenEvent } from './ilyaSong.service';
 import type { GuestReactionScreenEvent } from './weddingLive.service';
 import { WeddingLiveProjectorLayer } from './WeddingLiveProjectorLayer';
 
@@ -28,5 +29,50 @@ describe('WeddingLiveProjectorLayer', () => {
     expect(screen.getByText('🔥')).toBeInTheDocument();
     expect(screen.getByText('×2')).toBeInTheDocument();
     expect(screen.getByText('👏')).toBeInTheDocument();
+  });
+
+  it('shows a compact Ilya song player on play and removes it on stop', () => {
+    let songListener: ((event: IlyaSongScreenEvent) => void) | undefined;
+
+    render(
+      <WeddingLiveProjectorLayer
+        subscribe={() => () => undefined}
+        subscribeIlyaSong={(callback) => {
+          songListener = callback;
+          return () => { songListener = undefined; };
+        }}
+      >
+        <div>ТЕКУЩАЯ СЦЕНА</div>
+      </WeddingLiveProjectorLayer>,
+    );
+
+    act(() => {
+      songListener?.({
+        id: 'song-play-1',
+        kind: 'ilya_song',
+        createdAt: '2026-08-26T18:00:00Z',
+        action: 'play',
+        title: 'Песня про Илью',
+        artist: 'Посажёный отец',
+        durationMs: 233080,
+      });
+    });
+
+    const player = screen.getByRole('status', { name: 'Сейчас играет песня про Илью' });
+    expect(player).toHaveTextContent('СЕЙЧАС ИГРАЕТ');
+    expect(player).toHaveTextContent('Песня про Илью');
+    expect(player).toHaveTextContent('Посажёный отец');
+    expect(player.querySelector('audio')).toHaveAttribute('src', '/audio/live/ilya-toast.mp3');
+
+    act(() => {
+      songListener?.({
+        id: 'song-stop-1',
+        kind: 'ilya_song',
+        createdAt: '2026-08-26T18:01:00Z',
+        action: 'stop',
+      });
+    });
+
+    expect(screen.queryByRole('status', { name: 'Сейчас играет песня про Илью' })).not.toBeInTheDocument();
   });
 });
